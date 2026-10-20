@@ -140,16 +140,16 @@ function MediaPickerPanel({ onClose, onPick, mediaType, collection, title = 'Pic
       style={{
         /* Above ContentEditorSheet layers (50+) so library/crop stay usable inside sheets */
         position: 'fixed', inset: 0, zIndex: 'var(--z-picker)' as unknown as number,
-        background: 'rgba(28,20,8,0.45)', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', padding: 16,
+        background: 'rgba(28,20,8,0.45)', display: 'flex',
+        justifyContent: 'center',
       }}
       onClick={onClose}
     >
       <div
         className="media-picker-shell"
         style={{
-          width: 'min(860px, 100%)', maxHeight: '90vh', overflow: 'hidden',
-          background: 'var(--color-surface)', borderRadius: 16, border: '1px solid var(--color-border)',
+          overflow: 'hidden',
+          background: 'var(--color-surface)', border: '1px solid var(--color-border)',
           display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(28,20,8,0.18)',
           minWidth: 0,
         }}
@@ -265,8 +265,6 @@ function MediaPickerPanel({ onClose, onPick, mediaType, collection, title = 'Pic
             display: 'flex',
             flexWrap: 'wrap',
             justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '12px 20px',
             borderTop: '1px solid var(--color-border)',
             flexShrink: 0,
             gap: 10,
@@ -307,7 +305,7 @@ function MediaPickerPanel({ onClose, onPick, mediaType, collection, title = 'Pic
             </span>
           )}
 
-          <div className="media-picker-footer-actions" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}>
+          <div className="media-picker-footer-actions" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
             <button type="button" onClick={onClose}
               style={{ height: 38, minHeight: 38, padding: '0 16px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
               Cancel

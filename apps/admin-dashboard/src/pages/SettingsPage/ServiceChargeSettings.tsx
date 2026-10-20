@@ -216,7 +216,7 @@ export function ServiceChargeSettings({ embedded = false }: { embedded?: boolean
             style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontFamily: 'inherit' }}
           />
         </div>
-        <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div data-responsive-grid style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Charge type</label>
             <select

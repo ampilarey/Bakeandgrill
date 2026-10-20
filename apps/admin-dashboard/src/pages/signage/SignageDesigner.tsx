@@ -385,7 +385,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
         )}
       </div>
 
-      <div className="signage-designer-grid" style={{ display: 'grid', gridTemplateColumns: '160px 1fr 260px', gap: 12 }}>
+      <div className="signage-designer-grid" style={{ display: 'grid', '--cols': '160px 1fr 260px', gap: 12 }}>
         <div className="signage-designer-palette" style={panel}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>Add</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -419,7 +419,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
 
         <div
           className="signage-designer-canvas-wrap"
-          style={{ ...panel, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 360 }}
+          style={{ ...panel, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
         >
           <div
             ref={canvasRef}
@@ -518,7 +518,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
               <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
                 Generated from the live menu. These knobs live on the slide binding — no deploy needed to retune the board.
               </p>
-              <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 8 }}>
                 <div>
                   <label style={label}>Showcase cap</label>
                   <input
@@ -601,7 +601,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
               <div
                 className="form-grid-2"
                 data-testid="signage-designer-xywh"
-                style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}
+                style={{ display: 'grid', '--cols': '1fr 1fr', gap: 8 }}
               >
                 <div>
                   <label style={label}>X %</label>

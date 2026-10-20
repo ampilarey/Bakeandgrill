@@ -418,7 +418,7 @@ export default function KitchenProductionPage({ tab: forcedTab }: { tab?: TabId 
           <div style={{ marginTop: 20, display: 'grid', gap: 20 }}>
             <div
               data-responsive-grid
-              style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}
+              style={{ display: 'grid', gap: 16, '--cols': 'repeat(auto-fit, minmax(160px, 1fr))' }}
             >
               {Object.entries(summary).map(([k, v]) => {
                 const meta = SUMMARY_META[k] ?? { label: titleCase(k), accent: 'var(--color-primary)' };

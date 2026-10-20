@@ -122,7 +122,7 @@ function CategoryFormModal({
     <Modal title={title} onClose={onClose} maxWidth={640}>
       {error && <ErrorMsg message={error} />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
           <Field label="Name (English)">
             <Input value={form.name} onChange={(v) => set('name', v)} placeholder="e.g. Grills" />
           </Field>
@@ -179,7 +179,7 @@ function CategoryFormModal({
             style={{
               marginTop: 12,
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
+              '--cols': '1fr 1fr',
               gap: 10,
               alignItems: 'end',
             }}
@@ -236,7 +236,7 @@ function CategoryFormModal({
           />
         </div>
 
-        <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
           <Field label="Sort Order">
             <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
           </Field>

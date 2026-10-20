@@ -231,7 +231,7 @@ export function CreditAccountsPage() {
         </div>
       )}
       {totals && !isMobile && (
-        <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
+        <div className="stat-grid" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
           <StatCard label="Accounts" value={String(totals.accounts)} sub={`${totals.active} active`} />
           <StatCard label="Owed to you" value={money(totals.balance_mvr)} sub={`${totals.with_balance} owing`} />
           <StatCard label="Overdue" value={money(totals.overdue_mvr)} sub={`${totals.overdue} account${totals.overdue === 1 ? '' : 's'}`} accent={totals.overdue > 0 ? 'var(--color-danger)' : undefined} />

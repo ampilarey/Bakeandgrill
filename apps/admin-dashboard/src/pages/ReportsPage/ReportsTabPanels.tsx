@@ -483,7 +483,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                     <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 16px' }}>
                       {data.from} → {data.to}
                     </p>
-                    <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                    <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12, marginBottom: 16 }}>
                       {[
                         { l: 'Orders', v: String(data.totals.orders_count ?? 0) },
                         { l: 'Revenue', v: mvr(data.totals.total ?? 0) },

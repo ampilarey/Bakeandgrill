@@ -609,15 +609,16 @@ export function Modal({
       style={{
         position: 'fixed', inset: 0, zIndex: 'var(--z-modal)' as unknown as number,
         background: 'rgba(28,20,8,0.45)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 20,
+        display: 'flex', justifyContent: 'center',
+        // A phone gets a bottom sheet from index.css; from 768px these.
+        '--modal-align': 'center', '--modal-pad': '20px',
       }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         ref={panelRef}
         className="modal-container"
-        style={{ width: '100%', maxWidth }}
+        style={{ width: '100%', '--modal-max': px(maxWidth) }}
       >
         <div className="modal-header">
           <h3 id={titleId} style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-text)', margin: 0 }}>{title}</h3>

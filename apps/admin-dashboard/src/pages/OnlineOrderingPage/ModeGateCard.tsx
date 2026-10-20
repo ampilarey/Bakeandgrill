@@ -114,14 +114,13 @@ export function ModeGateCard({
 
   return (
     <div className="oc-card" style={S.card} data-testid={testId}>
-      <div className="oc-feature-head" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="oc-feature-head">
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
           aria-expanded={expanded}
           data-testid={`${testId}-expand`}
           style={{
-            flex: 1,
             minWidth: 0,
             display: 'flex',
             alignItems: 'center',

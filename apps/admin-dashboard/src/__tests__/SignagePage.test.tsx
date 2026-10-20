@@ -220,7 +220,7 @@ describe('SignagePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'TV status' }));
     const pending = await screen.findByTestId('signage-pending-1');
     expect(pending.className).toMatch(/\bform-grid-3\b/);
-    expect(pending.style.gridTemplateColumns).toMatch(/auto-fit/);
+    expect(pending.style.getPropertyValue('--cols')).toMatch(/auto-fit/);
 
     setViewportWidth(1024);
   });

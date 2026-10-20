@@ -43,7 +43,7 @@ export function HeroSlideEditor({ label, description, uploadKey, value, onChange
           />
         </div>
       </div>
-      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 10 }}>
         {fields.map((f) => (
           <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 4, gridColumn: f.col === 'full' ? '1 / -1' : undefined }}>
             <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{f.label}</label>

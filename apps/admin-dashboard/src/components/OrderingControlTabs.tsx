@@ -16,17 +16,15 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id'];
 
+/** Padding, size and height are in index.css (.oc-tabbar > button), so a phone can tighten them. */
 const tabStyle = (active: boolean): React.CSSProperties => ({
-  padding: '5px 12px',
   borderRadius: 8,
   border: 'none',
   cursor: 'pointer',
   fontFamily: 'inherit',
-  fontSize: 13,
   fontWeight: active ? 700 : 500,
   background: active ? 'var(--color-primary)' : 'transparent',
   color: active ? '#fff' : 'var(--color-text-secondary)',
-  minHeight: 32,
 });
 
 function activeTab(pathname: string, search: string): TabId {

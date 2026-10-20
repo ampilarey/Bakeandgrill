@@ -572,7 +572,7 @@ export function CustomersPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
                 {/* KPI strip */}
-                <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                <div className="stat-grid" style={{ display: 'grid', '--cols': 'repeat(3, 1fr)', gap: 10 }}>
                   {[
                     { label: 'Total Orders', value: String(detail.customer.orders_count) },
                     { label: 'Loyalty Pts', value: String(detail.customer.loyalty_points ?? 0) },
@@ -590,7 +590,7 @@ export function CustomersPage() {
                 {/* Info grid */}
                 {!editing ? (
                   <>
-                    <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div data-responsive-grid style={{ display: 'grid', '--cols': '1fr 1fr', gap: 10 }}>
                       {([
                         ['Phone', detail.customer.unverified_phone ? `${detail.customer.unverified_phone} (typed, not verified)` : detail.customer.phone + (detail.customer.phone_unverified ? ' (not verified)' : '')],
                         ['Email', detail.customer.email ?? '—'],

@@ -313,7 +313,7 @@ export default function WholesaleAccountPage() {
 
       <div
         data-responsive-grid
-        style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 20, marginBottom: 28 }}
+        style={{ display: 'grid', '--cols': 'minmax(0, 1fr) minmax(0, 1fr)', gap: 20, marginBottom: 28 }}
       >
         <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <h2 style={sectionTitle}>Terms</h2>
@@ -327,7 +327,7 @@ export default function WholesaleAccountPage() {
             />
           </Field>
 
-          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
             <Field label="Contact name">
               <Input
                 value={account.contact_name ?? ''}

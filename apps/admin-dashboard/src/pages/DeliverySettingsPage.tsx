@@ -392,10 +392,9 @@ export default function DeliverySettingsPage() {
 
       {/* Notifications audit, 2026-10-10: the late-delivery alert had a second
           switch here; it is one row in Notifications now, with its channels. */}
-      <div className="oc-card" data-testid="delivery-alert-link" style={{
-        padding: '12px 16px', background: 'var(--color-tone-rust-bg)',
-        border: '1px solid var(--color-tone-rust-border)', borderRadius: 10,
-        marginBottom: '1.25rem',
+      <div className="oc-card oc-card--note" data-testid="delivery-alert-link" style={{
+        background: 'var(--color-tone-rust-bg)',
+        border: '1px solid var(--color-tone-rust-border)',
       }}>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--color-tone-rust-text)', lineHeight: 1.5 }}>
           The alert when delivery orders pass their expected time (hourly, also in System Health) is switched on and off in{' '}

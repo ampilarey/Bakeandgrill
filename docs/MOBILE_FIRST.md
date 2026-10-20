@@ -92,11 +92,15 @@ page's own button rows.
 Admin page batch 1 (2026-10-20): Posters, Content Studio (editor rows, header Publish),
 Specials, the home layout header, Labels' action row, the item editor's card preview,
 Notifications → Rules, Service Availability, and SharedUI `Card` and `StatCard`; 15 to 6.
+Batch 2: every grid whose columns a page chooses (`form-grid-2/3`, `stat-grid`,
+`data-responsive-grid`, `kds-grid`, the signage designer; 107 elements, now `--cols`),
+Ordering Control and Delivery, SharedUI `Modal` (`--modal-align` / `--modal-pad` /
+`--modal-max`), `MediaPicker`, the Orders filter panel and Reports filters; 6 to 3.
 
 | Area | Rules left |
 |---|---|
 | Website views (`backend/resources`) | 46 |
-| Admin (`apps/admin-dashboard`) | 6 |
+| Admin (`apps/admin-dashboard`) | 3 |
 | Order app (`apps/online-order-web`) | 24 |
 | Till (`apps/pos-web`) | 12 |
 | Kitchen screen (`apps/kds-web`) | 3 |

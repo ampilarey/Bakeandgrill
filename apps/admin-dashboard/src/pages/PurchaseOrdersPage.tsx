@@ -1597,7 +1597,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   {gstForm.is_input_tax_claimable && (
                     <div style={{ display: 'grid', gap: 10 }}>
                       <input placeholder="Supplier TIN" aria-label="Supplier TIN" value={gstForm.supplier_tin} onChange={(e) => setGstForm((f) => ({ ...f, supplier_tin: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, boxSizing: 'border-box' }} />
-                      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 10 }}>
                         <input placeholder="Supplier invoice no." aria-label="Supplier invoice number" value={gstForm.supplier_invoice_no} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_no: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
                         <input type="date" aria-label="Supplier invoice date" value={gstForm.supplier_invoice_date} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_date: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
                       </div>
@@ -1675,7 +1675,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
               </>
             )}
           </div>
-          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Purchase Date</label>
               <input type="date" value={importDate} onChange={(e) => setImportDate(e.target.value)}
@@ -1705,7 +1705,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       {showManualPo && (
         <Modal title="Create Manual Purchase Order" onClose={() => setShowManualPo(false)} maxWidth={760}>
           {manualPoError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 8 }}>{manualPoError}</p>}
-          <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 12, marginBottom: 12 }}>
+          <div data-responsive-grid style={{ display: 'grid', '--cols': '3fr 2fr', gap: 12, marginBottom: 12 }}>
             <div>
               {/* Bought from whom. One field: a supplier you deal with and the
                   shop you walked to are the same kind of thing. Type a name and
@@ -1908,7 +1908,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                     <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 8px', lineHeight: 1.45 }}>
                       Adds it to your inventory so you can buy it now and track it from here on.
                     </p>
-                    <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <div data-responsive-grid style={{ display: 'grid', '--cols': '1fr 1fr', gap: 8 }}>
                       <input
                         aria-label={`New item name for item ${idx + 1}`}
                         placeholder="Item name, e.g. Egg"
@@ -1950,7 +1950,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                     under another on a phone. Labels above the boxes, not
                     placeholders inside them: a placeholder is gone the moment
                     you type. */}
-                <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.2fr 1fr', gap: 8, marginTop: 10 }}>
+                <div data-responsive-grid style={{ display: 'grid', '--cols': '1.2fr 1.2fr 1fr', gap: 8, marginTop: 10 }}>
                   <div>
                     <label style={lineLabelStyle}>Brand</label>
                     {line.selection ? (
@@ -2244,7 +2244,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
             bought by — pick the pack under the name, and the figure beneath says what that comes to in stock.
           </p>
 
-          <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+          <div data-responsive-grid style={{ display: 'grid', '--cols': '1fr 1fr', gap: 10, marginBottom: 12 }}>
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={lineLabelStyle}>Bought from *</label>
               <PickOrType

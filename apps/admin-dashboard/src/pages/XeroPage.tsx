@@ -184,7 +184,7 @@ export default function XeroPage() {
           <StatusCard status={status} />
 
           {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }} className="stat-grid">
+          <div style={{ display: 'grid', '--cols': 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }} className="stat-grid">
             <StatCard label="Total Syncs"       value={String(logMeta.total)} />
             <StatCard label="Successful (page)" value={String(logs.filter((l) => l.status === 'success').length)} accent="var(--color-success)" />
             <StatCard label="Failed (page)"     value={String(logs.filter((l) => l.status === 'failed').length)}  accent="var(--color-danger)" />

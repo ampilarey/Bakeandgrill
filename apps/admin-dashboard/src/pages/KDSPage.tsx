@@ -292,7 +292,7 @@ export function KDSPage() {
       {loading && tickets.length === 0 ? (
         <Card style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></Card>
       ) : (
-        <div className="kds-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+        <div className="kds-grid" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
           <Column title="Pending" items={pending} color="var(--color-warning)" flash={newTicketFlash}>
             {(t) => (
               <TicketHeader ticket={t} prepTargetMin={ticketPrepTarget(t, itemPrepMap)} />

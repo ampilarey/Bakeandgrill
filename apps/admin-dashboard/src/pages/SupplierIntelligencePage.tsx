@@ -476,7 +476,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                   </div>
                 </div>
 
-                <div className="stat-grid" style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, minWidth: 0 }}>
+                <div className="stat-grid" style={{ flex: 1, display: 'grid', '--cols': 'repeat(4, 1fr)', gap: 16, minWidth: 0 }}>
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Purchases</div>
                     <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{sup.purchase_count}</div>

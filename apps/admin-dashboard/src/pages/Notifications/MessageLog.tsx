@@ -105,7 +105,7 @@ export function MessageLog({ initialFilters }: { initialFilters?: Partial<SmsLog
         </div>
       )}
       {totals && (
-        <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }} data-testid="sms-log-totals">
+        <div className="stat-grid" style={{ display: 'grid', '--cols': 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }} data-testid="sms-log-totals">
           <StatCard label="Texts (this filter)" value={totals.count.toLocaleString()} accent="var(--color-primary)" />
           <StatCard label="Sent" value={(totals.by_status.sent ?? 0).toLocaleString()} accent="var(--color-success)" />
           <StatCard label="Failed / blocked" value={((totals.by_status.failed ?? 0) + (totals.by_status.disabled ?? 0) + (totals.by_status.suppressed ?? 0)).toLocaleString()} accent="var(--color-danger)" />

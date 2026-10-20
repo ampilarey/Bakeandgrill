@@ -1124,14 +1124,14 @@ export function OrdersPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search order # or customer…"
-          style={{ flex: '1 1 200px', minWidth: 180, maxWidth: 280, padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none' }}
+          style={{ '--flex': '1 1 200px', '--min-w': '180px', '--max-w': '280px', padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', color: 'var(--color-text)', outline: 'none' }}
         />
-        <Select value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1); }} options={STATUS_OPTIONS} style={{ width: 160 }} />
-        <Select value={typeFilter} onChange={(v) => { setTypeFilter(v); setPage(1); }} options={TYPE_OPTIONS} style={{ width: 160 }} />
+        <Select value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1); }} options={STATUS_OPTIONS} style={{ '--w': '160px' }} />
+        <Select value={typeFilter} onChange={(v) => { setTypeFilter(v); setPage(1); }} options={TYPE_OPTIONS} style={{ '--w': '160px' }} />
         <select
           value={cashierFilter}
           onChange={(e) => { setCashierFilter(e.target.value); setPage(1); }}
-          style={{ padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', minWidth: 140 }}
+          style={{ padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', '--min-w': '140px' }}
         >
           <option value="">All cashiers</option>
           {staffOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -1139,7 +1139,7 @@ export function OrdersPage() {
         <select
           value={deviceFilter}
           onChange={(e) => { setDeviceFilter(e.target.value); setPage(1); }}
-          style={{ padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', minWidth: 140 }}
+          style={{ padding: '7px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', '--min-w': '140px' }}
         >
           <option value="">All stations</option>
           {deviceOptions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}

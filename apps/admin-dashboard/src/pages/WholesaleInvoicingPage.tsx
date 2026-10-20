@@ -471,7 +471,7 @@ export default function WholesaleInvoicingPage() {
                 <>
                   <div
                     data-responsive-grid
-                    style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}
+                    style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}
                   >
                     <Stat label="Sold" value={mvr(preview.sold_laar)} />
                     <Stat label="Not returned" value={mvr(preview.missing_laar)} />

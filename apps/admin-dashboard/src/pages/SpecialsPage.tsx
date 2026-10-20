@@ -874,7 +874,7 @@ export default function SpecialsPage() {
               />
             </label>
             {!hasVariants ? (
-              <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', '--cols': '1fr 1fr' }}>
                 <label>
                   <span style={fieldLabel}>Special Price (MVR)</span>
                   <Input type="number" min="0" step="0.01" placeholder="e.g. 39.00" value={form.special_price} onChange={setItemSpecialPrice} />
@@ -940,7 +940,7 @@ export default function SpecialsPage() {
                 Leave blank for no custom badge. The Type column still shows the discount.
               </span>
             </label>
-            <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', '--cols': '1fr 1fr' }}>
               <label>
                 <span style={fieldLabel}>Start Date *</span>
                 <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} style={dateFieldStyle} />
@@ -950,7 +950,7 @@ export default function SpecialsPage() {
                 <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} style={dateFieldStyle} />
               </label>
             </div>
-            <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', '--cols': '1fr 1fr' }}>
               <label>
                 <span style={fieldLabel}>Start Time</span>
                 <input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} style={dateFieldStyle} />
@@ -981,7 +981,7 @@ export default function SpecialsPage() {
                 })}
               </div>
             </div>
-            <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2 form-grid-keep-2" style={{ display: 'grid', '--cols': '1fr 1fr' }}>
               <label>
                 <span style={fieldLabel}>Max Quantity</span>
                 <Input type="number" min="1" placeholder="Unlimited" value={form.max_quantity} onChange={v => setForm(f => ({ ...f, max_quantity: v }))} />

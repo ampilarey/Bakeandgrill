@@ -233,7 +233,7 @@ export default function WholesalePage() {
               <label style={labelStyle}>Shop name</label>
               <Input value={shopName} onChange={setShopName} placeholder="e.g. Island Mart Hulhumalé" />
             </div>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={labelStyle}>Contact name (optional)</label>
                 <Input value={contactName} onChange={setContactName} />

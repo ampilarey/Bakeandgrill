@@ -297,7 +297,7 @@ export function CateringDetailPage() {
 
       {error && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13 }}>{error}</p>}
 
-      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
+      <div className="form-grid-2" style={{ display: 'grid', '--cols': '1.4fr 1fr', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Lines */}
           <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16 }}>
@@ -407,7 +407,7 @@ export function CateringDetailPage() {
           {/* Fulfilment */}
           <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Fulfilment</h3>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 10 }}>
               <label style={labelStyle}>
                 Method
                 <select

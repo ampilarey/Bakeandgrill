@@ -231,7 +231,7 @@ function PlatterGroupsEditor({
               <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
                 Pieces per size
               </p>
-              <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
+              <div className="form-grid-3" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
                 {variants.map((v) => {
                   const key = v.id != null ? String(v.id) : v._key;
                   return (
@@ -264,7 +264,7 @@ function PlatterGroupsEditor({
             </div>
           )}
           {group.rule_type === 'range' && (
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10, maxWidth: 320 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 10, marginTop: 10, maxWidth: 320 }}>
               <Field label="Minimum">
                 <Input
                   value={group.min_count}
@@ -892,7 +892,7 @@ export function MenuItemEditorModal({
           </nav>
 
           <Section id="basics" title="Basics" register={register}>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
               <Field label="Name (English) *">
                 <Input value={form.name} onChange={(v) => set('name', v)} placeholder="e.g. Chicken Grill" />
               </Field>
@@ -900,7 +900,7 @@ export function MenuItemEditorModal({
                 <Input value={form.name_dv} onChange={(v) => set('name_dv', v)} placeholder="ދިވެހި" />
               </Field>
             </div>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
               <Field label="Category">
                 <select
                   value={form.category_id}
@@ -982,7 +982,7 @@ export function MenuItemEditorModal({
                 </select>
               </Field>
             </div>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
               <Field label="SKU / Internal Code">
                 <Input value={form.sku} onChange={(v) => set('sku', v)} placeholder="e.g. CHKGRL-01" />
               </Field>
@@ -1016,12 +1016,12 @@ export function MenuItemEditorModal({
             {form.has_variants ? (
               <>
                 <VariantsEditor rows={form.variants} onChange={(rows) => set('variants', rows)} />
-                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
                   <TaxCodeField value={form.tax_code} onChange={(v) => set('tax_code', v)} bootstrap={gstBootstrap} />
                 </div>
               </>
             ) : (
-              <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
                 <Field label="Price (MVR) *">
                   <Input value={form.base_price} onChange={(v) => set('base_price', v)} type="number" placeholder="0.00" />
                 </Field>
@@ -1039,7 +1039,7 @@ export function MenuItemEditorModal({
           >
             <div className="mie-card-grid">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
-                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
                   <Field label="Card name (English)">
                     <Input
                       value={form.card_name}
@@ -1137,7 +1137,7 @@ export function MenuItemEditorModal({
             <p className="mie-count">
               Shown as “Contains …” on the item detail sheet (not on the menu card)
             </p>
-            <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+            <div className="form-grid-3" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
               <Field label="Spice level">
                 <select
                   value={form.spice_level}
@@ -1319,7 +1319,7 @@ export function MenuItemEditorModal({
             hint="Fallback applies when this item has no packaging options. Dine-in is never charged."
             register={register}
           >
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
               <Field label="Charge mode">
                 <select
                   value={form.packaging_fee_mode}

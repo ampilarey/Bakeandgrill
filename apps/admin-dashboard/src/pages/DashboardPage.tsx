@@ -708,7 +708,7 @@ export function DashboardPage() {
       {opsCards.length > 0 && (
         <>
           <SectionLabel>Operations</SectionLabel>
-          <div className="stat-grid" data-responsive-grid style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
+          <div className="stat-grid" data-responsive-grid style={{ display: 'grid', '--cols': 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 20 }}>
             {opsCards.map((c) => (
               <button
                 key={c.key}
@@ -736,7 +736,7 @@ export function DashboardPage() {
           {posOverviewErr && <ErrorMsg message={posOverviewErr} />}
           {posOverview && (
             <>
-              <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 14, marginBottom: 16 }}>
+              <div className="stat-grid" style={{ display: 'grid', '--cols': 'repeat(auto-fill, minmax(140px, 1fr))', gap: 14, marginBottom: 16 }}>
                 <StatCard label="Open Shifts" value={String(posOverview.open_shifts_count)} accent="var(--color-success)" icon={Users} />
                 <StatCard label="Open Tickets" value={String(posOverview.active_tickets)} sub="Not completed yet" accent="var(--color-primary)" icon={ShoppingBag} />
                 <StatCard label="Clocked In" value={String(posOverview.clocked_in_count)} accent="var(--color-tone-brown-text)" icon={Clock} />
@@ -841,7 +841,7 @@ export function DashboardPage() {
       </p>
       {summaryErr && <ErrorMsg message={summaryErr} />}
       {summaryLoading ? <Spinner /> : summary && (
-        <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 14, marginBottom: 24 }}>
+        <div className="stat-grid" style={{ display: 'grid', '--cols': 'repeat(auto-fill, minmax(170px, 1fr))', gap: 14, marginBottom: 24 }}>
           <StatCard label="Completed Sales" value={fmt(summary.revenue)} sub="Finished orders only" accent="var(--color-primary)" icon={DollarSign} />
           <StatCard label="Net Profit" value={fmt(summary.net_profit)}
             accent={summary.net_profit >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
@@ -1216,7 +1216,7 @@ export function DashboardPage() {
         <>
           <div style={{ height: 20 }} />
           <SectionLabel>Revenue breakdown</SectionLabel>
-          <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 16 }}>
+          <div className="stat-grid" style={{ display: 'grid', '--cols': 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 16 }}>
             <StatCard
               label="Service charge"
               value={fmt(salesSummary.service_charge_total ?? 0)}

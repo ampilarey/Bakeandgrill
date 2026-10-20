@@ -244,7 +244,7 @@ export default function DiscountCardsPage() {
         <Modal title="Issue discount cards" onClose={() => setIssueOpen(false)}>
           <div style={{ display: 'grid', gap: 12 }}>
             <Input label="Name" value={name} onChange={setName} />
-            <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div data-responsive-grid style={{ display: 'grid', '--cols': '1fr 1fr', gap: 10 }}>
               <label>
                 <span style={label}>Type</span>
                 <select
@@ -263,11 +263,11 @@ export default function DiscountCardsPage() {
                 onChange={setDiscountValue}
               />
             </div>
-            <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div data-responsive-grid style={{ display: 'grid', '--cols': '1fr 1fr', gap: 10 }}>
               <Input label="Quantity (1–50)" type="number" value={quantity} onChange={setQuantity} />
               <Input label="Uses per card" type="number" value={maxUses} onChange={setMaxUses} />
             </div>
-            <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div data-responsive-grid style={{ display: 'grid', '--cols': '1fr 1fr', gap: 10 }}>
               <Input label="Valid from (optional)" type="date" value={startsAt} onChange={setStartsAt} />
               <Input label="Expires (optional)" type="date" value={expiresAt} onChange={setExpiresAt} />
             </div>

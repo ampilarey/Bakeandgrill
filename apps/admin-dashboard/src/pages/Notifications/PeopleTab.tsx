@@ -688,7 +688,7 @@ function ExtraNumberModal({ contact, onClose, onSaved }: { contact: SmsContact |
     <Modal title={contact ? 'Edit number' : 'Add a number'} onClose={onClose}>
       {error && <div style={{ ...errorBox, marginBottom: 12 }}>{error}</div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
+        <div className="form-grid-2" style={{ display: 'grid', '--cols': 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
           <div>
             <label htmlFor="extra-name" style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Name *</label>
             <Input id="extra-name" placeholder="e.g. Manager on call" value={form.name} onChange={(v) => set('name', v)} />
@@ -712,7 +712,7 @@ function ExtraNumberModal({ contact, onClose, onSaved }: { contact: SmsContact |
             <button type="button" onClick={() => set('active_days', null)} style={chipStyle(!form.active_days)}>Every day</button>
           </div>
         </div>
-        <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
+        <div className="form-grid-2" style={{ display: 'grid', '--cols': 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12 }}>
           <div>
             <label htmlFor="extra-from" style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>From</label>
             <Input id="extra-from" type="time" value={form.active_from} onChange={(v) => set('active_from', v)} />

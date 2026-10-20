@@ -97,7 +97,7 @@ export function ProfitLossPage() {
                 <StatCard label="Net Profit"    value={`MVR ${parseFloat(String(pnl.operating_profit ?? 0)).toFixed(2)}`} sub={`Margin: ${pnl.net_profit_margin_pct}%`} accent={pnl.operating_profit >= 0 ? 'var(--color-success)' : 'var(--color-danger)'} />
               </div>
 
-              <div className="form-grid-2" data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div className="form-grid-2" data-responsive-grid style={{ display: 'grid', '--cols': '1fr 1fr', gap: 20 }}>
                 {/* P&L Waterfall */}
                 <Card>
                   <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', marginBottom: 20, margin: '0 0 20px' }}>P&L Breakdown</p>
@@ -155,7 +155,7 @@ export function ProfitLossPage() {
           {cashFlow && (
             <Card>
               <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', marginBottom: 16, margin: '0 0 16px' }}>Cash Flow Summary</p>
-              <div className="stat-grid" data-responsive-grid style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+              <div className="stat-grid" data-responsive-grid style={{ display: 'grid', '--cols': 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
                 <StatCard label="Retail Inflow" value={`MVR ${parseFloat(String(cashFlow.total_inflow ?? 0)).toFixed(2)}`} accent="var(--color-success)" />
                 <StatCard label="Wholesale Inflow" value={`MVR ${parseFloat(String(cashFlow.total_wholesale_inflow ?? 0)).toFixed(2)}`} accent="var(--color-success)" />
                 <StatCard label="Total Outflow"  value={`MVR ${parseFloat(String(cashFlow.total_outflow ?? 0)).toFixed(2)}`}  accent="var(--color-danger)" />

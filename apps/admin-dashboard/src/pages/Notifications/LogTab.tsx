@@ -129,7 +129,7 @@ function OrderAlertLog() {
       {actionError && <div style={errorBox}>{actionError}</div>}
 
       {!error && total !== null && (
-        <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
+        <div className="form-grid-3" style={{ display: 'grid', '--cols': 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
           <StatCard label="Sent" value={sent.toString()} accent="var(--color-success)" />
           <StatCard label="Failed" value={failed.toString()} accent="var(--color-danger)" />
           <StatCard label="Fallback used" value={fallback.toString()} accent="var(--color-warning)" />

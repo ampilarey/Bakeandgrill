@@ -257,7 +257,7 @@ export function ContactsTab() {
         <Modal title={editContact ? 'Edit Contact' : 'Add Contact'} onClose={() => setContactModal(false)}>
           <div style={{ display: 'grid', gap: 12 }}>
             {error && <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 10 }}>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Name *</label>
                 <Input value={contactForm.name} onChange={v => setContactForm(f => ({ ...f, name: v }))} placeholder="e.g. Manager After Hours" />
@@ -267,7 +267,7 @@ export function ContactsTab() {
                 <Input value={contactForm.phone} onChange={v => setContactForm(f => ({ ...f, phone: v }))} placeholder="+9607xxxxxx" />
               </div>
             </div>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 10 }}>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Type</label>
                 <select value={contactForm.type} onChange={e => setContactForm(f => ({ ...f, type: e.target.value as 'staff' | 'external' }))}
@@ -294,7 +294,7 @@ export function ContactsTab() {
                 ))}
               </div>
             </div>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 10 }}>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Active From</label>
                 <Input type="time" value={contactForm.active_from} onChange={v => setContactForm(f => ({ ...f, active_from: v }))} />

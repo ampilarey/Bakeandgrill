@@ -523,6 +523,17 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress, mete
 .signage-designer-canvas-wrap {
   background: var(--color-signage-canvas-bg);
 }
+/* On a phone the grid is one column (above): the canvas first, then the slide's
+   settings, then the palette; the preview-size picker only from 768px. */
+.signage-designer-canvas-wrap { order: 1; min-height: auto; }
+.signage-designer-props { order: 2; }
+.signage-designer-palette { order: 3; }
+.signage-designer-preview-size { display: none; }
+@media (min-width: 768px) {
+  .signage-designer-canvas-wrap { order: revert-layer; min-height: 360px; }
+  .signage-designer-props, .signage-designer-palette { order: revert-layer; }
+  .signage-designer-preview-size { display: revert-layer; }
+}
 .signage-designer-canvas {
   border: 1px solid var(--color-signage-canvas-border);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
@@ -541,12 +552,27 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress, mete
 /* SharedUI StatCard */
 .stat-card { padding: 16px 20px; gap: 10px; }
 
-/* Tablet: 768px–1023px */
-@media (max-width: 1023px) {
-  /* Stat cards: 2-col grid instead of forced 4-col */
-  .stat-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
+/*
+ * Grids whose columns a page chooses. The page hands its computer columns over as
+ * --cols (style={{ '--cols': '1fr 1fr' }}); below 768px the stylesheet decides:
+ * one column for forms, KDS tickets as many 280px columns as fit, any other
+ * data-responsive-grid as many 240px ones, stat tiles two across (and the
+ * 240px rule from 480px when a stat grid is also data-responsive). Stat tiles
+ * stay two across up to 1023px. Order matters: a later rule wins a tie.
+ */
+.kds-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.form-grid-2, .form-grid-3, .signage-designer-grid { grid-template-columns: 1fr; }
+[data-responsive-grid] { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.stat-grid { grid-template-columns: 1fr 1fr; }
+@media (min-width: 480px) {
+  .stat-grid[data-responsive-grid] { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+}
+@media (min-width: 768px) {
+  .kds-grid, .form-grid-2, .form-grid-3, .signage-designer-grid, [data-responsive-grid] { grid-template-columns: var(--cols, none); }
+  .stat-grid, .stat-grid[data-responsive-grid] { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1024px) {
+  .stat-grid, .stat-grid[data-responsive-grid] { grid-template-columns: var(--cols, none); }
 }
 
 /* A visible file picker draws the browser's own grey button and "No file
@@ -612,6 +638,12 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
 .mobile-filters > summary::after { content: '▾'; color: var(--color-text-muted); font-size: 12px; }
 .mobile-filters[open] > summary::after { transform: rotate(180deg); }
 .mobile-filters-body { display: flex; flex-direction: column; gap: 10px; padding: 0 16px 16px; }
+/* Each filter takes the panel's width on a phone; from 768px its own size, which
+   the page passes as --w / --min-w / --max-w / --flex (OrdersPage). */
+.mobile-filters-body input[type="search"], .mobile-filters-body select, .mobile-filters-body label { width: 100%; max-width: none; min-width: 0; flex: none; }
+/* A select beside its own words ("Per page: [25]") takes the space left
+   after them; at 100% it ran past the panel's edge. */
+.mobile-filters-body .mobile-filters-inline select { width: auto; flex: 1 1 auto; }
 /* Sticky actions sit above the measured tab bar; extra pad for the sticky row itself. */
 .signage-designer { padding-bottom: calc(var(--admin-tabbar-h, 56px) + 72px); }
 .signage-designer-sticky-actions { display: flex; position: sticky; bottom: var(--admin-tabbar-h, 56px); z-index: var(--z-overlay); gap: 8px; padding: 10px 0; background: var(--color-bg); border-top: 1px solid var(--color-border); }
@@ -620,6 +652,16 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
 .signage-tab-row::-webkit-scrollbar { display: none; }
 .signage-tab-row > button { flex-shrink: 0; scroll-snap-align: start; }
 .modal-backdrop .modal-footer .modal-actions > button { flex: 1 1 0; justify-content: center; }
+/*
+ * MediaPicker (hero / Content Hub / menu image pick) is a bottom sheet on a phone.
+ * Its footer used to keep Prev/Next + "Selected: …" + Cancel + "Use this file" on
+ * one row, pushing the confirm button off-screen, so there it stacks.
+ */
+.media-picker-backdrop { align-items: flex-end; padding: 0; }
+.media-picker-shell { width: 100%; max-width: 100vw; max-height: min(92dvh, 92vh); height: min(92dvh, 92vh); border-radius: 20px 20px 0 0; }
+.media-picker-sidebar { display: none; }
+.media-picker-footer { flex-direction: column; align-items: stretch; padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px)); }
+.media-picker-footer-actions { margin-left: 0; }
 .media-picker-footer-pager { justify-content: center; width: 100%; }
 .media-picker-footer-selected { order: -1; text-align: center; }
 .media-picker-footer-actions { width: 100%; }
@@ -627,7 +669,7 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
 /* Reports filters: the dates side by side, the pickers two to a row, the
      quick ranges on a line of their own. */
 .report-filters > * { flex: 1 1 140px; min-width: 0; }
-.report-filters input, .report-filters select { width: 100%; }
+.report-filters input, .report-filters select { width: 100%; max-width: none; }
 .report-filters > .report-quick-ranges { flex-basis: 100%; }
 /* SharedUI DateInput: From and To side by side, filling the row. */
 .date-input { flex: 1 1 140px; min-width: 0; }
@@ -650,6 +692,8 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   .mobile-filters > summary::after { content: revert-layer; color: revert-layer; font-size: revert-layer; }
   .mobile-filters[open] > summary::after { transform: revert-layer; }
   .mobile-filters-body { display: revert-layer; flex-direction: revert-layer; gap: revert-layer; padding: revert-layer; }
+  .mobile-filters-body input[type="search"], .mobile-filters-body select, .mobile-filters-body label { width: var(--w, revert-layer); max-width: var(--max-w, revert-layer); min-width: var(--min-w, revert-layer); flex: var(--flex, revert-layer); }
+  .mobile-filters-body .mobile-filters-inline select { width: revert-layer; flex: revert-layer; }
   .signage-designer { padding-bottom: revert-layer; }
   .signage-designer-sticky-actions { display: none; position: revert-layer; bottom: revert-layer; z-index: revert-layer; gap: revert-layer; padding: revert-layer; background: revert-layer; border-top: revert-layer; }
   .signage-designer-sticky-actions > button { flex: revert-layer; justify-content: revert-layer; }
@@ -657,20 +701,23 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   .signage-tab-row::-webkit-scrollbar { display: revert-layer; }
   .signage-tab-row > button { flex-shrink: revert-layer; scroll-snap-align: revert-layer; }
   .modal-backdrop .modal-footer .modal-actions > button { flex: revert-layer; justify-content: revert-layer; }
+  .media-picker-backdrop { align-items: center; padding: 16px; }
+  .media-picker-shell { width: min(860px, 100%); max-width: revert-layer; max-height: 90vh; height: revert-layer; border-radius: 16px; }
+  .media-picker-sidebar { display: revert-layer; }
+  .media-picker-footer { flex-direction: revert-layer; align-items: center; padding: 12px 20px; }
+  .media-picker-footer-actions { margin-left: auto; }
   .media-picker-footer-pager { justify-content: revert-layer; width: revert-layer; }
   .media-picker-footer-selected { order: revert-layer; text-align: revert-layer; }
   .media-picker-footer-actions { width: revert-layer; }
   .media-picker-footer-actions > button { flex: revert-layer; justify-content: revert-layer; }
   .report-filters > * { flex: revert-layer; min-width: revert-layer; }
-  .report-filters input, .report-filters select { width: revert-layer; }
+  .report-filters input, .report-filters select { width: revert-layer; max-width: var(--max-w, revert-layer); }
   .report-filters > .report-quick-ranges { flex-basis: revert-layer; }
   .date-input { flex: revert-layer; min-width: revert-layer; }
   .date-input input { width: revert-layer; }
 }
 /* Page batch: these beat styles set in the page code. */
 @media (max-width: 767px) {
-  /* Stat grids: two-col on mobile */
-  .stat-grid { grid-template-columns: 1fr 1fr !important; }
   /* Inputs/selects/textareas: 16px font prevents iOS zoom-on-focus; 44px touch height */
   input, select, textarea { font-size: 16px !important; }
   /* A row that spans every column is a message ("No reviews yet.", a total,
@@ -678,49 +725,8 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
      off-screen ("No re…", phone sweep 2026-10-08), so it starts at the left,
      where the phone is looking. */
   table td[colspan] { text-align: left !important; }
-  .mobile-filters-body input[type="search"], .mobile-filters-body select, .mobile-filters-body label { width: 100% !important; max-width: none !important; min-width: 0 !important; flex: none !important; }
-  /* A select beside its own words ("Per page: [25]") takes the space left
-     after them; at 100% it ran past the panel's edge. */
-  .mobile-filters-body .mobile-filters-inline select { width: auto !important; flex: 1 1 auto !important; }
-  /* Order detail drawer: full-width on mobile (was 420px fixed) */
-  .order-detail-drawer { width: 100vw !important; max-width: 100vw !important; }
-  /* KDS columns: auto-fit on mobile (was hardcoded 3-col) */
-  .kds-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important; }
-  /* Form grids: single column on mobile */
-  .form-grid-2, .form-grid-3 { grid-template-columns: 1fr !important; }
-  /* TV Signage designer — single-column stack (toolbar is outside the grid) */
-  .signage-designer-grid { grid-template-columns: 1fr !important; }
-  .signage-designer-canvas-wrap { order: 1 !important; min-height: auto !important; }
-  .signage-designer-props { order: 2 !important; }
-  .signage-designer-palette { order: 3 !important; }
-  .signage-designer-preview-size { display: none !important; }
-  .signage-tab-row { flex-wrap: nowrap !important; overflow-x: auto !important; }
-  /* Modal: full-width bottom sheet on mobile (scoped to SharedUI Modal only) */
-  .modal-backdrop { align-items: flex-end !important; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px) !important; }
-  .modal-backdrop .modal-container { max-width: 100vw !important; margin: 0 !important; border-radius: 20px 20px 0 0 !important; max-height: min(92dvh, 92vh) !important; height: min(92dvh, 92vh) !important; }
-  .modal-backdrop .modal-footer { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important; }
-  /*
-   * MediaPicker (hero / Content Hub / menu image pick):
-   * On phones the footer used to keep Prev/Next + "Selected: …" + Cancel +
-   * "Use this file" on one row, pushing the confirm button off-screen.
-   */
-  .media-picker-backdrop { align-items: flex-end !important; padding: 0 !important; }
-  .media-picker-shell { width: 100% !important; max-width: 100vw !important; max-height: min(92dvh, 92vh) !important; height: min(92dvh, 92vh) !important; border-radius: 20px 20px 0 0 !important; }
-  .media-picker-sidebar { display: none !important; }
-  .media-picker-footer { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px)) !important; }
-  .media-picker-footer-selected { max-width: 100% !important; }
-  .media-picker-footer-actions { margin-left: 0 !important; }
-  /*
-   * Inline-styled grids: many pages use inline `gridTemplateColumns`
-   * like `repeat(N, 1fr)` with N=2..4. On phones these become 80–100px
-   * columns and break the layout. Without forcing every page to add a
-   * helper class, collapse anything tagged `data-responsive-grid` to a
-   * sensible auto-fit layout.
-   */
-  [data-responsive-grid] { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important; }
   /* Sticky page headers can swallow the viewport — cap their height */
   .page-header { padding: 8px 0 !important; }
-  .report-filters input, .report-filters select { max-width: none !important; }
 }
 
 @media (min-width: 768px) {
@@ -742,26 +748,6 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   }
 }
 
-/* Small mobile: < 480px */
-@media (max-width: 479px) {
-  /* "More" drawer: 2-col grid instead of 3-col */
-  .more-drawer-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-
-  /* Stat grids: two across. One column made every tile a full-width slab
-     and the dashboard's four site totals ran to two screens before the
-     first list (owner, 2026-09-17: "enhance the mobile view"). A number,
-     its label and a one-line note fit in half a phone. */
-  .stat-grid {
-    grid-template-columns: 1fr 1fr !important;
-  }
-
-  /* Service Availability: keep a compact 2×2 summary (4 stacked cards is too tall) */
-  .svc-avail-page .stat-grid {
-    grid-template-columns: 1fr 1fr !important;
-  }
-}
 
 /* ── Service Availability — mobile ops layout ───────────────── */
 .svc-avail-page .svc-avail-toast {
@@ -897,6 +883,10 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   gap: 12px;
   min-width: 0;
+}
+.ordering-page .oc-form-grid { grid-template-columns: 1fr; }
+@media (min-width: 768px) {
+  .ordering-page .oc-form-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
 }
 
 /* Schedule day card — equal left/right padding, never wider than parent */
@@ -1071,8 +1061,6 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
 .ordering-page .oc-chip-strip > * { white-space: nowrap; max-width: 100%; }
 .ordering-page .oc-card p, .ordering-page .oc-card label, .ordering-page .oc-card span { overflow-wrap: anywhere; }
 .ordering-page .oc-card input, .ordering-page .oc-card select, .ordering-page .oc-card textarea, .ordering-page .oc-card button { max-width: 100%; }
-/* Nested UI Cards (service charge / commission) — keep inner padding off the edges */
-.ordering-page .oc-nested-settings { min-width: 0; max-width: 100%; }
 .ordering-page .oc-feature-head > button[role="switch"] { margin-top: 8px; }
 /* Uppercase section titles can get long — wrap them */
 .ordering-page .oc-card > p, .ordering-page .oc-section-title { overflow-wrap: anywhere; }
@@ -1086,7 +1074,6 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   .ordering-page .oc-chip-strip > * { white-space: revert-layer; max-width: revert-layer; }
   .ordering-page .oc-card p, .ordering-page .oc-card label, .ordering-page .oc-card span { overflow-wrap: revert-layer; }
   .ordering-page .oc-card input, .ordering-page .oc-card select, .ordering-page .oc-card textarea, .ordering-page .oc-card button { max-width: revert-layer; }
-  .ordering-page .oc-nested-settings { min-width: revert-layer; max-width: revert-layer; }
   .ordering-page .oc-feature-head > button[role="switch"] { margin-top: revert-layer; }
   .ordering-page .oc-card > p, .ordering-page .oc-section-title { overflow-wrap: revert-layer; }
 }
@@ -1096,35 +1083,6 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   .ordering-page .page-header-subtitle { display: none !important; }
   .ordering-page .page-header { margin-bottom: 10px !important; }
   .ordering-page .page-header-title { font-size: 1.25rem !important; line-height: 1.25 !important; }
-  /*
-   * Tab bar: five equal columns in ONE row — fits a 360px phone with
-   * compact type, no sideways scroll, no uneven 3+2 wrap.
-   */
-  .ordering-page .oc-tabbar { display: grid !important; gap: 3px !important; padding: 3px !important; margin: 0 0 12px !important; border-radius: 12px !important; overflow: visible !important; }
-  .ordering-page .oc-tabbar > button { width: 100% !important; min-width: 0 !important; padding: 6px 2px !important; font-size: 11px !important; line-height: 1.15 !important; white-space: normal !important; min-height: 34px !important; }
-  /* Chips wrap; never force a sideways strip */
-  .ordering-page .oc-chip-strip { margin: 0 0 12px !important; padding: 0 !important; overflow: visible !important; }
-  .ordering-page .oc-status-group .oc-chip-strip { margin: 0 !important; }
-  /* Cards: compact padding — keep overflow visible so right borders aren’t clipped */
-  .ordering-page .oc-card { padding: 12px !important; border-radius: 12px !important; margin-bottom: 12px !important; min-width: 0 !important; overflow: visible !important; }
-  .ordering-page .oc-nested-settings > div { max-width: 100% !important; min-width: 0 !important; gap: 12px !important; }
-  .ordering-page .oc-nested-settings .p-5, .ordering-page .oc-nested-settings .p-4 { padding: 12px !important; }
-  .ordering-page .oc-nested-settings input, .ordering-page .oc-nested-settings select { max-width: 100% !important; }
-  /* Force common 2-col form layouts into a single column */
-  .ordering-page .oc-form-grid, .ordering-page [data-responsive-grid] { grid-template-columns: 1fr !important; gap: 12px !important; }
-  .ordering-page .oc-day-windows { padding-left: 0 !important; }
-  .ordering-page .oc-time-field, .ordering-page .oc-time-box, .ordering-page .oc-time-box input[type="time"] { width: 100% !important; min-width: 0 !important; max-width: 100% !important; }
-  /* Feature gate header: title/status wrap; toggle stays visible */
-  .ordering-page .oc-feature-head { flex-wrap: nowrap !important; align-items: flex-start !important; gap: 8px !important; }
-  .ordering-page .oc-feature-head > button[aria-expanded] { flex: 1 1 auto !important; min-width: 0 !important; }
-  /* Delivery zone rows: name on its own line, fee+MVR underneath */
-/* A zone is one line on a phone too: name, fee, MVR, remove (settings
-     audit, 2026-10-09; it was two). */
-  .ordering-page .oc-zone-row { display: grid !important; grid-template-columns: minmax(0, 1fr) 150px !important; gap: 8px !important; }
-  .ordering-page .oc-zone-fee { display: grid !important; grid-template-columns: 1fr auto auto !important; gap: 8px !important; align-items: center !important; }
-  /* Save buttons keep the width of their words on a phone too (they were
-     full-width bars until the owner asked for small buttons, 2026-10-10). */
-  .ordering-page .oc-btn-block { justify-content: center !important; }
 }
 
 /* Desktop default for zone rows */
@@ -1139,6 +1097,44 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   grid-template-columns: 1fr auto auto;
   gap: 8px;
   align-items: center;
+}
+
+/* Ordering Control on a phone, then the computer from 768px. The tab buttons' and
+   cards' own sizes live here too (they were inline), so the phone can change them. */
+.oc-tabbar > button { padding: 5px 12px; font-size: 13px; min-height: 32px; }
+.oc-card { border-radius: 16px; padding: 1.5rem; margin-bottom: 1.25rem; }
+.oc-card--note { padding: 12px 16px; border-radius: 10px; }
+.oc-feature-head { display: flex; align-items: center; gap: 10px; }
+.oc-feature-head > button[aria-expanded] { flex: 1; }
+/* Tab bar: five equal columns in ONE row, which fits a 360px phone with compact
+   type, no sideways scroll and no uneven 3+2 wrap. */
+.ordering-page .oc-tabbar { display: grid; gap: 3px; padding: 3px; }
+.ordering-page .oc-tabbar > button { width: 100%; min-width: 0; padding: 6px 2px; font-size: 11px; line-height: 1.15; white-space: normal; min-height: 34px; }
+/* Chips wrap; never force a sideways strip */
+.ordering-page .oc-chip-strip { margin: 0 0 12px; }
+.ordering-page .oc-status-group .oc-chip-strip { margin: 0; }
+/* Cards: compact padding; overflow stays visible so right borders are not clipped */
+.ordering-page .oc-card { padding: 12px; border-radius: 12px; margin-bottom: 12px; min-width: 0; overflow: visible; }
+/* Feature gate header: title and status wrap; the switch stays in view */
+.ordering-page .oc-feature-head { align-items: flex-start; gap: 8px; }
+.ordering-page .oc-feature-head > button[aria-expanded] { flex: 1 1 auto; }
+/* A zone is one line on a phone too: name, fee, MVR, remove (settings audit,
+   2026-10-09; it was two). */
+.ordering-page .oc-zone-row { grid-template-columns: minmax(0, 1fr) 150px; }
+/* Save buttons keep the width of their words on a phone too (they were full-width
+   bars until the owner asked for small buttons, 2026-10-10). */
+.ordering-page .oc-btn-block { justify-content: center; }
+@media (min-width: 768px) {
+  .ordering-page .oc-tabbar { display: flex; gap: 4px; padding: 4px; }
+  .ordering-page .oc-tabbar > button { width: revert-layer; min-width: revert-layer; padding: 5px 12px; font-size: 13px; line-height: revert-layer; white-space: nowrap; min-height: 32px; }
+  .ordering-page .oc-chip-strip { margin: 0 0 16px; }
+  .ordering-page .oc-status-group .oc-chip-strip { margin: 0; }
+  .ordering-page .oc-card { padding: 1.5rem; border-radius: 16px; margin-bottom: 1.25rem; min-width: revert-layer; overflow: revert-layer; }
+  .ordering-page .oc-card--note { padding: 12px 16px; border-radius: 10px; }
+  .ordering-page .oc-feature-head { align-items: center; gap: 10px; }
+  .ordering-page .oc-feature-head > button[aria-expanded] { flex: 1; }
+  .ordering-page .oc-zone-row { grid-template-columns: 1fr minmax(140px, 180px); }
+  .ordering-page .oc-btn-block { justify-content: revert-layer; }
 }
 
 /*
@@ -1207,6 +1203,17 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
 }
 .modal-backdrop .modal-footer .modal-actions {
   margin: 0;
+}
+/* On a phone every modal (SharedUI's and ui/Modal's) is a full-width bottom sheet.
+   From 768px SharedUI's comes back from --modal-align / --modal-pad / --modal-max,
+   and ui/Modal's, which sets none, from its Tailwind classes. */
+.modal-backdrop { align-items: flex-end; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px); }
+.modal-backdrop .modal-container { max-width: 100vw; margin: 0; border-radius: 20px 20px 0 0; max-height: min(92dvh, 92vh); height: min(92dvh, 92vh); }
+.modal-backdrop .modal-footer { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 768px) {
+  .modal-backdrop { align-items: var(--modal-align, revert-layer); padding: var(--modal-pad, revert-layer); }
+  .modal-backdrop .modal-container { max-width: var(--modal-max, revert-layer); margin: revert-layer; border-radius: 16px; max-height: 90vh; height: revert-layer; }
+  .modal-backdrop .modal-footer { padding-bottom: 20px; }
 }
 
 /* ── Dark Mode ───────────────────────────────────────────────── */
@@ -1988,10 +1995,14 @@ table td[colspan] > div:only-child { position: sticky; left: 0; max-width: calc(
   gap: 12px;
 }
 
+/* The More sheet's pages: two across on a small phone, three from 480px. */
 .admin-shell-section-sheet-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
+}
+@media (min-width: 480px) {
+  .admin-shell-section-sheet-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 .admin-shell-sheet-account,
@@ -4516,6 +4527,7 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 .page-stat-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 .specials-page .page-stat-row { gap: 10px; margin-bottom: 16px; }
 .specials-page .page-stat-row > div { padding: 12px 14px; }
+.form-grid-keep-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .form-grid-keep-2 > * { min-width: 0; }
 .form-grid-keep-2 input { min-width: 0; max-width: 100%; }
 .specials-day-chip { min-height: 32px; font-size: 11px; }
@@ -4523,6 +4535,7 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 @media (min-width: 768px) {
   .specials-page .specials-desktop-table { display: revert-layer; }
   .specials-page .specials-mobile-list { display: none; }
+  .form-grid-keep-2 { grid-template-columns: var(--cols, none); gap: 12px; }
   .form-grid-keep-2 > * { min-width: revert-layer; }
   .form-grid-keep-2 input { min-width: revert-layer; max-width: revert-layer; }
   .specials-day-chip { font-size: 12px; }
@@ -4544,10 +4557,6 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   .specials-variant-table td[data-label="Special price"] { display: revert-layer; grid-template-columns: revert-layer; align-items: revert-layer; gap: revert-layer; }
   .specials-variant-table td[data-label="Discount %"]::before,
   .specials-variant-table td[data-label="Special price"]::before { content: none; }
-}
-/* Page batch: these beat styles set in the page code. */
-@media (max-width: 767px) {
-  .form-grid-keep-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
 }
 
 /* ════════════════════════════════════════════════════════════

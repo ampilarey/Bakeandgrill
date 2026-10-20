@@ -918,7 +918,7 @@ export function SignagePage() {
               <div data-testid="signage-new-screen">
               <Card style={{ marginBottom: 20 }}>
                 <h3 style={cardTitle}>New screen</h3>
-                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                <div className="form-grid-2" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                   <Input
                     id="signage-screen-name"
                     label="Name"
@@ -976,7 +976,7 @@ export function SignagePage() {
               <div data-testid="signage-new-group">
               <Card style={{ marginBottom: 16 }}>
                 <h3 style={cardTitle}>New group</h3>
-                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                <div className="form-grid-2" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                   <Input
                     id="signage-group-name"
                     label="Name"
@@ -1081,7 +1081,7 @@ export function SignagePage() {
               <div data-testid="signage-new-playlist">
               <Card style={{ marginBottom: 16 }}>
                 <h3 style={cardTitle}>New playlist</h3>
-                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                <div className="form-grid-2" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                   <Input
                     id="signage-playlist-name"
                     label="Name"
@@ -1153,7 +1153,7 @@ export function SignagePage() {
                         </Btn>
                       </div>
                     </div>
-                    <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginTop: 12 }}>
+                    <div className="form-grid-3" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginTop: 12 }}>
                       <div>
                         <label style={labelStyle}>Seconds</label>
                         <input
@@ -1209,7 +1209,7 @@ export function SignagePage() {
             <div>
               <Card style={{ marginBottom: 20 }}>
                 <h3 style={cardTitle}>New campaign</h3>
-                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                <div className="form-grid-2" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                   <Input
                     label="Name"
                     value={campaignForm.name}
@@ -1339,7 +1339,7 @@ export function SignagePage() {
                           </Btn>
                         </div>
                       </div>
-                      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                      <div className="form-grid-2" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
                         <Select
                           label="Mode"
                           value={entry.mode}
@@ -1364,7 +1364,7 @@ export function SignagePage() {
                           onChange={(val) => patchEmergencyEntry(entry.id, { priority: Number.parseInt(val, 10) || 0 })}
                         />
                       </div>
-                      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                      <div className="form-grid-2" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                         <Input
                           label="Title (English)"
                           value={entry.title}
@@ -1376,7 +1376,7 @@ export function SignagePage() {
                           onChange={(val) => patchEmergencyEntry(entry.id, { title_dv: val })}
                         />
                       </div>
-                      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                      <div className="form-grid-2" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                         <Input
                           label="Body (English)"
                           value={entry.body}
@@ -1399,7 +1399,7 @@ export function SignagePage() {
                           data-testid={`signage-emergency-reopen-${entry.id}`}
                         />
                       )}
-                      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                      <div className="form-grid-2" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
                         <Select
                           label="Media"
                           value={entry.media_type || 'none'}
@@ -1480,7 +1480,7 @@ export function SignagePage() {
                           ))}
                         </div>
                       </div>
-                      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                      <div className="form-grid-2" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
                         <Input
                           label="Window start (optional)"
                           type="time"
@@ -1564,7 +1564,7 @@ export function SignagePage() {
                 />
                 <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Enable prayer break slides</span>
               </label>
-              <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
+              <div className="form-grid-2" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
                 <Input
                   label="Break minutes"
                   type="number"
@@ -1757,7 +1757,7 @@ export function SignagePage() {
                         </div>
                       </div>
 
-                      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                      <div className="form-grid-2" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
                         <Input
                           label="Label"
                           value={b.label}
@@ -1929,7 +1929,7 @@ export function SignagePage() {
                         key={d.id}
                         data-testid={`signage-pending-${d.id}`}
                         className="form-grid-3"
-                        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, alignItems: 'end', padding: 12, border: '1px solid var(--color-border)', borderRadius: 12 }}
+                        style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, alignItems: 'end', padding: 12, border: '1px solid var(--color-border)', borderRadius: 12 }}
                       >
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 18, letterSpacing: '0.12em' }}>{d.pairing_code || '······'}</div>

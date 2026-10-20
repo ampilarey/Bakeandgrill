@@ -412,7 +412,7 @@ function ReservationSettingsTab() {
 
       <div style={cardStyle}>
         <h3 style={{ margin: '0 0 18px', fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>Booking Rules</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }} data-responsive-grid>
+        <div style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }} data-responsive-grid>
           <div style={fieldStyle}>
             <label style={labelStyle}>Max Party Size</label>
             <input
@@ -455,7 +455,7 @@ function ReservationSettingsTab() {
 
       <div style={cardStyle}>
         <h3 style={{ margin: '0 0 18px', fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>Time Slots</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }} data-responsive-grid>
+        <div style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }} data-responsive-grid>
           <div style={fieldStyle}>
             <label style={labelStyle}>Opening Time</label>
             <input

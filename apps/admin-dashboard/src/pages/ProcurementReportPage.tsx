@@ -170,7 +170,7 @@ export default function ProcurementReportPage() {
             <StatCard label="Buyers" value={String(data.spend_by_buyer.length)} />
           </div>
 
-          <div className="form-grid-2" data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="form-grid-2" data-responsive-grid style={{ display: 'grid', '--cols': '1fr 1fr', gap: 16 }}>
             <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16 }}>
               <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Spend by category</h3>
               {data.spend_by_category.length === 0 ? <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No expenses.</p> : null}

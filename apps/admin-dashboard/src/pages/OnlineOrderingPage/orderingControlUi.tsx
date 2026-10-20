@@ -22,12 +22,10 @@ export const DEFAULT_SCHEDULE: Schedule = Object.fromEntries(
 ) as Schedule;
 
 export const S = {
+  /** With className="oc-card": its corners, padding and spacing are in index.css. */
   card: {
     background: 'var(--color-bg)',
     border: '1px solid var(--color-border)',
-    borderRadius: 16,
-    padding: '1.5rem',
-    marginBottom: '1.25rem',
   } as CSSProperties,
   sectionTitle: {
     fontSize: 14,

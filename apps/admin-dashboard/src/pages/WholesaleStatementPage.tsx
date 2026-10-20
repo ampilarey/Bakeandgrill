@@ -249,7 +249,7 @@ export default function WholesaleStatementPage() {
         data-responsive-grid
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          '--cols': 'repeat(auto-fit, minmax(160px, 1fr))',
           gap: 12,
           marginBottom: 24,
         }}

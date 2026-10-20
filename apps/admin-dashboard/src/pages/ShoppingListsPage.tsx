@@ -109,7 +109,7 @@ export default function ShoppingListsPage({ embedded = false }: { embedded?: boo
           {/* minmax(0, 1fr): a plain 1fr column will not shrink below an
               input's natural width, and the pair ran 34px past the pop-up
               (tablet walk, 2026-10-09). */}
-          <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
+          <div data-responsive-grid style={{ display: 'grid', '--cols': 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
             <input value={qty} onChange={(e) => setQty(e.target.value)} type="number" min="0.001" step="any" aria-label="Quantity" style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', minHeight: 44 }} />
             <input value={unit} onChange={(e) => setUnit(e.target.value)} aria-label="Unit" style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', minHeight: 44 }} />
           </div>

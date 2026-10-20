@@ -422,7 +422,7 @@ export default function ServiceAvailabilityPage() {
             className="stat-grid"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              '--cols': 'repeat(4, 1fr)',
               gap: 10,
               marginBottom: 14,
             }}
@@ -888,7 +888,7 @@ function EditServiceModal({
 
       {tab === 'configure' ? (
         <>
-          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <Select
               label="Status"
               value={status}
@@ -945,7 +945,7 @@ function EditServiceModal({
             />
           </div>
 
-          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <Input
               label="Starts at (schedule)"
               type="datetime-local"

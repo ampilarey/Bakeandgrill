@@ -234,7 +234,7 @@ export function BannerAppearanceEditor({ banner, theme, onPatch }: Props) {
           </div>
         </div>
 
-        <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+        <div className="form-grid-2" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
           <Select
             label="Font size"
             value={String(fontNearest)}

@@ -116,7 +116,7 @@ export default function PrintJobsPage() {
       {error && <ErrorMsg message={error} />}
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }} className="stat-grid">
+      <div style={{ display: 'grid', '--cols': 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }} className="stat-grid">
         <StatCard label="Total Jobs"        value={String(meta.total)} />
         <StatCard label="Pending (page)"    value={String(stats.pending)} accent="var(--color-warning)" />
         <StatCard label="Failed (page)"     value={String(stats.failed)}  accent="var(--color-danger)" />

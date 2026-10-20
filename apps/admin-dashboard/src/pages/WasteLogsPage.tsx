@@ -244,7 +244,7 @@ export default function WasteLogsPage({ embedded = false }: { embedded?: boolean
               <StatCard label="Reason Types" value={String(byReason.length)} accent="var(--color-text-secondary)" />
             </div>
 
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 20, marginBottom: 24 }}>
 
               {/* Daily waste trend */}
               <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: 20, gridColumn: '1 / -1' }}>

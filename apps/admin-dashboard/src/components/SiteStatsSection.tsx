@@ -26,7 +26,7 @@ export function SiteStatsSection() {
       <div
         className="stat-grid"
         data-responsive-grid
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14, marginBottom: 20 }}
+        style={{ display: 'grid', '--cols': 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14, marginBottom: 20 }}
       >
         <StatCard
           label="Total orders"

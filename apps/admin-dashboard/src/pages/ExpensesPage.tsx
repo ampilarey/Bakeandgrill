@@ -62,7 +62,7 @@ function GstExpenseFields({ form, setForm, fieldStyle }: {
             Supplier TIN *
             <input value={form.supplier_tin} onChange={(e) => setForm((f) => ({ ...f, supplier_tin: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
           </label>
-          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Supplier invoice no. *
               <input value={form.supplier_invoice_no} onChange={(e) => setForm((f) => ({ ...f, supplier_invoice_no: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
@@ -72,7 +72,7 @@ function GstExpenseFields({ form, setForm, fieldStyle }: {
               <input type="date" value={form.supplier_invoice_date} onChange={(e) => setForm((f) => ({ ...f, supplier_invoice_date: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
             </label>
           </div>
-          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
               Amount ex-GST (MVR)
               <input type="number" value={form.amount_ex_gst} onChange={(e) => setForm((f) => ({ ...f, amount_ex_gst: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
@@ -398,7 +398,7 @@ export function ExpensesPage() {
       </div>
 
       {loading ? <Spinner /> : (
-        <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(260px,1fr)', gap: 20 }}>
+        <div data-responsive-grid style={{ display: 'grid', '--cols': 'minmax(0,2fr) minmax(260px,1fr)', gap: 20 }}>
 
           {/* Left: total + table */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -519,7 +519,7 @@ export function ExpensesPage() {
               Description *
               <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
             </label>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
                 Amount (MVR) *
                 <input type="number" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} style={{ ...fieldStyle, marginTop: 4 }} />
@@ -586,7 +586,7 @@ export function ExpensesPage() {
                 style={{ ...fieldStyle, marginTop: 4 }}
               />
             </label>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
                 Amount (MVR) *
                 <input

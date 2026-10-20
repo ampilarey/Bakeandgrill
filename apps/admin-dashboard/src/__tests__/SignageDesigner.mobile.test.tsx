@@ -101,7 +101,8 @@ describe('SignageDesigner desktop layout (1024px)', () => {
   it('keeps three-column grid with drag overlays enabled', () => {
     render(<SignageDesigner slide={slide} onChange={vi.fn()} onClose={vi.fn()} />);
     const grid = document.querySelector('.signage-designer-grid') as HTMLElement;
-    expect(grid.style.gridTemplateColumns).toBe('160px 1fr 260px');
+    // The computer columns are handed to the stylesheet as --cols (mobile first).
+    expect(grid.style.getPropertyValue('--cols')).toBe('160px 1fr 260px');
     expect(screen.getByTestId('designer-el-e1')).toBeTruthy();
     expect(screen.queryByTestId('signage-designer-sticky-actions')).toBeNull();
 

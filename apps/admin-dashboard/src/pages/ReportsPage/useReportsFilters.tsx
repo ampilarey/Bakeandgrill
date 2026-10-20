@@ -108,7 +108,7 @@ export function ReportsFilters({
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--color-text-secondary)' }}>
               Shift
-              <select value={shiftId} onChange={(e) => setShiftId(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: 13, maxWidth: 220 }}>
+              <select value={shiftId} onChange={(e) => setShiftId(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', fontFamily: 'inherit', fontSize: 13, '--max-w': '220px' }}>
                 <option value="">All</option>
                 {shiftOptions.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>

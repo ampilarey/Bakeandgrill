@@ -1246,7 +1246,7 @@ function DevicePlacementFields({
   const visibleFields = device ? fields.filter((f) => f.id === device) : fields;
 
   return (
-    <div style={{ display: 'grid', gap: 8, gridTemplateColumns: visibleFields.length > 1 ? '1fr 1fr' : '1fr' }} className="form-grid-2">
+    <div style={{ display: 'grid', gap: 8, '--cols': visibleFields.length > 1 ? '1fr 1fr' : '1fr' }} className="form-grid-2">
       {visibleFields.map((field) => (
         <label key={field.id} style={labelStyle}>
           {field.label}

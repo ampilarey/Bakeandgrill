@@ -404,7 +404,7 @@ export function DiscountControlsPage() {
               Global ceiling as a percent of subtotal. Optional fixed MVR cap (leave blank or 0 to disable).
               Caps always apply — approval never raises them.
             </p>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 16 }}>
               <div>
                 <label htmlFor="dc-max-percent" style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
                   Max percent ({maxPercent}%)
@@ -573,7 +573,7 @@ export function DiscountControlsPage() {
               This cannot be switched off. With no approvers listed, codes go to everyone who can approve
               discounts and has a phone number.
             </p>
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <Input
                 label="Code TTL (minutes)"
                 type="number"
