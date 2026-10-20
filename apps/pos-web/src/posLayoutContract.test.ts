@@ -27,7 +27,17 @@ function block(selector: string): string {
   return css.slice(start + 1, css.indexOf('}', start));
 }
 
-/** The same, for a rule inside the ≤840px (phone / portrait tablet) block. */
+/**
+ * The phone-first part of the till (plain rules up to the 841px restore): the
+ * stacked cart, its dock bar and sheet, and the Charge button's phone size.
+ */
+function phoneFirst(): string {
+  const from = css.indexOf('Phone + iPad portrait (up to 840px) first');
+  expect(from, 'the phone-first till section not found').toBeGreaterThan(-1);
+  return css.slice(from, css.indexOf('@media (min-width: 841px)', from));
+}
+
+/** The same, for a rule inside the ≤840px (phone / portrait tablet) Charge popup block. */
 function phoneRule(selector: string): string {
   const phone = css.slice(css.indexOf('@media (max-width: 840px)'));
   const at = phone.indexOf(`  ${selector} {`);
@@ -74,10 +84,10 @@ describe('POS layout contract', () => {
     // stopped scrolling. Owner, 2026-09-01: "now there is lot of space".
     expect(block('.pos-shell')).toMatch(/padding-bottom:\s*var\(--pos-safe-bottom\)/);
 
-    const phone = css.slice(css.indexOf('@media (max-width: 840px)'));
-    const dockBar = phone.slice(
-      phone.indexOf('.pos-cart.pos-cart--dock .pos-cart-dock-bar'),
-    );
+    const phone = phoneFirst();
+    const at = phone.indexOf('.pos-cart.pos-cart--dock .pos-cart-dock-bar {');
+    expect(at).toBeGreaterThan(-1);
+    const dockBar = phone.slice(at);
     expect(dockBar.slice(0, dockBar.indexOf('}'))).not.toMatch(/safe-area-inset-bottom/);
   });
 
@@ -86,7 +96,7 @@ describe('POS layout contract', () => {
     // and they have to carry the inset themselves.
     expect(block('.pos-charge')).toMatch(/padding-bottom:\s*var\(--pos-safe-bottom\)/);
 
-    const phone = css.slice(css.indexOf('@media (max-width: 840px)'));
+    const phone = phoneFirst();
     const sheet = phone.slice(phone.indexOf('.pos-cart.pos-cart--sheet {'));
     const sheetBlock = sheet.slice(0, sheet.indexOf('}'));
     expect(sheetBlock).toMatch(/position:\s*fixed/);
@@ -150,8 +160,8 @@ describe('POS layout contract', () => {
   it('keeps the Charge button a comfortable target on a phone', () => {
     // Trimmed to win back vertical space, but never below the 44px that
     // makes a touch target reliable.
-    const phone = css.slice(css.indexOf('@media (max-width: 840px)'));
-    const trimmed = phone.slice(phone.indexOf('.pos-cart-charge-btn'));
+    const phone = phoneFirst();
+    const trimmed = phone.slice(phone.indexOf('.pos-cart-charge-btn {'));
     const minHeight = /min-height:\s*(\d+)px/.exec(trimmed);
 
     expect(minHeight).not.toBeNull();
