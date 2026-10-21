@@ -52,6 +52,7 @@ class SmsEmailCopier
         'catering_quote_customer',      // EventQuoteSentMail
         'catering_confirmed_customer',  // EventConfirmedMail
         'customer_payment_confirmed_pos', // OrderConfirmationMail from PaymentConfirmationNotifier
+        'customer_credit_charged',      // the same OrderConfirmationMail, with the account lines, on a credit sale
         'catering_lifecycle_customer',  // CateringLifecycleNotifier mails the event contact
         'catering_reminder_customer',   // CateringLifecycleNotifier mails the event contact
     ];

@@ -106,13 +106,14 @@ describe('CreditAccountsPage', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Aisha: Reminder sent.');
   });
 
-  it('sends a pay link after confirming, and disables texting for an opted-out customer', async () => {
+  it('sends a pay link after confirming, and still texts a customer who stopped offer texts', async () => {
     renderWithRouter(<CreditAccountsPage />);
     const [aisha, qasim] = await screen.findAllByTestId('credit-account-row');
 
-    expect(within(qasim).getByRole('button', { name: 'Remind' })).toBeDisabled();
-    expect(within(qasim).getByRole('button', { name: 'Pay link' })).toBeDisabled();
-    expect(within(qasim).getByText(/no SMS/)).toBeInTheDocument();
+    // One rule (2026-10-21): a STOP is about offers; money owed is still told.
+    expect(within(qasim).getByRole('button', { name: 'Remind' })).toBeEnabled();
+    expect(within(qasim).getByRole('button', { name: 'Pay link' })).toBeDisabled(); // no open invoice
+    expect(within(qasim).getByText(/no offer texts/)).toBeInTheDocument();
 
     fireEvent.click(within(aisha).getByRole('button', { name: 'Pay link' }));
     expect(await screen.findByText('Send pay link to Aisha')).toBeInTheDocument();

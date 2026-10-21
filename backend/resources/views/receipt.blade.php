@@ -167,6 +167,41 @@
             </div>
         @endif
 
+        @php
+            // What the sale did to the customer's credit account or wallet
+            // (owner, 2026-10-21): invoice, due date, what is owed and a way
+            // to pay; or the wallet balance left. Read from the ledgers on
+            // every open, so an old receipt shows it too.
+            $account = \App\Support\ReceiptAccountLines::for($order);
+        @endphp
+        @if ($account['credit'] !== null || $account['wallet'] !== null)
+            <div class="doc-payments" data-testid="receipt-account">
+                @if ($account['credit'] !== null)
+                    @php $cr = $account['credit']; @endphp
+                    <h3>Credit account</h3>
+                    <div class="doc-pay-row"><span>Charged to your account</span><span>MVR {{ number_format($cr['amount_laar'] / 100, 2) }}</span></div>
+                    @if ($cr['invoice_number'])
+                        <div class="doc-pay-row"><span>Invoice</span><span>{{ $cr['invoice_number'] }}</span></div>
+                    @endif
+                    @if ($cr['due_date'])
+                        <div class="doc-pay-row"><span>Due</span><span data-testid="receipt-credit-due">{{ \Illuminate\Support\Carbon::parse($cr['due_date'])->format('d M Y') }}</span></div>
+                    @endif
+                    <div class="doc-pay-row"><span>You owe on your account</span><span>MVR {{ number_format($cr['balance_laar'] / 100, 2) }}</span></div>
+                    <div class="doc-pay-row"><span>Available to use</span><span>MVR {{ number_format($cr['available_laar'] / 100, 2) }}</span></div>
+                    @if ($cr['pay_url'] && ! $cr['invoice_paid'])
+                        <a class="doc-btn doc-btn-primary" href="{{ $cr['pay_url'] }}" data-pay-cta="credit-invoice" style="display:inline-block;margin-top:10px;">Pay online</a>
+                    @elseif ($cr['invoice_paid'])
+                        <p style="margin:8px 0 0;">This invoice is paid.</p>
+                    @endif
+                @endif
+                @if ($account['wallet'] !== null)
+                    <h3>Wallet</h3>
+                    <div class="doc-pay-row"><span>Paid from your wallet</span><span>MVR {{ number_format($account['wallet']['amount_laar'] / 100, 2) }}</span></div>
+                    <div class="doc-pay-row"><span>Wallet balance</span><span>MVR {{ number_format($account['wallet']['balance_laar'] / 100, 2) }}</span></div>
+                @endif
+            </div>
+        @endif
+
         <div class="doc-qr" data-testid="receipt-qr">
             <img src="{{ $receiptQr }}" alt="QR code for this receipt" width="96" height="96">
             <div class="doc-qr__text">

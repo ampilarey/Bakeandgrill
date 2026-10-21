@@ -131,6 +131,9 @@ final class DepositLedgerService
                 $request,
             );
 
+            // Owner, 2026-10-21: every wallet movement is told.
+            DB::afterCommit(fn () => app(DepositNotifier::class)->received($customer, $amountLaar, $method, $newBalance, $ledger->id));
+
             return $ledger;
         });
     }
@@ -226,7 +229,11 @@ final class DepositLedgerService
                 $request,
             );
 
-            return $locked->fresh();
+            $fresh = $locked->fresh();
+            $from = (string) ($old['status'] ?? 'active');
+            DB::afterCommit(fn () => app(DepositNotifier::class)->statusChanged($customer, $from, $status, (int) $fresh->balance_laar));
+
+            return $fresh;
         });
     }
 
@@ -422,6 +429,8 @@ final class DepositLedgerService
                 ['ledger_id' => $ledger->id],
                 $request,
             );
+
+            DB::afterCommit(fn () => app(DepositNotifier::class)->paidOut($customer, $amountLaar, $method, $newBalance, $ledger->id));
 
             return $ledger;
         });
@@ -680,6 +689,7 @@ final class DepositLedgerService
                 'DEPOSIT-TRANSFER-' . $depositLedger->id,
                 $notes ?? 'Paid from customer deposit balance',
                 $request,
+                source: 'wallet',
             );
 
             $this->audit->log(

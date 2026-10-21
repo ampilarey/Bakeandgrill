@@ -129,6 +129,32 @@ Repayments are never sales: the sale was counted on the day of the credit order.
 | API | `GET /admin/customers/credit-repayments`, `GET /admin/customers/credit-repayments.csv` |
 | Admin view | `apps/admin-dashboard/src/components/credit/CreditRepaymentsView.tsx` |
 
+## What the customer is told (2026-10-21)
+
+Audit finding: a sale on credit sent only "Receipt for #…", a repayment sent nothing,
+and the receipt page showed the tender as "Credit" with no due date or balance.
+
+| Event | Text | Row in Admin → Notifications |
+|---|---|---|
+| A till sale charged to the account | Amount, order, due date, what is owed and available, link to view or pay. Replaces the receipt text. | Charged to credit account |
+| A repayment, at the till, in Admin, online or from the wallet | Amount, method, balance left and the next due date; or "fully paid" | Credit payment received |
+| Reminders (3 days before, on the day, 3 days after, every N days) | Now say "Pay online:" and carry the whole balance beside the one invoice | Credit payment reminder |
+
+The receipt page, its PDF and the confirmation email show a Credit account block: invoice,
+due date, what is owed, what is available, and Pay online until the invoice is paid.
+
+Opt-out rule: a customer who replied STOP to offers still gets money texts, by hand and by
+the schedule. Remind and Pay link no longer refuse such a customer; only a missing phone does.
+The customer's own reminder switch (order app, Account → Credit Account) still turns the
+schedule off.
+
+| Piece | File |
+|---|---|
+| Texts | `CreditAccountNotifier` (`chargedText`, `repaymentReceived`), sent from `PaymentConfirmationNotifier` and `CreditLedgerService::recordRepayment` |
+| Account lines on the receipt | `App\Support\ReceiptAccountLines`, `receipt.blade.php`, `receipt-pdf.blade.php`, `emails/order_confirmation.blade.php` |
+| Wording | migration `2026_10_21_120000_credit_and_wallet_customer_texts`, `SmsTemplateWording` |
+| Tests | `backend/tests/Feature/Credit/CreditAndWalletTextsTest.php` |
+
 ## Saved for later (2026-10-06)
 
 Owner: "save for later, we have something to do with credit acc". Offered in the

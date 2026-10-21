@@ -58,11 +58,18 @@ final class SmsTypeRegistry
             'owner_complaint_received_urgent' => 'Food safety or allergy complaints',
         ],
         'credit_payment_reminder' => [
-            'credit_reminder_upcoming' => 'Three days before an invoice is due',
+            'credit_reminder_upcoming' => 'Three days before an invoice is due, and Send reminder on an invoice not yet due',
             'credit_reminder_due_today' => 'On the due date',
-            'credit_reminder_overdue' => 'Overdue, and Send reminder on an account with an open invoice',
+            'credit_reminder_overdue' => 'Overdue, and Send reminder on an overdue invoice',
             'credit_balance_reminder' => 'Send reminder on an account with a balance but no open invoice',
             'credit_pay_link' => 'Send pay link',
+        ],
+        // Credit and wallet money texts (owner, 2026-10-21).
+        'customer_credit_repayment' => [
+            'customer_credit_repayment_settled' => 'When the payment clears the whole balance',
+        ],
+        'customer_deposit_on_hold' => [
+            'customer_deposit_active' => 'When the wallet is active again',
         ],
     ];
 
@@ -303,6 +310,14 @@ final class SmsTypeRegistry
             self::def('customer_credit_approved', 'Credit account approved', 'transactional', true, false, 'customer_credit_approved', 'sms_customer_credit_approved_enabled', 'sms.transactional.manage', false, 'The customer whose credit account was opened or reopened', false),
             self::def('customer_credit_limit_changed', 'Credit limit changed', 'transactional', true, false, 'customer_credit_limit_changed', 'sms_customer_credit_limit_changed_enabled', 'sms.transactional.manage', false, 'The customer whose credit limit went up or down', false),
             self::def('credit_payment_reminder', 'Credit payment reminder', 'transactional', true, false, null, 'sms_credit_reminder_enabled', 'sms.transactional.manage', false, 'Credit customers with invoices due, unless their account has reminders off', false),
+            // Owner, 2026-10-21: a sale on credit said only "Receipt for #…", a
+            // repayment said nothing, and the wallet never spoke. This text
+            // takes the place of the till receipt text on a credit sale.
+            self::def('customer_credit_charged', 'Charged to credit account', 'transactional', true, false, 'customer_credit_charged', 'sms_customer_credit_charged_enabled', 'sms.transactional.manage', false, 'The customer whose credit account a sale was charged to (in place of the receipt text)', false),
+            self::def('customer_credit_repayment', 'Credit payment received', 'transactional', true, false, 'customer_credit_repayment', 'sms_customer_credit_repayment_enabled', 'sms.transactional.manage', false, 'The customer whose credit account was paid, at the till, in Admin, online or from their wallet', false),
+            self::def('customer_deposit_received', 'Wallet: money added', 'transactional', true, false, 'customer_deposit_received', 'sms_customer_deposit_received_enabled', 'sms.transactional.manage', false, 'The customer whose wallet was topped up', false),
+            self::def('customer_deposit_paid_out', 'Wallet: money paid out', 'transactional', true, false, 'customer_deposit_paid_out', 'sms_customer_deposit_paid_out_enabled', 'sms.transactional.manage', false, 'The customer whose wallet money was paid back to them', false),
+            self::def('customer_deposit_on_hold', 'Wallet on hold, or active again', 'transactional', true, false, 'customer_deposit_on_hold', 'sms_customer_deposit_on_hold_enabled', 'sms.transactional.manage', false, 'The customer whose wallet was frozen or reactivated', false),
 
             // Staff
             self::def('staff_low_stock_menu', 'Staff: menu item low stock', 'staff', true, false, null, 'staff_sms_low_stock_enabled', 'sms.transactional.manage', false, 'Owners & managers', false),

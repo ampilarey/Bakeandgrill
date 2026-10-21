@@ -158,8 +158,10 @@ export function CreditAccountsPage() {
     whiteSpace: 'nowrap',
   });
 
-  const canText = (row: CreditAccountRow) => !!row.phone && !row.sms_opt_out;
-  const textTitle = (row: CreditAccountRow) => !row.phone ? 'No phone number' : row.sms_opt_out ? 'Customer has opted out of SMS' : '';
+  // A customer who stopped offer texts still hears about money they owe, by
+  // hand as by the schedule (one rule, 2026-10-21); only no phone stops a text.
+  const canText = (row: CreditAccountRow) => !!row.phone;
+  const textTitle = (row: CreditAccountRow) => !row.phone ? 'No phone number' : '';
 
   const actions = (row: CreditAccountRow) => {
     const busy = busyId === row.id;
@@ -286,7 +288,7 @@ export function CreditAccountsPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{row.name}</div>
-                  <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{row.phone ?? 'No phone'}{row.sms_opt_out ? ' · no SMS' : ''}</div>
+                  <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{row.phone ?? 'No phone'}{row.sms_opt_out ? ' · no offer texts' : ''}</div>
                 </div>
                 <Badge color={STATUS[row.status].color} label={STATUS[row.status].label} />
               </div>
@@ -319,7 +321,7 @@ export function CreditAccountsPage() {
                 <tr key={row.id} data-testid="credit-account-row">
                   <td style={TD}>
                     <div style={{ fontWeight: 700 }}>{row.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{row.phone ?? 'No phone'}{row.sms_opt_out ? ' · no SMS' : ''}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{row.phone ?? 'No phone'}{row.sms_opt_out ? ' · no offer texts' : ''}</div>
                   </td>
                   <td style={TD}><Badge color={STATUS[row.status].color} label={STATUS[row.status].label} /></td>
                   <td style={{ ...TD, textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -362,7 +364,8 @@ export function CreditAccountsPage() {
         <Modal title={`Remind ${remind.name}`} onClose={() => setRemind(null)}>
           <p style={{ margin: '0 0 10px', fontSize: 14 }}>
             Texts {remind.phone} that they owe <strong>{money(remind.balance_mvr)}</strong>
-            {remind.open_invoices > 0 ? ', naming the oldest open invoice with a link to view it.' : '.'}
+            {remind.open_invoices > 0 ? ', naming the oldest open invoice with a link to pay it online.' : '.'}
+            {remind.sms_opt_out ? ' They stopped offer texts; a text about money owed still goes.' : ''}
           </p>
           <label htmlFor="credit-remind-text" style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Your own wording (optional)</label>
           <textarea

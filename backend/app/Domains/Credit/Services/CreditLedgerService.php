@@ -557,6 +557,10 @@ final class CreditLedgerService
 
     /**
      * @param list<int>|null $invoiceIds
+     * @param 'online'|'wallet'|null $source where the money came from when the
+     *                                       method alone would mislead the
+     *                                       customer's text: the BML pay link,
+     *                                       or their own wallet
      */
     public function recordRepayment(
         Customer $customer,
@@ -568,6 +572,7 @@ final class CreditLedgerService
         ?string $notes = null,
         ?Request $request = null,
         ?int $tradeAccountId = null,
+        ?string $source = null,
     ): CustomerCreditLedger {
         $allowedMethods = ['cash', 'card', 'bank_transfer'];
         if (!in_array($method, $allowedMethods, true)) {
@@ -578,7 +583,7 @@ final class CreditLedgerService
             abort(422, 'Repayment amount must be greater than zero.');
         }
 
-        return DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $invoiceIds, $reference, $notes, $request, $tradeAccountId) {
+        return DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $invoiceIds, $reference, $notes, $request, $tradeAccountId, $source) {
             $locked = Customer::lockForUpdate()->findOrFail($customer->id);
             $balance = (int) $locked->credit_balance_laar;
 
@@ -646,6 +651,13 @@ final class CreditLedgerService
                 ['ledger_id' => $ledger->id],
                 $request,
             );
+
+            // Owner, 2026-10-21: the customer hears that the money arrived and
+            // what is left. A wholesale shop has texts of its own.
+            if ($tradeAccountId === null) {
+                $fresh = $locked->fresh();
+                DB::afterCommit(fn () => $this->notifier->repaymentReceived($fresh, $amountLaar, $method, $newBalance, $source, $ledger->id));
+            }
 
             return $ledger;
         });

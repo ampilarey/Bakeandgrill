@@ -202,17 +202,22 @@ class CreditAccountsPageTest extends TestCase
         $this->assertSame('Hi Aisha, please clear MVR 45.50 by Friday. Bake & Grill', $second->message);
     }
 
-    public function test_reminder_refuses_a_customer_who_owes_nothing_or_opted_out(): void
+    public function test_reminder_refuses_a_customer_who_owes_nothing_but_texts_one_who_stopped_offers(): void
     {
         $clear = $this->account('Clear', '+9607771111');
         $this->postJson("/api/admin/customers/{$clear->id}/credit/remind")
             ->assertStatus(422)->assertJsonPath('errors.message.0', 'This customer owes nothing.');
-
-        $optOut = $this->account('Quiet', '+9607772222', ['credit_balance_laar' => 1000, 'sms_opt_out' => true]);
-        $this->postJson("/api/admin/customers/{$optOut->id}/credit/remind")
-            ->assertStatus(422)->assertJsonPath('errors.message.0', 'This customer has opted out of SMS and cannot be texted.');
-
         $this->assertSame(0, SmsLog::count());
+
+        // One rule (2026-10-21): a STOP is about offers; money owed is still
+        // told, by hand as by the schedule.
+        $optOut = $this->account('Quiet', '+9607772222', ['credit_balance_laar' => 1000, 'sms_opt_out' => true]);
+        $this->postJson("/api/admin/customers/{$optOut->id}/credit/remind")->assertSuccessful();
+        $this->assertSame(1, SmsLog::where('customer_id', $optOut->id)->where('type', 'credit_payment_reminder')->count());
+
+        $noPhone = $this->account('Silent', '', ['credit_balance_laar' => 1000]);
+        $this->postJson("/api/admin/customers/{$noPhone->id}/credit/remind")
+            ->assertStatus(422)->assertJsonPath('errors.message.0', 'This customer has no phone number.');
     }
 
     public function test_pay_link_needs_an_open_invoice_and_points_at_its_page(): void

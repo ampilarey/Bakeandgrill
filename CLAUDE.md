@@ -1080,6 +1080,37 @@ payload stays registry only). And `reconcilePackagingOnEligibleSwitch` gives a f
 with no packaging options its own fee on a switch to takeaway, as a fresh add does; it left
 with none, which the server took as sent.
 
+## Credit account and wallet: what the customer is told
+
+Owner, 2026-10-21 (credit and deposit audit): a sale on credit said only "Receipt for #…", a
+repayment said nothing, and the wallet never spoke. Now every money movement is one text, each
+its own row in Admin → Notifications with its own switch and editable wording, Dhivehi drafts
+in `CustomerSmsText::DEFAULTS`, templates seeded by migration through
+`SmsTemplateWording::ensure()` (a built-in wording changes only through
+`replaceIfUnchanged()`, so an owner's edit is never written over). A till sale charged to the
+account is told by `customer_credit_charged` **in place of** the receipt text (amount, due
+date, what is owed and available, the invoice link to view or pay; `PaymentConfirmationNotifier`
+picks it when `ReceiptAccountLines::for($order)['credit']` is set and the row is on, with the
+receipt text's idempotency key, so one sale is one text; switched off, the receipt text goes
+as before, and the row's email is the order confirmation email, in `HAS_OWN_EMAIL`). Every
+repayment, at the till, in Admin, online from the pay link or moved from the wallet, sends
+`customer_credit_repayment` through `CreditLedgerService::recordRepayment` (`$source` 'online'
+or 'wallet' words the method; the `customer_credit_repayment_settled` wording when the balance
+is cleared; a wholesale shop gets none, it has its own). The wallet: `DepositNotifier` sends
+`customer_deposit_received`, `customer_deposit_paid_out` and `customer_deposit_on_hold` (with
+`customer_deposit_active` when a frozen wallet is reactivated); a sale paid from the wallet
+carries "MVR x from your wallet, balance MVR y" inside the receipt text (`{{wallet_note}}`,
+appended when the wording has no place for it), never a second text. The receipt page, the
+receipt PDF and the confirmation email show the same account lines (`ReceiptAccountLines`:
+invoice, due date, owed, available, Pay online; wallet amount and balance), read from the
+ledgers on every open. Reminders say "Pay online:" and carry the whole balance beside the one
+invoice (`SendCreditPaymentReminders::WORDING_*`; Send reminder on an invoice not yet due uses
+the "due on" wording, never "0 days overdue"). One opt-out rule: a customer who stopped offer
+texts (`sms_opt_out`) still hears about money owed, by hand as by the schedule; the customer's
+own reminder switch is for the schedule. `CreditAndWalletTextsTest`. A new money text for the
+customer goes into the registry, `DEFAULTS`, the migration and that test; a new place money
+moves sends through these notifiers, never a text of its own.
+
 ## Poster print PDFs (PDF/X-4)
 
 Posters render through TCPDF via `App\Domains\Posters\Pdf\PdfX4Document`, not dompdf

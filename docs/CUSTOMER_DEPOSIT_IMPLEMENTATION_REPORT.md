@@ -169,6 +169,26 @@ Covers: top-up, wallet debit, frozen account, payout, split tender, order refund
 
 ---
 
+## 8b. What the customer is told (2026-10-21)
+
+The customer's word for the deposit is **wallet**. Each movement is one text, its own row in
+Admin → Notifications, wording editable, Dhivehi drafts built in:
+
+| Movement | Text | Row |
+|---|---|---|
+| Money received (till or Admin, any method) | "MVR x added to your wallet (cash). Wallet balance: MVR y." | Wallet: money added |
+| Money paid out | "MVR x paid out from your wallet (bank transfer). Wallet balance: MVR y." | Wallet: money paid out |
+| Frozen / active again | "put on hold" / "active again. Balance: MVR y." | Wallet on hold, or active again |
+| A sale paid from the wallet | The receipt text carries "MVR x from your wallet, balance MVR y." | Payment confirmed (POS / online) |
+| Moved to the credit account | The credit repayment text, "received (from your wallet)" | Credit payment received |
+| A refund paid into it | Unchanged: "Refund added to wallet" | Refund added to wallet |
+
+A gift card moved into the wallet from the order app is confirmed on screen and sends no
+text. The receipt page, PDF and confirmation email show a Wallet block with the amount paid
+from it and the balance left (`App\Support\ReceiptAccountLines`). Sender:
+`App\Domains\Deposits\Services\DepositNotifier`, called from `DepositLedgerService`.
+Tests: `tests/Feature/Credit/CreditAndWalletTextsTest.php`.
+
 ## 9. Gap matrix (plan vs delivered)
 
 | Area | Status |

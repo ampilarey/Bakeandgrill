@@ -5,22 +5,34 @@ declare(strict_types=1);
 namespace App\Domains\Credit\Services;
 
 use App\Domains\Notifications\DTOs\SmsMessage;
+use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Models\Customer;
-use App\Models\SmsTemplate;
+use App\Models\Order;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
  * Texts the customer about their credit account (owner, 2026-10-03: "add
- * account approved, and any changes to the credit amount notified").
+ * account approved, and any changes to the credit amount notified"; owner,
+ * 2026-10-21: a sale on credit said only "Receipt for #…" and a repayment
+ * said nothing).
  *
  *  - approved       the account is opened, or reopened after being blocked
  *  - limit changed  the credit limit goes up or down
+ *  - charged        a sale went on the account: amount, due date, what is
+ *                   owed and available, the invoice link to view or pay. It
+ *                   takes the place of the till receipt text, so one sale is
+ *                   one text (sent by PaymentConfirmationNotifier).
+ *  - repayment      money came in, by any method, at the till, in Admin,
+ *                   online or from the wallet: balance left and the next due
+ *                   date, or that the account is fully paid.
  *
- * Each is its own type in the SMS Control Center with its own switch, and
- * the wording is an editable template. Sent after the change is saved; a
- * failed send is logged and never undoes the change.
+ * Each is its own row in Admin → Notifications with its own switch, and the
+ * wording is an editable template. Sent after the change is saved; a failed
+ * send is logged and never undoes the change.
  */
 class CreditAccountNotifier
 {
@@ -28,9 +40,27 @@ class CreditAccountNotifier
 
     public const TYPE_LIMIT_CHANGED = 'customer_credit_limit_changed';
 
+    public const TYPE_CHARGED = 'customer_credit_charged';
+
+    public const TYPE_REPAYMENT = 'customer_credit_repayment';
+
+    /** The repayment row's other wording: the payment cleared the balance. */
+    public const SLUG_REPAYMENT_SETTLED = 'customer_credit_repayment_settled';
+
+    public const FALLBACK_APPROVED = 'Bake & Grill: your credit account is approved. Limit MVR {{limit}}, pay each invoice within {{terms_days}} days. Thank you!';
+
+    public const FALLBACK_LIMIT_CHANGED = 'Bake & Grill: your credit limit has been {{change}} from MVR {{old_limit}} to MVR {{limit}}. Available now: MVR {{available}}.';
+
+    public const FALLBACK_CHARGED = 'Bake & Grill: MVR {{amount}} charged to your credit account for #{{order_number}}, due {{due_date}}. You owe MVR {{balance}}, MVR {{available}} available. View or pay: {{link}}';
+
+    public const FALLBACK_REPAYMENT = 'Bake & Grill: thank you, MVR {{amount}} received ({{method}}) on your credit account. You now owe MVR {{balance}}.{{next_due}}';
+
+    public const FALLBACK_REPAYMENT_SETTLED = 'Bake & Grill: thank you, MVR {{amount}} received ({{method}}). Your credit account is fully paid.';
+
     public function __construct(
         private readonly SmsService $sms,
         private readonly CreditEligibilityService $eligibility,
+        private readonly CustomerSmsMessageBuilder $builder,
     ) {}
 
     public function approved(Customer $customer): void
@@ -44,8 +74,9 @@ class CreditAccountNotifier
         $this->send(
             $customer,
             self::TYPE_APPROVED,
+            self::TYPE_APPROVED,
             $vars,
-            'Bake & Grill: your credit account is approved. Limit MVR {{limit}}, pay each invoice within {{terms_days}} days. Thank you!',
+            self::FALLBACK_APPROVED,
             sprintf('credit:approved:%d:%s', $customer->id, $customer->credit_approved_at?->format('YmdHis') ?? now()->format('YmdHis')),
         );
     }
@@ -67,32 +98,93 @@ class CreditAccountNotifier
         $this->send(
             $customer,
             self::TYPE_LIMIT_CHANGED,
+            self::TYPE_LIMIT_CHANGED,
             $vars,
-            'Bake & Grill: your credit limit has been {{change}} from MVR {{old_limit}} to MVR {{limit}}. Available now: MVR {{available}}.',
+            self::FALLBACK_LIMIT_CHANGED,
             sprintf('credit:limit:%d:%d:%d:%s', $customer->id, $oldLimitLaar, $newLimitLaar, now()->format('YmdHis')),
+        );
+    }
+
+    /** Whether a sale on credit is told by its own text rather than the receipt text. */
+    public static function chargedTextOn(): bool
+    {
+        return AlertSwitch::isOn(self::TYPE_CHARGED);
+    }
+
+    /**
+     * The wording for a sale charged to the account, from the receipt's
+     * account lines (ReceiptAccountLines::for). The caller sends it.
+     *
+     * @param array{amount_laar: int, invoice_number: ?string, due_date: ?\DateTimeInterface, balance_laar: int, available_laar: int, pay_url: ?string} $credit
+     */
+    public function chargedText(Order $order, array $credit, ?string $phone): string
+    {
+        $due = $credit['due_date'] ?? null;
+        $vars = [
+            'amount' => self::mvr((int) $credit['amount_laar']),
+            'order_number' => (string) $order->order_number,
+            'invoice_number' => (string) ($credit['invoice_number'] ?? ''),
+            'due_date' => $due ? Carbon::parse($due)->format('d M Y') : '',
+            'balance' => self::mvr((int) $credit['balance_laar']),
+            'available' => self::mvr((int) $credit['available_laar']),
+            'link' => (string) ($credit['pay_url'] ?? ''),
+        ];
+
+        return $this->builder->build(self::TYPE_CHARGED, $vars, self::FALLBACK_CHARGED, $phone);
+    }
+
+    /**
+     * A repayment was recorded. $source says where it came from when the
+     * method alone would mislead: 'online' (BML from the pay link) or
+     * 'wallet' (moved from the customer's own deposit).
+     */
+    public function repaymentReceived(Customer $customer, int $amountLaar, string $method, int $balanceAfterLaar, ?string $source, int $ledgerId): void
+    {
+        $methodWord = match (true) {
+            $source === 'wallet' => 'from your wallet',
+            $source === 'online' => 'online by card',
+            $method === 'cash' => 'cash',
+            $method === 'card' => 'card',
+            $method === 'bank_transfer' => 'bank transfer',
+            default => str_replace('_', ' ', $method),
+        };
+        $settled = $balanceAfterLaar <= 0;
+        $nextDue = $settled ? null : $this->eligibility->nextPaymentDueDate($customer);
+        $nextDueText = $nextDue ? Carbon::parse($nextDue)->format('d M Y') : '';
+
+        $vars = [
+            'amount' => self::mvr($amountLaar),
+            'method' => $methodWord,
+            'balance' => self::mvr(max(0, $balanceAfterLaar)),
+            'next_due_date' => $nextDueText,
+            // An English fragment: the Dhivehi wording leaves it out.
+            'next_due' => $nextDueText !== '' ? ' Next payment due ' . $nextDueText . '.' : '',
+        ];
+
+        $this->send(
+            $customer,
+            self::TYPE_REPAYMENT,
+            $settled ? self::SLUG_REPAYMENT_SETTLED : self::TYPE_REPAYMENT,
+            $vars,
+            $settled ? self::FALLBACK_REPAYMENT_SETTLED : self::FALLBACK_REPAYMENT,
+            'credit:repayment:' . $ledgerId,
         );
     }
 
     /**
      * @param array<string, string> $vars
      */
-    private function send(Customer $customer, string $type, array $vars, string $fallback, string $idempotencyKey): void
+    private function send(Customer $customer, string $type, string $slug, array $vars, string $fallback, string $idempotencyKey): void
     {
         $phone = trim((string) $customer->phone);
         if ($phone === '') {
             return;
         }
 
-        $body = SmsTemplate::query()->where('slug', $type)->value('body') ?: $fallback;
-        $body = \App\Domains\Notifications\Support\CustomerSmsText::body($type, (string) $body, $phone);
-        foreach ($vars as $key => $value) {
-            $body = str_replace('{{' . $key . '}}', $value, $body);
-        }
-
         try {
             $this->sms->send(new SmsMessage(
                 to: $phone,
-                message: $body,
+                message: $this->builder->build($slug, $vars, $fallback, $phone),
                 type: $type,
                 customerId: $customer->id,
                 referenceType: 'customer',
@@ -104,7 +196,7 @@ class CreditAccountNotifier
         }
     }
 
-    private static function mvr(int $laar): string
+    public static function mvr(int $laar): string
     {
         return number_format($laar / 100, 2, '.', ',');
     }

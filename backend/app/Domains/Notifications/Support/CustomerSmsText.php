@@ -50,11 +50,20 @@ final class CustomerSmsText
         'customer_credit_limit_changed' => 'Bake & Grill: ކްރެޑިޓް ލިމިޓް MVR {{old_limit}} ން MVR {{limit}} އަށް ބަދަލުކުރެވިއްޖެ. މިހާރު ލިބެން ހުރީ: MVR {{available}}.',
         'catering_request_received' => 'އިވެންޓް އެދުން {{reference}} ލިބިއްޖެ. ތަފްޞީލު: {{view_url}}',
         'catering_confirmed_customer' => 'އިވެންޓް ޔަގީންކުރެވިއްޖެ - {{reference}}، MVR {{paid}} ދައްކާފައި. {{when}}{{venue}}',
-        'credit_reminder_upcoming' => 'Bake & Grill: ކްރެޑިޓް އިންވޮއިސް {{invoice_number}} - MVR {{amount}}، ދައްކަންޖެހޭ ތާރީޚު {{due_date}}. ބައްލަވާ: {{link}}',
-        'credit_reminder_due_today' => 'Bake & Grill: ކްރެޑިޓް ފައިސާ ދައްކަންޖެހެނީ މިއަދު - އިންވޮއިސް {{invoice_number}}، MVR {{amount}}. ބައްލަވާ: {{link}}',
-        'credit_reminder_overdue' => 'Bake & Grill: ކްރެޑިޓް އިންވޮއިސް {{invoice_number}} ގެ މުއްދަތު {{days_overdue}} ދުވަސް ފަހަނައަޅައިފި (MVR {{amount}}، ތާރީޚު {{due_date}}). ބައްލަވާ: {{link}}',
+        'credit_reminder_upcoming' => 'Bake & Grill: ކްރެޑިޓް އިންވޮއިސް {{invoice_number}} - MVR {{amount}}، ދައްކަންޖެހޭ ތާރީޚު {{due_date}}. ދައްކަންޖެހޭ ޖުމްލަ MVR {{balance}}. އޮންލައިންކޮށް ދައްކަވާ: {{link}}',
+        'credit_reminder_due_today' => 'Bake & Grill: ކްރެޑިޓް ފައިސާ ދައްކަންޖެހެނީ މިއަދު - އިންވޮއިސް {{invoice_number}}، MVR {{amount}}. ދައްކަންޖެހޭ ޖުމްލަ MVR {{balance}}. އޮންލައިންކޮށް ދައްކަވާ: {{link}}',
+        'credit_reminder_overdue' => 'Bake & Grill: ކްރެޑިޓް އިންވޮއިސް {{invoice_number}} ގެ މުއްދަތު {{days_overdue}} ދުވަސް ފަހަނައަޅައިފި (MVR {{amount}}، ތާރީޚު {{due_date}}). ދައްކަންޖެހޭ ޖުމްލަ MVR {{balance}}. އޮންލައިންކޮށް ދައްކަވާ: {{link}}',
         'credit_balance_reminder' => 'Bake & Grill: ކްރެޑިޓް އެކައުންޓުގެ ބާކީ MVR {{balance}}. ފަހި ވަގުތެއްގައި ދައްކަވާ. ޝުކުރިއްޔާ!',
         'credit_pay_link' => 'Bake & Grill: ކްރެޑިޓް އިންވޮއިސް {{invoice_number}} (MVR {{amount}}) ކާޑުން އޮންލައިންކޮށް ދައްކަވާ: {{link}} - ޝުކުރިއްޔާ!',
+        // Credit and wallet money texts (owner, 2026-10-21). {{method}} is an
+        // English word, so these leave it out.
+        'customer_credit_charged' => 'Bake & Grill: އޯޑަރު #{{order_number}} ގެ MVR {{amount}} ކްރެޑިޓް އެކައުންޓަށް ޗާޖުކުރެވިއްޖެ، ދައްކަންޖެހޭ ތާރީޚު {{due_date}}. ދައްކަންޖެހޭ ޖުމްލަ MVR {{balance}}، ލިބެން ހުރީ MVR {{available}}. ބައްލަވައި ދައްކަވާ: {{link}}',
+        'customer_credit_repayment' => 'Bake & Grill: ޝުކުރިއްޔާ، ކްރެޑިޓް އެކައުންޓަށް MVR {{amount}} ލިބިއްޖެ. މިހާރު ދައްކަންޖެހޭ ބާކީ MVR {{balance}}.',
+        'customer_credit_repayment_settled' => 'Bake & Grill: ޝުކުރިއްޔާ، ކްރެޑިޓް އެކައުންޓަށް MVR {{amount}} ލިބިއްޖެ. އެކައުންޓުގެ ބާކީ މިހާރު ސުމެއް.',
+        'customer_deposit_received' => 'Bake & Grill: ވޯލެޓަށް MVR {{amount}} ވައްދައިފި. ވޯލެޓުގެ ބާކީ: MVR {{balance}}.',
+        'customer_deposit_paid_out' => 'Bake & Grill: ވޯލެޓުން MVR {{amount}} އަނބުރާ ދެވިއްޖެ. ވޯލެޓުގެ ބާކީ: MVR {{balance}}.',
+        'customer_deposit_on_hold' => 'Bake & Grill: ތިޔަ ވޯލެޓް ވަގުތީގޮތުން ހިފަހައްޓާފައި، މިވަގުތު ބޭނުމެއް ނުކުރެވޭނެ. ގުޅުއްވާ.',
+        'customer_deposit_active' => 'Bake & Grill: ތިޔަ ވޯލެޓް އަލުން ބޭނުންކުރެވޭނެ. ބާކީ: MVR {{balance}}.',
     ];
 
     /** 'dv' when Dhivehi is on and the customer with this number keeps Dhivehi, else 'en'. */

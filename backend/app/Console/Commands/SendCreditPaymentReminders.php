@@ -25,6 +25,12 @@ class SendCreditPaymentReminders extends Command
 
     public const DEFAULT_EVERY_DAYS = 7;
 
+    public const WORDING_UPCOMING = 'Bake & Grill: credit invoice {{invoice_number}} - MVR {{amount}} due on {{due_date}}. You owe MVR {{balance}} in all. Pay online: {{link}}';
+
+    public const WORDING_DUE_TODAY = 'Bake & Grill: credit payment due today - invoice {{invoice_number}}, MVR {{amount}}. You owe MVR {{balance}} in all. Pay online: {{link}}';
+
+    public const WORDING_OVERDUE = 'Bake & Grill: credit invoice {{invoice_number}} is {{days_overdue}} days overdue (MVR {{amount}}, due {{due_date}}). You owe MVR {{balance}} in all. Pay online: {{link}}';
+
     protected $signature = 'credit:send-payment-reminders {--date= : Process reminders as of this date (Y-m-d)}';
 
     protected $description = 'Send SMS reminders for open credit invoices (upcoming, due today, overdue and repeating)';
@@ -46,7 +52,7 @@ class SendCreditPaymentReminders extends Command
         $sent = 0;
 
         Invoice::query()
-            ->with(['customer:id,name,phone,credit_enabled,credit_reminder_sms'])
+            ->with(['customer:id,name,phone,credit_enabled,credit_reminder_sms,credit_balance_laar'])
             ->where('type', 'sale')
             ->whereIn('status', ['sent', 'overdue'])
             ->whereNotNull('due_date')
@@ -90,18 +96,21 @@ class SendCreditPaymentReminders extends Command
                         continue;
                     }
 
+                    // Owner, 2026-10-21: the link pays as well as views, and
+                    // the whole balance goes beside the one invoice.
                     $vars = [
                         'invoice_number' => (string) $invoice->invoice_number,
                         'amount' => number_format($balanceLaar / 100, 2, '.', ''),
+                        'balance' => number_format(max(0, (int) $customer->credit_balance_laar) / 100, 2, '.', ''),
                         'due_date' => $due->format('d M Y'),
                         'days_overdue' => (string) $daysOverdue,
                         'link' => rtrim((string) config('app.url'), '/') . '/invoices/' . $invoice->token,
                     ];
 
                     [$slug, $fallback] = match ($kind) {
-                        'upcoming' => ['credit_reminder_upcoming', 'Bake & Grill: Credit invoice {{invoice_number}} - MVR {{amount}} due on {{due_date}}. View: {{link}}'],
-                        'due_today' => ['credit_reminder_due_today', 'Bake & Grill: Credit payment due today - invoice {{invoice_number}}, MVR {{amount}}. View: {{link}}'],
-                        'overdue' => ['credit_reminder_overdue', 'Bake & Grill: Credit invoice {{invoice_number}} is {{days_overdue}} days overdue (MVR {{amount}}, due {{due_date}}). View: {{link}}'],
+                        'upcoming' => ['credit_reminder_upcoming', self::WORDING_UPCOMING],
+                        'due_today' => ['credit_reminder_due_today', self::WORDING_DUE_TODAY],
+                        'overdue' => ['credit_reminder_overdue', self::WORDING_OVERDUE],
                     };
 
                     $sms->send(new SmsMessage(

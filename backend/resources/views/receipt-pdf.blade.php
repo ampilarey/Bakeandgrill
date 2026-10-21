@@ -117,6 +117,29 @@
     @endforeach
 @endif
 
+@php $account = \App\Support\ReceiptAccountLines::for($order); @endphp
+@if ($account['credit'] !== null)
+    @php $cr = $account['credit']; @endphp
+    <div class="pdf-section-title">Credit account</div>
+    <div class="pdf-payments-row"><span>Charged to your account</span><span>MVR {{ number_format($cr['amount_laar'] / 100, 2) }}</span></div>
+    @if ($cr['invoice_number'])
+        <div class="pdf-payments-row"><span>Invoice</span><span>{{ $cr['invoice_number'] }}</span></div>
+    @endif
+    @if ($cr['due_date'])
+        <div class="pdf-payments-row"><span>Due</span><span>{{ \Illuminate\Support\Carbon::parse($cr['due_date'])->format('d M Y') }}</span></div>
+    @endif
+    <div class="pdf-payments-row"><span>You owe on your account</span><span>MVR {{ number_format($cr['balance_laar'] / 100, 2) }}</span></div>
+    <div class="pdf-payments-row"><span>Available to use</span><span>MVR {{ number_format($cr['available_laar'] / 100, 2) }}</span></div>
+    @if ($cr['pay_url'] && ! $cr['invoice_paid'])
+        <div class="pdf-payments-row"><span>Pay online</span><span>{{ $cr['pay_url'] }}</span></div>
+    @endif
+@endif
+@if ($account['wallet'] !== null)
+    <div class="pdf-section-title">Wallet</div>
+    <div class="pdf-payments-row"><span>Paid from your wallet</span><span>MVR {{ number_format($account['wallet']['amount_laar'] / 100, 2) }}</span></div>
+    <div class="pdf-payments-row"><span>Wallet balance</span><span>MVR {{ number_format($account['wallet']['balance_laar'] / 100, 2) }}</span></div>
+@endif
+
 {{-- The receipt's own link as a QR, so the paper brings the order back up
      at the till and reaches feedback and complaints in one scan. --}}
 <table style="width:100%;margin-top:18px;border-top:1px solid #EDE4D4;padding-top:10px;">

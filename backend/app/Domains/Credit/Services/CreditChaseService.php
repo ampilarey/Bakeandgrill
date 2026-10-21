@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Credit\Services;
 
+use App\Console\Commands\SendCreditPaymentReminders;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
@@ -40,10 +41,15 @@ final class CreditChaseService
         }
 
         $vars = $this->vars($customer, $invoice, $balance);
+        // An invoice past its date gets the overdue wording; one still to
+        // come the "due on" wording, never "0 days overdue" (2026-10-21).
+        $overdue = $invoice !== null && $invoice->due_date !== null && $invoice->due_date->isPast();
         $text = trim((string) $message) !== ''
             ? $this->builder->build('credit_reminder_manual', $vars, (string) $message)
             : ($invoice !== null
-                ? $this->builder->build('credit_reminder_overdue', $vars, 'Bake & Grill: Credit invoice {{invoice_number}} - MVR {{amount}}, due {{due_date}}. Your balance is MVR {{balance}}. View: {{link}}', (string) $customer->phone)
+                ? ($overdue
+                    ? $this->builder->build('credit_reminder_overdue', $vars, SendCreditPaymentReminders::WORDING_OVERDUE, (string) $customer->phone)
+                    : $this->builder->build('credit_reminder_upcoming', $vars, SendCreditPaymentReminders::WORDING_UPCOMING, (string) $customer->phone))
                 : $this->builder->build('credit_balance_reminder', $vars, 'Bake & Grill: your credit account balance is MVR {{balance}}. Please settle at your earliest convenience. Thank you!', (string) $customer->phone));
 
         return $this->send($customer, $staff, $text, $invoice, 'reminder');
@@ -95,13 +101,15 @@ final class CreditChaseService
         ];
     }
 
+    /**
+     * A phone is all it takes. A customer who stopped offer texts still
+     * hears about money they owe, by hand as by the schedule (one rule,
+     * 2026-10-21); their own reminder switch is for the schedule.
+     */
     private function assertReachable(Customer $customer): void
     {
         if (trim((string) $customer->phone) === '') {
             throw ValidationException::withMessages(['message' => ['This customer has no phone number.']]);
-        }
-        if ($customer->sms_opt_out) {
-            throw ValidationException::withMessages(['message' => ['This customer has opted out of SMS and cannot be texted.']]);
         }
     }
 

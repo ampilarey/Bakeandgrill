@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domains\Notifications\Services;
 
+use App\Domains\Credit\Services\CreditAccountNotifier;
+use App\Domains\Deposits\Services\DepositNotifier;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Support\SmsNotificationSettings;
+use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Enums\OrderType;
 use App\Mail\OrderConfirmationMail;
 use App\Models\Order;
 use App\Models\Receipt;
 use App\Support\OrderTrackingUrl;
+use App\Support\ReceiptAccountLines;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -35,6 +39,7 @@ class PaymentConfirmationNotifier
     public function __construct(
         private readonly SmsService $sms,
         private readonly CustomerSmsMessageBuilder $messages,
+        private readonly CreditAccountNotifier $credit,
     ) {}
 
     public function notify(Order $order): void
@@ -84,6 +89,15 @@ class PaymentConfirmationNotifier
             return;
         }
 
+        // What the sale did to the customer's credit account or wallet
+        // (owner, 2026-10-21): a sale on credit is told by its own text, and
+        // a sale paid from the wallet carries the balance left. Both read
+        // the ledgers, which the settle wrote before this ran.
+        $account = ReceiptAccountLines::for($order);
+        $walletNote = $account['wallet'] !== null
+            ? DepositNotifier::walletNote((int) $account['wallet']['amount_laar'], (int) $account['wallet']['balance_laar'], $phone)
+            : '';
+
         if ($isOnline) {
             // Online pickup / delivery: customer isn't in the room, so
             // surface (a) HOW the payment cleared (BML / cash on
@@ -109,11 +123,19 @@ class PaymentConfirmationNotifier
                     'order_number' => (string) $order->order_number,
                     'ready_hint' => $readyHint,
                     'tracking_url' => $url,
+                    'wallet_note' => $walletNote,
                 ],
                 $fallback,
                 $phone,
             );
             $typeKey = 'customer_payment_confirmed_online';
+        } elseif ($account['credit'] !== null && CreditAccountNotifier::chargedTextOn()) {
+            // A till sale on the credit account: amount, due date, what is
+            // owed and available, and the invoice link to view or pay, in
+            // place of the receipt text. One sale, one text.
+            $url = rtrim(config('app.url'), '/') . '/receipts/' . $receipt->token;
+            $message = $this->credit->chargedText($order, $account['credit'], $phone);
+            $typeKey = CreditAccountNotifier::TYPE_CHARGED;
         } else {
             // POS dine-in / takeaway: customer is at the counter. The
             // receipt link is the only useful SMS — no order-confirmed
@@ -126,6 +148,7 @@ class PaymentConfirmationNotifier
                 [
                     'order_number' => (string) $order->order_number,
                     'receipt_url' => $url,
+                    'wallet_note' => $walletNote,
                 ],
                 $fallback,
                 $phone,
@@ -133,12 +156,20 @@ class PaymentConfirmationNotifier
             $typeKey = 'customer_payment_confirmed_pos';
         }
 
+        // A wording without {{wallet_note}} of its own still carries it.
+        if ($walletNote !== '' && !str_contains($message, trim($walletNote))) {
+            $message .= $walletNote;
+        }
+
         // The SMS switch saves SMS cost; it no longer stops the order
         // confirmation email (owner, 2026-10-06). Counter and online each
-        // have their own switch since 2026-10-10 (one used to cover both).
-        $smsOn = SmsNotificationSettings::isEnabled($typeKey === 'customer_payment_confirmed_online'
-            ? SmsNotificationSettings::PAYMENT_CONFIRMED_ONLINE
-            : SmsNotificationSettings::PAYMENT_CONFIRMED_POS);
+        // have their own switch since 2026-10-10 (one used to cover both);
+        // the credit text has its own row.
+        $smsOn = match ($typeKey) {
+            'customer_payment_confirmed_online' => SmsNotificationSettings::isEnabled(SmsNotificationSettings::PAYMENT_CONFIRMED_ONLINE),
+            'customer_payment_confirmed_pos' => SmsNotificationSettings::isEnabled(SmsNotificationSettings::PAYMENT_CONFIRMED_POS),
+            default => SmsTypeRegistry::isTypeEnabled((array) SmsTypeRegistry::get($typeKey)),
+        };
 
         if ($phone && $smsOn) {
             try {
@@ -165,7 +196,7 @@ class PaymentConfirmationNotifier
         // confirmed", "order paid"); the text has its once-per-order key, and
         // this claim on the receipt is the email's: it went three times
         // (owner, 2026-10-10). A failed send gives the claim back.
-        if ($email && \App\Domains\Notifications\Support\SmsTypeRegistry::isEmailEnabled($typeKey)
+        if ($email && SmsTypeRegistry::isEmailEnabled($typeKey)
             && \App\Domains\Customers\Support\MessageChoices::allows($order->customer, \App\Domains\Customers\Support\MessageChoices::ORDERS, \App\Domains\Customers\Support\MessageChoices::EMAIL)
             && Receipt::whereKey($receipt->id)->whereNull('confirmation_email_sent_at')->update(['confirmation_email_sent_at' => now()]) === 1) {
             try {

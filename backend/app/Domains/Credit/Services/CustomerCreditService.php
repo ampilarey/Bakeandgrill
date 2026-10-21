@@ -177,6 +177,7 @@ class CustomerCreditService
         ?string $notes = null,
         ?Request $request = null,
         ?int $tradeAccountId = null,
+        ?string $source = null,
     ): CustomerCreditLedger {
         return $this->ledger->recordRepayment(
             $customer,
@@ -188,6 +189,7 @@ class CustomerCreditService
             $notes,
             $request,
             $tradeAccountId,
+            $source,
         );
     }
 

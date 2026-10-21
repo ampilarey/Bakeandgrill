@@ -70,6 +70,40 @@
         </tr>
     </table>
 
+    @php
+        // The sale on the credit account, or from the wallet (owner, 2026-10-21).
+        $account = \App\Support\ReceiptAccountLines::for($order);
+    @endphp
+    @if ($account['credit'] !== null)
+        @php $cr = $account['credit']; @endphp
+        <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; margin:0 0 16px; padding:12px 14px; background:#FBF6F0; border-radius:12px; font-size:14px; line-height:22px;">
+            <tr><td colspan="2" style="padding:0 0 6px; font-weight:bold; color:#1C1408;">{{ __('Credit account') }}</td></tr>
+            <tr><td style="color:#6B5D4F;">{{ __('Charged to your account') }}</td><td align="right" style="color:#1C1408;">{{ $money($cr['amount_laar'] / 100) }}</td></tr>
+            @if ($cr['invoice_number'])
+                <tr><td style="color:#6B5D4F;">{{ __('Invoice') }}</td><td align="right" style="color:#1C1408;">{{ $cr['invoice_number'] }}</td></tr>
+            @endif
+            @if ($cr['due_date'])
+                <tr><td style="color:#6B5D4F;">{{ __('Due') }}</td><td align="right" style="color:#1C1408;">{{ \Illuminate\Support\Carbon::parse($cr['due_date'])->format('d M Y') }}</td></tr>
+            @endif
+            <tr><td style="color:#6B5D4F;">{{ __('You owe on your account') }}</td><td align="right" style="color:#1C1408;">{{ $money($cr['balance_laar'] / 100) }}</td></tr>
+            <tr><td style="color:#6B5D4F;">{{ __('Available to use') }}</td><td align="right" style="color:#1C1408;">{{ $money($cr['available_laar'] / 100) }}</td></tr>
+        </table>
+        @if ($cr['pay_url'] && ! $cr['invoice_paid'])
+            @include('emails.partials.button', [
+                'url' => $cr['pay_url'],
+                'label' => __('Pay online'),
+                'margin' => '0 auto 22px',
+            ])
+        @endif
+    @endif
+    @if ($account['wallet'] !== null)
+        <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; margin:0 0 22px; padding:12px 14px; background:#FBF6F0; border-radius:12px; font-size:14px; line-height:22px;">
+            <tr><td colspan="2" style="padding:0 0 6px; font-weight:bold; color:#1C1408;">{{ __('Wallet') }}</td></tr>
+            <tr><td style="color:#6B5D4F;">{{ __('Paid from your wallet') }}</td><td align="right" style="color:#1C1408;">{{ $money($account['wallet']['amount_laar'] / 100) }}</td></tr>
+            <tr><td style="color:#6B5D4F;">{{ __('Wallet balance') }}</td><td align="right" style="color:#1C1408;">{{ $money($account['wallet']['balance_laar'] / 100) }}</td></tr>
+        </table>
+    @endif
+
     @if ($order->customer_notes)
         <p style="margin:0 0 22px; padding:12px 14px; background:#FBF6F0; border-radius:12px; font-size:13px; line-height:20px; color:#6B5D4F;"><strong style="color:#1C1408;">{{ __('Your note:') }}</strong> {{ $order->customer_notes }}</p>
     @endif

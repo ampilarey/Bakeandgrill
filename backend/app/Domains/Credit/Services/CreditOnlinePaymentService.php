@@ -58,6 +58,7 @@ final class CreditOnlinePaymentService
                 [$invoice->id],
                 $locked->provider_transaction_id,
                 'Paid online (BML) against credit invoice ' . $invoice->invoice_number,
+                source: 'online',
             );
             $ledger->update(['payment_id' => $locked->id]);
         });
