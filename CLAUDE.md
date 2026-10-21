@@ -1291,6 +1291,26 @@ a 1920×1080 image slide on the dining playlist (`date_end` is the take-down
 date), a social draft (approval, best time, channel rules) plus WhatsApp and
 Viber share links, and an optional home hero slide for the offer's period.
 
+## Poster templates (the 110 designs)
+
+Owner, 2026-10-21. Make a poster opens on 110 ready-made designs in 13 categories
+(`backend/resources/poster-themes/`, spec `docs/POSTER_THEMES_HANDOFF.md`), each with a `large`
+variant for A2/A3 and a `small` one for A4/A5; "No template (classic layout)" keeps the
+purposes. A template poster is purpose `themed` with `posters.theme`; its words and photo
+choices are `slots` keyed `t1…` (null = the design's words, `false` = blanked, since an empty
+string arrives as null) and `p1…` (`{item_id, use}` or `{photo_path}`). `PosterThemes` reads and
+validates the assets and never falls back; `PosterThemePieces` builds the pieces with the
+handoff § 1 mapping (variant by paper size, A5's 0.343 mm offset); `PdfX4Document` carries the
+draw-list helpers (fills by rule, strokes, alpha, gradients, clips); `PosterPdf::drawThemedCopy`
+draws them; `BrandCmyk::forHex` picks the ink (swatch picks for the brand five, the handoff's
+mixes for the extras). Anton and Fraunces italic sit in `public/fonts/pdf/` as poster fonts.
+Preflight skips the mood contrast for a template and checks each photo slot, the first price
+slot against the menu, the design's own safe area and the corner keep-out on A2/A3 only (A4/A5
+offer no stand-offs). TV, social and proof pictures come from `PosterThemeRaster` (GD; the host
+has no Ghostscript). The admin picker, editor and layered preview are `components/posters/`;
+the backdrop SVG is served in layers split at its photo markers. Existing layouts and moods are
+untouched. Details: `docs/POSTERS.md` § Templates.
+
 ## Needs attention
 
 iruali import plan, feature 14 (2026-10-18). One list of what wants a person today:

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Posters;
 
-use App\Domains\Posters\Pdf\PdfX4Document;
 use App\Models\Item;
 use RuntimeException;
 use Throwable;
@@ -471,11 +470,5 @@ final class PosterThemePieces
         }
 
         return implode(' ', $parts);
-    }
-
-    /** @return list<array{0: string, 1: list<float>}> */
-    public static function circle(float $cx, float $cy, float $r): array
-    {
-        return PdfX4Document::circleOps($cx, $cy, $r);
     }
 }

@@ -39,6 +39,54 @@ On the server the worker must be running (crontab keepalive, full deploys). **Se
 shop** makes the order at once with the file queued; once the file is ready the job emails
 the shop (or asks for the proof), and a shop with no email gets a note on the order.
 
+## Templates (the 110 designs)
+
+Make a poster opens on the ready-made designs (`docs/POSTER_THEMES_HANDOFF.md`): 110 promo
+posters in 13 categories, 50 with photo frames, each in a `large` variant for A2 and A3 and
+a `small` one for A4 and A5 (bigger small print, no stand-off corners). Pick one by category,
+style (With item photo, Extra colourful, Colourful, Classic brand colours) or search; "No
+template (classic layout)" opens the purposes above.
+
+A template poster is purpose `themed` with the design's key in `posters.theme`. Its words and
+pictures live in `slots`: `t1…` a text slot's words (missing or null prints the design's own
+wording, `false` blanks the line), `p1…` a photo slot's choice (`{item_id, use: main|cutout}`
+or `{photo_path}` for an upload; nothing prints the design's placeholder). A dish and an offer
+may be bound as on any poster: the dish fills the first photo slot and the first price slot
+(its live price in the design's own format), the offer its percent, and either the QR's target.
+
+- **Size picks the variant.** The preview and the file follow the first size chosen; A2 and A3
+  print the wall design, A4 and A5 the counter design. Templates are portrait only.
+- **Photos.** Each slot takes a dish's photo or cut-out (a slot under 120 design units takes
+  the cut-out by default when the dish has one), an upload from this page, or the design's
+  placeholder. A picture with transparency is laid on the slot's colour. Preflight checks each
+  slot's resolution and refuses a dish that has only its small website photo.
+- **Words.** One box per slot, labelled by role, the footer lines folded. Edited words shrink
+  to the slot's width by the real TrueType width and never below the variant's floor (8 units
+  on the wall design, 9.1 on the counter design); what still does not fit is a red check.
+  Dhivehi typed into a slot sets in Noto Sans Thaana.
+- **Checks.** No mood contrast (the colours are the design's). Type floor, fit, per-slot photo
+  resolution, the price against the menu, the design's own safe area, ink, and the corner
+  keep-out on A2 and A3 only (A4 and A5 offer no stand-offs or eyelets).
+- **Screens.** TV, the social cards and the shop's proof are the design itself, drawn with GD
+  (`PosterThemeRaster`): the host has no Ghostscript or Imagick.
+
+Where things live: the assets under `backend/resources/poster-themes/` (`index.json`, one
+folder per theme with `theme.json`, the gzip draw lists, the backdrop SVGs, previews and
+placeholders; the Anton and Fraunces TTFs are copied into `public/fonts/pdf/`), `PosterThemes`
+(the registry; it validates and never falls back), `PosterThemePieces` (the piece list: the
+handoff § 1 mapping, backdrop, photos, logo, QR, text), the draw-list helpers on
+`PdfX4Document` (`paintPath`, `fillPathGradient`, `clipToPath`, `withAlpha`, `drawBackdrop`),
+`PosterPdf::drawThemedCopy`, `BrandCmyk::forHex` (the brand five through the swatch picks, the
+handoff's press mixes, the plain conversion for the rest), and in the admin
+`components/posters/` (picker, editor, preview). The preview stacks the backdrop SVG in layers
+split at the photo markers (`GET /api/posters/themes/{key}/backdrop-{variant}-{n}.svg`) so each
+photo sits between the art drawn before and after it. A saved template or a poster from My
+posters opens in the editor as it was (Use, Edit).
+
+To swap in a full font from Google Fonts, replace the TTF in `public/fonts/pdf/` (the Latin
+subsets ship). A new design goes into `index.json` and its own folder; `PosterThemesTest`
+holds every theme to the handoff's rules.
+
 ## Print shops
 
 Admin → Posters → Print shops. A shop is a supplier with kind `print_shop`, so it
