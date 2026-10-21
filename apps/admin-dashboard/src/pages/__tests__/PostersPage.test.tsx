@@ -33,7 +33,7 @@ import { PostersPage } from '../PostersPage';
 
 const purpose = { key: 'plain_notice', label: 'Plain notice', group: 'Inside', layout: 'notice', bind: 'none', landscape: false, external: null, slots: { headline: 'Open' }, used: 0 };
 
-const TV_KEY = 'tv007-donuts-buy1get1';
+const TV_THEME = 'tv007-donuts-buy1get1';
 const SCREENS = [
   { key: 'TV', label: 'TV · Full HD (1920 × 1080)', px: [1920, 1080], landscape: true },
   { key: 'TV4K', label: 'TV · 4K (3840 × 2160)', px: [3840, 2160], landscape: true },
@@ -53,7 +53,7 @@ const themes = {
   themes: [
     { id: 'BG-001', key: 'bg001-flash-sale-pastries', title: 'Flash Sale Pastries', kind: 'print', category: 'disc', style: 'photo', has_photo: true, photo_slots: 1, text_slots: 9, preview_url: 'http://localhost/api/posters/themes/bg001-flash-sale-pastries/preview-large.jpg', preview_small_url: '', aspect: [420, 594] },
     { id: 'BG-012', key: 'bg012-value-meals-menu', title: 'Value Meals Menu', kind: 'print', category: 'combo', style: 'colour', has_photo: true, photo_slots: 1, text_slots: 3, preview_url: 'http://localhost/api/posters/themes/bg012-value-meals-menu/preview-large.jpg', preview_small_url: '', aspect: [420, 594] },
-    { id: 'TV-007', key: TV_KEY, title: 'Donuts Buy 1 Get 1', kind: 'screen', category: 'bogo', style: 'photo', has_photo: true, photo_slots: 1, text_slots: 8, preview_url: `http://localhost/api/posters/themes/${TV_KEY}/preview-tv.jpg`, preview_small_url: '', aspect: [1920, 1080] },
+    { id: 'TV-007', key: TV_THEME, title: 'Donuts Buy 1 Get 1', kind: 'screen', category: 'bogo', style: 'photo', has_photo: true, photo_slots: 1, text_slots: 8, preview_url: `http://localhost/api/posters/themes/${TV_THEME}/preview-tv.jpg`, preview_small_url: '', aspect: [1920, 1080] },
   ],
 };
 
@@ -78,24 +78,24 @@ const tvVariant = (name: 'tv' | 'tvp') => ({
   variant: name,
   canvas: { width: name === 'tv' ? 1920 : 1080, height: name === 'tv' ? 1080 : 1920, bleed_units: 0, safe_inset_units: 60, min_text_units: 24 },
   sizes: {},
-  photo_slots: [{ id: 'p1', shape: 'circle', box: [1150, 190, 660, 660], rotation_deg: 0, cutout_ok: true, fill_behind: '#F7670B', placeholder_url: `http://localhost/api/posters/themes/${TV_KEY}/placeholder-${name}-p1.png`, min_px_for_150ppi: [660, 660] }],
+  photo_slots: [{ id: 'p1', shape: 'circle', box: [1150, 190, 660, 660], rotation_deg: 0, cutout_ok: true, fill_behind: '#F7670B', placeholder_url: `http://localhost/api/posters/themes/${TV_THEME}/placeholder-${name}-p1.png`, min_px_for_150ppi: [660, 660] }],
   text_slots: [textSlot('t1', 'eyebrow', 'This week only', 'fri9'), textSlot('t2', 'headline', 'BUY 1 GET 1'), textSlot('t6', 'footer', 'BAKEANDGRILL.MV', 'j8')],
   qr: null,
-  urls: { preview: '', backdrop: `http://localhost/api/posters/themes/${TV_KEY}/backdrop-${name}.svg` },
+  urls: { preview: '', backdrop: `http://localhost/api/posters/themes/${TV_THEME}/backdrop-${name}.svg` },
 });
 const tvTheme = {
-  id: 'TV-007', key: TV_KEY, title: 'Donuts Buy 1 Get 1', kind: 'screen', category: { key: 'bogo', number: '03', name: 'Buy 1 Get 1 & Freebies' },
+  id: 'TV-007', key: TV_THEME, title: 'Donuts Buy 1 Get 1', kind: 'screen', category: { key: 'bogo', number: '03', name: 'Buy 1 Get 1 & Freebies' },
   style: 'photo', style_label: 'With item photo', has_photo: true, size_to_variant: { TV: 'tv', TV4K: 'tv', TVP: 'tvp' },
   variants: { tv: tvVariant('tv'), tvp: tvVariant('tvp') }, fonts: {},
 };
 
 function themedSheet(draft: { theme?: string | null; sizes: string[]; slots: Record<string, unknown> }) {
-  const screen = draft.theme === TV_KEY;
+  const screen = draft.theme === TV_THEME;
   const size = draft.sizes[0] ?? (screen ? 'TV' : 'A4');
   const variantName = screen ? (size === 'TVP' ? 'tvp' : 'tv') : (size === 'A2' || size === 'A3' ? 'large' : 'small');
   const dims: Record<string, [number, number]> = { A2: [426, 600], A3: [303, 426], A4: [216, 303], A5: [154, 216], TV: [1920, 1080], TV4K: [3840, 2160], TVP: [1080, 1920] };
   const [w, h] = dims[size] ?? dims.A4;
-  const key = screen ? TV_KEY : 'bg012-value-meals-menu';
+  const key = screen ? TV_THEME : 'bg012-value-meals-menu';
   const t2 = typeof draft.slots.t2 === 'string' ? draft.slots.t2 : (screen ? 'BUY 1 GET 1' : 'MEAL DEALS');
   const px = SCREENS.find((s) => s.key === size)?.px ?? null;
   return {
@@ -125,7 +125,7 @@ describe('PostersPage', () => {
     api.fetchPosterCatalog.mockResolvedValue({ purposes: [purpose], layouts: ['notice'], moods: ['dark'], sizes: ['A5', 'A4', 'A3', 'A2'], screen_sizes: SCREENS, places: ['Window'], materials: [{ key: 'foam', label: 'Foam board', white: false }], themes });
     api.fetchPosterLookups.mockResolvedValue({ items: [{ id: 7, name: 'Chicken tikka', name_dv: null, price: { price: 85, from: false } }], promotions: [], categories: [], tables: [] });
     api.fetchPrintShops.mockResolvedValue({ shops: [], proof_approval: false });
-    api.fetchPosterTheme.mockImplementation(async (key: string) => (key === TV_KEY ? tvTheme : theme));
+    api.fetchPosterTheme.mockImplementation(async (key: string) => (key === TV_THEME ? tvTheme : theme));
     api.fetchPosterTemplates.mockResolvedValue([]);
     api.fetchPosters.mockResolvedValue({ posters: [], should_be_down: [] });
     api.sendPosterToTv.mockResolvedValue({ slide_id: 's1', image_url: 'http://localhost/storage/posters/tv.png', date_end: null });
@@ -303,7 +303,7 @@ describe('PostersPage', () => {
     // Screens, not paper: it starts on Full HD, and 4K joins it.
     fireEvent.click(card);
     await screen.findByTestId('poster-themed-editor');
-    await waitFor(() => expect(api.previewPoster).toHaveBeenLastCalledWith(expect.objectContaining({ theme: TV_KEY, sizes: ['TV'] })));
+    await waitFor(() => expect(api.previewPoster).toHaveBeenLastCalledWith(expect.objectContaining({ theme: TV_THEME, sizes: ['TV'] })));
     expect(screen.getByRole('heading', { name: 'Screen' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'A4' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Full HD · 1920 × 1080' })).toHaveAttribute('aria-pressed', 'true');
@@ -324,7 +324,7 @@ describe('PostersPage', () => {
     expect(screen.queryByTestId('poster-keepout')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Send to TV/ }));
     await waitFor(() => expect(api.sendPosterToTv).toHaveBeenCalledWith(9));
-    expect(api.createPoster).toHaveBeenCalledWith(expect.objectContaining({ theme: TV_KEY, sizes: ['TV', 'TV4K'] }));
+    expect(api.createPoster).toHaveBeenCalledWith(expect.objectContaining({ theme: TV_THEME, sizes: ['TV', 'TV4K'] }));
     expect(await screen.findByText(/On the TV/)).toBeInTheDocument();
 
     api.exportPoster.mockResolvedValue({ id: 6, status: 'ready' });
@@ -334,13 +334,13 @@ describe('PostersPage', () => {
 
     api.savePosterTemplate.mockResolvedValue({ id: 4 });
     fireEvent.click(screen.getByRole('button', { name: 'Save as template' }));
-    await waitFor(() => expect(api.savePosterTemplate).toHaveBeenCalledWith(expect.objectContaining({ theme: TV_KEY, sizes: ['TV', 'TV4K'] })));
+    await waitFor(() => expect(api.savePosterTemplate).toHaveBeenCalledWith(expect.objectContaining({ theme: TV_THEME, sizes: ['TV', 'TV4K'] })));
   });
 
   it('a saved template brings back its sizes and bindings, and an old TV template lands on a screen', async () => {
     api.fetchPosterTemplates.mockResolvedValue([
       { id: 3, name: 'Tikka on A3', template_key: 'themed', layout: 'themed', theme: 'bg012-value-meals-menu', mood: 'dark', language: 'en', slots: { t2: 'TIKKA DEALS' }, sizes: ['A3'], bindings: { item_id: 7 }, locked: false },
-      { id: 5, name: 'Donuts on the TV', template_key: 'themed', layout: 'themed', theme: TV_KEY, mood: 'dark', language: 'en', slots: {}, sizes: null, bindings: null, locked: true },
+      { id: 5, name: 'Donuts on the TV', template_key: 'themed', layout: 'themed', theme: TV_THEME, mood: 'dark', language: 'en', slots: {}, sizes: null, bindings: null, locked: true },
     ]);
     render(<MemoryRouter><PostersPage /></MemoryRouter>);
     fireEvent.click(await screen.findByRole('button', { name: 'Templates' }));
@@ -356,7 +356,7 @@ describe('PostersPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Templates' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Use Donuts on the TV' }));
     await screen.findByRole('heading', { name: 'Screen' });
-    await waitFor(() => expect(api.previewPoster).toHaveBeenLastCalledWith(expect.objectContaining({ theme: TV_KEY, sizes: ['TV'] })));
+    await waitFor(() => expect(api.previewPoster).toHaveBeenLastCalledWith(expect.objectContaining({ theme: TV_THEME, sizes: ['TV'] })));
   });
 
   it('a saved template and a saved poster open in the editor as they were', async () => {

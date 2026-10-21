@@ -52,4 +52,8 @@ regexes = [
     # footer on one source line, which the private-key rule reads as a key. The regex
     # is that PHP line, not a key.
     '''BEGIN PRIVATE KEY-----\\n" \. chunk_split\(''',
+    # A poster design's key ("bg012-value-meals-menu", "tv007-donuts-buy1get1") quoted
+    # in a test or a doc is a design name; generic-api-key read one beside a constant
+    # called TV_KEY on 2026-10-21. The asset folder itself is allowlisted by path above.
+    '''['"](?:bg|tv)\d{3}-[a-z0-9-]+['"]''',
 ]
