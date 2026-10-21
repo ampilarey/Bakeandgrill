@@ -876,6 +876,9 @@ class MenuPageTest extends TestCase
         // No row means no strip under the banner (owner, 2026-10-07).
         $this->assertStringContainsString('<div class="mh" data-mh', $html);
         // The banner is drawn for the first section before any script runs.
+        // No photo: it wears the section's tint, which also sits behind the
+        // name once the banner folds to a strip (owner, 2026-10-22).
+        $this->assertMatchesRegularExpression('#<div class="mh-banner mh-banner--plain" style="--mh-tint: linear-gradient[^"]*">#', $html);
         $this->assertMatchesRegularExpression('#<div class="mh-title"><span\s*>Drinks</span></div>#', $html);
         $this->assertStringContainsString('<span class="mh-count">1 item</span>', $html);
     }

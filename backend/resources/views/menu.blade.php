@@ -204,10 +204,23 @@ span.menu-rail-thumb {
     bottom: 100%; height: var(--menu-sticky);
     background: var(--bg);
 }
+/* At the top of the menu the banner is the admin's 7:3 crop, whole (owner,
+   2026-10-22: the strip showed only a slice of it). Once the head pins, the
+   banner folds to a strip (--mh-strip) and the picture docks at its left,
+   still whole, with the name beside it on the section's tint. --mh-full is
+   the 7:3 height the script measures, so the fold animates from the real
+   height; on a computer it is capped, so the banner never takes the screen. */
+.mh { --mh-strip: 88px; }
 .mh-banner {
-    position: relative; height: 88px; border-radius: 14px; overflow: hidden;
+    position: relative; border-radius: 14px; overflow: hidden;
     background: var(--amber-light);
+    height: auto; aspect-ratio: 7 / 3;
+    /* The fallback is the computer's cap, so a wide screen never jumps when the script measures. */
+    max-height: var(--mh-full, 320px);
+    transition: max-height 0.3s var(--mh-ease);
 }
+.mh-banner--plain, .mh.is-stuck .mh-banner { background: var(--mh-tint, var(--amber-light)); }
+.mh.is-stuck .mh-banner { max-height: var(--mh-strip); }
 .mh-banner::before {
     /* A faint scatter of flames; a photo covers it, so it shows only on a
        section without one. */
@@ -216,21 +229,28 @@ span.menu-rail-thumb {
     opacity: 0.12; pointer-events: none;
 }
 .mh-img {
-    position: absolute; inset: -6px;
+    position: absolute; left: -6px; top: -6px; bottom: -6px; width: calc(100% + 12px);
     background-size: cover; background-position: center;
     opacity: 0; transform: scale(1.06);
-    transition: opacity 0.32s ease, transform 0.9s var(--mh-ease);
+    transition: opacity 0.32s ease, transform 0.9s var(--mh-ease),
+        left 0.3s var(--mh-ease), top 0.3s var(--mh-ease), bottom 0.3s var(--mh-ease), width 0.3s var(--mh-ease);
 }
 .mh-img.is-on { opacity: 1; transform: scale(1); }
+/* Pinned: the picture is a 7:3 thumbnail at the left, the strip's full height. */
+.mh.is-stuck .mh-img { left: 0; top: 0; bottom: 0; width: calc(var(--mh-strip) * 7 / 3); }
 .mh-shade {
     position: absolute; inset: 0;
     background: linear-gradient(90deg, rgba(28,20,8,0.72) 0%, rgba(28,20,8,0.28) 60%, rgba(28,20,8,0.1) 100%);
+    transition: opacity 0.3s ease;
 }
+.mh.is-stuck .mh-shade { opacity: 0; }
 .mh-copy {
     position: absolute; inset: 0; z-index: 1;
     display: flex; align-items: center; gap: 0.6rem;
     padding: 0 6.75rem 0 1.1rem; color: #fff;
+    transition: padding 0.3s var(--mh-ease);
 }
+.mh.is-stuck .mh-banner:not(.mh-banner--plain) .mh-copy { padding-left: calc(var(--mh-strip) * 7 / 3 + 0.75rem); }
 .mh-title { position: relative; height: 2rem; overflow: hidden; flex: none; transition: width 0.32s var(--mh-ease); }
 .mh-title span {
     display: block; white-space: nowrap;
@@ -411,7 +431,8 @@ html.js .mh-panel .menu-filters { background: transparent; padding: 0.7rem 0 0.7
 .menu-sec { padding-top: 0.25rem; }
 .menu-sec + .menu-sec { margin-top: 1.1rem; padding-top: 0.9rem; border-top: 6px solid color-mix(in srgb, var(--border) 45%, transparent); }
 
-.mh-banner { height: 60px; border-radius: 12px; }
+.mh { --mh-strip: 60px; }
+.mh-banner { border-radius: 12px; }
 .mh-copy { padding: 0 5.6rem 0 0.9rem; gap: 0.45rem; }
 .mh-title { height: 1.6rem; }
 .mh-title span { font-size: 1.15rem; line-height: 1.6rem; }
@@ -423,7 +444,8 @@ html.js .mh-panel .menu-filters { background: transparent; padding: 0.7rem 0 0.7
 .mh-pill { height: 36px; margin-top: -18px; }
 .mh-all { height: 36px; padding: 0 0.6rem; }
 @media (min-width: 769px) {
-  .mh-banner { height: 88px; border-radius: 14px; }
+  .mh { --mh-strip: 88px; }
+  .mh-banner { border-radius: 14px; }
   .mh-copy { padding: 0 6.75rem 0 1.1rem; gap: 0.6rem; }
   .mh-title { height: 2rem; }
   .mh-title span { font-size: 1.5rem; line-height: 2rem; }
@@ -1280,7 +1302,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
              for the first section so it reads right before any script runs. --}}
         @if($firstSec)
         <div class="mh{{ $firstSec['subs'] !== [] ? ' has-row mh--room' : '' }}" data-mh data-testid="menu-head">
-            <div class="mh-banner" @if(! $firstSec['image']) style="background: {{ $firstSec['tint'] }}" @endif>
+            <div class="mh-banner{{ $firstSec['image'] ? '' : ' mh-banner--plain' }}" style="--mh-tint: {{ $firstSec['tint'] }}">
                 <div class="mh-img is-on" @if($firstSec['image']) style="background-image: url('{{ $firstSec['image'] }}')" @endif></div>
                 <div class="mh-img"></div>
                 <div class="mh-shade" aria-hidden="true"></div>
@@ -1919,6 +1941,12 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     var front = 0;
 
     function stickyTop() { return parseFloat(getComputedStyle(root).getPropertyValue('--menu-sticky')) || 0; }
+    // The banner's 7:3 height at this width, so the fold animates from it; a
+    // computer caps it so the banner never takes the screen (see .mh-banner).
+    function measure() {
+        var cap = window.matchMedia && window.matchMedia('(min-width: 1024px)').matches ? 320 : 9999;
+        head.style.setProperty('--mh-full', Math.round(Math.min(banner.clientWidth * 3 / 7, cap)) + 'px');
+    }
     // The line just under the pinned banner: whatever crosses it is "in view".
     // The button row floats under the banner (it does not push the list), so
     // it counts towards the line only while it is showing.
@@ -1986,7 +2014,10 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         if (state.sec === sec.id) return;
         var first = state.sec === null;
         var img = sec.getAttribute('data-mh-img');
-        banner.style.background = img ? '' : (sec.getAttribute('data-mh-tint') || '');
+        // The tint sits behind the name once the banner folds, and is the
+        // banner itself for a section without a photo.
+        banner.style.setProperty('--mh-tint', sec.getAttribute('data-mh-tint') || '');
+        banner.classList.toggle('mh-banner--plain', !img);
         var next = imgs[1 - front];
         next.style.backgroundImage = img ? 'url("' + img.replace(/"/g, '%22') + '")' : 'none';
         void next.offsetWidth;
@@ -2095,12 +2126,13 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         showSub(sub);
     }
     var ticking = false;
+    measure();
     window.addEventListener('scroll', function () {
         if (ticking) return;
         ticking = true;
         requestAnimationFrame(function () { ticking = false; headerOnScroll(); fitRail(); spy(); });
     }, { passive: true });
-    window.addEventListener('resize', function () { state.sub = null; fitRail(); if (state.sec) lightRail(state.sec); syncAll(); spy(); });
+    window.addEventListener('resize', function () { state.sub = null; measure(); fitRail(); if (state.sec) lightRail(state.sec); syncAll(); spy(); });
 
     // ── Going somewhere ───────────────────────────────────────────────
     // A tap switches everything to the target at once, the page glides

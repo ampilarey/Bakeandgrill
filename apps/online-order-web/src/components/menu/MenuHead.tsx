@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -147,6 +148,9 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
   const [active, setActive] = useState<Active>({ key: null, sub: null, dir: 1, instant: true });
   const activeRef = useRef(active);
   activeRef.current = active;
+  // Pinned under the bar: the banner folds from the whole 7:3 crop to a strip
+  // with the picture docked at its left (owner, 2026-10-22; `.mh.is-stuck`).
+  const [stuck, setStuck] = useState(false);
 
   const section = sections.find((s) => s.key === active.key) ?? sections[0] ?? null;
 
@@ -251,11 +255,12 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
     const y = window.scrollY;
     const dir: 1 | -1 = y >= lastY.current ? 1 : -1;
     lastY.current = y;
+    const head = headRef.current;
+    if (!head) return;
+    setStuck(head.getBoundingClientRect().top <= stickyTop() + 1);
     // A tap is travelling: keep its target lit rather than flickering
     // through every button on the way.
     if (lockRef.current || override) return;
-    const head = headRef.current;
-    if (!head) return;
     const current = sectionsRef.current.find((x) => x.key === activeRef.current.key);
     const line = stickyTop() + head.offsetHeight + (hasRow(current) ? barHeight(head) : 0) + 12;
     const found = sectionsRef.current
@@ -301,7 +306,16 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
     const head = headRef.current;
     if (!head) return undefined;
     const root = document.documentElement;
-    const apply = () => root.style.setProperty('--menu-head-height', `${Math.ceil(head.getBoundingClientRect().height + barHeight(head))}px`);
+    const banner = head.querySelector<HTMLElement>('.mh-banner');
+    const apply = () => {
+      root.style.setProperty('--menu-head-height', `${Math.ceil(head.getBoundingClientRect().height + barHeight(head))}px`);
+      // The banner's 7:3 height at this width, so the fold animates from it;
+      // a computer caps it so the banner never takes the screen (.mh-banner).
+      if (banner) {
+        const cap = typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 1024px)').matches ? 320 : 9999;
+        head.style.setProperty('--mh-full', `${Math.round(Math.min(banner.clientWidth * 3 / 7, cap))}px`);
+      }
+    };
     apply();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
     ro?.observe(head);
@@ -395,10 +409,14 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
   return (
     <div
       ref={headRef}
-      className={`mh${still ? ' mh--still' : ''}${showRow ? ' has-row' : ''}${panelShown ? ' has-panel' : ''}${room ? ' mh--room' : ''}`}
+      className={`mh${still ? ' mh--still' : ''}${showRow ? ' has-row' : ''}${panelShown ? ' has-panel' : ''}${room ? ' mh--room' : ''}${stuck ? ' is-stuck' : ''}`}
       data-testid="menu-head"
     >
-      <div className="mh-banner" style={shownImage ? undefined : { background: override ? undefined : section?.tint }}>
+      {/* The tint sits behind the name once the banner folds, and is the banner itself without a photo. */}
+      <div
+        className={`mh-banner${shownImage ? '' : ' mh-banner--plain'}`}
+        style={{ '--mh-tint': override ? undefined : section?.tint } as CSSProperties}
+      >
         {layers.map((url, i) => (
           <div
             key={i}

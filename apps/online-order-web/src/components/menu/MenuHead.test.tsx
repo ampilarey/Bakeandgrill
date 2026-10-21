@@ -30,6 +30,35 @@ function page() {
 
 /** Owner, 2026-10-07: "keep the main category in the rail and sub category below the banner". */
 describe('MenuHead', () => {
+  /** Owner, 2026-10-22: the pinned strip showed only a slice of the 7:3 banner. */
+  it('is the whole banner at the top and folds to a strip, the section tint behind the name, once pinned', () => {
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect');
+    const at = (top: number) => ({ top, bottom: top + 100, left: 0, right: 300, width: 300, height: 100, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
+    rect.mockReturnValue(at(200));
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const ref = createRef<MenuHeadHandle>();
+    render(<>{page()}<MenuHead ref={ref} sections={sections} searchOpen={false} searchActive={false} onSearchToggle={() => {}} /></>);
+    const head = screen.getByTestId('menu-head');
+    const banner = head.querySelector('.mh-banner') as HTMLElement;
+
+    // Above its pinning point: not folded; the section's tint is ready behind the name.
+    act(() => ref.current?.goTo('sec-1', true));
+    expect(head).not.toHaveClass('is-stuck');
+    expect(banner).not.toHaveClass('mh-banner--plain');
+    expect(banner.style.getPropertyValue('--mh-tint')).toBe('red');
+
+    // At its pinning point: folded.
+    rect.mockReturnValue(at(0));
+    act(() => { fireEvent(window, new Event('resize')); });
+    expect(head).toHaveClass('is-stuck');
+
+    // A section without a photo wears its tint as the banner itself.
+    act(() => ref.current?.goTo('sec-2', true));
+    expect(banner).toHaveClass('mh-banner--plain');
+    expect(banner.style.getPropertyValue('--mh-tint')).toBe('blue');
+    rect.mockRestore();
+  });
+
   it('shows the section in view with its photo, count, Share and its sub-categories as buttons', () => {
     const ref = createRef<MenuHeadHandle>();
     const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
