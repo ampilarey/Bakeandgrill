@@ -70,6 +70,14 @@ export function OrderTypeSheet({ mode, types, tables, ourOrderId = null, itemNam
   const autoTable = autoTableId != null ? tables.find((t) => t.id === autoTableId) ?? null : null;
   // The picked number is offered even while this very ticket holds it.
   const numbers = autoTable && isStand(autoTable) && !stands.some((t) => t.id === autoTable.id) ? [autoTable, ...stands] : stands;
+  // A dine-in ticket is paid with a seat on it (owner, 2026-10-22: "still
+  // without selecting table also can complete the payment"): at Charge, "No
+  // table" is offered only when every table and number is in use.
+  const anyFree = numbers.length > 0 || floor.some((t) => {
+    const ours = ourOrderId != null && t.current_order_id === ourOrderId;
+    return ours || (!tableIsInUse(t) && t.status !== "reserved" && t.status !== "closed");
+  });
+  const withoutSeat = mode === "table" && anyFree ? null : (mode === "table" ? "Everything is in use: pay without" : "Not seated yet");
 
   const pickType = (type: PosOrderType) => {
     if (type === "Dine-in") {
@@ -194,11 +202,11 @@ export function OrderTypeSheet({ mode, types, tables, ourOrderId = null, itemNam
                 <button type="button" className="pos-type-sheet__primary" onClick={() => onChoose("Dine-in", autoTable.id, false)}>
                   Keep {autoTable.name}
                 </button>
-              ) : (
+              ) : withoutSeat ? (
                 <button type="button" className="pos-type-sheet__secondary" onClick={() => onChoose("Dine-in", null)}>
-                  {mode === "table" ? "No table" : "Not seated yet"}
+                  {withoutSeat}
                 </button>
-              )}
+              ) : null}
             </div>
           </>
         )}

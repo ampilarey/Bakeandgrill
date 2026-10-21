@@ -1101,8 +1101,14 @@ counts a stand's paid order for `PAID_HOLD_MINUTES` (90) or until it is complete
 kitchen screen or at the till (`syncOccupancy` after bump and collect), and
 `ReleaseTableOnOrderPaidListener` leaves a stand on its order; a real table still frees at
 payment as before. "Free number" is the floor `close` (it lets a paid, unserved order go).
-Nobody types a name for a dine-in ticket (`SaveTicketModal` names it from the customer and the
-seat; a takeaway keeps an optional name box for the call-out). The kitchen slip, the kitchen
+**A dine-in ticket is paid with a seat on it** (owner, 2026-10-22: "still without selecting
+table also can complete the payment"): the Charge ask offers no "No table" while any table or
+number is free, and `SettleOrderPaymentAction` refuses the payment of a dine-in order with no
+table while `NumberStands::anySeatFree()` says one is; only with everything in use does the
+ticket go without (the sheet's "Everything is in use: pay without", a notice on the till). A
+saved ticket may still wait without a table. Nobody types a name for a dine-in ticket
+(`SaveTicketModal` names it from the customer and the seat; a takeaway keeps an optional name
+box for the call-out). The kitchen slip, the kitchen
 screen, the printed receipt (`PrintJobService::seatLine()`, `table` in both payloads) and the
 receipt page and PDF ("Your number") carry it. In-use table tiles are dark grey with the
 ticket's name, and the sheet re-reads the tables as it opens. `NumberStandsTest`,

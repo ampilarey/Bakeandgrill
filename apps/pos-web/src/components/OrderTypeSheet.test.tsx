@@ -108,13 +108,26 @@ describe("OrderTypeSheet", () => {
     expect(onChoose).toHaveBeenCalledWith("Dine-in", null);
   });
 
-  it("table mode is the reminder: tables only, the ticket's own table pickable, No table a tap away", () => {
+  it("table mode at Charge insists on a seat while one is free: tables only, the ticket's own table pickable", () => {
     const onChoose = vi.fn();
     render(<OrderTypeSheet mode="table" types={["Dine-in", "Takeaway"]} tables={tables} ourOrderId={77} onChoose={onChoose} onCancel={() => {}} />);
     expect(screen.queryByRole("button", { name: /^Takeaway/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
     expect(button("T2, This ticket").disabled).toBe(false);
-    fireEvent.click(button("No table"));
+    expect(screen.queryByRole("button", { name: /No table|pay without/ })).toBeNull();
+    fireEvent.click(button("T1"));
+    expect(onChoose).toHaveBeenCalledWith("Dine-in", 1);
+  });
+
+  it("only with every table and number in use may a ticket be paid without a seat", () => {
+    const onChoose = vi.fn();
+    const allBusy = [
+      { id: 1, name: "T1", status: "occupied", current_order_id: 70 },
+      { id: 2, name: "T2", status: "occupied", current_order_id: 77 },
+      { id: 10, name: "No. 1", kind: "stand", status: "occupied", current_order_id: 90, is_active: true },
+    ] as unknown as RestaurantTable[];
+    render(<OrderTypeSheet mode="table" types={["Dine-in", "Takeaway"]} tables={allBusy} onChoose={onChoose} onCancel={() => {}} />);
+    fireEvent.click(button("Everything is in use: pay without"));
     expect(onChoose).toHaveBeenCalledWith("Dine-in", null);
   });
 

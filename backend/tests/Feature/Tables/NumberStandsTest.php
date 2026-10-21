@@ -279,4 +279,37 @@ class NumberStandsTest extends TestCase
         $this->assertSame('Ahmed', PrintJobService::seatLine($takeaway));
         $this->assertNull(PrintJobService::seatLine($takeaway, withTicketName: false));
     }
+
+    public function test_a_dine_in_ticket_with_no_seat_cannot_be_paid_while_a_table_or_number_is_free(): void
+    {
+        // No stands, one table: a ticket with no table is refused at payment.
+        $table = RestaurantTable::create(['name' => 'T1', 'capacity' => 4, 'status' => 'available', 'is_active' => true]);
+        $bare = (int) $this->tillOrder()->assertCreated()->json('order.id');
+        $this->assertNull(Order::findOrFail($bare)->restaurant_table_id);
+        $this->asStaff();
+        $this->withHeader('X-Device-Identifier', $this->device->identifier)
+            ->postJson("/api/orders/{$bare}/payments", ['payments' => [['method' => 'cash', 'amount' => (float) Order::findOrFail($bare)->total]], 'print_receipt' => false])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Choose a table or a number for this ticket before taking payment.');
+
+        // With the only table in use, the bare ticket may be paid.
+        $this->tillOrder(['restaurant_table_id' => $table->id])->assertCreated();
+        $this->payCash($bare);
+        $this->assertSame('paid', Order::findOrFail($bare)->status);
+
+        // A takeaway never needs a seat.
+        $takeaway = (int) $this->tillOrder(['type' => 'takeaway'])->assertCreated()->json('order.id');
+        $this->payCash($takeaway);
+        $this->assertSame('paid', Order::findOrFail($takeaway)->status);
+
+        // A free number counts as a free seat too: a ticket whose number was
+        // taken off it is refused until it has one again.
+        $this->setStands(1);
+        $numbered = (int) $this->tillOrder()->assertCreated()->json('order.id');
+        Order::whereKey($numbered)->update(['restaurant_table_id' => null]);
+        $this->asStaff();
+        $this->withHeader('X-Device-Identifier', $this->device->identifier)
+            ->postJson("/api/orders/{$numbered}/payments", ['payments' => [['method' => 'cash', 'amount' => (float) Order::findOrFail($numbered)->total]], 'print_receipt' => false])
+            ->assertUnprocessable();
+    }
 }

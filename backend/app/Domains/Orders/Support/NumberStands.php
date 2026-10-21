@@ -135,4 +135,30 @@ final class NumberStands
     {
         return (int) preg_replace('/\D+/', '', (string) $stand->name);
     }
+
+    /**
+     * Whether any table or number is free for a dine-in ticket. Payment of
+     * a dine-in ticket with no seat is refused while this is true (owner,
+     * 2026-10-22: "still without selecting table also can complete the
+     * payment"); with everything in use the ticket may go without.
+     */
+    public static function anySeatFree(?int $exceptOrderId = null): bool
+    {
+        $seats = RestaurantTable::query()
+            ->where('is_active', true)
+            ->whereNotIn('status', ['reserved', 'closed'])
+            ->get(['id', 'kind']);
+        foreach ($seats as $seat) {
+            $query = RestaurantTable::holdingOrdersQuery((string) ($seat->kind ?: RestaurantTable::KIND_TABLE))
+                ->where('restaurant_table_id', $seat->id);
+            if ($exceptOrderId !== null) {
+                $query->where('id', '!=', $exceptOrderId);
+            }
+            if (!$query->exists()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

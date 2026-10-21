@@ -703,6 +703,13 @@ export function PosShellLayout() {
                   setTableAsk(true);
                   return;
                 }
+                if (orderType === "Dine-in" && selectedTableId == null && tables.length > 0) {
+                  // Every table and number is in use: the one case a dine-in
+                  // ticket is paid without a seat, and the cashier is told.
+                  order.setStatusMessage("Every table and number is in use, so this ticket has none.");
+                  setShowCharge(true);
+                  return;
+                }
                 // Clear any stale error from a previous attempt so the
                 // overlay doesn't open with a red banner from a closed-
                 // but-not-resolved earlier flow (e.g. cashier hit

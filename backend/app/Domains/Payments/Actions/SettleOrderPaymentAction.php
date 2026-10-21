@@ -91,6 +91,15 @@ final class SettleOrderPaymentAction
             );
             $this->allocation->assertTenderPermissions($collector, $paymentRows, $this->permissions);
 
+            // A dine-in ticket is paid with a table or a number on it (owner,
+            // 2026-10-22: "still without selecting table also can complete
+            // the payment"); only with every seat in use may it go without.
+            if ((string) $order->type === 'dine_in'
+                && $order->restaurant_table_id === null
+                && \App\Domains\Orders\Support\NumberStands::anySeatFree((int) $order->id)) {
+                abort(422, 'Choose a table or a number for this ticket before taking payment.');
+            }
+
             if ($order->status === 'held') {
                 $this->statusTransitions->transition($order, 'pending', ['held_at' => null]);
                 $order->refresh();
