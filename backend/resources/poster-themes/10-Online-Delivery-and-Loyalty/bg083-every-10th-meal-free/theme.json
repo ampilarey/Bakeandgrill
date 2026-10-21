@@ -1,0 +1,766 @@
+{
+ "id": "BG-083",
+ "key": "bg083-every-10th-meal-free",
+ "title": "Every 10Th Meal Free",
+ "category": {
+  "key": "online",
+  "number": "10",
+  "name": "Online, Delivery & Loyalty"
+ },
+ "style": "colour",
+ "style_label": "Colourful",
+ "layout": "big_grid",
+ "palette": "lime",
+ "has_photo": false,
+ "size_to_variant": {
+  "A2": "large",
+  "A3": "large",
+  "A4": "small",
+  "A5": "small"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "large": {
+   "variant": "large",
+   "sizes": {
+    "A2": {
+     "trim_mm": [
+      420.0,
+      594.0
+     ],
+     "scale": 1.0,
+     "page_mm": [
+      426.0,
+      600.0
+     ],
+     "map": "page_mm = (u - 4.25) * 1.0 + 3 ; y: (u - 4.25) * 1.0 + 3 + 0.0"
+    },
+    "A3": {
+     "trim_mm": [
+      297.0,
+      420.0
+     ],
+     "scale": 0.70714,
+     "page_mm": [
+      303.0,
+      426.0
+     ],
+     "map": "page_mm = (u - 4.25) * 0.70714 + 3 ; y: (u - 4.25) * 0.70714 + 3 + -0.021"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 428.5,
+    "height": 602.5,
+    "bleed_units": 4.25,
+    "trim_box": [
+     4.25,
+     4.25,
+     420,
+     594
+    ],
+    "safe_inset_units": 12.25,
+    "min_text_units": 8.0,
+    "corner_keepout": {
+     "diameter_units": 20,
+     "centre_from_cut_units": 20
+    }
+   },
+   "files": {
+    "preview": "preview-large.jpg",
+    "backdrop_svg": "backdrop-large.svg",
+    "backdrop_draw_list": "backdrop-large.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 214.25,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 214.25,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Loyalty card",
+     "font": "fraunces-900-italic",
+     "colour": "#E5007D",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 194,
+     "top_y": 174.4,
+     "box": [
+      124.92,
+      174.4,
+      178.65,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 404.0,
+     "size_units": 28,
+     "pt_at": {
+      "A2": 79.4,
+      "A3": 56.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "EAT",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 122,
+     "baseline_y": 283,
+     "top_y": 229.72,
+     "box": [
+      80.07,
+      229.72,
+      83.85,
+      53.28
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 219.5,
+     "size_units": 62,
+     "pt_at": {
+      "A2": 175.7,
+      "A3": 124.3
+     }
+    },
+    {
+     "kind": "text",
+     "default": "9",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 304,
+     "baseline_y": 283,
+     "top_y": 229.72,
+     "box": [
+      288.68,
+      229.72,
+      30.64,
+      53.28
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t3",
+     "max_width_mm": 224.5,
+     "size_units": 62,
+     "pt_at": {
+      "A2": 175.7,
+      "A3": 124.3
+     }
+    },
+    {
+     "kind": "text",
+     "default": "TIMES",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 122,
+     "baseline_y": 387,
+     "top_y": 333.86,
+     "box": [
+      49.0,
+      333.86,
+      146.0,
+      53.14
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline",
+     "id": "t4",
+     "max_width_mm": 219.5,
+     "size_units": 61.83,
+     "pt_at": {
+      "A2": 175.3,
+      "A3": 123.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "THE",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 304,
+     "baseline_y": 387,
+     "top_y": 333.72,
+     "box": [
+      261.65,
+      333.72,
+      84.7,
+      53.28
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline",
+     "id": "t5",
+     "max_width_mm": 224.5,
+     "size_units": 62,
+     "pt_at": {
+      "A2": 175.7,
+      "A3": 124.3
+     }
+    },
+    {
+     "kind": "text",
+     "default": "10TH",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 122,
+     "baseline_y": 491,
+     "top_y": 437.72,
+     "box": [
+      65.91,
+      437.72,
+      112.17,
+      53.28
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline",
+     "id": "t6",
+     "max_width_mm": 219.5,
+     "size_units": 62,
+     "pt_at": {
+      "A2": 175.7,
+      "A3": 124.3
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 304,
+     "baseline_y": 491,
+     "top_y": 437.72,
+     "box": [
+      248.55,
+      437.72,
+      110.9,
+      53.28
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t7",
+     "max_width_mm": 224.5,
+     "size_units": 62,
+     "pt_at": {
+      "A2": 175.7,
+      "A3": 124.3
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ASK FOR YOUR CARD AT THE COUNTER",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 544.96,
+     "top_y": 536.76,
+     "box": [
+      91.55,
+      536.76,
+      245.41,
+      8.2
+     ],
+     "tracking_em": 0.1,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t8",
+     "max_width_mm": 404.0,
+     "size_units": 11,
+     "pt_at": {
+      "A2": 31.2,
+      "A3": 22.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 37.25,
+     "baseline_y": 588.25,
+     "top_y": 581.54,
+     "box": [
+      37.25,
+      581.54,
+      98.23,
+      6.71
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 391.25,
+     "baseline_y": 588.25,
+     "top_y": 581.54,
+     "box": [
+      325.87,
+      581.54,
+      65.38,
+      6.71
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t10",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 588.25,
+     "top_y": 582.29,
+     "box": [
+      166.22,
+      582.29,
+      96.06,
+      5.96
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t11",
+     "max_width_mm": 404.0,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    }
+   ],
+   "print_files": {
+    "A2": "BakeGrill_A2_BG-083_online_every-10th-meal-free.pdf",
+    "A3": "BakeGrill_A3_BG-083_online_every-10th-meal-free.pdf"
+   }
+  },
+  "small": {
+   "variant": "small",
+   "sizes": {
+    "A4": {
+     "trim_mm": [
+      210.0,
+      297.0
+     ],
+     "scale": 0.5,
+     "page_mm": [
+      216.0,
+      303.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.5 + 3 ; y: (u - 9.6) * 0.5 + 3 + 0.0"
+    },
+    "A5": {
+     "trim_mm": [
+      148.0,
+      210.0
+     ],
+     "scale": 0.35238,
+     "page_mm": [
+      154.0,
+      216.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.35238 + 3 ; y: (u - 9.6) * 0.35238 + 3 + 0.343"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 439.2,
+    "height": 613.2,
+    "bleed_units": 9.6,
+    "trim_box": [
+     9.6,
+     9.6,
+     420,
+     594
+    ],
+    "safe_inset_units": 23.8,
+    "min_text_units": 9.1,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-small.jpg",
+    "backdrop_svg": "backdrop-small.svg",
+    "backdrop_draw_list": "backdrop-small.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 219.6,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 219.6,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Loyalty card",
+     "font": "fraunces-900-italic",
+     "colour": "#E5007D",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 194,
+     "top_y": 174.4,
+     "box": [
+      130.27,
+      174.4,
+      178.65,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 391.6,
+     "size_units": 28,
+     "pt_at": {
+      "A4": 39.7,
+      "A5": 28.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "EAT",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 122,
+     "baseline_y": 283,
+     "top_y": 229.72,
+     "box": [
+      80.07,
+      229.72,
+      83.85,
+      53.28
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 196.4,
+     "size_units": 62,
+     "pt_at": {
+      "A4": 87.9,
+      "A5": 61.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "9",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 304,
+     "baseline_y": 283,
+     "top_y": 229.72,
+     "box": [
+      288.68,
+      229.72,
+      30.64,
+      53.28
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t3",
+     "max_width_mm": 222.8,
+     "size_units": 62,
+     "pt_at": {
+      "A4": 87.9,
+      "A5": 61.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "TIMES",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 122,
+     "baseline_y": 387,
+     "top_y": 333.86,
+     "box": [
+      49.0,
+      333.86,
+      146.0,
+      53.14
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline",
+     "id": "t4",
+     "max_width_mm": 196.4,
+     "size_units": 61.83,
+     "pt_at": {
+      "A4": 87.6,
+      "A5": 61.8
+     }
+    },
+    {
+     "kind": "text",
+     "default": "THE",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 304,
+     "baseline_y": 387,
+     "top_y": 333.72,
+     "box": [
+      261.65,
+      333.72,
+      84.7,
+      53.28
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline",
+     "id": "t5",
+     "max_width_mm": 222.8,
+     "size_units": 62,
+     "pt_at": {
+      "A4": 87.9,
+      "A5": 61.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "10TH",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 122,
+     "baseline_y": 491,
+     "top_y": 437.72,
+     "box": [
+      65.91,
+      437.72,
+      112.17,
+      53.28
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline",
+     "id": "t6",
+     "max_width_mm": 196.4,
+     "size_units": 62,
+     "pt_at": {
+      "A4": 87.9,
+      "A5": 61.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 304,
+     "baseline_y": 491,
+     "top_y": 437.72,
+     "box": [
+      248.55,
+      437.72,
+      110.9,
+      53.28
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t7",
+     "max_width_mm": 222.8,
+     "size_units": 62,
+     "pt_at": {
+      "A4": 87.9,
+      "A5": 61.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ASK FOR YOUR CARD AT THE COUNTER",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 544.96,
+     "top_y": 536.76,
+     "box": [
+      96.9,
+      536.76,
+      245.41,
+      8.2
+     ],
+     "tracking_em": 0.1,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t8",
+     "max_width_mm": 391.6,
+     "size_units": 11,
+     "pt_at": {
+      "A4": 15.6,
+      "A5": 11.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 25.8,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      25.8,
+      580.33,
+      125.52,
+      8.57
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 413.4,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      329.85,
+      580.33,
+      83.55,
+      8.57
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t10",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 588.9,
+     "top_y": 582.12,
+     "box": [
+      164.97,
+      582.12,
+      109.26,
+      6.78
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t11",
+     "max_width_mm": 391.6,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    }
+   ],
+   "print_files": {
+    "A4": "BakeGrill_A4_BG-083_online_every-10th-meal-free.pdf",
+    "A5": "BakeGrill_A5_BG-083_online_every-10th-meal-free.pdf"
+   }
+  }
+ }
+}

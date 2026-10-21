@@ -1,0 +1,718 @@
+{
+ "id": "BG-007",
+ "key": "bg007-weekend-mega-sale",
+ "title": "Weekend Mega Sale",
+ "category": {
+  "key": "disc",
+  "number": "01",
+  "name": "Discounts & Sales"
+ },
+ "style": "colour",
+ "style_label": "Colourful",
+ "layout": "original",
+ "palette": null,
+ "has_photo": false,
+ "size_to_variant": {
+  "A2": "large",
+  "A3": "large",
+  "A4": "small",
+  "A5": "small"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "large": {
+   "variant": "large",
+   "sizes": {
+    "A2": {
+     "trim_mm": [
+      420.0,
+      594.0
+     ],
+     "scale": 1.0,
+     "page_mm": [
+      426.0,
+      600.0
+     ],
+     "map": "page_mm = (u - 4.25) * 1.0 + 3 ; y: (u - 4.25) * 1.0 + 3 + 0.0"
+    },
+    "A3": {
+     "trim_mm": [
+      297.0,
+      420.0
+     ],
+     "scale": 0.70714,
+     "page_mm": [
+      303.0,
+      426.0
+     ],
+     "map": "page_mm = (u - 4.25) * 0.70714 + 3 ; y: (u - 4.25) * 0.70714 + 3 + -0.021"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 428.5,
+    "height": 602.5,
+    "bleed_units": 4.25,
+    "trim_box": [
+     4.25,
+     4.25,
+     420,
+     594
+    ],
+    "safe_inset_units": 12.25,
+    "min_text_units": 8.0,
+    "corner_keepout": {
+     "diameter_units": 20,
+     "centre_from_cut_units": 20
+    }
+   },
+   "files": {
+    "preview": "preview-large.jpg",
+    "backdrop_svg": "backdrop-large.svg",
+    "backdrop_draw_list": "backdrop-large.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 214.25,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 214.25,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Weekend Mega Sale",
+     "font": "fraunces-900-italic",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 172,
+     "top_y": 152.4,
+     "box": [
+      74.4,
+      152.4,
+      279.71,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 404.0,
+     "size_units": 28,
+     "pt_at": {
+      "A2": 79.4,
+      "A3": 56.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "UP TO",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 268,
+     "top_y": 256.08,
+     "box": [
+      177.59,
+      256.08,
+      73.33,
+      11.92
+     ],
+     "tracking_em": 0.4,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t2",
+     "max_width_mm": 404.0,
+     "size_units": 16,
+     "pt_at": {
+      "A2": 45.4,
+      "A3": 32.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "40%",
+     "font": "anton",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 170.25,
+     "baseline_y": 420,
+     "top_y": 310.0,
+     "box": [
+      39.38,
+      310.0,
+      261.75,
+      110.0
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#D92B1C",
+      "offset_mm": 5
+     },
+     "role_hint": "headline_or_offer",
+     "id": "t3",
+     "max_width_mm": 316.0,
+     "size_units": 128,
+     "pt_at": {
+      "A2": 362.8,
+      "A3": 256.6
+     }
+    },
+    {
+     "kind": "text",
+     "default": "OFF",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 364.25,
+     "baseline_y": 360,
+     "top_y": 320.47,
+     "box": [
+      331.95,
+      320.47,
+      64.59,
+      39.53
+     ],
+     "tracking_em": 0.06,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 104.0,
+     "size_units": 46,
+     "pt_at": {
+      "A2": 130.4,
+      "A3": 92.2
+     }
+    },
+    {
+     "kind": "text",
+     "default": "SELECTED",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 364.25,
+     "baseline_y": 384,
+     "top_y": 377.3,
+     "box": [
+      335.34,
+      377.3,
+      57.82,
+      6.71
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t5",
+     "max_width_mm": 104.0,
+     "size_units": 9,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ITEMS",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 364.25,
+     "baseline_y": 398,
+     "top_y": 391.3,
+     "box": [
+      347.21,
+      391.3,
+      34.08,
+      6.71
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t6",
+     "max_width_mm": 104.0,
+     "size_units": 9,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "SATURDAY & SUNDAY ONLY",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 552,
+     "top_y": 541.57,
+     "box": [
+      93.34,
+      541.57,
+      241.82,
+      10.43
+     ],
+     "tracking_em": 0.16,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t7",
+     "max_width_mm": 404.0,
+     "size_units": 14,
+     "pt_at": {
+      "A2": 39.7,
+      "A3": 28.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 37.25,
+     "baseline_y": 584.25,
+     "top_y": 577.54,
+     "box": [
+      37.25,
+      577.54,
+      98.23,
+      6.71
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 391.25,
+     "baseline_y": 584.25,
+     "top_y": 577.54,
+     "box": [
+      325.87,
+      577.54,
+      65.38,
+      6.71
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 584.25,
+     "top_y": 578.29,
+     "box": [
+      166.22,
+      578.29,
+      96.06,
+      5.96
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t10",
+     "max_width_mm": 404.0,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    }
+   ],
+   "print_files": {
+    "A2": "BakeGrill_A2_BG-007_disc_weekend-mega-sale.pdf",
+    "A3": "BakeGrill_A3_BG-007_disc_weekend-mega-sale.pdf"
+   }
+  },
+  "small": {
+   "variant": "small",
+   "sizes": {
+    "A4": {
+     "trim_mm": [
+      210.0,
+      297.0
+     ],
+     "scale": 0.5,
+     "page_mm": [
+      216.0,
+      303.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.5 + 3 ; y: (u - 9.6) * 0.5 + 3 + 0.0"
+    },
+    "A5": {
+     "trim_mm": [
+      148.0,
+      210.0
+     ],
+     "scale": 0.35238,
+     "page_mm": [
+      154.0,
+      216.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.35238 + 3 ; y: (u - 9.6) * 0.35238 + 3 + 0.343"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 439.2,
+    "height": 613.2,
+    "bleed_units": 9.6,
+    "trim_box": [
+     9.6,
+     9.6,
+     420,
+     594
+    ],
+    "safe_inset_units": 23.8,
+    "min_text_units": 9.1,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-small.jpg",
+    "backdrop_svg": "backdrop-small.svg",
+    "backdrop_draw_list": "backdrop-small.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 219.6,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 219.6,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Weekend Mega Sale",
+     "font": "fraunces-900-italic",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 172,
+     "top_y": 152.4,
+     "box": [
+      79.75,
+      152.4,
+      279.71,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 391.6,
+     "size_units": 28,
+     "pt_at": {
+      "A4": 39.7,
+      "A5": 28.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "UP TO",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 268,
+     "top_y": 256.08,
+     "box": [
+      182.94,
+      256.08,
+      73.33,
+      11.92
+     ],
+     "tracking_em": 0.4,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t2",
+     "max_width_mm": 391.6,
+     "size_units": 16,
+     "pt_at": {
+      "A4": 22.7,
+      "A5": 16.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "40%",
+     "font": "anton",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 175.6,
+     "baseline_y": 420,
+     "top_y": 310.0,
+     "box": [
+      44.72,
+      310.0,
+      261.75,
+      110.0
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#D92B1C",
+      "offset_mm": 5
+     },
+     "role_hint": "headline_or_offer",
+     "id": "t3",
+     "max_width_mm": 303.6,
+     "size_units": 128,
+     "pt_at": {
+      "A4": 181.4,
+      "A5": 127.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "OFF",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 369.6,
+     "baseline_y": 360,
+     "top_y": 320.47,
+     "box": [
+      337.3,
+      320.47,
+      64.59,
+      39.53
+     ],
+     "tracking_em": 0.06,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 91.6,
+     "size_units": 46,
+     "pt_at": {
+      "A4": 65.2,
+      "A5": 45.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "SELECTED",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 369.6,
+     "baseline_y": 384,
+     "top_y": 377.22,
+     "box": [
+      340.37,
+      377.22,
+      58.46,
+      6.78
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t5",
+     "max_width_mm": 91.6,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ITEMS",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 369.6,
+     "baseline_y": 398,
+     "top_y": 391.22,
+     "box": [
+      352.37,
+      391.22,
+      34.46,
+      6.78
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t6",
+     "max_width_mm": 91.6,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "SATURDAY & SUNDAY ONLY",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 552,
+     "top_y": 541.57,
+     "box": [
+      98.69,
+      541.57,
+      241.82,
+      10.43
+     ],
+     "tracking_em": 0.16,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t7",
+     "max_width_mm": 391.6,
+     "size_units": 14,
+     "pt_at": {
+      "A4": 19.8,
+      "A5": 14.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 25.8,
+     "baseline_y": 583.4,
+     "top_y": 574.83,
+     "box": [
+      25.8,
+      574.83,
+      125.52,
+      8.57
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 413.4,
+     "baseline_y": 583.4,
+     "top_y": 574.83,
+     "box": [
+      329.85,
+      574.83,
+      83.55,
+      8.57
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 583.4,
+     "top_y": 576.62,
+     "box": [
+      164.97,
+      576.62,
+      109.26,
+      6.78
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t10",
+     "max_width_mm": 391.6,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    }
+   ],
+   "print_files": {
+    "A4": "BakeGrill_A4_BG-007_disc_weekend-mega-sale.pdf",
+    "A5": "BakeGrill_A5_BG-007_disc_weekend-mega-sale.pdf"
+   }
+  }
+ }
+}

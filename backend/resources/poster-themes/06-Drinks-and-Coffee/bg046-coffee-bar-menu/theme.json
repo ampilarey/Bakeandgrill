@@ -1,0 +1,2184 @@
+{
+ "id": "BG-046",
+ "key": "bg046-coffee-bar-menu",
+ "title": "Coffee Bar Menu",
+ "category": {
+  "key": "drink",
+  "number": "06",
+  "name": "Drinks & Coffee"
+ },
+ "style": "photo",
+ "style_label": "With item photo",
+ "layout": "menu_trio",
+ "palette": "cyan",
+ "has_photo": true,
+ "size_to_variant": {
+  "A2": "large",
+  "A3": "large",
+  "A4": "small",
+  "A5": "small"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "large": {
+   "variant": "large",
+   "sizes": {
+    "A2": {
+     "trim_mm": [
+      420.0,
+      594.0
+     ],
+     "scale": 1.0,
+     "page_mm": [
+      426.0,
+      600.0
+     ],
+     "map": "page_mm = (u - 4.25) * 1.0 + 3 ; y: (u - 4.25) * 1.0 + 3 + 0.0"
+    },
+    "A3": {
+     "trim_mm": [
+      297.0,
+      420.0
+     ],
+     "scale": 0.70714,
+     "page_mm": [
+      303.0,
+      426.0
+     ],
+     "map": "page_mm = (u - 4.25) * 0.70714 + 3 ; y: (u - 4.25) * 0.70714 + 3 + -0.021"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 428.5,
+    "height": 602.5,
+    "bleed_units": 4.25,
+    "trim_box": [
+     4.25,
+     4.25,
+     420,
+     594
+    ],
+    "safe_inset_units": 12.25,
+    "min_text_units": 8.0,
+    "corner_keepout": {
+     "diameter_units": 20,
+     "centre_from_cut_units": 20
+    }
+   },
+   "files": {
+    "preview": "preview-large.jpg",
+    "backdrop_svg": "backdrop-large.svg",
+    "backdrop_draw_list": "backdrop-large.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 214.25,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 214.25,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M48 316 A34 34 0 1 0 116 316 A34 34 0 1 0 48 316 Z",
+     "box": [
+      48,
+      282,
+      68,
+      68
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      82.0,
+      316.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFC72C",
+     "min_px_for_150ppi": [
+      401,
+      401
+     ],
+     "preview_placeholder": "illustration:coffee",
+     "clip_ops": [
+      [
+       "M",
+       [
+        48.0,
+        316.0
+       ]
+      ],
+      [
+       "C",
+       [
+        48.0,
+        321.97,
+        49.57,
+        327.83,
+        52.55,
+        333.0
+       ]
+      ],
+      [
+       "C",
+       [
+        55.54,
+        338.17,
+        59.83,
+        342.46,
+        65.0,
+        345.44
+       ]
+      ],
+      [
+       "C",
+       [
+        70.17,
+        348.43,
+        76.03,
+        350.0,
+        82.0,
+        350.0
+       ]
+      ],
+      [
+       "C",
+       [
+        87.97,
+        350.0,
+        93.83,
+        348.43,
+        99.0,
+        345.44
+       ]
+      ],
+      [
+       "C",
+       [
+        104.17,
+        342.46,
+        108.46,
+        338.17,
+        111.44,
+        333.0
+       ]
+      ],
+      [
+       "C",
+       [
+        114.43,
+        327.83,
+        116.0,
+        321.97,
+        116.0,
+        316.0
+       ]
+      ],
+      [
+       "C",
+       [
+        116.0,
+        310.03,
+        114.43,
+        304.17,
+        111.44,
+        299.0
+       ]
+      ],
+      [
+       "C",
+       [
+        108.46,
+        293.83,
+        104.17,
+        289.54,
+        99.0,
+        286.56
+       ]
+      ],
+      [
+       "C",
+       [
+        93.83,
+        283.57,
+        87.97,
+        282.0,
+        82.0,
+        282.0
+       ]
+      ],
+      [
+       "C",
+       [
+        76.03,
+        282.0,
+        70.17,
+        283.57,
+        65.0,
+        286.56
+       ]
+      ],
+      [
+       "C",
+       [
+        59.83,
+        289.54,
+        55.54,
+        293.83,
+        52.55,
+        299.0
+       ]
+      ],
+      [
+       "C",
+       [
+        49.57,
+        304.17,
+        48.0,
+        310.03,
+        48.0,
+        316.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-large-p1.png"
+    },
+    {
+     "kind": "photo",
+     "id": "p2",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M48 402 A34 34 0 1 0 116 402 A34 34 0 1 0 48 402 Z",
+     "box": [
+      48,
+      368,
+      68,
+      68
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      82.0,
+      402.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFC72C",
+     "min_px_for_150ppi": [
+      401,
+      401
+     ],
+     "preview_placeholder": "illustration:iced",
+     "clip_ops": [
+      [
+       "M",
+       [
+        48.0,
+        402.0
+       ]
+      ],
+      [
+       "C",
+       [
+        48.0,
+        407.97,
+        49.57,
+        413.83,
+        52.55,
+        419.0
+       ]
+      ],
+      [
+       "C",
+       [
+        55.54,
+        424.17,
+        59.83,
+        428.46,
+        65.0,
+        431.44
+       ]
+      ],
+      [
+       "C",
+       [
+        70.17,
+        434.43,
+        76.03,
+        436.0,
+        82.0,
+        436.0
+       ]
+      ],
+      [
+       "C",
+       [
+        87.97,
+        436.0,
+        93.83,
+        434.43,
+        99.0,
+        431.44
+       ]
+      ],
+      [
+       "C",
+       [
+        104.17,
+        428.46,
+        108.46,
+        424.17,
+        111.44,
+        419.0
+       ]
+      ],
+      [
+       "C",
+       [
+        114.43,
+        413.83,
+        116.0,
+        407.97,
+        116.0,
+        402.0
+       ]
+      ],
+      [
+       "C",
+       [
+        116.0,
+        396.03,
+        114.43,
+        390.17,
+        111.44,
+        385.0
+       ]
+      ],
+      [
+       "C",
+       [
+        108.46,
+        379.83,
+        104.17,
+        375.54,
+        99.0,
+        372.56
+       ]
+      ],
+      [
+       "C",
+       [
+        93.83,
+        369.57,
+        87.97,
+        368.0,
+        82.0,
+        368.0
+       ]
+      ],
+      [
+       "C",
+       [
+        76.03,
+        368.0,
+        70.17,
+        369.57,
+        65.0,
+        372.56
+       ]
+      ],
+      [
+       "C",
+       [
+        59.83,
+        375.54,
+        55.54,
+        379.83,
+        52.55,
+        385.0
+       ]
+      ],
+      [
+       "C",
+       [
+        49.57,
+        390.17,
+        48.0,
+        396.03,
+        48.0,
+        402.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-large-p2.png"
+    },
+    {
+     "kind": "photo",
+     "id": "p3",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M48 488 A34 34 0 1 0 116 488 A34 34 0 1 0 48 488 Z",
+     "box": [
+      48,
+      454,
+      68,
+      68
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      82.0,
+      488.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFC72C",
+     "min_px_for_150ppi": [
+      401,
+      401
+     ],
+     "preview_placeholder": "illustration:shake",
+     "clip_ops": [
+      [
+       "M",
+       [
+        48.0,
+        488.0
+       ]
+      ],
+      [
+       "C",
+       [
+        48.0,
+        493.97,
+        49.57,
+        499.83,
+        52.55,
+        505.0
+       ]
+      ],
+      [
+       "C",
+       [
+        55.54,
+        510.17,
+        59.83,
+        514.46,
+        65.0,
+        517.45
+       ]
+      ],
+      [
+       "C",
+       [
+        70.17,
+        520.43,
+        76.03,
+        522.0,
+        82.0,
+        522.0
+       ]
+      ],
+      [
+       "C",
+       [
+        87.97,
+        522.0,
+        93.83,
+        520.43,
+        99.0,
+        517.45
+       ]
+      ],
+      [
+       "C",
+       [
+        104.17,
+        514.46,
+        108.46,
+        510.17,
+        111.44,
+        505.0
+       ]
+      ],
+      [
+       "C",
+       [
+        114.43,
+        499.83,
+        116.0,
+        493.97,
+        116.0,
+        488.0
+       ]
+      ],
+      [
+       "C",
+       [
+        116.0,
+        482.03,
+        114.43,
+        476.17,
+        111.44,
+        471.0
+       ]
+      ],
+      [
+       "C",
+       [
+        108.46,
+        465.83,
+        104.17,
+        461.54,
+        99.0,
+        458.56
+       ]
+      ],
+      [
+       "C",
+       [
+        93.83,
+        455.57,
+        87.97,
+        454.0,
+        82.0,
+        454.0
+       ]
+      ],
+      [
+       "C",
+       [
+        76.03,
+        454.0,
+        70.17,
+        455.57,
+        65.0,
+        458.56
+       ]
+      ],
+      [
+       "C",
+       [
+        59.83,
+        461.54,
+        55.54,
+        465.83,
+        52.55,
+        471.0
+       ]
+      ],
+      [
+       "C",
+       [
+        49.57,
+        476.17,
+        48.0,
+        482.03,
+        48.0,
+        488.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-large-p3.png"
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Our coffee bar",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 194,
+     "top_y": 174.4,
+     "box": [
+      112.88,
+      174.4,
+      202.75,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 404.0,
+     "size_units": 28,
+     "pt_at": {
+      "A2": 79.4,
+      "A3": 56.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "COFFEE & MORE",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 256,
+     "top_y": 204.47,
+     "box": [
+      29.25,
+      204.47,
+      370.0,
+      51.53
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#04395E",
+      "offset_mm": 2.4
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 404.0,
+     "size_units": 59.96,
+     "pt_at": {
+      "A2": 170.0,
+      "A3": 120.2
+     }
+    },
+    {
+     "kind": "text",
+     "default": "CAPPUCCINO",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "left",
+     "anchor_x": 128,
+     "baseline_y": 319,
+     "top_y": 297.52,
+     "box": [
+      128,
+      297.52,
+      120.17,
+      21.48
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 288.2,
+     "size_units": 25,
+     "pt_at": {
+      "A2": 70.9,
+      "A3": 50.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Double shot, silky milk",
+     "font": "jakarta-700",
+     "colour": "#0B7A75",
+     "align": "left",
+     "anchor_x": 129,
+     "baseline_y": 335,
+     "top_y": 327.92,
+     "box": [
+      129,
+      327.92,
+      102.31,
+      7.08
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 287.2,
+     "size_units": 9.5,
+     "pt_at": {
+      "A2": 26.9,
+      "A3": 19.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 348,
+     "baseline_y": 307,
+     "top_y": 301.04,
+     "box": [
+      337.24,
+      301.04,
+      21.53,
+      5.96
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t5",
+     "max_width_mm": 136.5,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "35",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 348,
+     "baseline_y": 329,
+     "top_y": 310.09,
+     "box": [
+      337.13,
+      310.09,
+      21.74,
+      18.91
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t6",
+     "max_width_mm": 136.5,
+     "size_units": 22,
+     "pt_at": {
+      "A2": 62.4,
+      "A3": 44.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ICED LATTE",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "left",
+     "anchor_x": 128,
+     "baseline_y": 405,
+     "top_y": 383.52,
+     "box": [
+      128,
+      383.52,
+      104.88,
+      21.48
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t7",
+     "max_width_mm": 288.2,
+     "size_units": 25,
+     "pt_at": {
+      "A2": 70.9,
+      "A3": 50.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Cold, creamy, strong",
+     "font": "jakarta-700",
+     "colour": "#0B7A75",
+     "align": "left",
+     "anchor_x": 129,
+     "baseline_y": 421,
+     "top_y": 413.92,
+     "box": [
+      129,
+      413.92,
+      97.87,
+      7.08
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t8",
+     "max_width_mm": 287.2,
+     "size_units": 9.5,
+     "pt_at": {
+      "A2": 26.9,
+      "A3": 19.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 348,
+     "baseline_y": 393,
+     "top_y": 387.04,
+     "box": [
+      337.24,
+      387.04,
+      21.53,
+      5.96
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t9",
+     "max_width_mm": 136.5,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "40",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 348,
+     "baseline_y": 415,
+     "top_y": 396.09,
+     "box": [
+      337.13,
+      396.09,
+      21.74,
+      18.91
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t10",
+     "max_width_mm": 136.5,
+     "size_units": 22,
+     "pt_at": {
+      "A2": 62.4,
+      "A3": 44.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MILKSHAKE",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "left",
+     "anchor_x": 128,
+     "baseline_y": 491,
+     "top_y": 469.52,
+     "box": [
+      128,
+      469.52,
+      110.3,
+      21.48
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t11",
+     "max_width_mm": 288.2,
+     "size_units": 25,
+     "pt_at": {
+      "A2": 70.9,
+      "A3": 50.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Strawberry or chocolate",
+     "font": "jakarta-700",
+     "colour": "#0B7A75",
+     "align": "left",
+     "anchor_x": 129,
+     "baseline_y": 507,
+     "top_y": 499.92,
+     "box": [
+      129,
+      499.92,
+      112.74,
+      7.08
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t12",
+     "max_width_mm": 287.2,
+     "size_units": 9.5,
+     "pt_at": {
+      "A2": 26.9,
+      "A3": 19.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 348,
+     "baseline_y": 479,
+     "top_y": 473.04,
+     "box": [
+      337.24,
+      473.04,
+      21.53,
+      5.96
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t13",
+     "max_width_mm": 136.5,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "45",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 348,
+     "baseline_y": 501,
+     "top_y": 482.09,
+     "box": [
+      337.13,
+      482.09,
+      21.74,
+      18.91
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t14",
+     "max_width_mm": 136.5,
+     "size_units": 22,
+     "pt_at": {
+      "A2": 62.4,
+      "A3": 44.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Ask for oat milk",
+     "font": "fraunces-700-italic",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 553,
+     "top_y": 543.2,
+     "box": [
+      160.63,
+      543.2,
+      107.25,
+      9.8
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t15",
+     "max_width_mm": 404.0,
+     "size_units": 14,
+     "pt_at": {
+      "A2": 39.7,
+      "A3": 28.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 37.25,
+     "baseline_y": 588.25,
+     "top_y": 581.54,
+     "box": [
+      37.25,
+      581.54,
+      98.23,
+      6.71
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t16",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 391.25,
+     "baseline_y": 588.25,
+     "top_y": 581.54,
+     "box": [
+      325.87,
+      581.54,
+      65.38,
+      6.71
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t17",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 588.25,
+     "top_y": 582.29,
+     "box": [
+      166.22,
+      582.29,
+      96.06,
+      5.96
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t18",
+     "max_width_mm": 404.0,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    }
+   ],
+   "print_files": {
+    "A2": "BakeGrill_A2_BG-046_drink_coffee-bar-menu.pdf",
+    "A3": "BakeGrill_A3_BG-046_drink_coffee-bar-menu.pdf"
+   }
+  },
+  "small": {
+   "variant": "small",
+   "sizes": {
+    "A4": {
+     "trim_mm": [
+      210.0,
+      297.0
+     ],
+     "scale": 0.5,
+     "page_mm": [
+      216.0,
+      303.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.5 + 3 ; y: (u - 9.6) * 0.5 + 3 + 0.0"
+    },
+    "A5": {
+     "trim_mm": [
+      148.0,
+      210.0
+     ],
+     "scale": 0.35238,
+     "page_mm": [
+      154.0,
+      216.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.35238 + 3 ; y: (u - 9.6) * 0.35238 + 3 + 0.343"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 439.2,
+    "height": 613.2,
+    "bleed_units": 9.6,
+    "trim_box": [
+     9.6,
+     9.6,
+     420,
+     594
+    ],
+    "safe_inset_units": 23.8,
+    "min_text_units": 9.1,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-small.jpg",
+    "backdrop_svg": "backdrop-small.svg",
+    "backdrop_draw_list": "backdrop-small.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 219.6,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 219.6,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M48 316 A34 34 0 1 0 116 316 A34 34 0 1 0 48 316 Z",
+     "box": [
+      48,
+      282,
+      68,
+      68
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      82.0,
+      316.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFC72C",
+     "min_px_for_150ppi": [
+      200,
+      200
+     ],
+     "preview_placeholder": "illustration:coffee",
+     "clip_ops": [
+      [
+       "M",
+       [
+        48.0,
+        316.0
+       ]
+      ],
+      [
+       "C",
+       [
+        48.0,
+        321.97,
+        49.57,
+        327.83,
+        52.55,
+        333.0
+       ]
+      ],
+      [
+       "C",
+       [
+        55.54,
+        338.17,
+        59.83,
+        342.46,
+        65.0,
+        345.44
+       ]
+      ],
+      [
+       "C",
+       [
+        70.17,
+        348.43,
+        76.03,
+        350.0,
+        82.0,
+        350.0
+       ]
+      ],
+      [
+       "C",
+       [
+        87.97,
+        350.0,
+        93.83,
+        348.43,
+        99.0,
+        345.44
+       ]
+      ],
+      [
+       "C",
+       [
+        104.17,
+        342.46,
+        108.46,
+        338.17,
+        111.44,
+        333.0
+       ]
+      ],
+      [
+       "C",
+       [
+        114.43,
+        327.83,
+        116.0,
+        321.97,
+        116.0,
+        316.0
+       ]
+      ],
+      [
+       "C",
+       [
+        116.0,
+        310.03,
+        114.43,
+        304.17,
+        111.44,
+        299.0
+       ]
+      ],
+      [
+       "C",
+       [
+        108.46,
+        293.83,
+        104.17,
+        289.54,
+        99.0,
+        286.56
+       ]
+      ],
+      [
+       "C",
+       [
+        93.83,
+        283.57,
+        87.97,
+        282.0,
+        82.0,
+        282.0
+       ]
+      ],
+      [
+       "C",
+       [
+        76.03,
+        282.0,
+        70.17,
+        283.57,
+        65.0,
+        286.56
+       ]
+      ],
+      [
+       "C",
+       [
+        59.83,
+        289.54,
+        55.54,
+        293.83,
+        52.55,
+        299.0
+       ]
+      ],
+      [
+       "C",
+       [
+        49.57,
+        304.17,
+        48.0,
+        310.03,
+        48.0,
+        316.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-small-p1.png"
+    },
+    {
+     "kind": "photo",
+     "id": "p2",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M48 402 A34 34 0 1 0 116 402 A34 34 0 1 0 48 402 Z",
+     "box": [
+      48,
+      368,
+      68,
+      68
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      82.0,
+      402.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFC72C",
+     "min_px_for_150ppi": [
+      200,
+      200
+     ],
+     "preview_placeholder": "illustration:iced",
+     "clip_ops": [
+      [
+       "M",
+       [
+        48.0,
+        402.0
+       ]
+      ],
+      [
+       "C",
+       [
+        48.0,
+        407.97,
+        49.57,
+        413.83,
+        52.55,
+        419.0
+       ]
+      ],
+      [
+       "C",
+       [
+        55.54,
+        424.17,
+        59.83,
+        428.46,
+        65.0,
+        431.44
+       ]
+      ],
+      [
+       "C",
+       [
+        70.17,
+        434.43,
+        76.03,
+        436.0,
+        82.0,
+        436.0
+       ]
+      ],
+      [
+       "C",
+       [
+        87.97,
+        436.0,
+        93.83,
+        434.43,
+        99.0,
+        431.44
+       ]
+      ],
+      [
+       "C",
+       [
+        104.17,
+        428.46,
+        108.46,
+        424.17,
+        111.44,
+        419.0
+       ]
+      ],
+      [
+       "C",
+       [
+        114.43,
+        413.83,
+        116.0,
+        407.97,
+        116.0,
+        402.0
+       ]
+      ],
+      [
+       "C",
+       [
+        116.0,
+        396.03,
+        114.43,
+        390.17,
+        111.44,
+        385.0
+       ]
+      ],
+      [
+       "C",
+       [
+        108.46,
+        379.83,
+        104.17,
+        375.54,
+        99.0,
+        372.56
+       ]
+      ],
+      [
+       "C",
+       [
+        93.83,
+        369.57,
+        87.97,
+        368.0,
+        82.0,
+        368.0
+       ]
+      ],
+      [
+       "C",
+       [
+        76.03,
+        368.0,
+        70.17,
+        369.57,
+        65.0,
+        372.56
+       ]
+      ],
+      [
+       "C",
+       [
+        59.83,
+        375.54,
+        55.54,
+        379.83,
+        52.55,
+        385.0
+       ]
+      ],
+      [
+       "C",
+       [
+        49.57,
+        390.17,
+        48.0,
+        396.03,
+        48.0,
+        402.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-small-p2.png"
+    },
+    {
+     "kind": "photo",
+     "id": "p3",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M48 488 A34 34 0 1 0 116 488 A34 34 0 1 0 48 488 Z",
+     "box": [
+      48,
+      454,
+      68,
+      68
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      82.0,
+      488.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFC72C",
+     "min_px_for_150ppi": [
+      200,
+      200
+     ],
+     "preview_placeholder": "illustration:shake",
+     "clip_ops": [
+      [
+       "M",
+       [
+        48.0,
+        488.0
+       ]
+      ],
+      [
+       "C",
+       [
+        48.0,
+        493.97,
+        49.57,
+        499.83,
+        52.55,
+        505.0
+       ]
+      ],
+      [
+       "C",
+       [
+        55.54,
+        510.17,
+        59.83,
+        514.46,
+        65.0,
+        517.45
+       ]
+      ],
+      [
+       "C",
+       [
+        70.17,
+        520.43,
+        76.03,
+        522.0,
+        82.0,
+        522.0
+       ]
+      ],
+      [
+       "C",
+       [
+        87.97,
+        522.0,
+        93.83,
+        520.43,
+        99.0,
+        517.45
+       ]
+      ],
+      [
+       "C",
+       [
+        104.17,
+        514.46,
+        108.46,
+        510.17,
+        111.44,
+        505.0
+       ]
+      ],
+      [
+       "C",
+       [
+        114.43,
+        499.83,
+        116.0,
+        493.97,
+        116.0,
+        488.0
+       ]
+      ],
+      [
+       "C",
+       [
+        116.0,
+        482.03,
+        114.43,
+        476.17,
+        111.44,
+        471.0
+       ]
+      ],
+      [
+       "C",
+       [
+        108.46,
+        465.83,
+        104.17,
+        461.54,
+        99.0,
+        458.56
+       ]
+      ],
+      [
+       "C",
+       [
+        93.83,
+        455.57,
+        87.97,
+        454.0,
+        82.0,
+        454.0
+       ]
+      ],
+      [
+       "C",
+       [
+        76.03,
+        454.0,
+        70.17,
+        455.57,
+        65.0,
+        458.56
+       ]
+      ],
+      [
+       "C",
+       [
+        59.83,
+        461.54,
+        55.54,
+        465.83,
+        52.55,
+        471.0
+       ]
+      ],
+      [
+       "C",
+       [
+        49.57,
+        476.17,
+        48.0,
+        482.03,
+        48.0,
+        488.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-small-p3.png"
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Our coffee bar",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 194,
+     "top_y": 174.4,
+     "box": [
+      118.23,
+      174.4,
+      202.75,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 391.6,
+     "size_units": 28,
+     "pt_at": {
+      "A4": 39.7,
+      "A5": 28.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "COFFEE & MORE",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 256,
+     "top_y": 204.47,
+     "box": [
+      34.6,
+      204.47,
+      370.0,
+      51.53
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#04395E",
+      "offset_mm": 2.4
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 391.6,
+     "size_units": 59.96,
+     "pt_at": {
+      "A4": 85.0,
+      "A5": 59.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "CAPPUCCINO",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "left",
+     "anchor_x": 128,
+     "baseline_y": 319,
+     "top_y": 297.52,
+     "box": [
+      128,
+      297.52,
+      120.17,
+      21.48
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 287.4,
+     "size_units": 25,
+     "pt_at": {
+      "A4": 35.4,
+      "A5": 25.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Double shot, silky milk",
+     "font": "jakarta-700",
+     "colour": "#0B7A75",
+     "align": "left",
+     "anchor_x": 129,
+     "baseline_y": 335,
+     "top_y": 327.92,
+     "box": [
+      129,
+      327.92,
+      102.31,
+      7.08
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 286.4,
+     "size_units": 9.5,
+     "pt_at": {
+      "A4": 13.5,
+      "A5": 9.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 348,
+     "baseline_y": 307,
+     "top_y": 300.22,
+     "box": [
+      335.76,
+      300.22,
+      24.49,
+      6.78
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t5",
+     "max_width_mm": 134.8,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "35",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 348,
+     "baseline_y": 329,
+     "top_y": 310.09,
+     "box": [
+      337.13,
+      310.09,
+      21.74,
+      18.91
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t6",
+     "max_width_mm": 134.8,
+     "size_units": 22,
+     "pt_at": {
+      "A4": 31.2,
+      "A5": 22.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ICED LATTE",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "left",
+     "anchor_x": 128,
+     "baseline_y": 405,
+     "top_y": 383.52,
+     "box": [
+      128,
+      383.52,
+      104.88,
+      21.48
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t7",
+     "max_width_mm": 287.4,
+     "size_units": 25,
+     "pt_at": {
+      "A4": 35.4,
+      "A5": 25.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Cold, creamy, strong",
+     "font": "jakarta-700",
+     "colour": "#0B7A75",
+     "align": "left",
+     "anchor_x": 129,
+     "baseline_y": 421,
+     "top_y": 413.92,
+     "box": [
+      129,
+      413.92,
+      97.87,
+      7.08
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t8",
+     "max_width_mm": 286.4,
+     "size_units": 9.5,
+     "pt_at": {
+      "A4": 13.5,
+      "A5": 9.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 348,
+     "baseline_y": 393,
+     "top_y": 386.22,
+     "box": [
+      335.76,
+      386.22,
+      24.49,
+      6.78
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t9",
+     "max_width_mm": 134.8,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "40",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 348,
+     "baseline_y": 415,
+     "top_y": 396.09,
+     "box": [
+      337.13,
+      396.09,
+      21.74,
+      18.91
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t10",
+     "max_width_mm": 134.8,
+     "size_units": 22,
+     "pt_at": {
+      "A4": 31.2,
+      "A5": 22.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MILKSHAKE",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "left",
+     "anchor_x": 128,
+     "baseline_y": 491,
+     "top_y": 469.52,
+     "box": [
+      128,
+      469.52,
+      110.3,
+      21.48
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t11",
+     "max_width_mm": 287.4,
+     "size_units": 25,
+     "pt_at": {
+      "A4": 35.4,
+      "A5": 25.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Strawberry or chocolate",
+     "font": "jakarta-700",
+     "colour": "#0B7A75",
+     "align": "left",
+     "anchor_x": 129,
+     "baseline_y": 507,
+     "top_y": 499.92,
+     "box": [
+      129,
+      499.92,
+      112.74,
+      7.08
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t12",
+     "max_width_mm": 286.4,
+     "size_units": 9.5,
+     "pt_at": {
+      "A4": 13.5,
+      "A5": 9.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 348,
+     "baseline_y": 479,
+     "top_y": 472.22,
+     "box": [
+      335.76,
+      472.22,
+      24.49,
+      6.78
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t13",
+     "max_width_mm": 134.8,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "45",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 348,
+     "baseline_y": 501,
+     "top_y": 482.09,
+     "box": [
+      337.13,
+      482.09,
+      21.74,
+      18.91
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t14",
+     "max_width_mm": 134.8,
+     "size_units": 22,
+     "pt_at": {
+      "A4": 31.2,
+      "A5": 22.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Ask for oat milk",
+     "font": "fraunces-700-italic",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 553,
+     "top_y": 543.2,
+     "box": [
+      165.98,
+      543.2,
+      107.25,
+      9.8
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t15",
+     "max_width_mm": 391.6,
+     "size_units": 14,
+     "pt_at": {
+      "A4": 19.8,
+      "A5": 14.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 25.8,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      25.8,
+      580.33,
+      125.52,
+      8.57
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t16",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 413.4,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      329.85,
+      580.33,
+      83.55,
+      8.57
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t17",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 588.9,
+     "top_y": 582.12,
+     "box": [
+      164.97,
+      582.12,
+      109.26,
+      6.78
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t18",
+     "max_width_mm": 391.6,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    }
+   ],
+   "print_files": {
+    "A4": "BakeGrill_A4_BG-046_drink_coffee-bar-menu.pdf",
+    "A5": "BakeGrill_A5_BG-046_drink_coffee-bar-menu.pdf"
+   }
+  }
+ }
+}

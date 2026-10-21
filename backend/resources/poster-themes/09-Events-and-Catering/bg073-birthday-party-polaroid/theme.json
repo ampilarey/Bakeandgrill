@@ -1,0 +1,788 @@
+{
+ "id": "BG-073",
+ "key": "bg073-birthday-party-polaroid",
+ "title": "Birthday Party Polaroid",
+ "category": {
+  "key": "event",
+  "number": "09",
+  "name": "Events & Catering"
+ },
+ "style": "photo",
+ "style_label": "With item photo",
+ "layout": "polaroid",
+ "palette": "sunset",
+ "has_photo": true,
+ "size_to_variant": {
+  "A2": "large",
+  "A3": "large",
+  "A4": "small",
+  "A5": "small"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "large": {
+   "variant": "large",
+   "sizes": {
+    "A2": {
+     "trim_mm": [
+      420.0,
+      594.0
+     ],
+     "scale": 1.0,
+     "page_mm": [
+      426.0,
+      600.0
+     ],
+     "map": "page_mm = (u - 4.25) * 1.0 + 3 ; y: (u - 4.25) * 1.0 + 3 + 0.0"
+    },
+    "A3": {
+     "trim_mm": [
+      297.0,
+      420.0
+     ],
+     "scale": 0.70714,
+     "page_mm": [
+      303.0,
+      426.0
+     ],
+     "map": "page_mm = (u - 4.25) * 0.70714 + 3 ; y: (u - 4.25) * 0.70714 + 3 + -0.021"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 428.5,
+    "height": 602.5,
+    "bleed_units": 4.25,
+    "trim_box": [
+     4.25,
+     4.25,
+     420,
+     594
+    ],
+    "safe_inset_units": 12.25,
+    "min_text_units": 8.0,
+    "corner_keepout": {
+     "diameter_units": 20,
+     "centre_from_cut_units": 20
+    }
+   },
+   "files": {
+    "preview": "preview-large.jpg",
+    "backdrop_svg": "backdrop-large.svg",
+    "backdrop_draw_list": "backdrop-large.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 214.25,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 214.25,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "rect",
+     "clip_path_d": "M106.25 290 H322.25 V474 H106.25 Z",
+     "box": [
+      106.25,
+      290,
+      216,
+      184
+     ],
+     "rotation_deg": -3.5,
+     "rotation_centre": [
+      214.25,
+      382.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFC72C",
+     "min_px_for_150ppi": [
+      1275,
+      1086
+     ],
+     "preview_placeholder": "illustration:gift",
+     "clip_ops": [
+      [
+       "M",
+       [
+        100.83,
+        296.76
+       ]
+      ],
+      [
+       "L",
+       [
+        316.43,
+        283.58
+       ]
+      ],
+      [
+       "L",
+       [
+        327.67,
+        467.24
+       ]
+      ],
+      [
+       "L",
+       [
+        112.07,
+        480.42
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-large-p1.png"
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Make it a party",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 194,
+     "top_y": 174.4,
+     "box": [
+      107.53,
+      174.4,
+      213.44,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 404.0,
+     "size_units": 28,
+     "pt_at": {
+      "A2": 79.4,
+      "A3": 56.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BIRTHDAY PARTIES",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 258,
+     "top_y": 214.23,
+     "box": [
+      29.25,
+      214.23,
+      370.0,
+      43.77
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 2.04
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 404.0,
+     "size_units": 50.93,
+     "pt_at": {
+      "A2": 144.4,
+      "A3": 102.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "cake, food & fun, sorted",
+     "font": "fraunces-700-italic",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 502,
+     "top_y": 490.8,
+     "box": [
+      123.69,
+      490.8,
+      181.13,
+      11.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 404.0,
+     "size_units": 16,
+     "pt_at": {
+      "A2": 45.4,
+      "A3": 32.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 358.5,
+     "baseline_y": 457.12,
+     "top_y": 451.16,
+     "box": [
+      346.37,
+      451.16,
+      24.26,
+      5.96
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t4",
+     "max_width_mm": 115.5,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "CAKE",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 358.5,
+     "baseline_y": 480.12,
+     "top_y": 458.38,
+     "box": [
+      335.18,
+      458.38,
+      46.63,
+      21.74
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t5",
+     "max_width_mm": 115.5,
+     "size_units": 25.3,
+     "pt_at": {
+      "A2": 71.7,
+      "A3": 50.7
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FOR PARTIES OF 15 OR MORE",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 548,
+     "top_y": 539.8,
+     "box": [
+      125.38,
+      539.8,
+      177.74,
+      8.2
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t6",
+     "max_width_mm": 404.0,
+     "size_units": 11,
+     "pt_at": {
+      "A2": 31.2,
+      "A3": 22.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 37.25,
+     "baseline_y": 588.25,
+     "top_y": 581.54,
+     "box": [
+      37.25,
+      581.54,
+      98.23,
+      6.71
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 391.25,
+     "baseline_y": 588.25,
+     "top_y": 581.54,
+     "box": [
+      325.87,
+      581.54,
+      65.38,
+      6.71
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 588.25,
+     "top_y": 582.29,
+     "box": [
+      166.22,
+      582.29,
+      96.06,
+      5.96
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 404.0,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    }
+   ],
+   "print_files": {
+    "A2": "BakeGrill_A2_BG-073_event_birthday-party-polaroid.pdf",
+    "A3": "BakeGrill_A3_BG-073_event_birthday-party-polaroid.pdf"
+   }
+  },
+  "small": {
+   "variant": "small",
+   "sizes": {
+    "A4": {
+     "trim_mm": [
+      210.0,
+      297.0
+     ],
+     "scale": 0.5,
+     "page_mm": [
+      216.0,
+      303.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.5 + 3 ; y: (u - 9.6) * 0.5 + 3 + 0.0"
+    },
+    "A5": {
+     "trim_mm": [
+      148.0,
+      210.0
+     ],
+     "scale": 0.35238,
+     "page_mm": [
+      154.0,
+      216.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.35238 + 3 ; y: (u - 9.6) * 0.35238 + 3 + 0.343"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 439.2,
+    "height": 613.2,
+    "bleed_units": 9.6,
+    "trim_box": [
+     9.6,
+     9.6,
+     420,
+     594
+    ],
+    "safe_inset_units": 23.8,
+    "min_text_units": 9.1,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-small.jpg",
+    "backdrop_svg": "backdrop-small.svg",
+    "backdrop_draw_list": "backdrop-small.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 219.6,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 219.6,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "rect",
+     "clip_path_d": "M111.6 290 H327.6 V474 H111.6 Z",
+     "box": [
+      111.6,
+      290,
+      216,
+      184
+     ],
+     "rotation_deg": -3.5,
+     "rotation_centre": [
+      219.6,
+      382.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFC72C",
+     "min_px_for_150ppi": [
+      637,
+      543
+     ],
+     "preview_placeholder": "illustration:gift",
+     "clip_ops": [
+      [
+       "M",
+       [
+        106.19,
+        296.76
+       ]
+      ],
+      [
+       "L",
+       [
+        321.78,
+        283.58
+       ]
+      ],
+      [
+       "L",
+       [
+        333.01,
+        467.24
+       ]
+      ],
+      [
+       "L",
+       [
+        117.42,
+        480.42
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-small-p1.png"
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Make it a party",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 194,
+     "top_y": 174.4,
+     "box": [
+      112.88,
+      174.4,
+      213.44,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 391.6,
+     "size_units": 28,
+     "pt_at": {
+      "A4": 39.7,
+      "A5": 28.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BIRTHDAY PARTIES",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 258,
+     "top_y": 214.23,
+     "box": [
+      34.6,
+      214.23,
+      370.0,
+      43.77
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 2.04
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 391.6,
+     "size_units": 50.93,
+     "pt_at": {
+      "A4": 72.2,
+      "A5": 50.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "cake, food & fun, sorted",
+     "font": "fraunces-700-italic",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 502,
+     "top_y": 490.8,
+     "box": [
+      129.04,
+      490.8,
+      181.13,
+      11.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 391.6,
+     "size_units": 16,
+     "pt_at": {
+      "A4": 22.7,
+      "A5": 16.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 369.2,
+     "baseline_y": 457.12,
+     "top_y": 450.34,
+     "box": [
+      355.4,
+      450.34,
+      27.59,
+      6.78
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t4",
+     "max_width_mm": 92.4,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "CAKE",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 369.2,
+     "baseline_y": 480.12,
+     "top_y": 458.38,
+     "box": [
+      345.88,
+      458.38,
+      46.63,
+      21.74
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t5",
+     "max_width_mm": 92.4,
+     "size_units": 25.3,
+     "pt_at": {
+      "A4": 35.9,
+      "A5": 25.3
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FOR PARTIES OF 15 OR MORE",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 548,
+     "top_y": 539.8,
+     "box": [
+      130.73,
+      539.8,
+      177.74,
+      8.2
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t6",
+     "max_width_mm": 391.6,
+     "size_units": 11,
+     "pt_at": {
+      "A4": 15.6,
+      "A5": 11.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 25.8,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      25.8,
+      580.33,
+      125.52,
+      8.57
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 413.4,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      329.85,
+      580.33,
+      83.55,
+      8.57
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 588.9,
+     "top_y": 582.12,
+     "box": [
+      164.97,
+      582.12,
+      109.26,
+      6.78
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 391.6,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    }
+   ],
+   "print_files": {
+    "A4": "BakeGrill_A4_BG-073_event_birthday-party-polaroid.pdf",
+    "A5": "BakeGrill_A5_BG-073_event_birthday-party-polaroid.pdf"
+   }
+  }
+ }
+}

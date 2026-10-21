@@ -1,0 +1,934 @@
+{
+ "id": "BG-102",
+ "key": "bg102-student-meal-stickers",
+ "title": "Student Meal Stickers",
+ "category": {
+  "key": "family",
+  "number": "12",
+  "name": "Kids, Family & Students"
+ },
+ "style": "colour",
+ "style_label": "Colourful",
+ "layout": "sticker_bomb",
+ "palette": "cyan",
+ "has_photo": false,
+ "size_to_variant": {
+  "A2": "large",
+  "A3": "large",
+  "A4": "small",
+  "A5": "small"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "large": {
+   "variant": "large",
+   "sizes": {
+    "A2": {
+     "trim_mm": [
+      420.0,
+      594.0
+     ],
+     "scale": 1.0,
+     "page_mm": [
+      426.0,
+      600.0
+     ],
+     "map": "page_mm = (u - 4.25) * 1.0 + 3 ; y: (u - 4.25) * 1.0 + 3 + 0.0"
+    },
+    "A3": {
+     "trim_mm": [
+      297.0,
+      420.0
+     ],
+     "scale": 0.70714,
+     "page_mm": [
+      303.0,
+      426.0
+     ],
+     "map": "page_mm = (u - 4.25) * 0.70714 + 3 ; y: (u - 4.25) * 0.70714 + 3 + -0.021"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 428.5,
+    "height": 602.5,
+    "bleed_units": 4.25,
+    "trim_box": [
+     4.25,
+     4.25,
+     420,
+     594
+    ],
+    "safe_inset_units": 12.25,
+    "min_text_units": 8.0,
+    "corner_keepout": {
+     "diameter_units": 20,
+     "centre_from_cut_units": 20
+    }
+   },
+   "files": {
+    "preview": "preview-large.jpg",
+    "backdrop_svg": "backdrop-large.svg",
+    "backdrop_draw_list": "backdrop-large.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 214.25,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 214.25,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Show your student ID",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 194,
+     "top_y": 174.4,
+     "box": [
+      60.66,
+      174.4,
+      307.17,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 404.0,
+     "size_units": 28,
+     "pt_at": {
+      "A2": 79.4,
+      "A3": 56.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "STUDENT MEAL",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 290,
+     "top_y": 235.59,
+     "box": [
+      29.25,
+      235.59,
+      370.0,
+      54.41
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#04395E",
+      "offset_mm": 2.53
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 404.0,
+     "size_units": 63.31,
+     "pt_at": {
+      "A2": 179.5,
+      "A3": 126.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ANY BURGER OR WRAP + FRIES + DRINK",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 318,
+     "top_y": 308.31,
+     "box": [
+      62.23,
+      308.31,
+      304.03,
+      9.69
+     ],
+     "tracking_em": 0.12,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 404.0,
+     "size_units": 13,
+     "pt_at": {
+      "A2": 36.9,
+      "A3": 26.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ONLY",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 98,
+     "baseline_y": 378.32,
+     "top_y": 371.23,
+     "box": [
+      81.63,
+      371.23,
+      32.74,
+      7.09
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t4",
+     "max_width_mm": 171.5,
+     "size_units": 9.52,
+     "pt_at": {
+      "A2": 27.0,
+      "A3": 19.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR 39",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 98,
+     "baseline_y": 406.32,
+     "top_y": 382.38,
+     "box": [
+      57.4,
+      382.38,
+      81.2,
+      23.94
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t5",
+     "max_width_mm": 171.5,
+     "size_units": 27.86,
+     "pt_at": {
+      "A2": 79.0,
+      "A3": 55.8
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE WIFI",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 226,
+     "baseline_y": 425.16,
+     "top_y": 403.07,
+     "box": [
+      181.05,
+      403.07,
+      89.9,
+      22.09
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t6",
+     "max_width_mm": 380.5,
+     "size_units": 25.71,
+     "pt_at": {
+      "A2": 72.9,
+      "A3": 51.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "STUDY",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 338,
+     "baseline_y": 375.44,
+     "top_y": 368.85,
+     "box": [
+      319.73,
+      368.85,
+      36.54,
+      6.59
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t7",
+     "max_width_mm": 156.5,
+     "size_units": 8.84,
+     "pt_at": {
+      "A2": 25.1,
+      "A3": 17.7
+     }
+    },
+    {
+     "kind": "text",
+     "default": "SPOT",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 338,
+     "baseline_y": 401.44,
+     "top_y": 376.86,
+     "box": [
+      312.04,
+      376.86,
+      51.92,
+      24.58
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t8",
+     "max_width_mm": 156.5,
+     "size_units": 28.6,
+     "pt_at": {
+      "A2": 81.1,
+      "A3": 57.3
+     }
+    },
+    {
+     "kind": "text",
+     "default": "OPEN",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 148,
+     "baseline_y": 486.0,
+     "top_y": 479.67,
+     "box": [
+      133.3,
+      479.67,
+      29.39,
+      6.33
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t9",
+     "max_width_mm": 271.5,
+     "size_units": 8.5,
+     "pt_at": {
+      "A2": 24.1,
+      "A3": 17.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "TILL LATE",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 148,
+     "baseline_y": 511.0,
+     "top_y": 492.35,
+     "box": [
+      111.75,
+      492.35,
+      72.5,
+      18.65
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t10",
+     "max_width_mm": 271.5,
+     "size_units": 21.7,
+     "pt_at": {
+      "A2": 61.5,
+      "A3": 43.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "EXAM FUEL",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 292,
+     "baseline_y": 513.36,
+     "top_y": 497.33,
+     "box": [
+      254.3,
+      497.33,
+      75.4,
+      16.03
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t11",
+     "max_width_mm": 248.5,
+     "size_units": 18.65,
+     "pt_at": {
+      "A2": 52.9,
+      "A3": 37.4
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 37.25,
+     "baseline_y": 588.25,
+     "top_y": 581.54,
+     "box": [
+      37.25,
+      581.54,
+      98.23,
+      6.71
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t12",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 391.25,
+     "baseline_y": 588.25,
+     "top_y": 581.54,
+     "box": [
+      325.87,
+      581.54,
+      65.38,
+      6.71
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t13",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 588.25,
+     "top_y": 582.29,
+     "box": [
+      166.22,
+      582.29,
+      96.06,
+      5.96
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t14",
+     "max_width_mm": 404.0,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    }
+   ],
+   "print_files": {
+    "A2": "BakeGrill_A2_BG-102_family_student-meal-stickers.pdf",
+    "A3": "BakeGrill_A3_BG-102_family_student-meal-stickers.pdf"
+   }
+  },
+  "small": {
+   "variant": "small",
+   "sizes": {
+    "A4": {
+     "trim_mm": [
+      210.0,
+      297.0
+     ],
+     "scale": 0.5,
+     "page_mm": [
+      216.0,
+      303.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.5 + 3 ; y: (u - 9.6) * 0.5 + 3 + 0.0"
+    },
+    "A5": {
+     "trim_mm": [
+      148.0,
+      210.0
+     ],
+     "scale": 0.35238,
+     "page_mm": [
+      154.0,
+      216.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.35238 + 3 ; y: (u - 9.6) * 0.35238 + 3 + 0.343"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 439.2,
+    "height": 613.2,
+    "bleed_units": 9.6,
+    "trim_box": [
+     9.6,
+     9.6,
+     420,
+     594
+    ],
+    "safe_inset_units": 23.8,
+    "min_text_units": 9.1,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-small.jpg",
+    "backdrop_svg": "backdrop-small.svg",
+    "backdrop_draw_list": "backdrop-small.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 219.6,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 219.6,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Show your student ID",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 194,
+     "top_y": 174.4,
+     "box": [
+      66.01,
+      174.4,
+      307.17,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 391.6,
+     "size_units": 28,
+     "pt_at": {
+      "A4": 39.7,
+      "A5": 28.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "STUDENT MEAL",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 290,
+     "top_y": 235.59,
+     "box": [
+      34.6,
+      235.59,
+      370.0,
+      54.41
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#04395E",
+      "offset_mm": 2.53
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 391.6,
+     "size_units": 63.31,
+     "pt_at": {
+      "A4": 89.7,
+      "A5": 63.2
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ANY BURGER OR WRAP + FRIES + DRINK",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 318,
+     "top_y": 308.31,
+     "box": [
+      67.58,
+      308.31,
+      304.03,
+      9.69
+     ],
+     "tracking_em": 0.12,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 391.6,
+     "size_units": 13,
+     "pt_at": {
+      "A4": 18.4,
+      "A5": 13.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ONLY",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 98,
+     "baseline_y": 378.32,
+     "top_y": 371.23,
+     "box": [
+      81.63,
+      371.23,
+      32.74,
+      7.09
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t4",
+     "max_width_mm": 148.4,
+     "size_units": 9.52,
+     "pt_at": {
+      "A4": 13.5,
+      "A5": 9.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR 39",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 98,
+     "baseline_y": 406.32,
+     "top_y": 382.38,
+     "box": [
+      57.4,
+      382.38,
+      81.2,
+      23.94
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t5",
+     "max_width_mm": 148.4,
+     "size_units": 27.86,
+     "pt_at": {
+      "A4": 39.5,
+      "A5": 27.8
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE WIFI",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 226,
+     "baseline_y": 425.16,
+     "top_y": 403.07,
+     "box": [
+      181.05,
+      403.07,
+      89.9,
+      22.09
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t6",
+     "max_width_mm": 378.8,
+     "size_units": 25.71,
+     "pt_at": {
+      "A4": 36.4,
+      "A5": 25.7
+     }
+    },
+    {
+     "kind": "text",
+     "default": "STUDY",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 338,
+     "baseline_y": 375.44,
+     "top_y": 368.66,
+     "box": [
+      319.19,
+      368.66,
+      37.62,
+      6.78
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t7",
+     "max_width_mm": 154.8,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "SPOT",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 338,
+     "baseline_y": 401.44,
+     "top_y": 376.86,
+     "box": [
+      312.04,
+      376.86,
+      51.92,
+      24.58
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t8",
+     "max_width_mm": 154.8,
+     "size_units": 28.6,
+     "pt_at": {
+      "A4": 40.5,
+      "A5": 28.6
+     }
+    },
+    {
+     "kind": "text",
+     "default": "OPEN",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 148,
+     "baseline_y": 486.0,
+     "top_y": 479.22,
+     "box": [
+      132.27,
+      479.22,
+      31.47,
+      6.78
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t9",
+     "max_width_mm": 248.4,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "TILL LATE",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 148,
+     "baseline_y": 511.0,
+     "top_y": 492.35,
+     "box": [
+      111.75,
+      492.35,
+      72.5,
+      18.65
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t10",
+     "max_width_mm": 248.4,
+     "size_units": 21.7,
+     "pt_at": {
+      "A4": 30.8,
+      "A5": 21.7
+     }
+    },
+    {
+     "kind": "text",
+     "default": "EXAM FUEL",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 292,
+     "baseline_y": 513.36,
+     "top_y": 497.33,
+     "box": [
+      254.3,
+      497.33,
+      75.4,
+      16.03
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t11",
+     "max_width_mm": 246.8,
+     "size_units": 18.65,
+     "pt_at": {
+      "A4": 26.4,
+      "A5": 18.6
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 25.8,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      25.8,
+      580.33,
+      125.52,
+      8.57
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t12",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 413.4,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      329.85,
+      580.33,
+      83.55,
+      8.57
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t13",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 588.9,
+     "top_y": 582.12,
+     "box": [
+      164.97,
+      582.12,
+      109.26,
+      6.78
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t14",
+     "max_width_mm": 391.6,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    }
+   ],
+   "print_files": {
+    "A4": "BakeGrill_A4_BG-102_family_student-meal-stickers.pdf",
+    "A5": "BakeGrill_A5_BG-102_family_student-meal-stickers.pdf"
+   }
+  }
+ }
+}

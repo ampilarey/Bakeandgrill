@@ -1,0 +1,1064 @@
+{
+ "id": "BG-045",
+ "key": "bg045-todays-special-tag",
+ "title": "Todays Special Tag",
+ "category": {
+  "key": "item",
+  "number": "05",
+  "name": "Item Spotlight & New"
+ },
+ "style": "photo",
+ "style_label": "With item photo",
+ "layout": "price_tag",
+ "palette": "night",
+ "has_photo": true,
+ "size_to_variant": {
+  "A2": "large",
+  "A3": "large",
+  "A4": "small",
+  "A5": "small"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "large": {
+   "variant": "large",
+   "sizes": {
+    "A2": {
+     "trim_mm": [
+      420.0,
+      594.0
+     ],
+     "scale": 1.0,
+     "page_mm": [
+      426.0,
+      600.0
+     ],
+     "map": "page_mm = (u - 4.25) * 1.0 + 3 ; y: (u - 4.25) * 1.0 + 3 + 0.0"
+    },
+    "A3": {
+     "trim_mm": [
+      297.0,
+      420.0
+     ],
+     "scale": 0.70714,
+     "page_mm": [
+      303.0,
+      426.0
+     ],
+     "map": "page_mm = (u - 4.25) * 0.70714 + 3 ; y: (u - 4.25) * 0.70714 + 3 + -0.021"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 428.5,
+    "height": 602.5,
+    "bleed_units": 4.25,
+    "trim_box": [
+     4.25,
+     4.25,
+     420,
+     594
+    ],
+    "safe_inset_units": 12.25,
+    "min_text_units": 8.0,
+    "corner_keepout": {
+     "diameter_units": 20,
+     "centre_from_cut_units": 20
+    }
+   },
+   "files": {
+    "preview": "preview-large.jpg",
+    "backdrop_svg": "backdrop-large.svg",
+    "backdrop_draw_list": "backdrop-large.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 214.25,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 214.25,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M46 470 A58 58 0 1 0 162 470 A58 58 0 1 0 46 470 Z",
+     "box": [
+      46,
+      412,
+      116,
+      116
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      104.0,
+      470.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#F7670B",
+     "min_px_for_150ppi": [
+      685,
+      685
+     ],
+     "preview_placeholder": "bajiya-photo",
+     "clip_ops": [
+      [
+       "M",
+       [
+        46.0,
+        470.0
+       ]
+      ],
+      [
+       "C",
+       [
+        46.0,
+        480.18,
+        48.68,
+        490.18,
+        53.77,
+        499.0
+       ]
+      ],
+      [
+       "C",
+       [
+        58.86,
+        507.82,
+        66.18,
+        515.14,
+        75.0,
+        520.23
+       ]
+      ],
+      [
+       "C",
+       [
+        83.82,
+        525.32,
+        93.82,
+        528.0,
+        104.0,
+        528.0
+       ]
+      ],
+      [
+       "C",
+       [
+        114.18,
+        528.0,
+        124.18,
+        525.32,
+        133.0,
+        520.23
+       ]
+      ],
+      [
+       "C",
+       [
+        141.82,
+        515.14,
+        149.14,
+        507.82,
+        154.23,
+        499.0
+       ]
+      ],
+      [
+       "C",
+       [
+        159.32,
+        490.18,
+        162.0,
+        480.18,
+        162.0,
+        470.0
+       ]
+      ],
+      [
+       "C",
+       [
+        162.0,
+        459.82,
+        159.32,
+        449.82,
+        154.23,
+        441.0
+       ]
+      ],
+      [
+       "C",
+       [
+        149.14,
+        432.18,
+        141.82,
+        424.86,
+        133.0,
+        419.77
+       ]
+      ],
+      [
+       "C",
+       [
+        124.18,
+        414.68,
+        114.18,
+        412.0,
+        104.0,
+        412.0
+       ]
+      ],
+      [
+       "C",
+       [
+        93.82,
+        412.0,
+        83.82,
+        414.68,
+        75.0,
+        419.77
+       ]
+      ],
+      [
+       "C",
+       [
+        66.18,
+        424.86,
+        58.86,
+        432.18,
+        53.77,
+        441.0
+       ]
+      ],
+      [
+       "C",
+       [
+        48.68,
+        449.82,
+        46.0,
+        459.82,
+        46.0,
+        470.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-large-p1.png"
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Today's special",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 194,
+     "top_y": 174.4,
+     "box": [
+      106.88,
+      174.4,
+      214.73,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 404.0,
+     "size_units": 28,
+     "pt_at": {
+      "A2": 79.4,
+      "A3": 56.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAJIYA PLATTER",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 254,
+     "top_y": 204.14,
+     "box": [
+      29.25,
+      204.14,
+      370.0,
+      49.86
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#D92B1C",
+      "offset_mm": 2.32
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 404.0,
+     "size_units": 58.02,
+     "pt_at": {
+      "A2": 164.5,
+      "A3": 116.3
+     }
+    },
+    {
+     "kind": "text",
+     "default": "12 PIECES",
+     "font": "jakarta-800",
+     "colour": "#D92B1C",
+     "align": "center",
+     "anchor_x": 284.25,
+     "baseline_y": 336,
+     "top_y": 327.81,
+     "box": [
+      245.08,
+      327.81,
+      78.34,
+      8.2
+     ],
+     "tracking_em": 0.3,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 264.0,
+     "size_units": 11,
+     "pt_at": {
+      "A2": 31.2,
+      "A3": 22.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR 60",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 284.25,
+     "baseline_y": 420,
+     "top_y": 355.13,
+     "box": [
+      170.48,
+      355.13,
+      227.55,
+      64.87
+     ],
+     "tracking_em": 0.02,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t4",
+     "max_width_mm": 264.0,
+     "size_units": 75.48,
+     "pt_at": {
+      "A2": 214.0,
+      "A3": 151.3
+     }
+    },
+    {
+     "kind": "text",
+     "default": "WITH CHILLI & LIME SAUCE",
+     "font": "jakarta-800",
+     "colour": "#0B7A75",
+     "align": "center",
+     "anchor_x": 284.25,
+     "baseline_y": 444,
+     "top_y": 436.55,
+     "box": [
+      204.92,
+      436.55,
+      158.67,
+      7.45
+     ],
+     "tracking_em": 0.12,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t5",
+     "max_width_mm": 264.0,
+     "size_units": 10,
+     "pt_at": {
+      "A2": 28.3,
+      "A3": 20.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Feeds 3 to 4",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 186,
+     "baseline_y": 500,
+     "top_y": 491.06,
+     "box": [
+      186,
+      491.06,
+      78.52,
+      8.94
+     ],
+     "tracking_em": 0.06,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t6",
+     "max_width_mm": 230.2,
+     "size_units": 12,
+     "pt_at": {
+      "A2": 34.0,
+      "A3": 24.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Great for sharing",
+     "font": "fraunces-700-italic",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 186,
+     "baseline_y": 520,
+     "top_y": 510.9,
+     "box": [
+      186,
+      510.9,
+      110.45,
+      9.1
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t7",
+     "max_width_mm": 230.2,
+     "size_units": 13,
+     "pt_at": {
+      "A2": 36.9,
+      "A3": 26.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 37.25,
+     "baseline_y": 588.25,
+     "top_y": 581.54,
+     "box": [
+      37.25,
+      581.54,
+      98.23,
+      6.71
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 391.25,
+     "baseline_y": 588.25,
+     "top_y": 581.54,
+     "box": [
+      325.87,
+      581.54,
+      65.38,
+      6.71
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 588.25,
+     "top_y": 582.29,
+     "box": [
+      166.22,
+      582.29,
+      96.06,
+      5.96
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t10",
+     "max_width_mm": 404.0,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    }
+   ],
+   "print_files": {
+    "A2": "BakeGrill_A2_BG-045_item_todays-special-tag.pdf",
+    "A3": "BakeGrill_A3_BG-045_item_todays-special-tag.pdf"
+   }
+  },
+  "small": {
+   "variant": "small",
+   "sizes": {
+    "A4": {
+     "trim_mm": [
+      210.0,
+      297.0
+     ],
+     "scale": 0.5,
+     "page_mm": [
+      216.0,
+      303.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.5 + 3 ; y: (u - 9.6) * 0.5 + 3 + 0.0"
+    },
+    "A5": {
+     "trim_mm": [
+      148.0,
+      210.0
+     ],
+     "scale": 0.35238,
+     "page_mm": [
+      154.0,
+      216.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.35238 + 3 ; y: (u - 9.6) * 0.35238 + 3 + 0.343"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 439.2,
+    "height": 613.2,
+    "bleed_units": 9.6,
+    "trim_box": [
+     9.6,
+     9.6,
+     420,
+     594
+    ],
+    "safe_inset_units": 23.8,
+    "min_text_units": 9.1,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-small.jpg",
+    "backdrop_svg": "backdrop-small.svg",
+    "backdrop_draw_list": "backdrop-small.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 219.6,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 219.6,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M46 470 A58 58 0 1 0 162 470 A58 58 0 1 0 46 470 Z",
+     "box": [
+      46,
+      412,
+      116,
+      116
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      104.0,
+      470.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#F7670B",
+     "min_px_for_150ppi": [
+      342,
+      342
+     ],
+     "preview_placeholder": "bajiya-photo",
+     "clip_ops": [
+      [
+       "M",
+       [
+        46.0,
+        470.0
+       ]
+      ],
+      [
+       "C",
+       [
+        46.0,
+        480.18,
+        48.68,
+        490.18,
+        53.77,
+        499.0
+       ]
+      ],
+      [
+       "C",
+       [
+        58.86,
+        507.82,
+        66.18,
+        515.14,
+        75.0,
+        520.23
+       ]
+      ],
+      [
+       "C",
+       [
+        83.82,
+        525.32,
+        93.82,
+        528.0,
+        104.0,
+        528.0
+       ]
+      ],
+      [
+       "C",
+       [
+        114.18,
+        528.0,
+        124.18,
+        525.32,
+        133.0,
+        520.23
+       ]
+      ],
+      [
+       "C",
+       [
+        141.82,
+        515.14,
+        149.14,
+        507.82,
+        154.23,
+        499.0
+       ]
+      ],
+      [
+       "C",
+       [
+        159.32,
+        490.18,
+        162.0,
+        480.18,
+        162.0,
+        470.0
+       ]
+      ],
+      [
+       "C",
+       [
+        162.0,
+        459.82,
+        159.32,
+        449.82,
+        154.23,
+        441.0
+       ]
+      ],
+      [
+       "C",
+       [
+        149.14,
+        432.18,
+        141.82,
+        424.86,
+        133.0,
+        419.77
+       ]
+      ],
+      [
+       "C",
+       [
+        124.18,
+        414.68,
+        114.18,
+        412.0,
+        104.0,
+        412.0
+       ]
+      ],
+      [
+       "C",
+       [
+        93.82,
+        412.0,
+        83.82,
+        414.68,
+        75.0,
+        419.77
+       ]
+      ],
+      [
+       "C",
+       [
+        66.18,
+        424.86,
+        58.86,
+        432.18,
+        53.77,
+        441.0
+       ]
+      ],
+      [
+       "C",
+       [
+        48.68,
+        449.82,
+        46.0,
+        459.82,
+        46.0,
+        470.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-small-p1.png"
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Today's special",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 194,
+     "top_y": 174.4,
+     "box": [
+      112.23,
+      174.4,
+      214.73,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 391.6,
+     "size_units": 28,
+     "pt_at": {
+      "A4": 39.7,
+      "A5": 28.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAJIYA PLATTER",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 254,
+     "top_y": 204.14,
+     "box": [
+      34.6,
+      204.14,
+      370.0,
+      49.86
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#D92B1C",
+      "offset_mm": 2.32
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 391.6,
+     "size_units": 58.02,
+     "pt_at": {
+      "A4": 82.2,
+      "A5": 58.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "12 PIECES",
+     "font": "jakarta-800",
+     "colour": "#D92B1C",
+     "align": "center",
+     "anchor_x": 289.6,
+     "baseline_y": 336,
+     "top_y": 327.81,
+     "box": [
+      250.43,
+      327.81,
+      78.34,
+      8.2
+     ],
+     "tracking_em": 0.3,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 251.6,
+     "size_units": 11,
+     "pt_at": {
+      "A4": 15.6,
+      "A5": 11.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR 60",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 289.6,
+     "baseline_y": 420,
+     "top_y": 355.13,
+     "box": [
+      175.83,
+      355.13,
+      227.55,
+      64.87
+     ],
+     "tracking_em": 0.02,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t4",
+     "max_width_mm": 251.6,
+     "size_units": 75.48,
+     "pt_at": {
+      "A4": 107.0,
+      "A5": 75.4
+     }
+    },
+    {
+     "kind": "text",
+     "default": "WITH CHILLI & LIME SAUCE",
+     "font": "jakarta-800",
+     "colour": "#0B7A75",
+     "align": "center",
+     "anchor_x": 289.6,
+     "baseline_y": 444,
+     "top_y": 436.55,
+     "box": [
+      210.27,
+      436.55,
+      158.67,
+      7.45
+     ],
+     "tracking_em": 0.12,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t5",
+     "max_width_mm": 251.6,
+     "size_units": 10,
+     "pt_at": {
+      "A4": 14.2,
+      "A5": 10.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Feeds 3 to 4",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 186,
+     "baseline_y": 500,
+     "top_y": 491.06,
+     "box": [
+      186,
+      491.06,
+      78.52,
+      8.94
+     ],
+     "tracking_em": 0.06,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t6",
+     "max_width_mm": 229.4,
+     "size_units": 12,
+     "pt_at": {
+      "A4": 17.0,
+      "A5": 12.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Great for sharing",
+     "font": "fraunces-700-italic",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 186,
+     "baseline_y": 520,
+     "top_y": 510.9,
+     "box": [
+      186,
+      510.9,
+      110.45,
+      9.1
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t7",
+     "max_width_mm": 229.4,
+     "size_units": 13,
+     "pt_at": {
+      "A4": 18.4,
+      "A5": 13.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 25.8,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      25.8,
+      580.33,
+      125.52,
+      8.57
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 413.4,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      329.85,
+      580.33,
+      83.55,
+      8.57
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 588.9,
+     "top_y": 582.12,
+     "box": [
+      164.97,
+      582.12,
+      109.26,
+      6.78
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t10",
+     "max_width_mm": 391.6,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    }
+   ],
+   "print_files": {
+    "A4": "BakeGrill_A4_BG-045_item_todays-special-tag.pdf",
+    "A5": "BakeGrill_A5_BG-045_item_todays-special-tag.pdf"
+   }
+  }
+ }
+}

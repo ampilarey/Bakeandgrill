@@ -1,0 +1,798 @@
+{
+ "id": "BG-044",
+ "key": "bg044-signature-burger-arch",
+ "title": "Signature Burger Arch",
+ "category": {
+  "key": "item",
+  "number": "05",
+  "name": "Item Spotlight & New"
+ },
+ "style": "photo",
+ "style_label": "With item photo",
+ "layout": "arch",
+ "palette": "berry",
+ "has_photo": true,
+ "size_to_variant": {
+  "A2": "large",
+  "A3": "large",
+  "A4": "small",
+  "A5": "small"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "large": {
+   "variant": "large",
+   "sizes": {
+    "A2": {
+     "trim_mm": [
+      420.0,
+      594.0
+     ],
+     "scale": 1.0,
+     "page_mm": [
+      426.0,
+      600.0
+     ],
+     "map": "page_mm = (u - 4.25) * 1.0 + 3 ; y: (u - 4.25) * 1.0 + 3 + 0.0"
+    },
+    "A3": {
+     "trim_mm": [
+      297.0,
+      420.0
+     ],
+     "scale": 0.70714,
+     "page_mm": [
+      303.0,
+      426.0
+     ],
+     "map": "page_mm = (u - 4.25) * 0.70714 + 3 ; y: (u - 4.25) * 0.70714 + 3 + -0.021"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 428.5,
+    "height": 602.5,
+    "bleed_units": 4.25,
+    "trim_box": [
+     4.25,
+     4.25,
+     420,
+     594
+    ],
+    "safe_inset_units": 12.25,
+    "min_text_units": 8.0,
+    "corner_keepout": {
+     "diameter_units": 20,
+     "centre_from_cut_units": 20
+    }
+   },
+   "files": {
+    "preview": "preview-large.jpg",
+    "backdrop_svg": "backdrop-large.svg",
+    "backdrop_draw_list": "backdrop-large.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 214.25,
+    "top_y": 63.24,
+    "height_mm": 92,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 214.25,
+     "cy": 112.0,
+     "r": 55.2,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "arch",
+     "clip_path_d": "M88 412 V275.0 A125.0 125.0 0 0 1 338 275.0 V412 Z",
+     "box": [
+      88,
+      150,
+      250,
+      262
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      213.0,
+      281.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFF3DC",
+     "min_px_for_150ppi": [
+      1476,
+      1547
+     ],
+     "preview_placeholder": "illustration:burger",
+     "clip_ops": [
+      [
+       "M",
+       [
+        88.0,
+        412.0
+       ]
+      ],
+      [
+       "L",
+       [
+        88.0,
+        275.0
+       ]
+      ],
+      [
+       "C",
+       [
+        88.0,
+        253.06,
+        93.78,
+        231.5,
+        104.75,
+        212.5
+       ]
+      ],
+      [
+       "C",
+       [
+        115.72,
+        193.5,
+        131.5,
+        177.72,
+        150.5,
+        166.75
+       ]
+      ],
+      [
+       "C",
+       [
+        169.5,
+        155.78,
+        191.06,
+        150.0,
+        213.0,
+        150.0
+       ]
+      ],
+      [
+       "C",
+       [
+        234.94,
+        150.0,
+        256.5,
+        155.78,
+        275.5,
+        166.75
+       ]
+      ],
+      [
+       "C",
+       [
+        294.5,
+        177.72,
+        310.28,
+        193.5,
+        321.25,
+        212.5
+       ]
+      ],
+      [
+       "C",
+       [
+        332.22,
+        231.5,
+        338.0,
+        253.06,
+        338.0,
+        275.0
+       ]
+      ],
+      [
+       "L",
+       [
+        338.0,
+        412.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-large-p1.png"
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "MVR 89",
+     "font": "anton",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 424.46,
+     "top_y": 405.55,
+     "box": [
+      177.79,
+      405.55,
+      72.92,
+      18.91
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t1",
+     "max_width_mm": 404.0,
+     "size_units": 22,
+     "pt_at": {
+      "A2": 62.4,
+      "A3": 44.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Try it today",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 472,
+     "top_y": 452.4,
+     "box": [
+      131.85,
+      452.4,
+      164.81,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t2",
+     "max_width_mm": 404.0,
+     "size_units": 28,
+     "pt_at": {
+      "A2": 79.4,
+      "A3": 56.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "SIGNATURE BURGER",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 524,
+     "top_y": 481.88,
+     "box": [
+      29.25,
+      481.88,
+      370.0,
+      42.12
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#9E0F57",
+      "offset_mm": 1.96
+     },
+     "role_hint": "headline",
+     "id": "t3",
+     "max_width_mm": 404.0,
+     "size_units": 49.01,
+     "pt_at": {
+      "A2": 138.9,
+      "A3": 98.2
+     }
+    },
+    {
+     "kind": "text",
+     "default": "DOUBLE PATTY  ·  CHEESE  ·  HOUSE SAUCE",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 550,
+     "top_y": 542.18,
+     "box": [
+      84.62,
+      542.18,
+      259.27,
+      7.82
+     ],
+     "tracking_em": 0.1,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 404.0,
+     "size_units": 10.5,
+     "pt_at": {
+      "A2": 29.8,
+      "A3": 21.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 37.25,
+     "baseline_y": 588.25,
+     "top_y": 581.54,
+     "box": [
+      37.25,
+      581.54,
+      98.23,
+      6.71
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t5",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 391.25,
+     "baseline_y": 588.25,
+     "top_y": 581.54,
+     "box": [
+      325.87,
+      581.54,
+      65.38,
+      6.71
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t6",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 588.25,
+     "top_y": 582.29,
+     "box": [
+      166.22,
+      582.29,
+      96.06,
+      5.96
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 404.0,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    }
+   ],
+   "print_files": {
+    "A2": "BakeGrill_A2_BG-044_item_signature-burger-arch.pdf",
+    "A3": "BakeGrill_A3_BG-044_item_signature-burger-arch.pdf"
+   }
+  },
+  "small": {
+   "variant": "small",
+   "sizes": {
+    "A4": {
+     "trim_mm": [
+      210.0,
+      297.0
+     ],
+     "scale": 0.5,
+     "page_mm": [
+      216.0,
+      303.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.5 + 3 ; y: (u - 9.6) * 0.5 + 3 + 0.0"
+    },
+    "A5": {
+     "trim_mm": [
+      148.0,
+      210.0
+     ],
+     "scale": 0.35238,
+     "page_mm": [
+      154.0,
+      216.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.35238 + 3 ; y: (u - 9.6) * 0.35238 + 3 + 0.343"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 439.2,
+    "height": 613.2,
+    "bleed_units": 9.6,
+    "trim_box": [
+     9.6,
+     9.6,
+     420,
+     594
+    ],
+    "safe_inset_units": 23.8,
+    "min_text_units": 9.1,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-small.jpg",
+    "backdrop_svg": "backdrop-small.svg",
+    "backdrop_draw_list": "backdrop-small.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 219.6,
+    "top_y": 63.24,
+    "height_mm": 92,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 219.6,
+     "cy": 112.0,
+     "r": 55.2,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "arch",
+     "clip_path_d": "M88 412 V275.0 A125.0 125.0 0 0 1 338 275.0 V412 Z",
+     "box": [
+      88,
+      150,
+      250,
+      262
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      213.0,
+      281.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFF3DC",
+     "min_px_for_150ppi": [
+      738,
+      773
+     ],
+     "preview_placeholder": "illustration:burger",
+     "clip_ops": [
+      [
+       "M",
+       [
+        88.0,
+        412.0
+       ]
+      ],
+      [
+       "L",
+       [
+        88.0,
+        275.0
+       ]
+      ],
+      [
+       "C",
+       [
+        88.0,
+        253.06,
+        93.78,
+        231.5,
+        104.75,
+        212.5
+       ]
+      ],
+      [
+       "C",
+       [
+        115.72,
+        193.5,
+        131.5,
+        177.72,
+        150.5,
+        166.75
+       ]
+      ],
+      [
+       "C",
+       [
+        169.5,
+        155.78,
+        191.06,
+        150.0,
+        213.0,
+        150.0
+       ]
+      ],
+      [
+       "C",
+       [
+        234.94,
+        150.0,
+        256.5,
+        155.78,
+        275.5,
+        166.75
+       ]
+      ],
+      [
+       "C",
+       [
+        294.5,
+        177.72,
+        310.28,
+        193.5,
+        321.25,
+        212.5
+       ]
+      ],
+      [
+       "C",
+       [
+        332.22,
+        231.5,
+        338.0,
+        253.06,
+        338.0,
+        275.0
+       ]
+      ],
+      [
+       "L",
+       [
+        338.0,
+        412.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-small-p1.png"
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "MVR 89",
+     "font": "anton",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 424.46,
+     "top_y": 405.55,
+     "box": [
+      183.14,
+      405.55,
+      72.92,
+      18.91
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t1",
+     "max_width_mm": 391.6,
+     "size_units": 22,
+     "pt_at": {
+      "A4": 31.2,
+      "A5": 22.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Try it today",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 472,
+     "top_y": 452.4,
+     "box": [
+      137.2,
+      452.4,
+      164.81,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t2",
+     "max_width_mm": 391.6,
+     "size_units": 28,
+     "pt_at": {
+      "A4": 39.7,
+      "A5": 28.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "SIGNATURE BURGER",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 524,
+     "top_y": 481.88,
+     "box": [
+      34.6,
+      481.88,
+      370.0,
+      42.12
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#9E0F57",
+      "offset_mm": 1.96
+     },
+     "role_hint": "headline",
+     "id": "t3",
+     "max_width_mm": 391.6,
+     "size_units": 49.01,
+     "pt_at": {
+      "A4": 69.5,
+      "A5": 49.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "DOUBLE PATTY  ·  CHEESE  ·  HOUSE SAUCE",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 550,
+     "top_y": 542.18,
+     "box": [
+      89.97,
+      542.18,
+      259.27,
+      7.82
+     ],
+     "tracking_em": 0.1,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 391.6,
+     "size_units": 10.5,
+     "pt_at": {
+      "A4": 14.9,
+      "A5": 10.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 25.8,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      25.8,
+      580.33,
+      125.52,
+      8.57
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t5",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 413.4,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      329.85,
+      580.33,
+      83.55,
+      8.57
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t6",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 588.9,
+     "top_y": 582.12,
+     "box": [
+      164.97,
+      582.12,
+      109.26,
+      6.78
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 391.6,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    }
+   ],
+   "print_files": {
+    "A4": "BakeGrill_A4_BG-044_item_signature-burger-arch.pdf",
+    "A5": "BakeGrill_A5_BG-044_item_signature-burger-arch.pdf"
+   }
+  }
+ }
+}

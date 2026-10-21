@@ -1,0 +1,648 @@
+{
+ "id": "BG-029",
+ "key": "bg029-coffee-buy1get1-classic",
+ "title": "Coffee Buy1Get1",
+ "category": {
+  "key": "free",
+  "number": "03",
+  "name": "Buy 1 Get 1 & Freebies"
+ },
+ "style": "classic",
+ "style_label": "Classic brand colours",
+ "layout": "original",
+ "palette": null,
+ "has_photo": false,
+ "size_to_variant": {
+  "A2": "large",
+  "A3": "large",
+  "A4": "small",
+  "A5": "small"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "large": {
+   "variant": "large",
+   "sizes": {
+    "A2": {
+     "trim_mm": [
+      420.0,
+      594.0
+     ],
+     "scale": 1.0,
+     "page_mm": [
+      426.0,
+      600.0
+     ],
+     "map": "page_mm = (u - 4.25) * 1.0 + 3 ; y: (u - 4.25) * 1.0 + 3 + 0.0"
+    },
+    "A3": {
+     "trim_mm": [
+      297.0,
+      420.0
+     ],
+     "scale": 0.70714,
+     "page_mm": [
+      303.0,
+      426.0
+     ],
+     "map": "page_mm = (u - 4.25) * 0.70714 + 3 ; y: (u - 4.25) * 0.70714 + 3 + -0.021"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 428.5,
+    "height": 602.5,
+    "bleed_units": 4.25,
+    "trim_box": [
+     4.25,
+     4.25,
+     420,
+     594
+    ],
+    "safe_inset_units": 12.25,
+    "min_text_units": 8.0,
+    "corner_keepout": {
+     "diameter_units": 20,
+     "centre_from_cut_units": 20
+    }
+   },
+   "files": {
+    "preview": "preview-large.jpg",
+    "backdrop_svg": "backdrop-large.svg",
+    "backdrop_draw_list": "backdrop-large.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 214.25,
+    "top_y": 42,
+    "height_mm": 96,
+    "cream_badge": false,
+    "badge_circle": null,
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Coffee Hour",
+     "font": "fraunces-900-italic",
+     "colour": "#B74B0C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 182,
+     "top_y": 162.4,
+     "box": [
+      129.45,
+      162.4,
+      169.6,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 404.0,
+     "size_units": 28,
+     "pt_at": {
+      "A2": 79.4,
+      "A3": 56.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BUY 1",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 180.25,
+     "baseline_y": 316,
+     "top_y": 226.62,
+     "box": [
+      71.91,
+      226.62,
+      216.67,
+      89.38
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t2",
+     "max_width_mm": 336.0,
+     "size_units": 104,
+     "pt_at": {
+      "A2": 294.8,
+      "A3": 208.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "GET 1",
+     "font": "anton",
+     "colour": "#B74B0C",
+     "align": "center",
+     "anchor_x": 180.25,
+     "baseline_y": 424,
+     "top_y": 334.62,
+     "box": [
+      77.45,
+      334.62,
+      205.6,
+      89.38
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t3",
+     "max_width_mm": 336.0,
+     "size_units": 104,
+     "pt_at": {
+      "A2": 294.8,
+      "A3": 208.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 350.5,
+     "baseline_y": 339,
+     "top_y": 317.52,
+     "box": [
+      327.77,
+      317.52,
+      45.47,
+      21.48
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t4",
+     "max_width_mm": 131.5,
+     "size_units": 25,
+     "pt_at": {
+      "A2": 70.9,
+      "A3": 50.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ON ALL HOT & ICED COFFEES",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 500,
+     "top_y": 489.94,
+     "box": [
+      91.42,
+      489.94,
+      245.66,
+      10.06
+     ],
+     "tracking_em": 0.16,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t5",
+     "max_width_mm": 404.0,
+     "size_units": 13.5,
+     "pt_at": {
+      "A2": 38.3,
+      "A3": 27.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "EVERY DAY  ·  3PM – 5PM",
+     "font": "jakarta-700",
+     "colour": "#B74B0C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 522,
+     "top_y": 513.8,
+     "box": [
+      131.82,
+      513.8,
+      164.86,
+      8.2
+     ],
+     "tracking_em": 0.14,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t6",
+     "max_width_mm": 404.0,
+     "size_units": 11,
+     "pt_at": {
+      "A2": 31.2,
+      "A3": 22.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "left",
+     "anchor_x": 37.25,
+     "baseline_y": 574.25,
+     "top_y": 567.54,
+     "box": [
+      37.25,
+      567.54,
+      98.23,
+      6.71
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "right",
+     "anchor_x": 391.25,
+     "baseline_y": 574.25,
+     "top_y": 567.54,
+     "box": [
+      325.87,
+      567.54,
+      65.38,
+      6.71
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#B74B0C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 574.25,
+     "top_y": 568.29,
+     "box": [
+      166.22,
+      568.29,
+      96.06,
+      5.96
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 404.0,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    }
+   ],
+   "print_files": {
+    "A2": "BakeGrill_A2_BG-029_free_coffee-buy1get1-classic.pdf",
+    "A3": "BakeGrill_A3_BG-029_free_coffee-buy1get1-classic.pdf"
+   }
+  },
+  "small": {
+   "variant": "small",
+   "sizes": {
+    "A4": {
+     "trim_mm": [
+      210.0,
+      297.0
+     ],
+     "scale": 0.5,
+     "page_mm": [
+      216.0,
+      303.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.5 + 3 ; y: (u - 9.6) * 0.5 + 3 + 0.0"
+    },
+    "A5": {
+     "trim_mm": [
+      148.0,
+      210.0
+     ],
+     "scale": 0.35238,
+     "page_mm": [
+      154.0,
+      216.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.35238 + 3 ; y: (u - 9.6) * 0.35238 + 3 + 0.343"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 439.2,
+    "height": 613.2,
+    "bleed_units": 9.6,
+    "trim_box": [
+     9.6,
+     9.6,
+     420,
+     594
+    ],
+    "safe_inset_units": 23.8,
+    "min_text_units": 9.1,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-small.jpg",
+    "backdrop_svg": "backdrop-small.svg",
+    "backdrop_draw_list": "backdrop-small.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 219.6,
+    "top_y": 42,
+    "height_mm": 96,
+    "cream_badge": false,
+    "badge_circle": null,
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Coffee Hour",
+     "font": "fraunces-900-italic",
+     "colour": "#B74B0C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 182,
+     "top_y": 162.4,
+     "box": [
+      134.8,
+      162.4,
+      169.6,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 391.6,
+     "size_units": 28,
+     "pt_at": {
+      "A4": 39.7,
+      "A5": 28.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BUY 1",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 185.6,
+     "baseline_y": 316,
+     "top_y": 226.62,
+     "box": [
+      77.26,
+      226.62,
+      216.67,
+      89.38
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t2",
+     "max_width_mm": 323.6,
+     "size_units": 104,
+     "pt_at": {
+      "A4": 147.4,
+      "A5": 103.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "GET 1",
+     "font": "anton",
+     "colour": "#B74B0C",
+     "align": "center",
+     "anchor_x": 185.6,
+     "baseline_y": 424,
+     "top_y": 334.62,
+     "box": [
+      82.8,
+      334.62,
+      205.6,
+      89.38
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t3",
+     "max_width_mm": 323.6,
+     "size_units": 104,
+     "pt_at": {
+      "A4": 147.4,
+      "A5": 103.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 361.2,
+     "baseline_y": 339,
+     "top_y": 317.52,
+     "box": [
+      338.47,
+      317.52,
+      45.47,
+      21.48
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t4",
+     "max_width_mm": 108.4,
+     "size_units": 25,
+     "pt_at": {
+      "A4": 35.4,
+      "A5": 25.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ON ALL HOT & ICED COFFEES",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 500,
+     "top_y": 489.94,
+     "box": [
+      96.77,
+      489.94,
+      245.66,
+      10.06
+     ],
+     "tracking_em": 0.16,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t5",
+     "max_width_mm": 391.6,
+     "size_units": 13.5,
+     "pt_at": {
+      "A4": 19.1,
+      "A5": 13.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "EVERY DAY  ·  3PM – 5PM",
+     "font": "jakarta-700",
+     "colour": "#B74B0C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 522,
+     "top_y": 513.8,
+     "box": [
+      137.17,
+      513.8,
+      164.86,
+      8.2
+     ],
+     "tracking_em": 0.14,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t6",
+     "max_width_mm": 391.6,
+     "size_units": 11,
+     "pt_at": {
+      "A4": 15.6,
+      "A5": 11.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "left",
+     "anchor_x": 25.8,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      25.8,
+      580.33,
+      125.52,
+      8.57
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "right",
+     "anchor_x": 413.4,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      329.85,
+      580.33,
+      83.55,
+      8.57
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#B74B0C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 588.9,
+     "top_y": 582.12,
+     "box": [
+      164.97,
+      582.12,
+      109.26,
+      6.78
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 391.6,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    }
+   ],
+   "print_files": {
+    "A4": "BakeGrill_A4_BG-029_free_coffee-buy1get1-classic.pdf",
+    "A5": "BakeGrill_A5_BG-029_free_coffee-buy1get1-classic.pdf"
+   }
+  }
+ }
+}

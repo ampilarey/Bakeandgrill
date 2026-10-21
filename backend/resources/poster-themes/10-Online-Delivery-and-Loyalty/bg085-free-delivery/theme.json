@@ -1,0 +1,616 @@
+{
+ "id": "BG-085",
+ "key": "bg085-free-delivery",
+ "title": "Free Delivery",
+ "category": {
+  "key": "online",
+  "number": "10",
+  "name": "Online, Delivery & Loyalty"
+ },
+ "style": "colour",
+ "style_label": "Colourful",
+ "layout": "original",
+ "palette": null,
+ "has_photo": false,
+ "size_to_variant": {
+  "A2": "large",
+  "A3": "large",
+  "A4": "small",
+  "A5": "small"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "large": {
+   "variant": "large",
+   "sizes": {
+    "A2": {
+     "trim_mm": [
+      420.0,
+      594.0
+     ],
+     "scale": 1.0,
+     "page_mm": [
+      426.0,
+      600.0
+     ],
+     "map": "page_mm = (u - 4.25) * 1.0 + 3 ; y: (u - 4.25) * 1.0 + 3 + 0.0"
+    },
+    "A3": {
+     "trim_mm": [
+      297.0,
+      420.0
+     ],
+     "scale": 0.70714,
+     "page_mm": [
+      303.0,
+      426.0
+     ],
+     "map": "page_mm = (u - 4.25) * 0.70714 + 3 ; y: (u - 4.25) * 0.70714 + 3 + -0.021"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 428.5,
+    "height": 602.5,
+    "bleed_units": 4.25,
+    "trim_box": [
+     4.25,
+     4.25,
+     420,
+     594
+    ],
+    "safe_inset_units": 12.25,
+    "min_text_units": 8.0,
+    "corner_keepout": {
+     "diameter_units": 20,
+     "centre_from_cut_units": 20
+    }
+   },
+   "files": {
+    "preview": "preview-large.jpg",
+    "backdrop_svg": "backdrop-large.svg",
+    "backdrop_draw_list": "backdrop-large.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 214.25,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 214.25,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Order in tonight",
+     "font": "fraunces-900-italic",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 196,
+     "top_y": 176.4,
+     "box": [
+      98.7,
+      176.4,
+      231.1,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 404.0,
+     "size_units": 28,
+     "pt_at": {
+      "A2": 79.4,
+      "A3": 56.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE",
+     "font": "anton",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 310,
+     "top_y": 217.19,
+     "box": [
+      116.04,
+      217.19,
+      196.42,
+      92.81
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 5
+     },
+     "role_hint": "headline_or_offer",
+     "id": "t2",
+     "max_width_mm": 404.0,
+     "size_units": 108,
+     "pt_at": {
+      "A2": 306.1,
+      "A3": 216.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "DELIVERY",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 372,
+     "top_y": 325.59,
+     "box": [
+      109.15,
+      325.59,
+      210.2,
+      46.41
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 3
+     },
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 404.0,
+     "size_units": 54,
+     "pt_at": {
+      "A2": 153.1,
+      "A3": 108.2
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ON ORDERS OVER MVR 300",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 533,
+     "top_y": 523.32,
+     "box": [
+      108.98,
+      523.32,
+      210.55,
+      9.69
+     ],
+     "tracking_em": 0.12,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t4",
+     "max_width_mm": 404.0,
+     "size_units": 13,
+     "pt_at": {
+      "A2": 36.9,
+      "A3": 26.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "bakeandgrill.mv/order",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 560,
+     "top_y": 552.18,
+     "box": [
+      148.73,
+      552.18,
+      131.04,
+      7.82
+     ],
+     "tracking_em": 0.06,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t5",
+     "max_width_mm": 404.0,
+     "size_units": 10.5,
+     "pt_at": {
+      "A2": 29.8,
+      "A3": 21.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 37.25,
+     "baseline_y": 584.25,
+     "top_y": 577.54,
+     "box": [
+      37.25,
+      577.54,
+      98.23,
+      6.71
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t6",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 391.25,
+     "baseline_y": 584.25,
+     "top_y": 577.54,
+     "box": [
+      325.87,
+      577.54,
+      65.38,
+      6.71
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 584.25,
+     "top_y": 578.29,
+     "box": [
+      166.22,
+      578.29,
+      96.06,
+      5.96
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 404.0,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    }
+   ],
+   "print_files": {
+    "A2": "BakeGrill_A2_BG-085_online_free-delivery.pdf",
+    "A3": "BakeGrill_A3_BG-085_online_free-delivery.pdf"
+   }
+  },
+  "small": {
+   "variant": "small",
+   "sizes": {
+    "A4": {
+     "trim_mm": [
+      210.0,
+      297.0
+     ],
+     "scale": 0.5,
+     "page_mm": [
+      216.0,
+      303.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.5 + 3 ; y: (u - 9.6) * 0.5 + 3 + 0.0"
+    },
+    "A5": {
+     "trim_mm": [
+      148.0,
+      210.0
+     ],
+     "scale": 0.35238,
+     "page_mm": [
+      154.0,
+      216.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.35238 + 3 ; y: (u - 9.6) * 0.35238 + 3 + 0.343"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 439.2,
+    "height": 613.2,
+    "bleed_units": 9.6,
+    "trim_box": [
+     9.6,
+     9.6,
+     420,
+     594
+    ],
+    "safe_inset_units": 23.8,
+    "min_text_units": 9.1,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-small.jpg",
+    "backdrop_svg": "backdrop-small.svg",
+    "backdrop_draw_list": "backdrop-small.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 219.6,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 219.6,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Order in tonight",
+     "font": "fraunces-900-italic",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 196,
+     "top_y": 176.4,
+     "box": [
+      104.05,
+      176.4,
+      231.1,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 391.6,
+     "size_units": 28,
+     "pt_at": {
+      "A4": 39.7,
+      "A5": 28.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE",
+     "font": "anton",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 310,
+     "top_y": 217.19,
+     "box": [
+      121.39,
+      217.19,
+      196.42,
+      92.81
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 5
+     },
+     "role_hint": "headline_or_offer",
+     "id": "t2",
+     "max_width_mm": 391.6,
+     "size_units": 108,
+     "pt_at": {
+      "A4": 153.1,
+      "A5": 107.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "DELIVERY",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 372,
+     "top_y": 325.59,
+     "box": [
+      114.5,
+      325.59,
+      210.2,
+      46.41
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 3
+     },
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 391.6,
+     "size_units": 54,
+     "pt_at": {
+      "A4": 76.5,
+      "A5": 53.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ON ORDERS OVER MVR 300",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 533,
+     "top_y": 523.32,
+     "box": [
+      114.33,
+      523.32,
+      210.55,
+      9.69
+     ],
+     "tracking_em": 0.12,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t4",
+     "max_width_mm": 391.6,
+     "size_units": 13,
+     "pt_at": {
+      "A4": 18.4,
+      "A5": 13.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "bakeandgrill.mv/order",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 560,
+     "top_y": 552.18,
+     "box": [
+      154.08,
+      552.18,
+      131.04,
+      7.82
+     ],
+     "tracking_em": 0.06,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t5",
+     "max_width_mm": 391.6,
+     "size_units": 10.5,
+     "pt_at": {
+      "A4": 14.9,
+      "A5": 10.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 25.8,
+     "baseline_y": 583.4,
+     "top_y": 574.83,
+     "box": [
+      25.8,
+      574.83,
+      125.52,
+      8.57
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t6",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 413.4,
+     "baseline_y": 583.4,
+     "top_y": 574.83,
+     "box": [
+      329.85,
+      574.83,
+      83.55,
+      8.57
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 583.4,
+     "top_y": 576.62,
+     "box": [
+      164.97,
+      576.62,
+      109.26,
+      6.78
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 391.6,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    }
+   ],
+   "print_files": {
+    "A4": "BakeGrill_A4_BG-085_online_free-delivery.pdf",
+    "A5": "BakeGrill_A5_BG-085_online_free-delivery.pdf"
+   }
+  }
+ }
+}

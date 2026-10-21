@@ -1,0 +1,902 @@
+{
+ "id": "BG-091",
+ "key": "bg091-eid-mubarak-cakes",
+ "title": "Eid Mubarak Cakes",
+ "category": {
+  "key": "fest",
+  "number": "11",
+  "name": "Festivals & Seasons"
+ },
+ "style": "photo",
+ "style_label": "With item photo",
+ "layout": "festive",
+ "palette": "lagoon",
+ "has_photo": true,
+ "size_to_variant": {
+  "A2": "large",
+  "A3": "large",
+  "A4": "small",
+  "A5": "small"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "large": {
+   "variant": "large",
+   "sizes": {
+    "A2": {
+     "trim_mm": [
+      420.0,
+      594.0
+     ],
+     "scale": 1.0,
+     "page_mm": [
+      426.0,
+      600.0
+     ],
+     "map": "page_mm = (u - 4.25) * 1.0 + 3 ; y: (u - 4.25) * 1.0 + 3 + 0.0"
+    },
+    "A3": {
+     "trim_mm": [
+      297.0,
+      420.0
+     ],
+     "scale": 0.70714,
+     "page_mm": [
+      303.0,
+      426.0
+     ],
+     "map": "page_mm = (u - 4.25) * 0.70714 + 3 ; y: (u - 4.25) * 0.70714 + 3 + -0.021"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 428.5,
+    "height": 602.5,
+    "bleed_units": 4.25,
+    "trim_box": [
+     4.25,
+     4.25,
+     420,
+     594
+    ],
+    "safe_inset_units": 12.25,
+    "min_text_units": 8.0,
+    "corner_keepout": {
+     "diameter_units": 20,
+     "centre_from_cut_units": 20
+    }
+   },
+   "files": {
+    "preview": "preview-large.jpg",
+    "backdrop_svg": "backdrop-large.svg",
+    "backdrop_draw_list": "backdrop-large.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 214.25,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 214.25,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M130.25 384 A84 84 0 1 0 298.25 384 A84 84 0 1 0 130.25 384 Z",
+     "box": [
+      130.25,
+      300,
+      168,
+      168
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      214.25,
+      384.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFF3DC",
+     "min_px_for_150ppi": [
+      992,
+      992
+     ],
+     "preview_placeholder": "illustration:cake",
+     "clip_ops": [
+      [
+       "M",
+       [
+        130.25,
+        384.0
+       ]
+      ],
+      [
+       "C",
+       [
+        130.25,
+        398.74,
+        134.13,
+        413.23,
+        141.5,
+        426.0
+       ]
+      ],
+      [
+       "C",
+       [
+        148.88,
+        438.77,
+        159.48,
+        449.37,
+        172.25,
+        456.75
+       ]
+      ],
+      [
+       "C",
+       [
+        185.02,
+        464.12,
+        199.51,
+        468.0,
+        214.25,
+        468.0
+       ]
+      ],
+      [
+       "C",
+       [
+        228.99,
+        468.0,
+        243.48,
+        464.12,
+        256.25,
+        456.75
+       ]
+      ],
+      [
+       "C",
+       [
+        269.02,
+        449.37,
+        279.62,
+        438.77,
+        287.0,
+        426.0
+       ]
+      ],
+      [
+       "C",
+       [
+        294.37,
+        413.23,
+        298.25,
+        398.74,
+        298.25,
+        384.0
+       ]
+      ],
+      [
+       "C",
+       [
+        298.25,
+        369.26,
+        294.37,
+        354.77,
+        287.0,
+        342.0
+       ]
+      ],
+      [
+       "C",
+       [
+        279.62,
+        329.23,
+        269.02,
+        318.63,
+        256.25,
+        311.25
+       ]
+      ],
+      [
+       "C",
+       [
+        243.48,
+        303.88,
+        228.99,
+        300.0,
+        214.25,
+        300.0
+       ]
+      ],
+      [
+       "C",
+       [
+        199.51,
+        300.0,
+        185.02,
+        303.88,
+        172.25,
+        311.25
+       ]
+      ],
+      [
+       "C",
+       [
+        159.48,
+        318.63,
+        148.88,
+        329.23,
+        141.5,
+        342.0
+       ]
+      ],
+      [
+       "C",
+       [
+        134.13,
+        354.77,
+        130.25,
+        369.26,
+        130.25,
+        384.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-large-p1.png"
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Eid Mubarak",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 194,
+     "top_y": 174.4,
+     "box": [
+      122.44,
+      174.4,
+      183.61,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 404.0,
+     "size_units": 28,
+     "pt_at": {
+      "A2": 79.4,
+      "A3": 56.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "EID CAKES",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 272,
+     "top_y": 204.97,
+     "box": [
+      58.62,
+      204.97,
+      311.25,
+      67.03
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#064A47",
+      "offset_mm": 3.12
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 404.0,
+     "size_units": 78,
+     "pt_at": {
+      "A2": 221.1,
+      "A3": 156.4
+     }
+    },
+    {
+     "kind": "text",
+     "default": "20% OFF PRE-ORDERS",
+     "font": "anton",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 523.32,
+     "top_y": 502.7,
+     "box": [
+      102.71,
+      502.7,
+      223.08,
+      20.62
+     ],
+     "tracking_em": 0.06,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t3",
+     "max_width_mm": 404.0,
+     "size_units": 24,
+     "pt_at": {
+      "A2": 68.0,
+      "A3": 48.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Order before the last fasting day",
+     "font": "fraunces-700-italic",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 558,
+     "top_y": 548.2,
+     "box": [
+      104.09,
+      548.2,
+      220.33,
+      9.8
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 404.0,
+     "size_units": 14,
+     "pt_at": {
+      "A2": 39.7,
+      "A3": 28.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 37.25,
+     "baseline_y": 584.25,
+     "top_y": 577.54,
+     "box": [
+      37.25,
+      577.54,
+      98.23,
+      6.71
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t5",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 391.25,
+     "baseline_y": 584.25,
+     "top_y": 577.54,
+     "box": [
+      325.87,
+      577.54,
+      65.38,
+      6.71
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t6",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 584.25,
+     "top_y": 578.29,
+     "box": [
+      166.22,
+      578.29,
+      96.06,
+      5.96
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 404.0,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    }
+   ],
+   "print_files": {
+    "A2": "BakeGrill_A2_BG-091_fest_eid-mubarak-cakes.pdf",
+    "A3": "BakeGrill_A3_BG-091_fest_eid-mubarak-cakes.pdf"
+   }
+  },
+  "small": {
+   "variant": "small",
+   "sizes": {
+    "A4": {
+     "trim_mm": [
+      210.0,
+      297.0
+     ],
+     "scale": 0.5,
+     "page_mm": [
+      216.0,
+      303.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.5 + 3 ; y: (u - 9.6) * 0.5 + 3 + 0.0"
+    },
+    "A5": {
+     "trim_mm": [
+      148.0,
+      210.0
+     ],
+     "scale": 0.35238,
+     "page_mm": [
+      154.0,
+      216.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.35238 + 3 ; y: (u - 9.6) * 0.35238 + 3 + 0.343"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 439.2,
+    "height": 613.2,
+    "bleed_units": 9.6,
+    "trim_box": [
+     9.6,
+     9.6,
+     420,
+     594
+    ],
+    "safe_inset_units": 23.8,
+    "min_text_units": 9.1,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-small.jpg",
+    "backdrop_svg": "backdrop-small.svg",
+    "backdrop_draw_list": "backdrop-small.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 219.6,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 219.6,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M135.6 384 A84 84 0 1 0 303.6 384 A84 84 0 1 0 135.6 384 Z",
+     "box": [
+      135.6,
+      300,
+      168,
+      168
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      219.6,
+      384.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFF3DC",
+     "min_px_for_150ppi": [
+      496,
+      496
+     ],
+     "preview_placeholder": "illustration:cake",
+     "clip_ops": [
+      [
+       "M",
+       [
+        135.6,
+        384.0
+       ]
+      ],
+      [
+       "C",
+       [
+        135.6,
+        398.74,
+        139.48,
+        413.23,
+        146.85,
+        426.0
+       ]
+      ],
+      [
+       "C",
+       [
+        154.23,
+        438.77,
+        164.83,
+        449.37,
+        177.6,
+        456.75
+       ]
+      ],
+      [
+       "C",
+       [
+        190.37,
+        464.12,
+        204.86,
+        468.0,
+        219.6,
+        468.0
+       ]
+      ],
+      [
+       "C",
+       [
+        234.34,
+        468.0,
+        248.83,
+        464.12,
+        261.6,
+        456.75
+       ]
+      ],
+      [
+       "C",
+       [
+        274.37,
+        449.37,
+        284.97,
+        438.77,
+        292.35,
+        426.0
+       ]
+      ],
+      [
+       "C",
+       [
+        299.72,
+        413.23,
+        303.6,
+        398.74,
+        303.6,
+        384.0
+       ]
+      ],
+      [
+       "C",
+       [
+        303.6,
+        369.26,
+        299.72,
+        354.77,
+        292.35,
+        342.0
+       ]
+      ],
+      [
+       "C",
+       [
+        284.97,
+        329.23,
+        274.37,
+        318.63,
+        261.6,
+        311.25
+       ]
+      ],
+      [
+       "C",
+       [
+        248.83,
+        303.88,
+        234.34,
+        300.0,
+        219.6,
+        300.0
+       ]
+      ],
+      [
+       "C",
+       [
+        204.86,
+        300.0,
+        190.37,
+        303.88,
+        177.6,
+        311.25
+       ]
+      ],
+      [
+       "C",
+       [
+        164.83,
+        318.63,
+        154.23,
+        329.23,
+        146.85,
+        342.0
+       ]
+      ],
+      [
+       "C",
+       [
+        139.48,
+        354.77,
+        135.6,
+        369.26,
+        135.6,
+        384.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-small-p1.png"
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Eid Mubarak",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 194,
+     "top_y": 174.4,
+     "box": [
+      127.79,
+      174.4,
+      183.61,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 391.6,
+     "size_units": 28,
+     "pt_at": {
+      "A4": 39.7,
+      "A5": 28.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "EID CAKES",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 272,
+     "top_y": 204.97,
+     "box": [
+      63.97,
+      204.97,
+      311.25,
+      67.03
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#064A47",
+      "offset_mm": 3.12
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 391.6,
+     "size_units": 78,
+     "pt_at": {
+      "A4": 110.6,
+      "A5": 77.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "20% OFF PRE-ORDERS",
+     "font": "anton",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 523.32,
+     "top_y": 502.7,
+     "box": [
+      108.06,
+      502.7,
+      223.08,
+      20.62
+     ],
+     "tracking_em": 0.06,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t3",
+     "max_width_mm": 391.6,
+     "size_units": 24,
+     "pt_at": {
+      "A4": 34.0,
+      "A5": 24.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Order before the last fasting day",
+     "font": "fraunces-700-italic",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 558,
+     "top_y": 548.2,
+     "box": [
+      109.44,
+      548.2,
+      220.33,
+      9.8
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 391.6,
+     "size_units": 14,
+     "pt_at": {
+      "A4": 19.8,
+      "A5": 14.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 25.8,
+     "baseline_y": 583.4,
+     "top_y": 574.83,
+     "box": [
+      25.8,
+      574.83,
+      125.52,
+      8.57
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t5",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 413.4,
+     "baseline_y": 583.4,
+     "top_y": 574.83,
+     "box": [
+      329.85,
+      574.83,
+      83.55,
+      8.57
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t6",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 583.4,
+     "top_y": 576.62,
+     "box": [
+      164.97,
+      576.62,
+      109.26,
+      6.78
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 391.6,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    }
+   ],
+   "print_files": {
+    "A4": "BakeGrill_A4_BG-091_fest_eid-mubarak-cakes.pdf",
+    "A5": "BakeGrill_A5_BG-091_fest_eid-mubarak-cakes.pdf"
+   }
+  }
+ }
+}

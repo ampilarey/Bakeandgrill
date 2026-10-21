@@ -1,0 +1,988 @@
+{
+ "id": "BG-004",
+ "key": "bg004-mega-deals-stickers",
+ "title": "Mega Deals Stickers",
+ "category": {
+  "key": "disc",
+  "number": "01",
+  "name": "Discounts & Sales"
+ },
+ "style": "colour",
+ "style_label": "Colourful",
+ "layout": "sticker_bomb",
+ "palette": "sunset",
+ "has_photo": false,
+ "size_to_variant": {
+  "A2": "large",
+  "A3": "large",
+  "A4": "small",
+  "A5": "small"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "large": {
+   "variant": "large",
+   "sizes": {
+    "A2": {
+     "trim_mm": [
+      420.0,
+      594.0
+     ],
+     "scale": 1.0,
+     "page_mm": [
+      426.0,
+      600.0
+     ],
+     "map": "page_mm = (u - 4.25) * 1.0 + 3 ; y: (u - 4.25) * 1.0 + 3 + 0.0"
+    },
+    "A3": {
+     "trim_mm": [
+      297.0,
+      420.0
+     ],
+     "scale": 0.70714,
+     "page_mm": [
+      303.0,
+      426.0
+     ],
+     "map": "page_mm = (u - 4.25) * 0.70714 + 3 ; y: (u - 4.25) * 0.70714 + 3 + -0.021"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 428.5,
+    "height": 602.5,
+    "bleed_units": 4.25,
+    "trim_box": [
+     4.25,
+     4.25,
+     420,
+     594
+    ],
+    "safe_inset_units": 12.25,
+    "min_text_units": 8.0,
+    "corner_keepout": {
+     "diameter_units": 20,
+     "centre_from_cut_units": 20
+    }
+   },
+   "files": {
+    "preview": "preview-large.jpg",
+    "backdrop_svg": "backdrop-large.svg",
+    "backdrop_draw_list": "backdrop-large.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 214.25,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 214.25,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "This week only",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 194,
+     "top_y": 174.4,
+     "box": [
+      109.23,
+      174.4,
+      210.04,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 404.0,
+     "size_units": 28,
+     "pt_at": {
+      "A2": 79.4,
+      "A3": 56.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MEGA DEALS",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 290,
+     "top_y": 226.04,
+     "box": [
+      29.25,
+      226.04,
+      370.0,
+      63.96
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 2.98
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 404.0,
+     "size_units": 74.43,
+     "pt_at": {
+      "A2": 211.0,
+      "A3": 149.2
+     }
+    },
+    {
+     "kind": "text",
+     "default": "SAVE ON YOUR FAVOURITES",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 318,
+     "top_y": 308.31,
+     "box": [
+      105.08,
+      308.31,
+      218.35,
+      9.69
+     ],
+     "tracking_em": 0.12,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 404.0,
+     "size_units": 13,
+     "pt_at": {
+      "A2": 36.9,
+      "A3": 26.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "UP TO",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 98,
+     "baseline_y": 378.32,
+     "top_y": 371.23,
+     "box": [
+      79.99,
+      371.23,
+      36.01,
+      7.09
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 171.5,
+     "size_units": 9.52,
+     "pt_at": {
+      "A2": 27.0,
+      "A3": 19.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "50% OFF",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 98,
+     "baseline_y": 406.32,
+     "top_y": 386.74,
+     "box": [
+      57.4,
+      386.74,
+      81.2,
+      19.58
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t5",
+     "max_width_mm": 171.5,
+     "size_units": 22.79,
+     "pt_at": {
+      "A2": 64.6,
+      "A3": 45.7
+     }
+    },
+    {
+     "kind": "text",
+     "default": "NEW",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 226,
+     "baseline_y": 396.64,
+     "top_y": 388.79,
+     "box": [
+      211.44,
+      388.79,
+      29.12,
+      7.85
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t6",
+     "max_width_mm": 380.5,
+     "size_units": 10.54,
+     "pt_at": {
+      "A2": 29.9,
+      "A3": 21.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "COMBOS",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 226,
+     "baseline_y": 427.64,
+     "top_y": 402.98,
+     "box": [
+      181.05,
+      402.98,
+      89.9,
+      24.66
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t7",
+     "max_width_mm": 380.5,
+     "size_units": 28.7,
+     "pt_at": {
+      "A2": 81.4,
+      "A3": 57.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE FRIES",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 338,
+     "baseline_y": 399.36,
+     "top_y": 382.78,
+     "box": [
+      300.3,
+      382.78,
+      75.4,
+      16.58
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t8",
+     "max_width_mm": 156.5,
+     "size_units": 19.29,
+     "pt_at": {
+      "A2": 54.7,
+      "A3": 38.7
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ANY",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 148,
+     "baseline_y": 486.0,
+     "top_y": 479.67,
+     "box": [
+      137.18,
+      479.67,
+      21.64,
+      6.33
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t9",
+     "max_width_mm": 271.5,
+     "size_units": 8.5,
+     "pt_at": {
+      "A2": 24.1,
+      "A3": 17.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "2 FOR 1",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 148,
+     "baseline_y": 511.0,
+     "top_y": 487.54,
+     "box": [
+      111.75,
+      487.54,
+      72.5,
+      23.46
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t10",
+     "max_width_mm": 271.5,
+     "size_units": 27.3,
+     "pt_at": {
+      "A2": 77.4,
+      "A3": 54.7
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FROM",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 292,
+     "baseline_y": 489.44,
+     "top_y": 482.85,
+     "box": [
+      275.89,
+      482.85,
+      32.21,
+      6.59
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t11",
+     "max_width_mm": 248.5,
+     "size_units": 8.84,
+     "pt_at": {
+      "A2": 25.1,
+      "A3": 17.7
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR 15",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 292,
+     "baseline_y": 515.44,
+     "top_y": 491.89,
+     "box": [
+      254.3,
+      491.89,
+      75.4,
+      23.55
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t12",
+     "max_width_mm": 248.5,
+     "size_units": 27.41,
+     "pt_at": {
+      "A2": 77.7,
+      "A3": 54.9
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 37.25,
+     "baseline_y": 588.25,
+     "top_y": 581.54,
+     "box": [
+      37.25,
+      581.54,
+      98.23,
+      6.71
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t13",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 391.25,
+     "baseline_y": 588.25,
+     "top_y": 581.54,
+     "box": [
+      325.87,
+      581.54,
+      65.38,
+      6.71
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t14",
+     "max_width_mm": 379.0,
+     "size_units": 9.0,
+     "pt_at": {
+      "A2": 25.5,
+      "A3": 18.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 214.25,
+     "baseline_y": 588.25,
+     "top_y": 582.29,
+     "box": [
+      166.22,
+      582.29,
+      96.06,
+      5.96
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t15",
+     "max_width_mm": 404.0,
+     "size_units": 8.0,
+     "pt_at": {
+      "A2": 22.7,
+      "A3": 16.0
+     }
+    }
+   ],
+   "print_files": {
+    "A2": "BakeGrill_A2_BG-004_disc_mega-deals-stickers.pdf",
+    "A3": "BakeGrill_A3_BG-004_disc_mega-deals-stickers.pdf"
+   }
+  },
+  "small": {
+   "variant": "small",
+   "sizes": {
+    "A4": {
+     "trim_mm": [
+      210.0,
+      297.0
+     ],
+     "scale": 0.5,
+     "page_mm": [
+      216.0,
+      303.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.5 + 3 ; y: (u - 9.6) * 0.5 + 3 + 0.0"
+    },
+    "A5": {
+     "trim_mm": [
+      148.0,
+      210.0
+     ],
+     "scale": 0.35238,
+     "page_mm": [
+      154.0,
+      216.0
+     ],
+     "map": "page_mm = (u - 9.6) * 0.35238 + 3 ; y: (u - 9.6) * 0.35238 + 3 + 0.343"
+    }
+   },
+   "canvas": {
+    "units": "design units = mm at A2 trim",
+    "width": 439.2,
+    "height": 613.2,
+    "bleed_units": 9.6,
+    "trim_box": [
+     9.6,
+     9.6,
+     420,
+     594
+    ],
+    "safe_inset_units": 23.8,
+    "min_text_units": 9.1,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-small.jpg",
+    "backdrop_svg": "backdrop-small.svg",
+    "backdrop_draw_list": "backdrop-small.json.gz",
+    "backdrop_draw_list_note": "gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 219.6,
+    "top_y": 40.06,
+    "height_mm": 98,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 219.6,
+     "cy": 92.0,
+     "r": 58.8,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "This week only",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 194,
+     "top_y": 174.4,
+     "box": [
+      114.58,
+      174.4,
+      210.04,
+      19.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 391.6,
+     "size_units": 28,
+     "pt_at": {
+      "A4": 39.7,
+      "A5": 28.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MEGA DEALS",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 290,
+     "top_y": 226.04,
+     "box": [
+      34.6,
+      226.04,
+      370.0,
+      63.96
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 2.98
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 391.6,
+     "size_units": 74.43,
+     "pt_at": {
+      "A4": 105.5,
+      "A5": 74.3
+     }
+    },
+    {
+     "kind": "text",
+     "default": "SAVE ON YOUR FAVOURITES",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 318,
+     "top_y": 308.31,
+     "box": [
+      110.43,
+      308.31,
+      218.35,
+      9.69
+     ],
+     "tracking_em": 0.12,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 391.6,
+     "size_units": 13,
+     "pt_at": {
+      "A4": 18.4,
+      "A5": 13.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "UP TO",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 98,
+     "baseline_y": 378.32,
+     "top_y": 371.23,
+     "box": [
+      79.99,
+      371.23,
+      36.01,
+      7.09
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 148.4,
+     "size_units": 9.52,
+     "pt_at": {
+      "A4": 13.5,
+      "A5": 9.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "50% OFF",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 98,
+     "baseline_y": 406.32,
+     "top_y": 386.74,
+     "box": [
+      57.4,
+      386.74,
+      81.2,
+      19.58
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t5",
+     "max_width_mm": 148.4,
+     "size_units": 22.79,
+     "pt_at": {
+      "A4": 32.3,
+      "A5": 22.8
+     }
+    },
+    {
+     "kind": "text",
+     "default": "NEW",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 226,
+     "baseline_y": 396.64,
+     "top_y": 388.79,
+     "box": [
+      211.44,
+      388.79,
+      29.12,
+      7.85
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t6",
+     "max_width_mm": 378.8,
+     "size_units": 10.54,
+     "pt_at": {
+      "A4": 14.9,
+      "A5": 10.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "COMBOS",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 226,
+     "baseline_y": 427.64,
+     "top_y": 402.98,
+     "box": [
+      181.05,
+      402.98,
+      89.9,
+      24.66
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t7",
+     "max_width_mm": 378.8,
+     "size_units": 28.7,
+     "pt_at": {
+      "A4": 40.7,
+      "A5": 28.7
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE FRIES",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 338,
+     "baseline_y": 399.36,
+     "top_y": 382.78,
+     "box": [
+      300.3,
+      382.78,
+      75.4,
+      16.58
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t8",
+     "max_width_mm": 154.8,
+     "size_units": 19.29,
+     "pt_at": {
+      "A4": 27.3,
+      "A5": 19.3
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ANY",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 148,
+     "baseline_y": 486.0,
+     "top_y": 479.22,
+     "box": [
+      136.42,
+      479.22,
+      23.17,
+      6.78
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t9",
+     "max_width_mm": 248.4,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "2 FOR 1",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 148,
+     "baseline_y": 511.0,
+     "top_y": 487.54,
+     "box": [
+      111.75,
+      487.54,
+      72.5,
+      23.46
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t10",
+     "max_width_mm": 248.4,
+     "size_units": 27.3,
+     "pt_at": {
+      "A4": 38.7,
+      "A5": 27.3
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FROM",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 292,
+     "baseline_y": 489.44,
+     "top_y": 482.66,
+     "box": [
+      275.42,
+      482.66,
+      33.16,
+      6.78
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t11",
+     "max_width_mm": 246.8,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR 15",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 292,
+     "baseline_y": 515.44,
+     "top_y": 491.89,
+     "box": [
+      254.3,
+      491.89,
+      75.4,
+      23.55
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t12",
+     "max_width_mm": 246.8,
+     "size_units": 27.41,
+     "pt_at": {
+      "A4": 38.8,
+      "A5": 27.4
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 25.8,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      25.8,
+      580.33,
+      125.52,
+      8.57
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t13",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 413.4,
+     "baseline_y": 588.9,
+     "top_y": 580.33,
+     "box": [
+      329.85,
+      580.33,
+      83.55,
+      8.57
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t14",
+     "max_width_mm": 389.6,
+     "size_units": 11.5,
+     "pt_at": {
+      "A4": 16.3,
+      "A5": 11.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 219.6,
+     "baseline_y": 588.9,
+     "top_y": 582.12,
+     "box": [
+      164.97,
+      582.12,
+      109.26,
+      6.78
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t15",
+     "max_width_mm": 391.6,
+     "size_units": 9.1,
+     "pt_at": {
+      "A4": 12.9,
+      "A5": 9.1
+     }
+    }
+   ],
+   "print_files": {
+    "A4": "BakeGrill_A4_BG-004_disc_mega-deals-stickers.pdf",
+    "A5": "BakeGrill_A5_BG-004_disc_mega-deals-stickers.pdf"
+   }
+  }
+ }
+}
