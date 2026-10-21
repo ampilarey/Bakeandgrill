@@ -131,9 +131,10 @@ describe('Recipe editor — a tab per size', () => {
   it('hides the tabs and the strip for a dish with no sizes', async () => {
     const plain: ItemWithRecipe = { ...water, variants: [], variant_costs: [], recipe: { ...water.recipe!, ingredients: [water.recipe!.ingredients[0]] } };
     render(<RecipeEditorModal item={plain} onClose={() => {}} onSaved={() => {}} />);
-    await screen.findByRole('button', { name: 'Save recipe' });
+    // Save recipe is in the footer while the body still loads; the price row
+    // comes with the recipe, a beat later (CI, 2026-10-21).
+    expect(await screen.findByText('Selling price')).toBeInTheDocument();
     expect(screen.queryByRole('tablist', { name: 'Recipe for' })).toBeNull();
     expect(screen.queryByTestId('recipe-size-costs')).toBeNull();
-    expect(screen.getByText('Selling price')).toBeInTheDocument();
   });
 });
