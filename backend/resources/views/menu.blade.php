@@ -214,7 +214,10 @@ span.menu-rail-thumb {
 .mh-banner {
     position: relative; border-radius: 14px; overflow: hidden;
     background: var(--amber-light);
-    height: auto; aspect-ratio: 7 / 3;
+    /* An explicit width: with width auto, a browser carries the strip's
+       max-height through the aspect ratio into a max-width, and the pinned
+       banner shrank to a 140px box (TEST, 2026-10-22). */
+    width: 100%; height: auto; aspect-ratio: 7 / 3;
     /* The fallback is the computer's cap, so a wide screen never jumps when the script measures. */
     max-height: var(--mh-full, 320px);
     transition: max-height 0.3s var(--mh-ease);
