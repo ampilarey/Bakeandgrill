@@ -10,8 +10,9 @@ use RuntimeException;
 use ZipArchive;
 
 /**
- * The ZIP the shop gets: one print PDF per size (imposed), the white mask
- * and the gloss mask when asked, and the spec sheet.
+ * The ZIP the shop gets: one print PDF per paper size (imposed), the white
+ * mask and the gloss mask when asked, and the spec sheet. A screen size
+ * gives a PNG at the screen's exact pixels instead of a PDF.
  */
 final class PosterPack
 {
@@ -23,10 +24,10 @@ final class PosterPack
     {
         $sizes = array_values(array_filter(
             is_array($job['sizes'] ?? null) ? $job['sizes'] : (array) $poster->sizes,
-            static fn ($s): bool => is_string($s) && isset(PaperSize::SIZES[strtoupper($s)]),
+            static fn ($s): bool => is_string($s) && PaperSize::isKnown($s),
         ));
         if ($sizes === []) {
-            $sizes = ['A4'];
+            $sizes = [is_string($poster->theme) && $poster->theme !== '' && PaperSize::kindOf((string) (((array) $poster->sizes)[0] ?? '')) === PaperSize::KIND_SCREEN ? 'TV' : 'A4'];
         }
         $job['sizes'] = $sizes;
 
@@ -56,6 +57,16 @@ final class PosterPack
         $material = (string) ($job['material'] ?? 'foam');
         $imposition = (string) ($job['imposition'] ?? 'single');
         foreach ($pages as $sizeName => [$paper, $sheets]) {
+            if ($paper->isScreen()) {
+                // A screen takes a picture at its own pixels, drawn from the same piece list as the preview.
+                [$pxW, $pxH] = $paper->pixels();
+                foreach ($sheets as $i => $built) {
+                    $name = sprintf('BG-%s-%s-%dx%d-v%d%s.png', $poster->code(), $sizeName, $pxW, $pxH, $poster->version, $i > 0 ? '-' . ($i + 1) : '');
+                    $zip->addFromString($name, self::png($built, $pxW, $pxH));
+                }
+
+                continue;
+            }
             $plan = PosterImposition::plan($paper, $imposition);
             $renderSheets = [];
             foreach ($sheets as $built) {
@@ -88,6 +99,25 @@ final class PosterPack
         @unlink($tmp);
 
         return ['bytes' => $bytes, 'preflight' => $preflight, 'blocked' => false];
+    }
+
+    /**
+     * A screen picture: the piece list drawn with GD at the screen's pixels (PosterThemeRaster).
+     *
+     * @param array<string, mixed> $built
+     */
+    public static function png(array $built, int $pxW, int $pxH): string
+    {
+        $image = PosterThemeRaster::draw($built, $pxW, $pxH);
+        ob_start();
+        imagepng($image, null, 6);
+        $bytes = (string) ob_get_clean();
+        imagedestroy($image);
+        if ($bytes === '') {
+            throw new RuntimeException('The screen picture came out empty.');
+        }
+
+        return $bytes;
     }
 
     /**

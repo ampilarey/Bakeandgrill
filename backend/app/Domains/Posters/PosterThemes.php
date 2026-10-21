@@ -8,12 +8,14 @@ use InvalidArgumentException;
 use RuntimeException;
 
 /**
- * The ready-made poster designs (docs/POSTER_THEMES_HANDOFF.md): 110 themes
- * in 13 categories under resources/poster-themes, each with a `large`
- * variant for A2 and A3 and a `small` one for A4 and A5. A theme is an
- * alternative to a layout and a mood: its artwork is a draw list in
- * PdfX4Document::fillPath() op format, its words are text slots (t1…) and
- * its pictures photo slots (p1…), with the same ids in both variants.
+ * The ready-made poster designs (docs/POSTER_THEMES_HANDOFF.md): the print
+ * themes in 13 categories under resources/poster-themes, each with a `large`
+ * variant for A2 and A3 and a `small` one for A4 and A5, and the screen
+ * themes, each with a `tv` variant for a Full HD or 4K television and a
+ * `tvp` one for a portrait screen. A theme is an alternative to a layout and
+ * a mood: its artwork is a draw list in PdfX4Document::fillPath() op format,
+ * its words are text slots (t1…) and its pictures photo slots (p1…), with
+ * the same ids in every variant of the theme.
  *
  * Everything here reads the files once per request and validates what it
  * reads. An unknown theme is null from get() and false from has(); a size
@@ -23,13 +25,28 @@ use RuntimeException;
  */
 final class PosterThemes
 {
-    public const VARIANTS = ['large', 'small'];
+    /** A theme is drawn for paper or for a screen (PaperSize::KIND_*). */
+    public const KINDS = ['print', 'screen'];
 
-    /** Paper size → variant (index.json `sizes`, the same in every theme). */
-    public const SIZE_VARIANTS = ['A2' => 'large', 'A3' => 'large', 'A4' => 'small', 'A5' => 'small'];
+    public const VARIANTS = ['large', 'small', 'tv', 'tvp'];
 
-    /** The width of the design canvas's trim in design units (mm at A2). */
+    /** The variants a theme of each kind carries. */
+    public const KIND_VARIANTS = ['print' => ['large', 'small'], 'screen' => ['tv', 'tvp']];
+
+    /** Size → variant (index.json `sizes`, the same in every theme of the kind). */
+    public const SIZE_VARIANTS = [
+        'A2' => 'large', 'A3' => 'large', 'A4' => 'small', 'A5' => 'small',
+        'TV' => 'tv', 'TV4K' => 'tv', 'TVP' => 'tvp',
+    ];
+
+    /** The width of the print design canvas's trim in design units (mm at A2). */
     public const TRIM_UNITS = [420.0, 594.0];
+
+    /** Each variant's trim in its own design units: mm at A2 for print, pixels at Full HD for screens. */
+    public const VARIANT_TRIM = [
+        'large' => [420.0, 594.0], 'small' => [420.0, 594.0],
+        'tv' => [1920.0, 1080.0], 'tvp' => [1080.0, 1920.0],
+    ];
 
     /** A theme's font name → the PosterFonts key that draws it. */
     public const FONTS = [
@@ -45,7 +62,7 @@ final class PosterThemes
     public const ROLES = ['eyebrow', 'headline', 'headline_or_offer', 'price_or_offer', 'detail', 'footer'];
 
     /** What a theme folder may serve to the admin (PosterController::themeFile). */
-    public const FILE_PATTERN = '/^(preview-(large|small)\.jpg|backdrop-(large|small)\.svg|placeholder-(large|small)-p[1-9]\.png)$/';
+    public const FILE_PATTERN = '/^(preview-(large|small|tv|tvp)\.jpg|backdrop-(large|small|tv|tvp)\.svg|placeholder-(large|small|tv|tvp)-p[1-9]\.png)$/';
 
     /** @var array<string, mixed>|null */
     private static ?array $index = null;
@@ -70,25 +87,30 @@ final class PosterThemes
     }
 
     /**
-     * The 13 categories in catalogue order, each with how many themes it holds.
+     * The categories in catalogue order, each with how many themes it holds,
+     * all told and by kind.
      *
-     * @return list<array{key: string, number: string, name: string, description: string, folder: string, count: int}>
+     * @return list<array{key: string, number: string, name: string, description: string, folder: string, count: int, counts: array{print: int, screen: int}}>
      */
     public static function categories(): array
     {
         $counts = [];
         foreach (self::index()['themes'] as $row) {
-            $counts[$row['category']] = ($counts[$row['category']] ?? 0) + 1;
+            $kind = self::rowKind($row);
+            $counts[$row['category']][$kind] = ($counts[$row['category']][$kind] ?? 0) + 1;
         }
         $out = [];
         foreach (self::index()['categories'] as $category) {
+            $key = (string) $category['key'];
+            $byKind = ['print' => (int) ($counts[$key]['print'] ?? 0), 'screen' => (int) ($counts[$key]['screen'] ?? 0)];
             $out[] = [
-                'key' => (string) $category['key'],
+                'key' => $key,
                 'number' => (string) $category['number'],
                 'name' => (string) $category['name'],
                 'description' => (string) ($category['description'] ?? ''),
                 'folder' => (string) $category['folder'],
-                'count' => (int) ($counts[$category['key']] ?? 0),
+                'count' => $byKind['print'] + $byKind['screen'],
+                'counts' => $byKind,
             ];
         }
 
@@ -107,9 +129,10 @@ final class PosterThemes
     }
 
     /**
-     * Every theme, in catalogue order (BG-001 … BG-110), as its index row.
+     * Every theme, in catalogue order (the print designs BG-001 … BG-110,
+     * then the screen designs), as its index row.
      *
-     * @return list<array{id: string, key: string, title: string, category: string, category_name: string, style: string, style_label: string, has_photo: bool, photo_slots: int, text_slots: int, path: string}>
+     * @return list<array{id: string, key: string, title: string, kind: string, category: string, category_name: string, style: string, style_label: string, has_photo: bool, photo_slots: int, text_slots: int, path: string}>
      */
     public static function all(): array
     {
@@ -124,6 +147,7 @@ final class PosterThemes
                 'id' => (string) $row['id'],
                 'key' => (string) $row['key'],
                 'title' => (string) $row['title'],
+                'kind' => self::rowKind($row),
                 'category' => (string) $row['category'],
                 'category_name' => $names[(string) $row['category']] ?? (string) $row['category'],
                 'style' => (string) $row['style'],
@@ -144,14 +168,20 @@ final class PosterThemes
         return array_values(array_filter(self::all(), static fn (array $row): bool => $row['category'] === $category));
     }
 
+    /** @return list<array<string, mixed>> the index rows of one kind ('print' or 'screen'), in order */
+    public static function ofKind(string $kind): array
+    {
+        return array_values(array_filter(self::all(), static fn (array $row): bool => $row['kind'] === $kind));
+    }
+
     public static function has(string $key): bool
     {
         return self::indexRow($key) !== null;
     }
 
     /**
-     * One theme's theme.json, validated, with both variants. Null for a key
-     * that is not in the catalogue.
+     * One theme's theme.json, validated, with every variant of its kind.
+     * Null for a key that is not in the catalogue.
      *
      * @return array<string, mixed>|null
      */
@@ -168,14 +198,34 @@ final class PosterThemes
         $theme = self::readJson($file);
         self::validateTheme($theme, $key, $row);
         $theme['path'] = (string) $row['path'];
+        $theme['kind'] = self::rowKind($row);
 
         return self::$themes[$key] = $theme;
     }
 
-    /** The variant a paper size prints from. Themes are portrait only. */
+    /**
+     * 'print' or 'screen': what the theme is drawn for.
+     *
+     * @param array<string, mixed> $theme from get()
+     */
+    public static function kindOf(array $theme): string
+    {
+        return (string) ($theme['kind'] ?? 'print');
+    }
+
+    /** The kind of theme a page needs: a paper size takes a print theme, a screen a screen theme. */
+    public static function kindForSize(PaperSize $size): string
+    {
+        return $size->isScreen() ? 'screen' : 'print';
+    }
+
+    /**
+     * The variant a page is drawn from. Print themes are portrait only; a
+     * screen's variant follows its orientation.
+     */
     public static function variantNameFor(PaperSize $size): string
     {
-        if ($size->landscape) {
+        if (!$size->isScreen() && $size->landscape) {
             throw new InvalidArgumentException('Poster templates are portrait only.');
         }
         $name = self::SIZE_VARIANTS[$size->name] ?? null;
@@ -187,7 +237,7 @@ final class PosterThemes
     }
 
     /**
-     * The variant of a theme that a paper size prints from.
+     * The variant of a theme that a page is drawn from.
      *
      * @param array<string, mixed> $theme from get()
      * @return array<string, mixed>
@@ -195,6 +245,15 @@ final class PosterThemes
     public static function variantFor(array $theme, PaperSize $size): array
     {
         $name = self::variantNameFor($size);
+        $kind = self::kindOf($theme);
+        if ($kind !== self::kindForSize($size)) {
+            throw new RuntimeException(sprintf(
+                'Poster template %s is a %s design; it cannot be drawn at %s.',
+                $theme['key'] ?? '?',
+                $kind === 'screen' ? 'TV' : 'print',
+                $size->label(),
+            ));
+        }
         $map = is_array($theme['size_to_variant'] ?? null) ? $theme['size_to_variant'] : [];
         $picked = (string) ($map[$size->name] ?? '');
         if ($picked !== $name) {
@@ -222,7 +281,7 @@ final class PosterThemes
             return self::$drawLists[$cacheKey];
         }
         $name = (string) ($theme['variants'][$variant]['files']['backdrop_draw_list'] ?? '');
-        if ($name === '' || !preg_match('/^backdrop-(large|small)\.json(\.gz)?$/', $name)) {
+        if ($name === '' || !preg_match('/^backdrop-(large|small|tv|tvp)\.json(\.gz)?$/', $name)) {
             throw new RuntimeException("Poster template {$key} names no draw list for its {$variant} variant.");
         }
         $file = self::root() . '/' . $theme['path'] . '/' . $name;
@@ -287,7 +346,7 @@ final class PosterThemes
      */
     public static function backdropLayer(array $theme, string $variant, int $layer): ?string
     {
-        if (!in_array($variant, self::VARIANTS, true) || $layer < 0) {
+        if (!in_array($variant, self::VARIANTS, true) || $layer < 0 || !isset($theme['variants'][$variant])) {
             return null;
         }
         $name = (string) ($theme['variants'][$variant]['files']['backdrop_svg'] ?? '');
@@ -332,9 +391,11 @@ final class PosterThemes
 
     /**
      * How a variant's design units land on a real page: `s` scales units to
-     * millimetres (the trim width over 420), `dy` centres the design on a page
-     * that is not quite A2's shape (A5: 0.343 mm), and (`ox`, `oy`) is where
-     * the design's bleed edge sits on the page (docs/POSTER_THEMES_HANDOFF.md § 1).
+     * page units (the page's trim width over the design's), `dy` centres the
+     * design on a page that is not quite the design's shape (A5: 0.343 mm),
+     * and (`ox`, `oy`) is where the design's bleed edge sits on the page
+     * (docs/POSTER_THEMES_HANDOFF.md § 1). On a screen the design's units are
+     * Full HD pixels, so `s` is 1 at Full HD and 2 at 4K, with no bleed.
      *
      * page_x = (u_x − bleed_units) · s + ox
      * page_y = (u_y − bleed_units) · s + oy
@@ -345,14 +406,32 @@ final class PosterThemes
      */
     public static function mapping(array $variant, PaperSize $size): array
     {
-        $s = $size->trimWidth / self::TRIM_UNITS[0];
-        $dy = ($size->trimHeight - self::TRIM_UNITS[1] * $s) / 2;
+        [$trimW, $trimH] = self::trimUnits($variant);
+        $s = $size->trimWidth / $trimW;
+        $dy = ($size->trimHeight - $trimH * $s) / 2;
         $bleedUnits = (float) ($variant['canvas']['bleed_units'] ?? 0.0);
 
         return ['s' => $s, 'dy' => $dy, 'bleed_units' => $bleedUnits, 'ox' => $size->bleed, 'oy' => $size->bleed + $dy];
     }
 
-    /** Design units → page millimetres: [x, y]. */
+    /**
+     * A variant's trim in its own design units: from its canvas's trim box,
+     * else the print design's A2 trim.
+     *
+     * @param array<string, mixed> $variant
+     * @return array{0: float, 1: float}
+     */
+    public static function trimUnits(array $variant): array
+    {
+        $box = $variant['canvas']['trim_box'] ?? null;
+        if (is_array($box) && count($box) === 4 && (float) $box[2] > 0 && (float) $box[3] > 0) {
+            return [(float) $box[2], (float) $box[3]];
+        }
+
+        return self::VARIANT_TRIM[(string) ($variant['variant'] ?? 'large')] ?? self::TRIM_UNITS;
+    }
+
+    /** Design units → page units: [x, y]. */
     public static function mapPoint(array $map, float $x, float $y): array
     {
         return [
@@ -361,20 +440,20 @@ final class PosterThemes
         ];
     }
 
-    /** A length in design units → millimetres. */
+    /** A length in design units → page units. */
     public static function mapLength(array $map, float $units): float
     {
         return $units * $map['s'];
     }
 
-    /** An em size in design units → points on the page. */
+    /** An em size in design units → points on the page (a point is 0.352778 page units). */
     public static function mapPoints(array $map, float $units): float
     {
         return $units * $map['s'] / 0.352778;
     }
 
     /**
-     * A box in design units → page millimetres: [x, y, w, h].
+     * A box in design units → page units: [x, y, w, h].
      *
      * @param array{0: float, 1: float, 2: float, 3: float} $box
      * @return array{0: float, 1: float, 2: float, 3: float}
@@ -387,7 +466,7 @@ final class PosterThemes
     }
 
     /**
-     * Draw-list ops in design units → page millimetres, the same shape.
+     * Draw-list ops in design units → page units, the same shape.
      *
      * @param list<array{0: string, 1: list<float>}> $ops
      * @return list<array{0: string, 1: list<float>}>
@@ -407,6 +486,12 @@ final class PosterThemes
         }
 
         return $out;
+    }
+
+    /** @param array<string, mixed> $row an index row */
+    private static function rowKind(array $row): string
+    {
+        return ($row['kind'] ?? 'print') === 'screen' ? 'screen' : 'print';
     }
 
     /** @return array<string, mixed>|null */
@@ -434,7 +519,12 @@ final class PosterThemes
             }
         }
         foreach (self::SIZE_VARIANTS as $size => $variant) {
-            if (($index['sizes'][$size] ?? null) !== $variant) {
+            $listed = $index['sizes'][$size] ?? null;
+            // The paper sizes are always listed; the screen sizes once screen themes are installed.
+            if ($listed === null && PaperSize::kindOf($size) === PaperSize::KIND_SCREEN) {
+                continue;
+            }
+            if ($listed !== $variant) {
                 throw new RuntimeException("Poster themes index maps {$size} to something other than \"{$variant}\".");
             }
         }
@@ -462,6 +552,9 @@ final class PosterThemes
             }
             if (preg_match('/^[a-z0-9-]+$/', $row['key']) !== 1 || preg_match('#^[A-Za-z0-9-]+/[a-z0-9-]+$#', $row['path']) !== 1) {
                 throw new RuntimeException("Poster theme {$row['key']} has a key or path that is not plain.");
+            }
+            if (isset($row['kind']) && !in_array($row['kind'], self::KINDS, true)) {
+                throw new RuntimeException("Poster theme {$row['key']} has an unknown kind \"{$row['kind']}\".");
             }
             if (isset($seen[$row['key']])) {
                 throw new RuntimeException("Poster theme key {$row['key']} is listed twice.");
@@ -495,13 +588,21 @@ final class PosterThemes
         if (!is_string($theme['title'] ?? null) || (string) ($theme['category']['key'] ?? '') !== $row['category'] || ($theme['style'] ?? null) !== $row['style']) {
             $fail('its title, category or style differs from the index');
         }
+        $kind = self::rowKind($row);
+        if (($theme['kind'] ?? 'print') !== $kind) {
+            $fail("its theme.json is not a {$kind} design as the index says");
+        }
+        $variants = self::KIND_VARIANTS[$kind];
         foreach (self::SIZE_VARIANTS as $size => $variant) {
+            if (!in_array($variant, $variants, true)) {
+                continue;
+            }
             if (($theme['size_to_variant'][$size] ?? null) !== $variant) {
                 $fail("size_to_variant does not map {$size} to {$variant}");
             }
         }
         $ids = [];
-        foreach (self::VARIANTS as $name) {
+        foreach ($variants as $name) {
             $variant = $theme['variants'][$name] ?? null;
             if (!is_array($variant)) {
                 $fail("the {$name} variant is missing");
@@ -512,9 +613,14 @@ final class PosterThemes
                     $fail("the {$name} canvas has no {$field}");
                 }
             }
-            if (abs((float) $canvas['width'] - (self::TRIM_UNITS[0] + 2 * (float) $canvas['bleed_units'])) > 0.01
-                || abs((float) $canvas['height'] - (self::TRIM_UNITS[1] + 2 * (float) $canvas['bleed_units'])) > 0.01) {
-                $fail("the {$name} canvas is not the A2 trim plus its bleed");
+            [$trimW, $trimH] = self::VARIANT_TRIM[$name];
+            if (abs((float) $canvas['width'] - ($trimW + 2 * (float) $canvas['bleed_units'])) > 0.01
+                || abs((float) $canvas['height'] - ($trimH + 2 * (float) $canvas['bleed_units'])) > 0.01) {
+                $fail("the {$name} canvas is not its trim plus its bleed");
+            }
+            $box = $canvas['trim_box'] ?? null;
+            if (is_array($box) && (count($box) !== 4 || abs((float) $box[2] - $trimW) > 0.01 || abs((float) $box[3] - $trimH) > 0.01)) {
+                $fail("the {$name} canvas's trim box is not the variant's trim");
             }
             foreach (array_keys(self::SIZE_VARIANTS, $name, true) as $size) {
                 if (!is_numeric($variant['sizes'][$size]['scale'] ?? null)) {
@@ -582,10 +688,13 @@ final class PosterThemes
             sort($slotIds);
             $ids[$name] = $slotIds;
         }
-        if ($ids['large'] !== $ids['small']) {
-            $fail('its large and small variants have different slot ids');
+        $first = $variants[0];
+        foreach ($variants as $name) {
+            if ($ids[$name] !== $ids[$first]) {
+                $fail("its {$first} and {$name} variants have different slot ids");
+            }
         }
-        if (count(array_filter($ids['large'], static fn (string $id): bool => $id[0] === 'p')) !== (int) $row['photo_slots']) {
+        if (count(array_filter($ids[$first], static fn (string $id): bool => $id[0] === 'p')) !== (int) $row['photo_slots']) {
             $fail('its photo slot count differs from the index');
         }
     }

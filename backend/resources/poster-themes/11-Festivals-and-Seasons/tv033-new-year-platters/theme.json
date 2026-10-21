@@ -1,0 +1,860 @@
+{
+ "id": "TV-033",
+ "key": "tv033-new-year-platters",
+ "title": "New Year Platters",
+ "kind": "screen",
+ "category": {
+  "key": "fest",
+  "number": "11",
+  "name": "Festivals & Seasons"
+ },
+ "style": "photo",
+ "style_label": "With item photo",
+ "layout": "festive",
+ "palette": "night",
+ "has_photo": true,
+ "size_to_variant": {
+  "TV": "tv",
+  "TV4K": "tv",
+  "TVP": "tvp"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "tv": {
+   "variant": "tv",
+   "sizes": {
+    "TV": {
+     "px": [
+      1920,
+      1080
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    },
+    "TV4K": {
+     "px": [
+      3840,
+      2160
+     ],
+     "scale": 2.0,
+     "map": "page_px = u * 2.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1920.0,
+    "height": 1080.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1920.0,
+     1080.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tv.jpg",
+    "backdrop_svg": "backdrop-tv.svg",
+    "backdrop_draw_list": "backdrop-tv.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 160,
+    "top_y": 80.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 160,
+     "cy": 160.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M1180 520 A300 300 0 1 0 1780 520 A300 300 0 1 0 1180 520 Z",
+     "box": [
+      1180,
+      220,
+      600,
+      600
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      1480.0,
+      520.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#F7670B",
+     "preview_placeholder": "illustration:skewer",
+     "clip_ops": [
+      [
+       "M",
+       [
+        1180.0,
+        520.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1180.0,
+        572.66,
+        1193.86,
+        624.4,
+        1220.19,
+        670.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1246.52,
+        715.6,
+        1284.4,
+        753.48,
+        1330.0,
+        779.81
+       ]
+      ],
+      [
+       "C",
+       [
+        1375.6,
+        806.14,
+        1427.34,
+        820.0,
+        1480.0,
+        820.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1532.66,
+        820.0,
+        1584.4,
+        806.14,
+        1630.0,
+        779.81
+       ]
+      ],
+      [
+       "C",
+       [
+        1675.6,
+        753.48,
+        1713.48,
+        715.6,
+        1739.81,
+        670.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1766.14,
+        624.4,
+        1780.0,
+        572.66,
+        1780.0,
+        520.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1780.0,
+        467.34,
+        1766.14,
+        415.6,
+        1739.81,
+        370.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1713.48,
+        324.4,
+        1675.6,
+        286.52,
+        1630.0,
+        260.19
+       ]
+      ],
+      [
+       "C",
+       [
+        1584.4,
+        233.86,
+        1532.66,
+        220.0,
+        1480.0,
+        220.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1427.34,
+        220.0,
+        1375.6,
+        233.86,
+        1330.0,
+        260.19
+       ]
+      ],
+      [
+       "C",
+       [
+        1284.4,
+        286.52,
+        1246.52,
+        324.4,
+        1220.19,
+        370.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1193.86,
+        415.6,
+        1180.0,
+        467.34,
+        1180.0,
+        520.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tv-p1.png",
+     "min_px": [
+      1200,
+      1200
+     ]
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Ring in the new year",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "left",
+     "anchor_x": 100.0,
+     "baseline_y": 330,
+     "top_y": 290.8,
+     "box": [
+      100.0,
+      290.8,
+      580.1,
+      39.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 960,
+     "size_units": 56,
+     "px_at": {
+      "TV": 56.0,
+      "TV4K": 112.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "PARTY PLATTERS",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 100.0,
+     "baseline_y": 500,
+     "top_y": 371.09,
+     "box": [
+      100.0,
+      371.09,
+      959.38,
+      128.91
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#D92B1C",
+      "offset_mm": 6.75
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 960,
+     "size_units": 150,
+     "px_at": {
+      "TV": 150.0,
+      "TV4K": 300.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FROM MVR 299",
+     "font": "anton",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 371.73,
+     "baseline_y": 657.8,
+     "top_y": 606.24,
+     "box": [
+      172.8,
+      606.24,
+      397.86,
+      51.56
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t3",
+     "max_width_mm": 397.9,
+     "size_units": 60.0,
+     "px_at": {
+      "TV": 60.0,
+      "TV4K": 120.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Order by 29 December",
+     "font": "fraunces-700-italic",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 100.0,
+     "baseline_y": 820,
+     "top_y": 794.8,
+     "box": [
+      100.0,
+      794.8,
+      393.08,
+      25.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 960,
+     "size_units": 36,
+     "px_at": {
+      "TV": 36.0,
+      "TV4K": 72.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      80.0,
+      988.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t5",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1840.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      1651.11,
+      988.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t6",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 1008.0,
+     "top_y": 990.12,
+     "box": [
+      815.92,
+      990.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 1800.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    }
+   ]
+  },
+  "tvp": {
+   "variant": "tvp",
+   "sizes": {
+    "TVP": {
+     "px": [
+      1080,
+      1920
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1080.0,
+    "height": 1920.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1080.0,
+     1920.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tvp.jpg",
+    "backdrop_svg": "backdrop-tvp.svg",
+    "backdrop_draw_list": "backdrop-tvp.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 540.0,
+    "top_y": 90.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 540.0,
+     "cy": 170.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M260.0 1000 A280 280 0 1 0 820.0 1000 A280 280 0 1 0 260.0 1000 Z",
+     "box": [
+      260.0,
+      720,
+      560,
+      560
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      540.0,
+      1000.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#F7670B",
+     "preview_placeholder": "illustration:skewer",
+     "clip_ops": [
+      [
+       "M",
+       [
+        260.0,
+        1000.0
+       ]
+      ],
+      [
+       "C",
+       [
+        260.0,
+        1049.15,
+        272.94,
+        1097.44,
+        297.51,
+        1140.0
+       ]
+      ],
+      [
+       "C",
+       [
+        322.09,
+        1182.56,
+        357.44,
+        1217.91,
+        400.0,
+        1242.49
+       ]
+      ],
+      [
+       "C",
+       [
+        442.56,
+        1267.06,
+        490.85,
+        1280.0,
+        540.0,
+        1280.0
+       ]
+      ],
+      [
+       "C",
+       [
+        589.15,
+        1280.0,
+        637.44,
+        1267.06,
+        680.0,
+        1242.49
+       ]
+      ],
+      [
+       "C",
+       [
+        722.56,
+        1217.91,
+        757.91,
+        1182.56,
+        782.49,
+        1140.0
+       ]
+      ],
+      [
+       "C",
+       [
+        807.06,
+        1097.44,
+        820.0,
+        1049.15,
+        820.0,
+        1000.0
+       ]
+      ],
+      [
+       "C",
+       [
+        820.0,
+        950.85,
+        807.06,
+        902.56,
+        782.49,
+        860.0
+       ]
+      ],
+      [
+       "C",
+       [
+        757.91,
+        817.44,
+        722.56,
+        782.09,
+        680.0,
+        757.51
+       ]
+      ],
+      [
+       "C",
+       [
+        637.44,
+        732.94,
+        589.15,
+        720.0,
+        540.0,
+        720.0
+       ]
+      ],
+      [
+       "C",
+       [
+        490.85,
+        720.0,
+        442.56,
+        732.94,
+        400.0,
+        757.51
+       ]
+      ],
+      [
+       "C",
+       [
+        357.44,
+        782.09,
+        322.09,
+        817.44,
+        297.51,
+        860.0
+       ]
+      ],
+      [
+       "C",
+       [
+        272.94,
+        902.56,
+        260.0,
+        950.85,
+        260.0,
+        1000.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tvp-p1.png",
+     "min_px": [
+      560,
+      560
+     ]
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Ring in the new year",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 400,
+     "top_y": 360.8,
+     "box": [
+      249.95,
+      360.8,
+      580.1,
+      39.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 920.0,
+     "size_units": 56,
+     "px_at": {
+      "TVP": 56.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "PARTY PLATTERS",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 560,
+     "top_y": 439.69,
+     "box": [
+      92.29,
+      439.69,
+      895.42,
+      120.31
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#D92B1C",
+      "offset_mm": 6.3
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 920.0,
+     "size_units": 140,
+     "px_at": {
+      "TVP": 140.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FROM MVR 299",
+     "font": "anton",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1446.08,
+     "top_y": 1397.95,
+     "box": [
+      354.33,
+      1397.95,
+      371.33,
+      48.12
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t3",
+     "max_width_mm": 371.3,
+     "size_units": 56,
+     "px_at": {
+      "TVP": 56.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Order by 29 December",
+     "font": "fraunces-700-italic",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1600,
+     "top_y": 1574.8,
+     "box": [
+      343.46,
+      1574.8,
+      393.08,
+      25.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 920.0,
+     "size_units": 36,
+     "px_at": {
+      "TVP": 36.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      80.0,
+      1828.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t5",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1000.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      811.11,
+      1828.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t6",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1848.0,
+     "top_y": 1830.12,
+     "box": [
+      395.92,
+      1830.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 960.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    }
+   ]
+  }
+ }
+}

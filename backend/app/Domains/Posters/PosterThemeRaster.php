@@ -24,8 +24,8 @@ use RuntimeException;
  */
 final class PosterThemeRaster
 {
-    /** Pictures up to this many pixels are drawn at twice the size and halved, for smooth edges. */
-    private const SUPERSAMPLE_UNDER = 1_600_000;
+    /** Pictures up to this many pixels (Full HD included) are drawn at twice the size and halved, for smooth edges. */
+    private const SUPERSAMPLE_UNDER = 2_100_000;
 
     /** @var array<string, int> */
     private array $colours = [];

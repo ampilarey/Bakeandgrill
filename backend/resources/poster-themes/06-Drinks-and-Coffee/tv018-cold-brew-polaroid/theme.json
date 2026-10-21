@@ -1,0 +1,744 @@
+{
+ "id": "TV-018",
+ "key": "tv018-cold-brew-polaroid",
+ "title": "Cold Brew Polaroid",
+ "kind": "screen",
+ "category": {
+  "key": "drink",
+  "number": "06",
+  "name": "Drinks & Coffee"
+ },
+ "style": "photo",
+ "style_label": "With item photo",
+ "layout": "polaroid",
+ "palette": "lagoon",
+ "has_photo": true,
+ "size_to_variant": {
+  "TV": "tv",
+  "TV4K": "tv",
+  "TVP": "tvp"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "tv": {
+   "variant": "tv",
+   "sizes": {
+    "TV": {
+     "px": [
+      1920,
+      1080
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    },
+    "TV4K": {
+     "px": [
+      3840,
+      2160
+     ],
+     "scale": 2.0,
+     "map": "page_px = u * 2.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1920.0,
+    "height": 1080.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1920.0,
+     1080.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tv.jpg",
+    "backdrop_svg": "backdrop-tv.svg",
+    "backdrop_draw_list": "backdrop-tv.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 160,
+    "top_y": 80.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 160,
+     "cy": 160.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "rect",
+     "clip_path_d": "M1216 226 H1744 V676 H1216 Z",
+     "box": [
+      1216,
+      226,
+      528,
+      450
+     ],
+     "rotation_deg": -3.5,
+     "rotation_centre": [
+      1480.0,
+      451.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFF3DC",
+     "preview_placeholder": "illustration:iced",
+     "clip_ops": [
+      [
+       "M",
+       [
+        1202.76,
+        242.54
+       ]
+      ],
+      [
+       "L",
+       [
+        1729.77,
+        210.3
+       ]
+      ],
+      [
+       "L",
+       [
+        1757.24,
+        659.46
+       ]
+      ],
+      [
+       "L",
+       [
+        1230.23,
+        691.7
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tv-p1.png",
+     "min_px": [
+      1056,
+      900
+     ]
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "It's back",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "left",
+     "anchor_x": 100.0,
+     "baseline_y": 330,
+     "top_y": 290.8,
+     "box": [
+      100.0,
+      290.8,
+      235.93,
+      39.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 900,
+     "size_units": 56,
+     "px_at": {
+      "TV": 56.0,
+      "TV4K": 112.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "COLD BREW",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 100.0,
+     "baseline_y": 490,
+     "top_y": 369.69,
+     "box": [
+      100.0,
+      369.69,
+      616.57,
+      120.31
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#064A47",
+      "offset_mm": 6.3
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 900,
+     "size_units": 140,
+     "px_at": {
+      "TV": 140.0,
+      "TV4K": 280.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "steeped for 18 hours",
+     "font": "fraunces-700-italic",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 100.0,
+     "baseline_y": 580,
+     "top_y": 546.4,
+     "box": [
+      100.0,
+      546.4,
+      466.34,
+      33.6
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 900,
+     "size_units": 48,
+     "px_at": {
+      "TV": 48.0,
+      "TV4K": 96.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ADD VANILLA OR CARAMEL FREE",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 100.0,
+     "baseline_y": 680,
+     "top_y": 656.16,
+     "box": [
+      100.0,
+      656.16,
+      583.58,
+      23.84
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 900,
+     "size_units": 32,
+     "px_at": {
+      "TV": 32.0,
+      "TV4K": 64.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FROM",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 1720,
+     "baseline_y": 714.0,
+     "top_y": 696.12,
+     "box": [
+      1676.27,
+      696.12,
+      87.46,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t5",
+     "max_width_mm": 180.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR 40",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 1720,
+     "baseline_y": 776.4,
+     "top_y": 725.09,
+     "box": [
+      1633.0,
+      725.09,
+      174.0,
+      51.31
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t6",
+     "max_width_mm": 180.0,
+     "size_units": 59.7,
+     "px_at": {
+      "TV": 59.7,
+      "TV4K": 119.4
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      80.0,
+      988.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1840.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      1651.11,
+      988.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 1008.0,
+     "top_y": 990.12,
+     "box": [
+      815.92,
+      990.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 1800.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    }
+   ]
+  },
+  "tvp": {
+   "variant": "tvp",
+   "sizes": {
+    "TVP": {
+     "px": [
+      1080,
+      1920
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1080.0,
+    "height": 1920.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1080.0,
+     1920.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tvp.jpg",
+    "backdrop_svg": "backdrop-tvp.svg",
+    "backdrop_draw_list": "backdrop-tvp.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 540.0,
+    "top_y": 90.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 540.0,
+     "cy": 170.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "rect",
+     "clip_path_d": "M276.0 696 H804.0 V1146 H276.0 Z",
+     "box": [
+      276.0,
+      696,
+      528,
+      450
+     ],
+     "rotation_deg": -3.5,
+     "rotation_centre": [
+      540.0,
+      921.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFF3DC",
+     "preview_placeholder": "illustration:iced",
+     "clip_ops": [
+      [
+       "M",
+       [
+        262.76,
+        712.54
+       ]
+      ],
+      [
+       "L",
+       [
+        789.77,
+        680.3
+       ]
+      ],
+      [
+       "L",
+       [
+        817.24,
+        1129.46
+       ]
+      ],
+      [
+       "L",
+       [
+        290.23,
+        1161.7
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tvp-p1.png",
+     "min_px": [
+      528,
+      450
+     ]
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "It's back",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 400,
+     "top_y": 360.8,
+     "box": [
+      422.04,
+      360.8,
+      235.93,
+      39.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 920.0,
+     "size_units": 56,
+     "px_at": {
+      "TVP": 56.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "COLD BREW",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 560,
+     "top_y": 448.28,
+     "box": [
+      253.74,
+      448.28,
+      572.53,
+      111.72
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#064A47",
+      "offset_mm": 5.85
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 920.0,
+     "size_units": 130,
+     "px_at": {
+      "TVP": 130.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "steeped for 18 hours",
+     "font": "fraunces-700-italic",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1560,
+     "top_y": 1529.2,
+     "box": [
+      326.26,
+      1529.2,
+      427.48,
+      30.8
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 920.0,
+     "size_units": 44,
+     "px_at": {
+      "TVP": 44.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ADD VANILLA OR CARAMEL FREE",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1650,
+     "top_y": 1627.65,
+     "box": [
+      266.44,
+      1627.65,
+      547.11,
+      22.35
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 920.0,
+     "size_units": 30,
+     "px_at": {
+      "TVP": 30.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FROM",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 800.0,
+     "baseline_y": 1204.0,
+     "top_y": 1186.12,
+     "box": [
+      756.27,
+      1186.12,
+      87.46,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t5",
+     "max_width_mm": 180.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR 40",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 800.0,
+     "baseline_y": 1266.4,
+     "top_y": 1215.09,
+     "box": [
+      713.0,
+      1215.09,
+      174.0,
+      51.31
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t6",
+     "max_width_mm": 180.0,
+     "size_units": 59.7,
+     "px_at": {
+      "TVP": 59.7
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      80.0,
+      1828.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1000.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      811.11,
+      1828.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1848.0,
+     "top_y": 1830.12,
+     "box": [
+      395.92,
+      1830.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 960.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    }
+   ]
+  }
+ }
+}

@@ -28,7 +28,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
@@ -59,6 +58,8 @@ class PosterController extends Controller
             'layouts' => PosterPurposes::layouts(),
             'moods' => array_keys(PosterMoods::all()),
             'sizes' => array_keys(PaperSize::SIZES),
+            // The screens a TV design shows on: Full HD, 4K and a portrait screen, with their pixels.
+            'screen_sizes' => PaperSize::screens(),
             'places' => Poster::PLACES,
             'materials' => collect(PosterPreflight::MATERIALS)->map(fn (array $m, string $key) => [
                 'key' => $key, 'label' => $m['label'], 'white' => $m['white'], 'mirror' => (bool) ($m['mirror'] ?? false),
@@ -94,6 +95,8 @@ class PosterController extends Controller
         }
         $theme['variants'] = $variants;
         $theme['fonts'] = PosterThemes::FONTS;
+        // A print design's theme.json carries no kind; the editor reads it from here either way.
+        $theme['kind'] = PosterThemes::kindOf($theme);
 
         return response()->json($theme);
     }
@@ -105,7 +108,7 @@ class PosterController extends Controller
      */
     public function themeFile(string $key, string $file): BinaryFileResponse|Response
     {
-        if (preg_match('/^backdrop-(large|small)-(\d{1,2})\.svg$/', $file, $m) === 1) {
+        if (preg_match('/^backdrop-(large|small|tv|tvp)-(\d{1,2})\.svg$/', $file, $m) === 1) {
             $theme = PosterThemes::get($key);
             $layer = $theme === null ? null : PosterThemes::backdropLayer($theme, $m[1], (int) $m[2]);
             if ($layer === null) {
@@ -205,7 +208,7 @@ class PosterController extends Controller
 
     public function update(Request $request, Poster $poster): JsonResponse
     {
-        $data = $this->validated($request, partial: true);
+        $data = $this->validated($request, partial: true, poster: $poster);
         if ($poster->theme !== null) {
             // A template poster stays one: its design is swapped, never dropped, and it stays portrait.
             if (array_key_exists('theme', $data) && $data['theme'] === null) {
@@ -225,12 +228,20 @@ class PosterController extends Controller
 
     public function destroy(Poster $poster): JsonResponse
     {
-        $photo = (string) (($poster->slots ?? [])['photo_path'] ?? '');
+        $photos = PosterPhoto::uploadsIn(is_array($poster->slots) ? $poster->slots : []);
         $poster->delete();
-        // Its poster photo goes too, unless a copy of the poster still uses it.
-        $file = PosterPhoto::uploadPath($photo);
-        if ($file !== null && !Poster::query()->where('slots', 'like', '%' . basename($photo) . '%')->exists()) {
-            @unlink($file);
+        // Its poster photos go too (the classic photo and a template's picks), unless a copy of
+        // the poster or a saved template still uses one.
+        foreach ($photos as $photo) {
+            $file = PosterPhoto::uploadPath($photo);
+            if ($file === null) {
+                continue;
+            }
+            $stillUsed = Poster::query()->where('slots', 'like', '%' . basename($photo) . '%')->exists()
+                || PosterTemplate::query()->where('slots', 'like', '%' . basename($photo) . '%')->exists();
+            if (!$stillUsed) {
+                @unlink($file);
+            }
         }
 
         return response()->json(['ok' => true]);
@@ -252,7 +263,7 @@ class PosterController extends Controller
     {
         $job = $request->validate([
             'sizes' => ['nullable', 'array'],
-            'sizes.*' => ['string'],
+            'sizes.*' => ['string', 'in:' . implode(',', array_merge(array_keys(PaperSize::SIZES), array_keys(PaperSize::SCREENS)))],
             'material' => ['nullable', 'string'],
             'finish' => ['nullable', 'string'],
             'mounting' => ['nullable', 'string'],
@@ -264,6 +275,7 @@ class PosterController extends Controller
             'deadline' => ['nullable', 'string'],
         ]);
         $job['sizes'] = $job['sizes'] ?? $poster->sizes;
+        $this->sizesFit($job['sizes'], $poster->theme);
         $job['material'] = $job['material'] ?? 'foam';
         $job['white'] = $job['white'] ?? ((PosterPreflight::MATERIALS[$job['material']]['white'] ?? false) ? 'under all printed areas' : 'none');
         $job['gloss'] = $job['gloss'] ?? 'none';
@@ -331,6 +343,12 @@ class PosterController extends Controller
         return response()->json(PosterTemplate::query()->orderByDesc('id')->get());
     }
 
+    /**
+     * A saved template keeps everything but the poster's name, place and
+     * take-down date: the design (or purpose and mood), the words and photo
+     * picks, and since 2026-10-22 the sizes and the dish or offer bound, so
+     * Use gives back the poster as it was.
+     */
     public function storeTemplate(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -340,8 +358,12 @@ class PosterController extends Controller
             'theme' => ['nullable', 'string', 'max:64'],
             'mood' => ['nullable', 'string'],
             'language' => ['nullable', 'string'],
+            'sizes' => ['nullable', 'array'],
+            'sizes.*' => ['string'],
             'slots' => ['nullable', 'array'],
             'slots.*' => [$this->slotRule()],
+            'bindings' => ['nullable', 'array'],
+            'bindings.*' => ['nullable', 'integer'],
         ]);
         if (isset($data['theme'])) {
             if (!PosterThemes::has((string) $data['theme'])) {
@@ -352,23 +374,34 @@ class PosterController extends Controller
         } elseif (($data['template_key'] ?? '') === PosterPurposes::THEMED) {
             abort(422, 'Pick a template.');
         }
+        if (isset($data['sizes'])) {
+            $data['sizes'] = array_values($data['sizes']);
+            $this->sizesFit($data['sizes'], $data['theme'] ?? null);
+        }
+        // The column is NOT NULL: a template saved with nothing filled in is an empty set of slots, not a 500.
+        $data['slots'] = $data['slots'] ?? [];
         $data['created_by'] = $request->user()?->id;
         $data['locked'] = false;
 
         return response()->json(PosterTemplate::query()->create($data), 201);
     }
 
+    /** A locked template keeps its name and slots; only an unlock changes it (`locked` is the manager's switch). */
     public function updateTemplate(Request $request, PosterTemplate $template): JsonResponse
     {
         if (!$request->user()?->hasPermission('posters.manage')) {
             abort(403);
         }
-        $template->fill($request->validate([
+        $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:120'],
             'locked' => ['sometimes', 'boolean'],
             'slots' => ['sometimes', 'array'],
             'slots.*' => [$this->slotRule()],
-        ]))->save();
+        ]);
+        if ($template->locked && (array_key_exists('name', $data) || array_key_exists('slots', $data)) && ($data['locked'] ?? true) === true) {
+            abort(422, 'This template is locked. Unlock it to change it.');
+        }
+        $template->fill($data)->save();
 
         return response()->json($template);
     }
@@ -378,9 +411,41 @@ class PosterController extends Controller
         if (!$request->user()?->hasPermission('posters.manage')) {
             abort(403);
         }
+        if ($template->locked) {
+            abort(422, 'This template is locked. Unlock it to delete it.');
+        }
         $template->delete();
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Every size has to be one we know, and a template's sizes have to be
+     * of its kind: a print design prints on paper, a TV design shows on a
+     * screen, and a classic layout prints on paper.
+     *
+     * @param list<mixed> $sizes
+     */
+    private function sizesFit(array $sizes, ?string $theme): void
+    {
+        foreach ($sizes as $size) {
+            if (!is_string($size) || !PaperSize::isKnown($size)) {
+                abort(422, 'Unknown size "' . (is_scalar($size) ? (string) $size : '?') . '".');
+            }
+        }
+        $kind = $theme !== null && $theme !== '' ? PosterThemes::kindOf(PosterThemes::get($theme) ?? []) : 'print';
+        foreach ($sizes as $size) {
+            $sizeKind = PaperSize::kindOf((string) $size) === PaperSize::KIND_SCREEN ? 'screen' : 'print';
+            if ($sizeKind === $kind) {
+                continue;
+            }
+            if ($kind === 'screen') {
+                abort(422, 'A TV template shows on a screen: pick TV, 4K or portrait TV.');
+            }
+            abort(422, $theme !== null && $theme !== ''
+                ? 'A print template prints on paper: pick A2 to A5.'
+                : 'Classic layouts print on paper. Pick a TV template for a screen.');
+        }
     }
 
     /**
@@ -502,7 +567,8 @@ class PosterController extends Controller
     /**
      * The catalogue of ready-made designs for the picker: categories with
      * counts, the style labels, the size → variant map and every theme with
-     * its two preview pictures.
+     * its kind (print or screen), its two preview pictures and the shape of
+     * the first.
      *
      * @return array<string, mixed>
      */
@@ -516,22 +582,31 @@ class PosterController extends Controller
         return [
             'categories' => PosterThemes::categories(),
             'styles' => PosterThemes::styles(),
+            'kinds' => ['print' => 'Print', 'screen' => 'TV screens'],
             'sizes' => PosterThemes::SIZE_VARIANTS,
             // The template faces the page loads for its preview (Jakarta is the admin's own).
             'font_urls' => $fonts,
-            'themes' => array_map(fn (array $row): array => [
-                'id' => $row['id'],
-                'key' => $row['key'],
-                'title' => $row['title'],
-                'category' => $row['category'],
-                'style' => $row['style'],
-                'style_label' => $row['style_label'],
-                'has_photo' => $row['has_photo'],
-                'photo_slots' => $row['photo_slots'],
-                'text_slots' => $row['text_slots'],
-                'preview_url' => $this->themeFileUrl($row['key'], 'preview-large.jpg'),
-                'preview_small_url' => $this->themeFileUrl($row['key'], 'preview-small.jpg'),
-            ], PosterThemes::all()),
+            'themes' => array_map(function (array $row): array {
+                [$first, $second] = PosterThemes::KIND_VARIANTS[$row['kind']];
+                [$w, $h] = PosterThemes::VARIANT_TRIM[$first];
+
+                return [
+                    'id' => $row['id'],
+                    'key' => $row['key'],
+                    'title' => $row['title'],
+                    'kind' => $row['kind'],
+                    'category' => $row['category'],
+                    'style' => $row['style'],
+                    'style_label' => $row['style_label'],
+                    'has_photo' => $row['has_photo'],
+                    'photo_slots' => $row['photo_slots'],
+                    'text_slots' => $row['text_slots'],
+                    'preview_url' => $this->themeFileUrl($row['key'], 'preview-' . $first . '.jpg'),
+                    'preview_small_url' => $this->themeFileUrl($row['key'], 'preview-' . $second . '.jpg'),
+                    // The first preview's shape, for the picker's card.
+                    'aspect' => [(int) $w, (int) $h],
+                ];
+            }, PosterThemes::all()),
         ];
     }
 
@@ -591,8 +666,11 @@ class PosterController extends Controller
         };
     }
 
-    /** @return array<string, mixed> */
-    private function validated(Request $request, bool $partial = false): array
+    /**
+     * @param Poster|null $poster the poster being changed, whose template decides what its sizes may be
+     * @return array<string, mixed>
+     */
+    private function validated(Request $request, bool $partial = false, ?Poster $poster = null): array
     {
         $req = $partial ? 'sometimes' : 'required';
         $data = $request->validate([
@@ -637,16 +715,26 @@ class PosterController extends Controller
                 abort(422, 'This poster is made on its own page: ' . $purpose['external']);
             }
         }
+        // A TV design starts on a Full HD screen; everything else on A4. The sizes have to be of the design's kind.
+        $theme = array_key_exists('theme', $data) ? $data['theme'] : $poster?->theme;
+        $screen = is_string($theme) && $theme !== '' && PosterThemes::kindOf(PosterThemes::get($theme) ?? []) === 'screen';
         if (!$partial) {
             $data['mood'] = $data['mood'] ?? 'dark';
             $data['language'] = $data['language'] ?? 'both';
             $data['landscape'] = (bool) ($data['landscape'] ?? false);
-            $data['sizes'] = array_values($data['sizes'] ?? ['A4']);
+            $data['sizes'] = array_values($data['sizes'] ?? [$screen ? 'TV' : 'A4']);
             $data['slots'] = $data['slots'] ?? [];
             $data['bindings'] = $data['bindings'] ?? [];
             $data['name'] = trim((string) ($data['name'] ?? ''));
         } elseif (array_key_exists('name', $data)) {
             $data['name'] = trim((string) $data['name']);
+        }
+        if (isset($data['sizes'])) {
+            $data['sizes'] = array_values($data['sizes']);
+            $this->sizesFit($data['sizes'], is_string($theme) ? $theme : null);
+        } elseif ($partial && $poster !== null && array_key_exists('theme', $data) && is_string($data['theme'])) {
+            // A design of the other kind needs sizes of its kind in the same change.
+            $this->sizesFit(is_array($poster->sizes) ? $poster->sizes : [], $data['theme']);
         }
         if (isset($data['place']) && $data['place'] !== null && !in_array($data['place'], Poster::PLACES, true)) {
             abort(422, 'Unknown place.');

@@ -28,8 +28,21 @@ class PosterThemeMakeTest extends TestCase
 
         $catalog = $this->getJson('/api/posters/catalog')->assertOk();
         $this->assertCount(13, $catalog->json('themes.categories'));
-        $this->assertCount(110, $catalog->json('themes.themes'));
+        $this->assertCount(149, $catalog->json('themes.themes'));
         $this->assertSame('large', $catalog->json('themes.sizes.A3'));
+        $this->assertSame('tv', $catalog->json('themes.sizes.TV4K'));
+        $this->assertSame(['print' => 'Print', 'screen' => 'TV screens'], $catalog->json('themes.kinds'));
+        $this->assertSame(['A5', 'A4', 'A3', 'A2'], $catalog->json('sizes'));
+        $this->assertSame(['TV', 'TV4K', 'TVP'], array_column($catalog->json('screen_sizes'), 'key'));
+        $this->assertSame([1920, 1080], $catalog->json('screen_sizes.0.px'));
+        $this->assertSame('print', $catalog->json('themes.themes.0.kind'));
+        $this->assertSame([420, 594], $catalog->json('themes.themes.0.aspect'));
+        $tvRow = collect($catalog->json('themes.themes'))->firstWhere('key', 'tv007-donuts-buy1get1');
+        $this->assertSame('screen', $tvRow['kind']);
+        $this->assertSame([1920, 1080], $tvRow['aspect']);
+        $this->assertStringEndsWith('/api/posters/themes/tv007-donuts-buy1get1/preview-tv.jpg', $tvRow['preview_url']);
+        $this->assertStringEndsWith('/preview-tvp.jpg', $tvRow['preview_small_url']);
+        $this->assertSame(3, collect($catalog->json('themes.categories'))->firstWhere('key', 'disc')['counts']['screen']);
         $this->assertSame('With item photo', $catalog->json('themes.styles.photo'));
         $this->assertStringEndsWith('/fonts/pdf/Anton-400.ttf', $catalog->json('themes.font_urls.anton'));
         $this->assertStringEndsWith('/fonts/pdf/Fraunces-900-Italic.ttf', $catalog->json('themes.font_urls.fri9'));
@@ -258,5 +271,140 @@ class PosterThemeMakeTest extends TestCase
 
         $this->postJson('/api/posters/templates', ['name' => 'Bad', 'template_key' => 'x', 'layout' => 'x', 'theme' => 'bg999-nope'])->assertStatus(422);
         $this->postJson('/api/posters/templates', ['name' => 'Bad', 'template_key' => PosterPurposes::THEMED, 'layout' => PosterPurposes::THEMED])->assertStatus(422);
+    }
+
+    public function test_a_saved_template_keeps_its_sizes_and_what_it_was_bound_to(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $item = Item::factory()->create(['name' => 'Chicken tikka', 'base_price' => 85, 'is_active' => true]);
+
+        $saved = $this->postJson('/api/posters/templates', [
+            'name' => 'Tikka on the wall',
+            'template_key' => 'anything',
+            'layout' => 'anything',
+            'theme' => 'bg012-value-meals-menu',
+            'sizes' => ['A2', 'A3'],
+            'bindings' => ['item_id' => $item->id, 'promotion_id' => null],
+            'slots' => ['t2' => 'TIKKA DEALS'],
+        ])->assertCreated();
+        $this->assertSame(['A2', 'A3'], $saved->json('sizes'));
+        $this->assertSame($item->id, $saved->json('bindings.item_id'));
+        $row = PosterTemplate::query()->findOrFail($saved->json('id'));
+        $this->assertSame(['A2', 'A3'], $row->sizes);
+        $this->assertSame($item->id, $row->bindings['item_id']);
+        $this->assertSame(['A2', 'A3'], $this->getJson('/api/posters/templates')->json('0.sizes'));
+
+        // A template's sizes are of its design's kind, and a TV template keeps its screens.
+        $this->postJson('/api/posters/templates', ['name' => 'Bad', 'template_key' => 'x', 'layout' => 'x', 'theme' => 'bg012-value-meals-menu', 'sizes' => ['TV']])->assertStatus(422);
+        $this->postJson('/api/posters/templates', ['name' => 'Bad', 'template_key' => 'x', 'layout' => 'x', 'theme' => 'bg012-value-meals-menu', 'sizes' => ['A9']])->assertStatus(422);
+        $tv = $this->postJson('/api/posters/templates', ['name' => 'Donuts on the TV', 'template_key' => 'x', 'layout' => 'x', 'theme' => 'tv007-donuts-buy1get1', 'sizes' => ['TV', 'TVP']])->assertCreated();
+        $this->assertSame(['TV', 'TVP'], $tv->json('sizes'));
+
+        // A template with none saved (from before 2026-10-22) still lists and restores.
+        $old = PosterTemplate::query()->create(['name' => 'Old', 'template_key' => PosterPurposes::THEMED, 'layout' => PosterPurposes::THEMED, 'theme' => 'bg001-flash-sale-pastries', 'slots' => []]);
+        $this->assertNull($old->fresh()->sizes);
+        $this->getJson('/api/posters/templates')->assertOk();
+    }
+
+    public function test_a_locked_template_is_kept_as_it_is_until_it_is_unlocked(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $id = $this->postJson('/api/posters/templates', [
+            'name' => 'House style', 'template_key' => 'x', 'layout' => 'x', 'theme' => 'bg012-value-meals-menu', 'slots' => ['t2' => 'OURS'],
+        ])->assertCreated()->json('id');
+        $this->putJson("/api/posters/templates/{$id}", ['locked' => true])->assertOk()->assertJsonPath('locked', true);
+
+        $this->putJson("/api/posters/templates/{$id}", ['name' => 'Changed'])->assertStatus(422);
+        $this->putJson("/api/posters/templates/{$id}", ['slots' => ['t2' => 'THEIRS']])->assertStatus(422);
+        $this->deleteJson("/api/posters/templates/{$id}")->assertStatus(422);
+        $this->assertSame('OURS', PosterTemplate::query()->findOrFail($id)->slots['t2']);
+
+        // An unlock in the same change goes through, and so does everything after it.
+        $this->putJson("/api/posters/templates/{$id}", ['locked' => false, 'name' => 'Changed'])->assertOk()->assertJsonPath('name', 'Changed');
+        $this->deleteJson("/api/posters/templates/{$id}")->assertOk();
+        $this->assertNull(PosterTemplate::query()->find($id));
+    }
+
+    public function test_deleting_a_poster_removes_the_photos_only_it_used(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $upload = function (): string {
+            $im = imagecreatetruecolor(400, 300);
+            $tmp = tempnam(sys_get_temp_dir(), 'bg-photo') . '.jpg';
+            imagejpeg($im, $tmp, 80);
+            imagedestroy($im);
+
+            return (string) $this->post('/api/posters/photo', ['photo' => new \Illuminate\Http\UploadedFile($tmp, 'dish.jpg', 'image/jpeg', null, true)])->assertCreated()->json('photo_path');
+        };
+        $mine = $upload();
+        $shared = $upload();
+        $base = ['template_key' => PosterPurposes::THEMED, 'layout' => PosterPurposes::THEMED, 'theme' => 'bg012-value-meals-menu', 'sizes' => ['A4']];
+        $one = $this->postJson('/api/posters', $base + ['name' => 'One', 'slots' => ['p1' => ['photo_path' => $mine], 'p2' => ['photo_path' => $shared]]])->assertCreated()->json('id');
+        $this->postJson('/api/posters', $base + ['name' => 'Two', 'slots' => ['p1' => ['photo_path' => $shared]]])->assertCreated();
+        $this->assertFileExists(storage_path('app/' . $mine));
+        $this->assertFileExists(storage_path('app/' . $shared));
+
+        $this->deleteJson("/api/posters/{$one}")->assertOk();
+        $this->assertFileDoesNotExist(storage_path('app/' . $mine), 'a template photo slot\'s upload goes with its only poster');
+        $this->assertFileExists(storage_path('app/' . $shared), 'a photo another poster still uses stays');
+        @unlink(storage_path('app/' . $shared));
+    }
+
+    public function test_a_tv_template_shows_on_screens_and_a_print_one_on_paper(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $item = Item::factory()->create(['name' => 'Chicken tikka', 'base_price' => 85, 'is_active' => true]);
+        $base = ['template_key' => PosterPurposes::THEMED, 'layout' => PosterPurposes::THEMED];
+
+        // A TV design starts on a Full HD screen when no size is given.
+        $created = $this->postJson('/api/posters', $base + ['name' => 'Donuts', 'theme' => 'tv007-donuts-buy1get1', 'slots' => ['t2' => 'TWO FOR ONE']])->assertCreated();
+        $this->assertSame(['TV'], $created->json('sizes'));
+        $this->assertSame('tv007-donuts-buy1get1', $created->json('theme'));
+        $id = (int) $created->json('id');
+
+        // Its sizes are screens, in any mix; paper is refused, as a screen is for a print design or a classic layout.
+        $this->putJson("/api/posters/{$id}", ['sizes' => ['TV', 'TV4K', 'TVP']])->assertOk();
+        $this->assertSame(['TV', 'TV4K', 'TVP'], Poster::query()->findOrFail($id)->sizes);
+        $this->putJson("/api/posters/{$id}", ['sizes' => ['A4']])->assertStatus(422)->assertJsonPath('message', 'A TV template shows on a screen: pick TV, 4K or portrait TV.');
+        $this->putJson("/api/posters/{$id}", ['sizes' => ['TV', 'A2']])->assertStatus(422);
+        $this->putJson("/api/posters/{$id}", ['sizes' => ['XL']])->assertStatus(422);
+        $this->postJson('/api/posters', $base + ['name' => 'X', 'theme' => 'bg012-value-meals-menu', 'sizes' => ['TV']])->assertStatus(422)->assertJsonPath('message', 'A print template prints on paper: pick A2 to A5.');
+        $this->postJson('/api/posters', ['name' => 'Notice', 'template_key' => 'plain_notice', 'layout' => 'notice', 'sizes' => ['TV']])->assertStatus(422)->assertJsonPath('message', 'Classic layouts print on paper. Pick a TV template for a screen.');
+        // A change of design across kinds needs sizes of the new kind in the same change.
+        $this->putJson("/api/posters/{$id}", ['theme' => 'bg012-value-meals-menu'])->assertStatus(422);
+        $this->putJson("/api/posters/{$id}", ['theme' => 'bg012-value-meals-menu', 'sizes' => ['A3']])->assertOk();
+        $this->putJson("/api/posters/{$id}", ['theme' => 'tv007-donuts-buy1get1', 'sizes' => ['TVP']])->assertOk();
+
+        // The preview follows the screen: its page is the screen's pixels and its variant its orientation.
+        $draft = $base + ['name' => 'Donuts', 'theme' => 'tv007-donuts-buy1get1', 'slots' => ['t2' => 'TWO FOR ONE'], 'bindings' => ['item_id' => $item->id]];
+        foreach (['TV' => ['tv', [1920, 1080]], 'TV4K' => ['tv', [3840, 2160]], 'TVP' => ['tvp', [1080, 1920]]] as $size => [$variant, $px]) {
+            $preview = $this->postJson('/api/posters/preview', $draft + ['sizes' => [$size]])->assertOk();
+            $this->assertSame($variant, $preview->json('sheet.theme.variant'), $size);
+            $this->assertSame('screen', $preview->json('sheet.theme.kind'), $size);
+            $this->assertSame($px, $preview->json('sheet.theme.px'), $size);
+            $this->assertSame((float) $px[0], (float) $preview->json('sheet.w'), $size);
+            $this->assertSame((float) $px[1], (float) $preview->json('sheet.h'), $size);
+            $this->assertStringEndsWith("/backdrop-{$variant}.svg", $preview->json('sheet.theme.backdrop_url'), $size);
+            $this->assertStringEndsWith("/backdrop-{$variant}-1.svg", $preview->json('sheet.theme.layer_urls.1'), $size);
+            $pieces = collect($preview->json('sheet.pieces'));
+            $t2 = $pieces->first(fn (array $p): bool => $p['type'] === 'text' && ($p['slot'] ?? '') === 't2');
+            $this->assertSame('TWO FOR ONE', $t2['text'], $size);
+            $p1 = $pieces->first(fn (array $p): bool => $p['type'] === 'photo' && ($p['slot'] ?? '') === 'p1');
+            $this->assertSame('placeholder', $p1['source'], $size . ': the dish has no photo, the design\'s stands in');
+            $this->assertStringEndsWith("/placeholder-{$variant}-p1.png", $p1['src'], $size);
+            $ids = collect($preview->json('preflight'))->pluck('id')->unique()->values()->all();
+            $this->assertNotContains('ink', $ids, $size);
+            $this->assertNotContains('contrast', $ids, $size);
+            $this->assertNotContains('keepout', $ids, $size);
+            $this->assertNotContains('white', $ids, $size);
+            $this->assertSame('ok', collect($preview->json('preflight'))->firstWhere('id', 'safe')['level'], $size);
+            $this->assertSame('ok', collect($preview->json('preflight'))->firstWhere('id', 'type')['level'], $size);
+        }
+        $this->get('/api/posters/themes/tv007-donuts-buy1get1/backdrop-tv-1.svg')->assertOk()->assertHeader('Content-Type', 'image/svg+xml');
+        $this->get('/api/posters/themes/tv007-donuts-buy1get1/preview-tvp.jpg')->assertOk();
+        $theme = $this->getJson('/api/posters/themes/tv007-donuts-buy1get1')->assertOk();
+        $this->assertSame('screen', $theme->json('kind'));
+        $this->assertSame(['tv', 'tvp'], array_keys($theme->json('variants')));
+        $this->assertSame(24, (int) $theme->json('variants.tv.canvas.min_text_units'));
     }
 }

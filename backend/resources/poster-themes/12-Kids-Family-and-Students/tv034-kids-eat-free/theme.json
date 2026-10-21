@@ -1,0 +1,913 @@
+{
+ "id": "TV-034",
+ "key": "tv034-kids-eat-free",
+ "title": "Kids Eat Free",
+ "kind": "screen",
+ "category": {
+  "key": "family",
+  "number": "12",
+  "name": "Kids, Family & Students"
+ },
+ "style": "photo",
+ "style_label": "With item photo",
+ "layout": "photo_side",
+ "palette": "sunshine",
+ "has_photo": true,
+ "size_to_variant": {
+  "TV": "tv",
+  "TV4K": "tv",
+  "TVP": "tvp"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "tv": {
+   "variant": "tv",
+   "sizes": {
+    "TV": {
+     "px": [
+      1920,
+      1080
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    },
+    "TV4K": {
+     "px": [
+      3840,
+      2160
+     ],
+     "scale": 2.0,
+     "map": "page_px = u * 2.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1920.0,
+    "height": 1080.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1920.0,
+     1080.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tv.jpg",
+    "backdrop_svg": "backdrop-tv.svg",
+    "backdrop_draw_list": "backdrop-tv.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 160,
+    "top_y": 80.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 160,
+     "cy": 160.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M1150 520 A330 330 0 1 0 1810 520 A330 330 0 1 0 1150 520 Z",
+     "box": [
+      1150,
+      190,
+      660,
+      660
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      1480.0,
+      520.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFF3DC",
+     "preview_placeholder": "illustration:fries",
+     "clip_ops": [
+      [
+       "M",
+       [
+        1150.0,
+        520.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1150.0,
+        577.92,
+        1165.25,
+        634.84,
+        1194.21,
+        685.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1223.17,
+        735.16,
+        1264.84,
+        776.83,
+        1315.0,
+        805.79
+       ]
+      ],
+      [
+       "C",
+       [
+        1365.16,
+        834.75,
+        1422.08,
+        850.0,
+        1480.0,
+        850.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1537.92,
+        850.0,
+        1594.84,
+        834.75,
+        1645.0,
+        805.79
+       ]
+      ],
+      [
+       "C",
+       [
+        1695.16,
+        776.83,
+        1736.83,
+        735.16,
+        1765.79,
+        685.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1794.75,
+        634.84,
+        1810.0,
+        577.92,
+        1810.0,
+        520.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1810.0,
+        462.08,
+        1794.75,
+        405.16,
+        1765.79,
+        355.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1736.83,
+        304.84,
+        1695.16,
+        263.17,
+        1645.0,
+        234.21
+       ]
+      ],
+      [
+       "C",
+       [
+        1594.84,
+        205.25,
+        1537.92,
+        190.0,
+        1480.0,
+        190.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1422.08,
+        190.0,
+        1365.16,
+        205.25,
+        1315.0,
+        234.21
+       ]
+      ],
+      [
+       "C",
+       [
+        1264.84,
+        263.17,
+        1223.17,
+        304.84,
+        1194.21,
+        355.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1165.25,
+        405.16,
+        1150.0,
+        462.08,
+        1150.0,
+        520.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tv-p1.png",
+     "min_px": [
+      1320,
+      1320
+     ]
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Family Sundays",
+     "font": "fraunces-900-italic",
+     "colour": "#1C1408",
+     "align": "left",
+     "anchor_x": 100.0,
+     "baseline_y": 330,
+     "top_y": 290.8,
+     "box": [
+      100.0,
+      290.8,
+      453.46,
+      39.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 980,
+     "size_units": 56,
+     "px_at": {
+      "TV": 56.0,
+      "TV4K": 112.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "KIDS EAT FREE",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "left",
+     "anchor_x": 100.0,
+     "baseline_y": 490,
+     "top_y": 361.09,
+     "box": [
+      100.0,
+      361.09,
+      820.99,
+      128.91
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#1C1408",
+      "offset_mm": 6.75
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 980,
+     "size_units": 150,
+     "px_at": {
+      "TV": 150.0,
+      "TV4K": 300.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ONE FREE KIDS MEAL PER ADULT MAIN",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 523.58,
+     "baseline_y": 696.24,
+     "top_y": 670.91,
+     "box": [
+      161.6,
+      670.91,
+      723.96,
+      25.33
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t3",
+     "max_width_mm": 724.0,
+     "size_units": 34,
+     "px_at": {
+      "TV": 34.0,
+      "TV4K": 68.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "UNDER",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 1210,
+     "baseline_y": 234.0,
+     "top_y": 216.12,
+     "box": [
+      1158.87,
+      216.12,
+      102.26,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 180.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "12s",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 1210,
+     "baseline_y": 296.4,
+     "top_y": 239.68,
+     "box": [
+      1167.12,
+      239.68,
+      85.75,
+      56.72
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t5",
+     "max_width_mm": 180.0,
+     "size_units": 66.0,
+     "px_at": {
+      "TV": 66.0,
+      "TV4K": 132.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      80.0,
+      988.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t6",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1840.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      1651.11,
+      988.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 1008.0,
+     "top_y": 990.12,
+     "box": [
+      815.92,
+      990.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 1800.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    }
+   ]
+  },
+  "tvp": {
+   "variant": "tvp",
+   "sizes": {
+    "TVP": {
+     "px": [
+      1080,
+      1920
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1080.0,
+    "height": 1920.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1080.0,
+     1920.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tvp.jpg",
+    "backdrop_svg": "backdrop-tvp.svg",
+    "backdrop_draw_list": "backdrop-tvp.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 540.0,
+    "top_y": 90.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 540.0,
+     "cy": 170.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M240.0 1030 A300 300 0 1 0 840.0 1030 A300 300 0 1 0 240.0 1030 Z",
+     "box": [
+      240.0,
+      730,
+      600,
+      600
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      540.0,
+      1030.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFF3DC",
+     "preview_placeholder": "illustration:fries",
+     "clip_ops": [
+      [
+       "M",
+       [
+        240.0,
+        1030.0
+       ]
+      ],
+      [
+       "C",
+       [
+        240.0,
+        1082.66,
+        253.86,
+        1134.4,
+        280.19,
+        1180.0
+       ]
+      ],
+      [
+       "C",
+       [
+        306.52,
+        1225.6,
+        344.4,
+        1263.48,
+        390.0,
+        1289.81
+       ]
+      ],
+      [
+       "C",
+       [
+        435.6,
+        1316.14,
+        487.34,
+        1330.0,
+        540.0,
+        1330.0
+       ]
+      ],
+      [
+       "C",
+       [
+        592.66,
+        1330.0,
+        644.4,
+        1316.14,
+        690.0,
+        1289.81
+       ]
+      ],
+      [
+       "C",
+       [
+        735.6,
+        1263.48,
+        773.48,
+        1225.6,
+        799.81,
+        1180.0
+       ]
+      ],
+      [
+       "C",
+       [
+        826.14,
+        1134.4,
+        840.0,
+        1082.66,
+        840.0,
+        1030.0
+       ]
+      ],
+      [
+       "C",
+       [
+        840.0,
+        977.34,
+        826.14,
+        925.6,
+        799.81,
+        880.0
+       ]
+      ],
+      [
+       "C",
+       [
+        773.48,
+        834.4,
+        735.6,
+        796.52,
+        690.0,
+        770.19
+       ]
+      ],
+      [
+       "C",
+       [
+        644.4,
+        743.86,
+        592.66,
+        730.0,
+        540.0,
+        730.0
+       ]
+      ],
+      [
+       "C",
+       [
+        487.34,
+        730.0,
+        435.6,
+        743.86,
+        390.0,
+        770.19
+       ]
+      ],
+      [
+       "C",
+       [
+        344.4,
+        796.52,
+        306.52,
+        834.4,
+        280.19,
+        880.0
+       ]
+      ],
+      [
+       "C",
+       [
+        253.86,
+        925.6,
+        240.0,
+        977.34,
+        240.0,
+        1030.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tvp-p1.png",
+     "min_px": [
+      600,
+      600
+     ]
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Family Sundays",
+     "font": "fraunces-900-italic",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 400,
+     "top_y": 360.8,
+     "box": [
+      313.27,
+      360.8,
+      453.46,
+      39.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 920.0,
+     "size_units": 56,
+     "px_at": {
+      "TVP": 56.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "KIDS EAT FREE",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 560,
+     "top_y": 439.69,
+     "box": [
+      156.87,
+      439.69,
+      766.26,
+      120.31
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#1C1408",
+      "offset_mm": 6.3
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 920.0,
+     "size_units": 140,
+     "px_at": {
+      "TVP": 140.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ONE FREE KIDS MEAL PER ADULT MAIN",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1476.24,
+     "top_y": 1450.91,
+     "box": [
+      178.02,
+      1450.91,
+      723.96,
+      25.33
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t3",
+     "max_width_mm": 724.0,
+     "size_units": 34,
+     "px_at": {
+      "TVP": 34.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "UNDER",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 830,
+     "baseline_y": 754.0,
+     "top_y": 736.12,
+     "box": [
+      778.87,
+      736.12,
+      102.26,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 180.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "12s",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 830,
+     "baseline_y": 816.4,
+     "top_y": 759.68,
+     "box": [
+      787.12,
+      759.68,
+      85.75,
+      56.72
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t5",
+     "max_width_mm": 180.0,
+     "size_units": 66.0,
+     "px_at": {
+      "TVP": 66.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      80.0,
+      1828.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t6",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1000.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      811.11,
+      1828.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1848.0,
+     "top_y": 1830.12,
+     "box": [
+      395.92,
+      1830.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 960.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    }
+   ]
+  }
+ }
+}

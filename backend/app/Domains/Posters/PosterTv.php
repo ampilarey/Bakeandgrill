@@ -29,9 +29,18 @@ final class PosterTv
             'seconds' => 12,
             'fields' => [
                 'image' => $url,
-                'title' => (string) ($poster->name),
+                // The picture carries its own words; a caption over the artwork would say the name twice.
+                'title' => '',
             ],
         ]);
+        // A poster shows whole and still: fitted inside the screen, with no slow zoom cropping its edges.
+        foreach ($slide['elements'] as &$element) {
+            if (($element['type'] ?? '') === 'image') {
+                $element['style'] = ['objectFit' => 'contain'];
+                unset($element['animation']);
+            }
+        }
+        unset($element);
         $slide['schedule'] = [
             'date_start' => now()->toDateString(),
             'date_end' => $end,

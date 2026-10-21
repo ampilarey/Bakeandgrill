@@ -25,7 +25,7 @@ use Throwable;
  */
 final class PosterThemePieces
 {
-    /** A slot narrower than this (design units) takes a dish's cut-out rather than its photo. */
+    /** A slot narrower than this (design units) takes a dish's cut-out rather than its photo; a screen design names its own in `canvas.cutout_under_units`. */
     public const CUTOUT_UNDER_UNITS = 120.0;
 
     /** Thaana in a slot sets in Noto Sans Thaana; these Latin faces take its bold. */
@@ -79,8 +79,9 @@ final class PosterThemePieces
 
         $boundItem = self::boundItem($content, $poster);
         $first = true;
+        $cutoutUnder = (float) ($variant['canvas']['cutout_under_units'] ?? self::CUTOUT_UNDER_UNITS);
         foreach ($variant['photo_slots'] as $slot) {
-            $pieces[] = self::photoPiece($map, $slot, $slots[(string) $slot['id']] ?? null, $first ? $boundItem : null, $content, $theme, $variantName);
+            $pieces[] = self::photoPiece($map, $slot, $slots[(string) $slot['id']] ?? null, $first ? $boundItem : null, $content, $theme, $variantName, $cutoutUnder);
             $first = false;
         }
 
@@ -113,13 +114,18 @@ final class PosterThemePieces
                 'key' => (string) $theme['key'],
                 'id' => (string) $theme['id'],
                 'title' => (string) $theme['title'],
+                'kind' => PosterThemes::kindOf($theme),
                 'variant' => $variantName,
                 'size' => $size->name,
+                'size_label' => $size->label(),
+                // A screen page's units are its pixels; the picture is this many.
+                'px' => $size->isScreen() ? $size->pixels() : null,
                 'map' => $map,
                 'canvas' => [(float) $variant['canvas']['width'], (float) $variant['canvas']['height']],
                 'safe' => $safe,
                 'min_pt' => $floorPt,
-                'keepout' => $variantName === 'large',
+                // Only the wall designs keep their corners clear for stand-offs (docs/POSTER_THEMES_HANDOFF.md § 1).
+                'keepout' => is_array($variant['canvas']['corner_keepout'] ?? null),
                 // The preview stacks the backdrop's layers with a photo between each pair (PosterThemes::backdropLayer).
                 'photo_order' => $photoOrder,
                 'layers' => count($photoOrder) + 1,
@@ -197,14 +203,14 @@ final class PosterThemePieces
      * @param array<string, mixed> $theme
      * @return array<string, mixed>
      */
-    private static function photoPiece(array $map, array $slot, mixed $choice, ?Item $boundItem, array $content, array $theme, string $variantName): array
+    private static function photoPiece(array $map, array $slot, mixed $choice, ?Item $boundItem, array $content, array $theme, string $variantName, float $cutoutUnder = self::CUTOUT_UNDER_UNITS): array
     {
         $box = PosterThemes::mapBox($map, $slot['box']);
         $clipOps = PosterThemes::mapOps($map, $slot['clip_ops']);
         $centre = is_array($slot['rotation_centre'] ?? null)
             ? PosterThemes::mapPoint($map, (float) $slot['rotation_centre'][0], (float) $slot['rotation_centre'][1])
             : [$box[0] + $box[2] / 2, $box[1] + $box[3] / 2];
-        $small = min((float) $slot['box'][2], (float) $slot['box'][3]) < self::CUTOUT_UNDER_UNITS;
+        $small = min((float) $slot['box'][2], (float) $slot['box'][3]) < $cutoutUnder;
 
         $picked = self::pickPhoto(is_array($choice) ? $choice : [], $boundItem, $small, $content);
         if ($picked['path'] === null) {
@@ -230,7 +236,7 @@ final class PosterThemePieces
             'contain' => $picked['source'] === 'cutout',
             'fill_behind' => BrandCmyk::forHex((string) $slot['fill_behind']),
             'hex_behind' => strtoupper((string) $slot['fill_behind']),
-            'min_px' => is_array($slot['min_px_for_150ppi'] ?? null) ? array_map('intval', $slot['min_px_for_150ppi']) : null,
+            'min_px' => is_array($slot['min_px_for_150ppi'] ?? $slot['min_px'] ?? null) ? array_map('intval', $slot['min_px_for_150ppi'] ?? $slot['min_px']) : null,
             'bleed' => $box[0] <= 0.01 || $box[1] <= 0.01,
             'variant' => $variantName,
         ];

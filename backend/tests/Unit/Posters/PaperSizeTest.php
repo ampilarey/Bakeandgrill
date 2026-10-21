@@ -58,6 +58,42 @@ class PaperSizeTest extends TestCase
         $this->assertSame(100, PaperSize::PPI_RED);
     }
 
+    public function test_a_screen_is_its_pixels_with_no_bleed_and_its_own_orientation(): void
+    {
+        $tv = PaperSize::named('tv');
+        $this->assertTrue($tv->isScreen());
+        $this->assertSame('TV', $tv->name);
+        $this->assertSame(PaperSize::KIND_SCREEN, $tv->kind);
+        $this->assertTrue($tv->landscape);
+        $this->assertSame(0.0, $tv->bleed);
+        $this->assertSame([1920, 1080], $tv->pixels());
+        $this->assertSame(1920.0, $tv->bleedWidth());
+        $this->assertSame([0.0, 0.0, 1920.0, 1080.0], $tv->trimBox());
+        $this->assertSame([60.0, 60.0, 1800.0, 960.0], $tv->safeBox());
+        $this->assertSame('TV · Full HD (1920 × 1080)', $tv->label());
+        $this->assertSame(1.0, $tv->screenScale());
+        $this->assertSame(0.0, $tv->keepOutMm());
+        $this->assertSame($tv, $tv->mounted('standoffs'), 'nothing is mounted on a screen');
+
+        // The landscape flag is the paper's; a screen keeps its own orientation.
+        $this->assertTrue(PaperSize::named('TV', landscape: false)->landscape);
+        $portrait = PaperSize::named('TVP', landscape: true);
+        $this->assertFalse($portrait->landscape);
+        $this->assertSame([1080, 1920], $portrait->pixels());
+        $this->assertSame(1.0, $portrait->screenScale());
+        $this->assertSame(2.0, PaperSize::named('TV4K')->screenScale());
+        $this->assertSame([3840, 2160], PaperSize::named('TV4K')->pixels());
+        $this->assertSame(1.0, PaperSize::named('A4')->screenScale());
+
+        $this->assertSame(PaperSize::KIND_SCREEN, PaperSize::kindOf('tv4k'));
+        $this->assertSame(PaperSize::KIND_PAPER, PaperSize::kindOf('a5'));
+        $this->assertNull(PaperSize::kindOf('A6'));
+        $this->assertTrue(PaperSize::isKnown('TVP'));
+        $this->assertFalse(PaperSize::isKnown('TVX'));
+        $this->assertSame(['TV', 'TV4K', 'TVP'], array_column(PaperSize::screens(), 'key'));
+        $this->assertSame([1080, 1920], PaperSize::screens()[2]['px']);
+    }
+
     public function test_unknown_size_is_refused(): void
     {
         $this->expectException(InvalidArgumentException::class);

@@ -284,6 +284,27 @@ final class PosterPhoto
         return self::UPLOAD_DIR . '/' . $name;
     }
 
+    /**
+     * Every poster upload a poster's slots name: the classic `photo_path` and
+     * a template's photo picks (`p1…` → `{photo_path}`).
+     *
+     * @param array<string, mixed> $slots
+     * @return list<string> relative paths, each once
+     */
+    public static function uploadsIn(array $slots): array
+    {
+        $paths = [];
+        foreach ($slots as $key => $value) {
+            if ($key === 'photo_path' && is_string($value) && $value !== '') {
+                $paths[] = $value;
+            } elseif (is_array($value) && is_string($value['photo_path'] ?? null) && $value['photo_path'] !== '') {
+                $paths[] = $value['photo_path'];
+            }
+        }
+
+        return array_values(array_unique($paths));
+    }
+
     /** The file behind a kept `photo_path`, or null when it is not one of ours or is gone. */
     public static function uploadPath(string $relative): ?string
     {

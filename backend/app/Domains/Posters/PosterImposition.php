@@ -16,6 +16,10 @@ final class PosterImposition
      */
     public static function plan(PaperSize $poster, string $mode): array
     {
+        // A screen is one picture; nothing is stepped onto it.
+        if ($poster->isScreen()) {
+            $mode = 'single';
+        }
         if ($mode === 'tent' && $poster->name === 'A5') {
             return self::tent($poster);
         }

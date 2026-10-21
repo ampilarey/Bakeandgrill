@@ -29,8 +29,19 @@ final class PosterPreflight
      * @param array<string, mixed> $job material, white, mounting, sizes
      * @return list<array{id: string, level: string, message: string}>
      */
+    /** The smallest type on a TV, in pixels at Full HD (scaled up on 4K). */
+    public const SCREEN_TEXT_FLOOR_PX = 24.0;
+
+    /** A QR on a TV: red under this many Full HD pixels, amber under the second. */
+    public const SCREEN_QR_RED_PX = 100.0;
+
+    public const SCREEN_QR_AMBER_PX = 160.0;
+
     public static function check(array $poster, array $content, array $built, PaperSize $size, array $job = []): array
     {
+        if ($size->isScreen()) {
+            return self::screen($content, $built, $size);
+        }
         $checks = [];
         $flags = is_array($built['flags'] ?? null) ? $built['flags'] : [];
         $pieces = is_array($built['pieces'] ?? null) ? $built['pieces'] : [];
@@ -239,6 +250,136 @@ final class PosterPreflight
             } else {
                 $checks[] = self::row('spots', 'ok', 'Spot layers: ' . $whiteName . ($glossOn ? ' and ' . $glossName : '') . '.');
             }
+        }
+
+        return $checks;
+    }
+
+    /**
+     * The checks for a screen. A TV shows pixels, not ink: each photo is
+     * measured against its slot in pixels, the type floor is 24 px at Full
+     * HD, a QR has to read from across the room, the design's own safe area
+     * stands, and the price is checked against the menu. Nothing about paper
+     * applies: no ink, white, mounting or gloss.
+     *
+     * @param array<string, mixed> $content
+     * @param array<string, mixed> $built from PosterPieces::build
+     * @return list<array{id: string, level: string, message: string}>
+     */
+    private static function screen(array $content, array $built, PaperSize $size): array
+    {
+        $theme = is_array($built['theme'] ?? null) ? $built['theme'] : null;
+        if ($theme === null) {
+            return [self::row('kind', 'red', 'Classic layouts are made for paper. Pick a TV template for a screen.')];
+        }
+        $checks = [];
+        $flags = is_array($built['flags'] ?? null) ? $built['flags'] : [];
+        $pieces = is_array($built['pieces'] ?? null) ? $built['pieces'] : [];
+        $k = $size->screenScale();
+        $at = $size->label();
+
+        $n = 0;
+        foreach ($pieces as $piece) {
+            if (($piece['type'] ?? '') !== 'photo') {
+                continue;
+            }
+            $n++;
+            $label = 'Photo ' . $n;
+            $source = (string) ($piece['source'] ?? 'placeholder');
+            $path = $piece['path'] ?? null;
+            $info = is_string($path) && is_file($path) ? @getimagesize($path) : false;
+            if (!is_array($info)) {
+                $checks[] = self::row('photo', 'amber', $label . ' has no picture that can be read.');
+
+                continue;
+            }
+            $pw = max(1, (int) $info[0]);
+            $ph = max(1, (int) $info[1]);
+            $w = (float) $piece['w'];
+            $h = (float) $piece['h'];
+            if (($piece['contain'] ?? false) === true) {
+                $pad = min($w, $h) * 0.04;
+                $w = max(1.0, $w - 2 * $pad);
+                $h = max(1.0, $h - 2 * $pad);
+            }
+            $ratio = min($pw / $w, $ph / $h);
+            $what = $source === 'placeholder' ? $label . ' (the design\'s own picture)' : $label;
+            $stretch = $ratio > 0 ? number_format(1 / $ratio, 1) : '∞';
+            if ($ratio >= 1.0) {
+                $checks[] = self::row('photo', 'ok', $what . ' fills its frame sharp (' . $pw . ' × ' . $ph . ' px).');
+            } elseif ($ratio >= 0.5) {
+                $checks[] = self::row('photo', 'amber', $what . ' is stretched ' . $stretch . '× to fill its frame on ' . $at . ': a little soft on a big screen.');
+            } else {
+                $checks[] = self::row('photo', 'red', $what . ' is stretched ' . $stretch . '× to fill its frame on ' . $at . '. Use a bigger photo.');
+            }
+        }
+
+        $floorPx = self::SCREEN_TEXT_FLOOR_PX * $k;
+        $smallest = null;
+        foreach ($pieces as $piece) {
+            if (($piece['type'] ?? '') !== 'text') {
+                continue;
+            }
+            $px = (float) ($piece['pt'] ?? 0) * 0.352778;
+            if ($smallest === null || $px < $smallest) {
+                $smallest = $px;
+            }
+        }
+        if ($smallest !== null && $smallest < $floorPx - 0.1) {
+            $checks[] = self::row('type', 'red', 'Type is under ' . (int) round($floorPx) . ' px on ' . $at . ', too small to read across the room.');
+        } else {
+            $checks[] = self::row('type', 'ok', 'Type sizes read from across the room.');
+        }
+
+        if (($flags['overflow'] ?? false) === true) {
+            $checks[] = self::row('fit', 'red', 'A line does not fit, even at its smallest size.');
+        } elseif (($flags['shrunk'] ?? false) === true) {
+            $checks[] = self::row('fit', 'amber', 'A line was shrunk to fit.');
+        } else {
+            $checks[] = self::row('fit', 'ok', 'Everything fits.');
+        }
+
+        [$safeX, $safeY, $safeW, $safeH] = is_array($theme['safe'] ?? null) ? $theme['safe'] : $size->safeBox();
+        $outside = false;
+        $qrPx = null;
+        foreach ($pieces as $piece) {
+            $type = (string) ($piece['type'] ?? '');
+            if (!in_array($type, ['text', 'qr', 'logo'], true)) {
+                continue;
+            }
+            $x = (float) $piece['x'];
+            $y = (float) $piece['y'];
+            $w = (float) $piece['w'];
+            $h = (float) $piece['h'];
+            if ($x < $safeX - 0.5 || $y < $safeY - 0.5 || $x + $w > $safeX + $safeW + 0.5 || $y + $h > $safeY + $safeH + 0.5) {
+                $outside = true;
+            }
+            if ($type === 'qr') {
+                $qrPx = $qrPx === null ? $w : min($qrPx, $w);
+            }
+        }
+        $checks[] = $outside
+            ? self::row('safe', 'red', 'Text, the logo or the QR sits where a TV may cut the edge off.')
+            : self::row('safe', 'ok', 'Text, logo and QR are clear of the screen\'s edges.');
+        if ($qrPx !== null) {
+            if ($qrPx < self::SCREEN_QR_RED_PX * $k) {
+                $checks[] = self::row('qr', 'red', 'The QR is under ' . (int) round(self::SCREEN_QR_RED_PX * $k) . ' px: a phone cannot read it from across the room.');
+            } elseif ($qrPx < self::SCREEN_QR_AMBER_PX * $k) {
+                $checks[] = self::row('qr', 'amber', 'The QR is under ' . (int) round(self::SCREEN_QR_AMBER_PX * $k) . ' px: readable up close, not from across the room.');
+            } else {
+                $checks[] = self::row('qr', 'ok', 'QR size is fine for a screen.');
+            }
+        }
+
+        foreach ($content['problems'] ?? [] as $message) {
+            $checks[] = self::row('data', 'red', (string) $message);
+        }
+        foreach ($content['warnings'] ?? [] as $message) {
+            $checks[] = self::row('data', 'amber', (string) $message);
+        }
+        $price = self::themedPrice($pieces, (string) ($content['price_live'] ?? ''));
+        if ($price !== null) {
+            $checks[] = $price;
         }
 
         return $checks;

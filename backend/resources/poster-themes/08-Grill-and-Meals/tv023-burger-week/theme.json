@@ -1,0 +1,1134 @@
+{
+ "id": "TV-023",
+ "key": "tv023-burger-week",
+ "title": "Burger Week",
+ "kind": "screen",
+ "category": {
+  "key": "grill",
+  "number": "08",
+  "name": "Grill & Meals"
+ },
+ "style": "photo",
+ "style_label": "With item photo",
+ "layout": "magazine",
+ "palette": "chili",
+ "has_photo": true,
+ "size_to_variant": {
+  "TV": "tv",
+  "TV4K": "tv",
+  "TVP": "tvp"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "tv": {
+   "variant": "tv",
+   "sizes": {
+    "TV": {
+     "px": [
+      1920,
+      1080
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    },
+    "TV4K": {
+     "px": [
+      3840,
+      2160
+     ],
+     "scale": 2.0,
+     "map": "page_px = u * 2.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1920.0,
+    "height": 1080.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1920.0,
+     1080.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tv.jpg",
+    "backdrop_svg": "backdrop-tv.svg",
+    "backdrop_draw_list": "backdrop-tv.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 160,
+    "top_y": 70.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 160,
+     "cy": 150.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "rect",
+     "clip_path_d": "M1140 200 H1800 A40 40 0 0 1 1840 240 V760 A40 40 0 0 1 1800 800 H1140 A40 40 0 0 1 1100 760 V240 A40 40 0 0 1 1140 200 Z",
+     "box": [
+      1100,
+      200,
+      740,
+      600
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      1470.0,
+      500.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFC72C",
+     "preview_placeholder": "illustration:burger",
+     "clip_ops": [
+      [
+       "M",
+       [
+        1140.0,
+        200.0
+       ]
+      ],
+      [
+       "L",
+       [
+        1800.0,
+        200.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1807.02,
+        200.0,
+        1813.92,
+        201.85,
+        1820.0,
+        205.36
+       ]
+      ],
+      [
+       "C",
+       [
+        1826.08,
+        208.87,
+        1831.13,
+        213.92,
+        1834.64,
+        220.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1838.15,
+        226.08,
+        1840.0,
+        232.98,
+        1840.0,
+        240.0
+       ]
+      ],
+      [
+       "L",
+       [
+        1840.0,
+        760.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1840.0,
+        767.02,
+        1838.15,
+        773.92,
+        1834.64,
+        780.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1831.13,
+        786.08,
+        1826.08,
+        791.13,
+        1820.0,
+        794.64
+       ]
+      ],
+      [
+       "C",
+       [
+        1813.92,
+        798.15,
+        1807.02,
+        800.0,
+        1800.0,
+        800.0
+       ]
+      ],
+      [
+       "L",
+       [
+        1140.0,
+        800.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1132.98,
+        800.0,
+        1126.08,
+        798.15,
+        1120.0,
+        794.64
+       ]
+      ],
+      [
+       "C",
+       [
+        1113.92,
+        791.13,
+        1108.87,
+        786.08,
+        1105.36,
+        780.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1101.85,
+        773.92,
+        1100.0,
+        767.02,
+        1100.0,
+        760.0
+       ]
+      ],
+      [
+       "L",
+       [
+        1100.0,
+        240.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1100.0,
+        232.98,
+        1101.85,
+        226.08,
+        1105.36,
+        220.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1108.87,
+        213.92,
+        1113.92,
+        208.87,
+        1120.0,
+        205.36
+       ]
+      ],
+      [
+       "C",
+       [
+        1126.08,
+        201.85,
+        1132.98,
+        200.0,
+        1140.0,
+        200.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tv-p1.png",
+     "min_px": [
+      1480,
+      1200
+     ]
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "BURGER",
+     "font": "anton",
+     "colour": "#FFC72C",
+     "align": "left",
+     "anchor_x": 100.0,
+     "baseline_y": 500,
+     "top_y": 242.19,
+     "box": [
+      100.0,
+      242.19,
+      870.53,
+      257.81
+     ],
+     "tracking_em": 0.02,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 12
+     },
+     "role_hint": "headline",
+     "id": "t1",
+     "max_width_mm": 960,
+     "size_units": 300,
+     "px_at": {
+      "TV": 300.0,
+      "TV4K": 600.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "WEEK",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 203.06,
+     "baseline_y": 610.8,
+     "top_y": 588.45,
+     "box": [
+      156.0,
+      588.45,
+      94.11,
+      22.35
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t2",
+     "max_width_mm": 94.1,
+     "size_units": 30,
+     "px_at": {
+      "TV": 30.0,
+      "TV4K": 60.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BURGER WEEK IS HERE",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 100.0,
+     "baseline_y": 780,
+     "top_y": 702.66,
+     "box": [
+      100.0,
+      702.66,
+      768.51,
+      77.34
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 4.05
+     },
+     "role_hint": "headline_or_offer",
+     "id": "t3",
+     "max_width_mm": 960,
+     "size_units": 90,
+     "px_at": {
+      "TV": 90.0,
+      "TV4K": 180.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "5 BURGERS  ·  ONE PRICE  ·  7 DAYS",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 100.0,
+     "baseline_y": 850,
+     "top_y": 826.16,
+     "box": [
+      100.0,
+      826.16,
+      619.68,
+      23.84
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 960,
+     "size_units": 32,
+     "px_at": {
+      "TV": 32.0,
+      "TV4K": 64.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKE & GRILL  ·  GRILL EDITION",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1840.0,
+     "baseline_y": 110,
+     "top_y": 92.12,
+     "box": [
+      1341.83,
+      92.12,
+      498.17,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t5",
+     "max_width_mm": 700,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "THIS MONTH",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "right",
+     "anchor_x": 1840.0,
+     "baseline_y": 150,
+     "top_y": 132.12,
+     "box": [
+      1647.66,
+      132.12,
+      192.34,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t6",
+     "max_width_mm": 700,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ALL",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 1120,
+     "baseline_y": 724.0,
+     "top_y": 706.12,
+     "box": [
+      1093.29,
+      706.12,
+      53.42,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t7",
+     "max_width_mm": 180.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR 69",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 1120,
+     "baseline_y": 786.4,
+     "top_y": 735.09,
+     "box": [
+      1033.0,
+      735.09,
+      174.0,
+      51.31
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t8",
+     "max_width_mm": 180.0,
+     "size_units": 59.7,
+     "px_at": {
+      "TV": 59.7,
+      "TV4K": 119.4
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      80.0,
+      988.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1840.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      1651.11,
+      988.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t10",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 1008.0,
+     "top_y": 990.12,
+     "box": [
+      815.92,
+      990.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t11",
+     "max_width_mm": 1800.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    }
+   ]
+  },
+  "tvp": {
+   "variant": "tvp",
+   "sizes": {
+    "TVP": {
+     "px": [
+      1080,
+      1920
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1080.0,
+    "height": 1920.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1080.0,
+     1920.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tvp.jpg",
+    "backdrop_svg": "backdrop-tvp.svg",
+    "backdrop_draw_list": "backdrop-tvp.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 160,
+    "top_y": 70.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 160,
+     "cy": 150.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "rect",
+     "clip_path_d": "M130 620 H950.0 A40 40 0 0 1 990.0 660 V1340 A40 40 0 0 1 950.0 1380 H130 A40 40 0 0 1 90 1340 V660 A40 40 0 0 1 130 620 Z",
+     "box": [
+      90,
+      620,
+      900.0,
+      760
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      540.0,
+      1000.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFC72C",
+     "preview_placeholder": "illustration:burger",
+     "clip_ops": [
+      [
+       "M",
+       [
+        130.0,
+        620.0
+       ]
+      ],
+      [
+       "L",
+       [
+        950.0,
+        620.0
+       ]
+      ],
+      [
+       "C",
+       [
+        957.02,
+        620.0,
+        963.92,
+        621.85,
+        970.0,
+        625.36
+       ]
+      ],
+      [
+       "C",
+       [
+        976.08,
+        628.87,
+        981.13,
+        633.92,
+        984.64,
+        640.0
+       ]
+      ],
+      [
+       "C",
+       [
+        988.15,
+        646.08,
+        990.0,
+        652.98,
+        990.0,
+        660.0
+       ]
+      ],
+      [
+       "L",
+       [
+        990.0,
+        1340.0
+       ]
+      ],
+      [
+       "C",
+       [
+        990.0,
+        1347.02,
+        988.15,
+        1353.92,
+        984.64,
+        1360.0
+       ]
+      ],
+      [
+       "C",
+       [
+        981.13,
+        1366.08,
+        976.08,
+        1371.13,
+        970.0,
+        1374.64
+       ]
+      ],
+      [
+       "C",
+       [
+        963.92,
+        1378.15,
+        957.02,
+        1380.0,
+        950.0,
+        1380.0
+       ]
+      ],
+      [
+       "L",
+       [
+        130.0,
+        1380.0
+       ]
+      ],
+      [
+       "C",
+       [
+        122.98,
+        1380.0,
+        116.08,
+        1378.15,
+        110.0,
+        1374.64
+       ]
+      ],
+      [
+       "C",
+       [
+        103.92,
+        1371.13,
+        98.87,
+        1366.08,
+        95.36,
+        1360.0
+       ]
+      ],
+      [
+       "C",
+       [
+        91.85,
+        1353.92,
+        90.0,
+        1347.02,
+        90.0,
+        1340.0
+       ]
+      ],
+      [
+       "L",
+       [
+        90.0,
+        660.0
+       ]
+      ],
+      [
+       "C",
+       [
+        90.0,
+        652.98,
+        91.85,
+        646.08,
+        95.36,
+        640.0
+       ]
+      ],
+      [
+       "C",
+       [
+        98.87,
+        633.92,
+        103.92,
+        628.87,
+        110.0,
+        625.36
+       ]
+      ],
+      [
+       "C",
+       [
+        116.08,
+        621.85,
+        122.98,
+        620.0,
+        130.0,
+        620.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tvp-p1.png",
+     "min_px": [
+      900,
+      760
+     ]
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "BURGER",
+     "font": "anton",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 560,
+     "top_y": 287.54,
+     "box": [
+      80.0,
+      287.54,
+      920.0,
+      272.46
+     ],
+     "tracking_em": 0.02,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 12
+     },
+     "role_hint": "headline",
+     "id": "t1",
+     "max_width_mm": 920.0,
+     "size_units": 317.05,
+     "px_at": {
+      "TVP": 317.1
+     }
+    },
+    {
+     "kind": "text",
+     "default": "WEEK",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1490.8,
+     "top_y": 1468.45,
+     "box": [
+      492.94,
+      1468.45,
+      94.11,
+      22.35
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t2",
+     "max_width_mm": 94.1,
+     "size_units": 30,
+     "px_at": {
+      "TVP": 30.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BURGER WEEK IS HERE",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1640,
+     "top_y": 1571.25,
+     "box": [
+      198.44,
+      1571.25,
+      683.12,
+      68.75
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 4
+     },
+     "role_hint": "headline_or_offer",
+     "id": "t3",
+     "max_width_mm": 920.0,
+     "size_units": 80,
+     "px_at": {
+      "TVP": 80.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "5 BURGERS  ·  ONE PRICE  ·  7 DAYS",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1720,
+     "top_y": 1697.65,
+     "box": [
+      249.52,
+      1697.65,
+      580.95,
+      22.35
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 920.0,
+     "size_units": 30,
+     "px_at": {
+      "TVP": 30.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKE & GRILL  ·  GRILL EDITION",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1000.0,
+     "baseline_y": 110,
+     "top_y": 92.12,
+     "box": [
+      501.83,
+      92.12,
+      498.17,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t5",
+     "max_width_mm": 700,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "THIS MONTH",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "right",
+     "anchor_x": 1000.0,
+     "baseline_y": 150,
+     "top_y": 132.12,
+     "box": [
+      807.66,
+      132.12,
+      192.34,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t6",
+     "max_width_mm": 700,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ALL",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 890.0,
+     "baseline_y": 1324.0,
+     "top_y": 1306.12,
+     "box": [
+      863.29,
+      1306.12,
+      53.42,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t7",
+     "max_width_mm": 180.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR 69",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 890.0,
+     "baseline_y": 1386.4,
+     "top_y": 1335.09,
+     "box": [
+      803.0,
+      1335.09,
+      174.0,
+      51.31
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t8",
+     "max_width_mm": 180.0,
+     "size_units": 59.7,
+     "px_at": {
+      "TVP": 59.7
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      80.0,
+      1828.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1000.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      811.11,
+      1828.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t10",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1848.0,
+     "top_y": 1830.12,
+     "box": [
+      395.92,
+      1830.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t11",
+     "max_width_mm": 960.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    }
+   ]
+  }
+ }
+}

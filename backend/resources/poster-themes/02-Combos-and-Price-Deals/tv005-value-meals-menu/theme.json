@@ -1,0 +1,2131 @@
+{
+ "id": "TV-005",
+ "key": "tv005-value-meals-menu",
+ "title": "Value Meals Menu",
+ "kind": "screen",
+ "category": {
+  "key": "combo",
+  "number": "02",
+  "name": "Combos & Price Deals"
+ },
+ "style": "photo",
+ "style_label": "With item photo",
+ "layout": "menu_trio",
+ "palette": "night",
+ "has_photo": true,
+ "size_to_variant": {
+  "TV": "tv",
+  "TV4K": "tv",
+  "TVP": "tvp"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "tv": {
+   "variant": "tv",
+   "sizes": {
+    "TV": {
+     "px": [
+      1920,
+      1080
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    },
+    "TV4K": {
+     "px": [
+      3840,
+      2160
+     ],
+     "scale": 2.0,
+     "map": "page_px = u * 2.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1920.0,
+    "height": 1080.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1920.0,
+     1080.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tv.jpg",
+    "backdrop_svg": "backdrop-tv.svg",
+    "backdrop_draw_list": "backdrop-tv.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 160,
+    "top_y": 70.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 160,
+     "cy": 150.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M240 480 A120 120 0 1 0 480 480 A120 120 0 1 0 240 480 Z",
+     "box": [
+      240,
+      360,
+      240,
+      240
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      360.0,
+      480.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#F7670B",
+     "preview_placeholder": "illustration:burger",
+     "clip_ops": [
+      [
+       "M",
+       [
+        240.0,
+        480.0
+       ]
+      ],
+      [
+       "C",
+       [
+        240.0,
+        501.06,
+        245.55,
+        521.76,
+        256.08,
+        540.0
+       ]
+      ],
+      [
+       "C",
+       [
+        266.61,
+        558.24,
+        281.76,
+        573.39,
+        300.0,
+        583.92
+       ]
+      ],
+      [
+       "C",
+       [
+        318.24,
+        594.45,
+        338.94,
+        600.0,
+        360.0,
+        600.0
+       ]
+      ],
+      [
+       "C",
+       [
+        381.06,
+        600.0,
+        401.76,
+        594.45,
+        420.0,
+        583.92
+       ]
+      ],
+      [
+       "C",
+       [
+        438.24,
+        573.39,
+        453.39,
+        558.24,
+        463.92,
+        540.0
+       ]
+      ],
+      [
+       "C",
+       [
+        474.45,
+        521.76,
+        480.0,
+        501.06,
+        480.0,
+        480.0
+       ]
+      ],
+      [
+       "C",
+       [
+        480.0,
+        458.94,
+        474.45,
+        438.24,
+        463.92,
+        420.0
+       ]
+      ],
+      [
+       "C",
+       [
+        453.39,
+        401.76,
+        438.24,
+        386.61,
+        420.0,
+        376.08
+       ]
+      ],
+      [
+       "C",
+       [
+        401.76,
+        365.55,
+        381.06,
+        360.0,
+        360.0,
+        360.0
+       ]
+      ],
+      [
+       "C",
+       [
+        338.94,
+        360.0,
+        318.24,
+        365.55,
+        300.0,
+        376.08
+       ]
+      ],
+      [
+       "C",
+       [
+        281.76,
+        386.61,
+        266.61,
+        401.76,
+        256.08,
+        420.0
+       ]
+      ],
+      [
+       "C",
+       [
+        245.55,
+        438.24,
+        240.0,
+        458.94,
+        240.0,
+        480.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tv-p1.png",
+     "min_px": [
+      480,
+      480
+     ]
+    },
+    {
+     "kind": "photo",
+     "id": "p2",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M840 480 A120 120 0 1 0 1080 480 A120 120 0 1 0 840 480 Z",
+     "box": [
+      840,
+      360,
+      240,
+      240
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      960.0,
+      480.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#F7670B",
+     "preview_placeholder": "illustration:sandwich",
+     "clip_ops": [
+      [
+       "M",
+       [
+        840.0,
+        480.0
+       ]
+      ],
+      [
+       "C",
+       [
+        840.0,
+        501.06,
+        845.55,
+        521.76,
+        856.08,
+        540.0
+       ]
+      ],
+      [
+       "C",
+       [
+        866.61,
+        558.24,
+        881.76,
+        573.39,
+        900.0,
+        583.92
+       ]
+      ],
+      [
+       "C",
+       [
+        918.24,
+        594.45,
+        938.94,
+        600.0,
+        960.0,
+        600.0
+       ]
+      ],
+      [
+       "C",
+       [
+        981.06,
+        600.0,
+        1001.76,
+        594.45,
+        1020.0,
+        583.92
+       ]
+      ],
+      [
+       "C",
+       [
+        1038.24,
+        573.39,
+        1053.39,
+        558.24,
+        1063.92,
+        540.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1074.45,
+        521.76,
+        1080.0,
+        501.06,
+        1080.0,
+        480.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1080.0,
+        458.94,
+        1074.45,
+        438.24,
+        1063.92,
+        420.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1053.39,
+        401.76,
+        1038.24,
+        386.61,
+        1020.0,
+        376.08
+       ]
+      ],
+      [
+       "C",
+       [
+        1001.76,
+        365.55,
+        981.06,
+        360.0,
+        960.0,
+        360.0
+       ]
+      ],
+      [
+       "C",
+       [
+        938.94,
+        360.0,
+        918.24,
+        365.55,
+        900.0,
+        376.08
+       ]
+      ],
+      [
+       "C",
+       [
+        881.76,
+        386.61,
+        866.61,
+        401.76,
+        856.08,
+        420.0
+       ]
+      ],
+      [
+       "C",
+       [
+        845.55,
+        438.24,
+        840.0,
+        458.94,
+        840.0,
+        480.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tv-p2.png",
+     "min_px": [
+      480,
+      480
+     ]
+    },
+    {
+     "kind": "photo",
+     "id": "p3",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M1440 480 A120 120 0 1 0 1680 480 A120 120 0 1 0 1440 480 Z",
+     "box": [
+      1440,
+      360,
+      240,
+      240
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      1560.0,
+      480.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#F7670B",
+     "preview_placeholder": "illustration:skewer",
+     "clip_ops": [
+      [
+       "M",
+       [
+        1440.0,
+        480.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1440.0,
+        501.06,
+        1445.55,
+        521.76,
+        1456.08,
+        540.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1466.61,
+        558.24,
+        1481.76,
+        573.39,
+        1500.0,
+        583.92
+       ]
+      ],
+      [
+       "C",
+       [
+        1518.24,
+        594.45,
+        1538.94,
+        600.0,
+        1560.0,
+        600.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1581.06,
+        600.0,
+        1601.76,
+        594.45,
+        1620.0,
+        583.92
+       ]
+      ],
+      [
+       "C",
+       [
+        1638.24,
+        573.39,
+        1653.39,
+        558.24,
+        1663.92,
+        540.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1674.45,
+        521.76,
+        1680.0,
+        501.06,
+        1680.0,
+        480.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1680.0,
+        458.94,
+        1674.45,
+        438.24,
+        1663.92,
+        420.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1653.39,
+        401.76,
+        1638.24,
+        386.61,
+        1620.0,
+        376.08
+       ]
+      ],
+      [
+       "C",
+       [
+        1601.76,
+        365.55,
+        1581.06,
+        360.0,
+        1560.0,
+        360.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1538.94,
+        360.0,
+        1518.24,
+        365.55,
+        1500.0,
+        376.08
+       ]
+      ],
+      [
+       "C",
+       [
+        1481.76,
+        386.61,
+        1466.61,
+        401.76,
+        1456.08,
+        420.0
+       ]
+      ],
+      [
+       "C",
+       [
+        1445.55,
+        438.24,
+        1440.0,
+        458.94,
+        1440.0,
+        480.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tv-p3.png",
+     "min_px": [
+      480,
+      480
+     ]
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Value meals",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "left",
+     "anchor_x": 300,
+     "baseline_y": 130,
+     "top_y": 90.8,
+     "box": [
+      300,
+      90.8,
+      345.6,
+      39.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 1400,
+     "size_units": 56,
+     "px_at": {
+      "TV": 56.0,
+      "TV4K": 112.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MEAL DEALS",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 300,
+     "baseline_y": 240,
+     "top_y": 145.47,
+     "box": [
+      300,
+      145.47,
+      527.33,
+      94.53
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#D92B1C",
+      "offset_mm": 4.95
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 1400,
+     "size_units": 110,
+     "px_at": {
+      "TV": 110.0,
+      "TV4K": 220.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BURGER MEAL",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 360,
+     "baseline_y": 680,
+     "top_y": 638.75,
+     "box": [
+      230.96,
+      638.75,
+      258.08,
+      41.25
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 480,
+     "size_units": 48,
+     "px_at": {
+      "TV": 48.0,
+      "TV4K": 96.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Burger, fries & drink",
+     "font": "jakarta-700",
+     "colour": "#0B7A75",
+     "align": "center",
+     "anchor_x": 360,
+     "baseline_y": 730,
+     "top_y": 709.14,
+     "box": [
+      225.52,
+      709.14,
+      268.97,
+      20.86
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 480,
+     "size_units": 28,
+     "px_at": {
+      "TV": 28.0,
+      "TV4K": 56.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "89",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 360,
+     "baseline_y": 855,
+     "top_y": 812.03,
+     "box": [
+      335.29,
+      812.03,
+      49.41,
+      42.97
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t5",
+     "max_width_mm": 120,
+     "size_units": 50,
+     "px_at": {
+      "TV": 50.0,
+      "TV4K": 100.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 360,
+     "baseline_y": 804,
+     "top_y": 786.12,
+     "box": [
+      327.71,
+      786.12,
+      64.58,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t6",
+     "max_width_mm": 120,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "CLUB SANDWICH",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 960,
+     "baseline_y": 680,
+     "top_y": 638.75,
+     "box": [
+      809.57,
+      638.75,
+      300.85,
+      41.25
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t7",
+     "max_width_mm": 480,
+     "size_units": 48,
+     "px_at": {
+      "TV": 48.0,
+      "TV4K": 96.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "With fries & juice",
+     "font": "jakarta-700",
+     "colour": "#0B7A75",
+     "align": "center",
+     "anchor_x": 960,
+     "baseline_y": 730,
+     "top_y": 709.14,
+     "box": [
+      846.88,
+      709.14,
+      226.24,
+      20.86
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t8",
+     "max_width_mm": 480,
+     "size_units": 28,
+     "px_at": {
+      "TV": 28.0,
+      "TV4K": 56.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "75",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 960,
+     "baseline_y": 855,
+     "top_y": 812.03,
+     "box": [
+      935.29,
+      812.03,
+      49.41,
+      42.97
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t9",
+     "max_width_mm": 120,
+     "size_units": 50,
+     "px_at": {
+      "TV": 50.0,
+      "TV4K": 100.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 960,
+     "baseline_y": 804,
+     "top_y": 786.12,
+     "box": [
+      927.71,
+      786.12,
+      64.58,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t10",
+     "max_width_mm": 120,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "GRILL SKEWERS",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 1560,
+     "baseline_y": 680,
+     "top_y": 638.75,
+     "box": [
+      1416.38,
+      638.75,
+      287.23,
+      41.25
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t11",
+     "max_width_mm": 480,
+     "size_units": 48,
+     "px_at": {
+      "TV": 48.0,
+      "TV4K": 96.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Two skewers & rice",
+     "font": "jakarta-700",
+     "colour": "#0B7A75",
+     "align": "center",
+     "anchor_x": 1560,
+     "baseline_y": 730,
+     "top_y": 709.14,
+     "box": [
+      1429.3,
+      709.14,
+      261.41,
+      20.86
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t12",
+     "max_width_mm": 480,
+     "size_units": 28,
+     "px_at": {
+      "TV": 28.0,
+      "TV4K": 56.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "95",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 1560,
+     "baseline_y": 855,
+     "top_y": 812.03,
+     "box": [
+      1535.29,
+      812.03,
+      49.41,
+      42.97
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t13",
+     "max_width_mm": 120,
+     "size_units": 50,
+     "px_at": {
+      "TV": 50.0,
+      "TV4K": 100.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 1560,
+     "baseline_y": 804,
+     "top_y": 786.12,
+     "box": [
+      1527.71,
+      786.12,
+      64.58,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t14",
+     "max_width_mm": 120,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Ask for today's drink of the day",
+     "font": "fraunces-700-italic",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 972,
+     "top_y": 949.6,
+     "box": [
+      721.43,
+      949.6,
+      477.14,
+      22.4
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t15",
+     "max_width_mm": 1700,
+     "size_units": 32,
+     "px_at": {
+      "TV": 32.0,
+      "TV4K": 64.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      80.0,
+      988.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t16",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1840.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      1651.11,
+      988.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t17",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 1008.0,
+     "top_y": 990.12,
+     "box": [
+      815.92,
+      990.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t18",
+     "max_width_mm": 1800.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    }
+   ]
+  },
+  "tvp": {
+   "variant": "tvp",
+   "sizes": {
+    "TVP": {
+     "px": [
+      1080,
+      1920
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1080.0,
+    "height": 1920.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1080.0,
+     1920.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tvp.jpg",
+    "backdrop_svg": "backdrop-tvp.svg",
+    "backdrop_draw_list": "backdrop-tvp.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 540.0,
+    "top_y": 90.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 540.0,
+     "cy": 170.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M120 740 A100 100 0 1 0 320 740 A100 100 0 1 0 120 740 Z",
+     "box": [
+      120,
+      640,
+      200,
+      200
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      220.0,
+      740.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#F7670B",
+     "preview_placeholder": "illustration:burger",
+     "clip_ops": [
+      [
+       "M",
+       [
+        120.0,
+        740.0
+       ]
+      ],
+      [
+       "C",
+       [
+        120.0,
+        757.55,
+        124.62,
+        774.8,
+        133.4,
+        790.0
+       ]
+      ],
+      [
+       "C",
+       [
+        142.17,
+        805.2,
+        154.8,
+        817.83,
+        170.0,
+        826.6
+       ]
+      ],
+      [
+       "C",
+       [
+        185.2,
+        835.38,
+        202.45,
+        840.0,
+        220.0,
+        840.0
+       ]
+      ],
+      [
+       "C",
+       [
+        237.55,
+        840.0,
+        254.8,
+        835.38,
+        270.0,
+        826.6
+       ]
+      ],
+      [
+       "C",
+       [
+        285.2,
+        817.83,
+        297.83,
+        805.2,
+        306.6,
+        790.0
+       ]
+      ],
+      [
+       "C",
+       [
+        315.38,
+        774.8,
+        320.0,
+        757.55,
+        320.0,
+        740.0
+       ]
+      ],
+      [
+       "C",
+       [
+        320.0,
+        722.45,
+        315.38,
+        705.2,
+        306.6,
+        690.0
+       ]
+      ],
+      [
+       "C",
+       [
+        297.83,
+        674.8,
+        285.2,
+        662.17,
+        270.0,
+        653.4
+       ]
+      ],
+      [
+       "C",
+       [
+        254.8,
+        644.62,
+        237.55,
+        640.0,
+        220.0,
+        640.0
+       ]
+      ],
+      [
+       "C",
+       [
+        202.45,
+        640.0,
+        185.2,
+        644.62,
+        170.0,
+        653.4
+       ]
+      ],
+      [
+       "C",
+       [
+        154.8,
+        662.17,
+        142.17,
+        674.8,
+        133.4,
+        690.0
+       ]
+      ],
+      [
+       "C",
+       [
+        124.62,
+        705.2,
+        120.0,
+        722.45,
+        120.0,
+        740.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tvp-p1.png",
+     "min_px": [
+      200,
+      200
+     ]
+    },
+    {
+     "kind": "photo",
+     "id": "p2",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M120 1060 A100 100 0 1 0 320 1060 A100 100 0 1 0 120 1060 Z",
+     "box": [
+      120,
+      960,
+      200,
+      200
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      220.0,
+      1060.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#F7670B",
+     "preview_placeholder": "illustration:sandwich",
+     "clip_ops": [
+      [
+       "M",
+       [
+        120.0,
+        1060.0
+       ]
+      ],
+      [
+       "C",
+       [
+        120.0,
+        1077.55,
+        124.62,
+        1094.8,
+        133.4,
+        1110.0
+       ]
+      ],
+      [
+       "C",
+       [
+        142.17,
+        1125.2,
+        154.8,
+        1137.83,
+        170.0,
+        1146.6
+       ]
+      ],
+      [
+       "C",
+       [
+        185.2,
+        1155.38,
+        202.45,
+        1160.0,
+        220.0,
+        1160.0
+       ]
+      ],
+      [
+       "C",
+       [
+        237.55,
+        1160.0,
+        254.8,
+        1155.38,
+        270.0,
+        1146.6
+       ]
+      ],
+      [
+       "C",
+       [
+        285.2,
+        1137.83,
+        297.83,
+        1125.2,
+        306.6,
+        1110.0
+       ]
+      ],
+      [
+       "C",
+       [
+        315.38,
+        1094.8,
+        320.0,
+        1077.55,
+        320.0,
+        1060.0
+       ]
+      ],
+      [
+       "C",
+       [
+        320.0,
+        1042.45,
+        315.38,
+        1025.2,
+        306.6,
+        1010.0
+       ]
+      ],
+      [
+       "C",
+       [
+        297.83,
+        994.8,
+        285.2,
+        982.17,
+        270.0,
+        973.4
+       ]
+      ],
+      [
+       "C",
+       [
+        254.8,
+        964.62,
+        237.55,
+        960.0,
+        220.0,
+        960.0
+       ]
+      ],
+      [
+       "C",
+       [
+        202.45,
+        960.0,
+        185.2,
+        964.62,
+        170.0,
+        973.4
+       ]
+      ],
+      [
+       "C",
+       [
+        154.8,
+        982.17,
+        142.17,
+        994.8,
+        133.4,
+        1010.0
+       ]
+      ],
+      [
+       "C",
+       [
+        124.62,
+        1025.2,
+        120.0,
+        1042.45,
+        120.0,
+        1060.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tvp-p2.png",
+     "min_px": [
+      200,
+      200
+     ]
+    },
+    {
+     "kind": "photo",
+     "id": "p3",
+     "role": "item photo",
+     "shape": "circle",
+     "clip_path_d": "M120 1380 A100 100 0 1 0 320 1380 A100 100 0 1 0 120 1380 Z",
+     "box": [
+      120,
+      1280,
+      200,
+      200
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      220.0,
+      1380.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#F7670B",
+     "preview_placeholder": "illustration:skewer",
+     "clip_ops": [
+      [
+       "M",
+       [
+        120.0,
+        1380.0
+       ]
+      ],
+      [
+       "C",
+       [
+        120.0,
+        1397.55,
+        124.62,
+        1414.8,
+        133.4,
+        1430.0
+       ]
+      ],
+      [
+       "C",
+       [
+        142.17,
+        1445.2,
+        154.8,
+        1457.83,
+        170.0,
+        1466.6
+       ]
+      ],
+      [
+       "C",
+       [
+        185.2,
+        1475.38,
+        202.45,
+        1480.0,
+        220.0,
+        1480.0
+       ]
+      ],
+      [
+       "C",
+       [
+        237.55,
+        1480.0,
+        254.8,
+        1475.38,
+        270.0,
+        1466.6
+       ]
+      ],
+      [
+       "C",
+       [
+        285.2,
+        1457.83,
+        297.83,
+        1445.2,
+        306.6,
+        1430.0
+       ]
+      ],
+      [
+       "C",
+       [
+        315.38,
+        1414.8,
+        320.0,
+        1397.55,
+        320.0,
+        1380.0
+       ]
+      ],
+      [
+       "C",
+       [
+        320.0,
+        1362.45,
+        315.38,
+        1345.2,
+        306.6,
+        1330.0
+       ]
+      ],
+      [
+       "C",
+       [
+        297.83,
+        1314.8,
+        285.2,
+        1302.17,
+        270.0,
+        1293.4
+       ]
+      ],
+      [
+       "C",
+       [
+        254.8,
+        1284.62,
+        237.55,
+        1280.0,
+        220.0,
+        1280.0
+       ]
+      ],
+      [
+       "C",
+       [
+        202.45,
+        1280.0,
+        185.2,
+        1284.62,
+        170.0,
+        1293.4
+       ]
+      ],
+      [
+       "C",
+       [
+        154.8,
+        1302.17,
+        142.17,
+        1314.8,
+        133.4,
+        1330.0
+       ]
+      ],
+      [
+       "C",
+       [
+        124.62,
+        1345.2,
+        120.0,
+        1362.45,
+        120.0,
+        1380.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tvp-p3.png",
+     "min_px": [
+      200,
+      200
+     ]
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Value meals",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 400,
+     "top_y": 360.8,
+     "box": [
+      367.2,
+      360.8,
+      345.6,
+      39.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 920.0,
+     "size_units": 56,
+     "px_at": {
+      "TVP": 56.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MEAL DEALS",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 540,
+     "top_y": 436.88,
+     "box": [
+      252.36,
+      436.88,
+      575.27,
+      103.12
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#D92B1C",
+      "offset_mm": 5.4
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 920.0,
+     "size_units": 120,
+     "px_at": {
+      "TVP": 120.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BURGER MEAL",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "left",
+     "anchor_x": 350,
+     "baseline_y": 744,
+     "top_y": 701.03,
+     "box": [
+      350,
+      701.03,
+      268.83,
+      42.97
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 480,
+     "size_units": 50,
+     "px_at": {
+      "TVP": 50.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Burger, fries & drink",
+     "font": "jakarta-700",
+     "colour": "#0B7A75",
+     "align": "left",
+     "anchor_x": 352,
+     "baseline_y": 790,
+     "top_y": 769.14,
+     "box": [
+      352,
+      769.14,
+      268.97,
+      20.86
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 480,
+     "size_units": 28,
+     "px_at": {
+      "TVP": 28.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "89",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 880.0,
+     "baseline_y": 780,
+     "top_y": 728.44,
+     "box": [
+      850.35,
+      728.44,
+      59.3,
+      51.56
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t5",
+     "max_width_mm": 140,
+     "size_units": 60,
+     "px_at": {
+      "TVP": 60.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 880.0,
+     "baseline_y": 716,
+     "top_y": 698.12,
+     "box": [
+      847.71,
+      698.12,
+      64.58,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t6",
+     "max_width_mm": 140,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "CLUB SANDWICH",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "left",
+     "anchor_x": 350,
+     "baseline_y": 1064,
+     "top_y": 1021.03,
+     "box": [
+      350,
+      1021.03,
+      313.39,
+      42.97
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t7",
+     "max_width_mm": 480,
+     "size_units": 50,
+     "px_at": {
+      "TVP": 50.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "With fries & juice",
+     "font": "jakarta-700",
+     "colour": "#0B7A75",
+     "align": "left",
+     "anchor_x": 352,
+     "baseline_y": 1110,
+     "top_y": 1089.14,
+     "box": [
+      352,
+      1089.14,
+      226.24,
+      20.86
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t8",
+     "max_width_mm": 480,
+     "size_units": 28,
+     "px_at": {
+      "TVP": 28.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "75",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 880.0,
+     "baseline_y": 1100,
+     "top_y": 1048.44,
+     "box": [
+      850.35,
+      1048.44,
+      59.3,
+      51.56
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t9",
+     "max_width_mm": 140,
+     "size_units": 60,
+     "px_at": {
+      "TVP": 60.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 880.0,
+     "baseline_y": 1036,
+     "top_y": 1018.12,
+     "box": [
+      847.71,
+      1018.12,
+      64.58,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t10",
+     "max_width_mm": 140,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "GRILL SKEWERS",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "left",
+     "anchor_x": 350,
+     "baseline_y": 1384,
+     "top_y": 1341.03,
+     "box": [
+      350,
+      1341.03,
+      299.2,
+      42.97
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t11",
+     "max_width_mm": 480,
+     "size_units": 50,
+     "px_at": {
+      "TVP": 50.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Two skewers & rice",
+     "font": "jakarta-700",
+     "colour": "#0B7A75",
+     "align": "left",
+     "anchor_x": 352,
+     "baseline_y": 1430,
+     "top_y": 1409.14,
+     "box": [
+      352,
+      1409.14,
+      261.41,
+      20.86
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t12",
+     "max_width_mm": 480,
+     "size_units": 28,
+     "px_at": {
+      "TVP": 28.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "95",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 880.0,
+     "baseline_y": 1420,
+     "top_y": 1368.44,
+     "box": [
+      850.35,
+      1368.44,
+      59.3,
+      51.56
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t13",
+     "max_width_mm": 140,
+     "size_units": 60,
+     "px_at": {
+      "TVP": 60.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 880.0,
+     "baseline_y": 1356,
+     "top_y": 1338.12,
+     "box": [
+      847.71,
+      1338.12,
+      64.58,
+      17.88
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t14",
+     "max_width_mm": 140,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Ask for today's drink of the day",
+     "font": "fraunces-700-italic",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1740,
+     "top_y": 1717.6,
+     "box": [
+      301.43,
+      1717.6,
+      477.14,
+      22.4
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t15",
+     "max_width_mm": 920.0,
+     "size_units": 32,
+     "px_at": {
+      "TVP": 32.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      80.0,
+      1828.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t16",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1000.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      811.11,
+      1828.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t17",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1848.0,
+     "top_y": 1830.12,
+     "box": [
+      395.92,
+      1830.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t18",
+     "max_width_mm": 960.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,744 @@
+{
+ "id": "TV-029",
+ "key": "tv029-we-deliver",
+ "title": "We Deliver",
+ "kind": "screen",
+ "category": {
+  "key": "online",
+  "number": "10",
+  "name": "Online, Delivery & Loyalty"
+ },
+ "style": "photo",
+ "style_label": "With item photo",
+ "layout": "photo_band",
+ "palette": "chili",
+ "has_photo": true,
+ "size_to_variant": {
+  "TV": "tv",
+  "TV4K": "tv",
+  "TVP": "tvp"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "tv": {
+   "variant": "tv",
+   "sizes": {
+    "TV": {
+     "px": [
+      1920,
+      1080
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    },
+    "TV4K": {
+     "px": [
+      3840,
+      2160
+     ],
+     "scale": 2.0,
+     "map": "page_px = u * 2.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1920.0,
+    "height": 1080.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1920.0,
+     1080.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tv.jpg",
+    "backdrop_svg": "backdrop-tv.svg",
+    "backdrop_draw_list": "backdrop-tv.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 1760.0,
+    "top_y": 80.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 1760.0,
+     "cy": 160.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "rect",
+     "clip_path_d": "M0 0 H860 V1080.0 H0 Z",
+     "box": [
+      0,
+      0,
+      860,
+      1080.0
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      430.0,
+      540.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFC72C",
+     "preview_placeholder": "illustration:scooter",
+     "clip_ops": [
+      [
+       "M",
+       [
+        0.0,
+        0.0
+       ]
+      ],
+      [
+       "L",
+       [
+        860.0,
+        0.0
+       ]
+      ],
+      [
+       "L",
+       [
+        860.0,
+        1080.0
+       ]
+      ],
+      [
+       "L",
+       [
+        0.0,
+        1080.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tv-p1.png",
+     "min_px": [
+      1720,
+      2160
+     ]
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Hot food to your door",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "left",
+     "anchor_x": 980,
+     "baseline_y": 330,
+     "top_y": 290.8,
+     "box": [
+      980,
+      290.8,
+      600.71,
+      39.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 780,
+     "size_units": 56,
+     "px_at": {
+      "TV": 56.0,
+      "TV4K": 112.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "WE DELIVER",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 980,
+     "baseline_y": 490,
+     "top_y": 369.69,
+     "box": [
+      980,
+      369.69,
+      631.98,
+      120.31
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 6.3
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 780,
+     "size_units": 140,
+     "px_at": {
+      "TV": 140.0,
+      "TV4K": 280.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ORDER ONLINE OR CALL",
+     "font": "anton",
+     "colour": "#FFC72C",
+     "align": "left",
+     "anchor_x": 980,
+     "baseline_y": 580,
+     "top_y": 542.19,
+     "box": [
+      980,
+      542.19,
+      414.6,
+      37.81
+     ],
+     "tracking_em": 0.06,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 780,
+     "size_units": 44,
+     "px_at": {
+      "TV": 44.0,
+      "TV4K": 88.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "bakeandgrill.mv/order",
+     "font": "fraunces-700-italic",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 980,
+     "baseline_y": 790,
+     "top_y": 766.2,
+     "box": [
+      980,
+      766.2,
+      388.57,
+      23.8
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 520,
+     "size_units": 34,
+     "px_at": {
+      "TV": 34.0,
+      "TV4K": 68.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE OVER",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 1660.0,
+     "baseline_y": 715.0,
+     "top_y": 696.0,
+     "box": [
+      1570.01,
+      696.0,
+      179.98,
+      19.0
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t5",
+     "max_width_mm": 225.0,
+     "size_units": 25.5,
+     "px_at": {
+      "TV": 25.5,
+      "TV4K": 51.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR 300",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 1660.0,
+     "baseline_y": 793.0,
+     "top_y": 738.17,
+     "box": [
+      1551.25,
+      738.17,
+      217.5,
+      54.83
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t6",
+     "max_width_mm": 225.0,
+     "size_units": 63.81,
+     "px_at": {
+      "TV": 63.8,
+      "TV4K": 127.6
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      80.0,
+      988.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1840.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      1651.11,
+      988.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 1008.0,
+     "top_y": 990.12,
+     "box": [
+      815.92,
+      990.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 1800.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    }
+   ]
+  },
+  "tvp": {
+   "variant": "tvp",
+   "sizes": {
+    "TVP": {
+     "px": [
+      1080,
+      1920
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1080.0,
+    "height": 1920.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1080.0,
+     1920.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tvp.jpg",
+    "backdrop_svg": "backdrop-tvp.svg",
+    "backdrop_draw_list": "backdrop-tvp.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 160,
+    "top_y": 80.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 160,
+     "cy": 160.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [
+    {
+     "kind": "photo",
+     "id": "p1",
+     "role": "item photo",
+     "shape": "rect",
+     "clip_path_d": "M0 0 H1080.0 V820 H0 Z",
+     "box": [
+      0,
+      0,
+      1080.0,
+      820
+     ],
+     "rotation_deg": 0,
+     "rotation_centre": [
+      540.0,
+      410.0
+     ],
+     "fit": "cover",
+     "cutout_ok": true,
+     "fill_behind": "#FFC72C",
+     "preview_placeholder": "illustration:scooter",
+     "clip_ops": [
+      [
+       "M",
+       [
+        0.0,
+        0.0
+       ]
+      ],
+      [
+       "L",
+       [
+        1080.0,
+        0.0
+       ]
+      ],
+      [
+       "L",
+       [
+        1080.0,
+        820.0
+       ]
+      ],
+      [
+       "L",
+       [
+        0.0,
+        820.0
+       ]
+      ],
+      [
+       "Z",
+       []
+      ]
+     ],
+     "placeholder_image": "placeholder-tvp-p1.png",
+     "min_px": [
+      1080,
+      820
+     ]
+    }
+   ],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Hot food to your door",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 980,
+     "top_y": 940.8,
+     "box": [
+      239.64,
+      940.8,
+      600.71,
+      39.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 920.0,
+     "size_units": 56,
+     "px_at": {
+      "TVP": 56.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "WE DELIVER",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1120,
+     "top_y": 1008.28,
+     "box": [
+      246.58,
+      1008.28,
+      586.84,
+      111.72
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 5.85
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 920.0,
+     "size_units": 130,
+     "px_at": {
+      "TVP": 130.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ORDER ONLINE OR CALL",
+     "font": "anton",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1200,
+     "top_y": 1162.19,
+     "box": [
+      332.7,
+      1162.19,
+      414.6,
+      37.81
+     ],
+     "tracking_em": 0.06,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 920.0,
+     "size_units": 44,
+     "px_at": {
+      "TVP": 44.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "bakeandgrill.mv/order",
+     "font": "fraunces-700-italic",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1680,
+     "top_y": 1656.2,
+     "box": [
+      345.72,
+      1656.2,
+      388.57,
+      23.8
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t4",
+     "max_width_mm": 920.0,
+     "size_units": 34,
+     "px_at": {
+      "TVP": 34.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE OVER",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1395.0,
+     "top_y": 1376.0,
+     "box": [
+      450.01,
+      1376.0,
+      179.98,
+      19.0
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t5",
+     "max_width_mm": 225.0,
+     "size_units": 25.5,
+     "px_at": {
+      "TVP": 25.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR 300",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1473.0,
+     "top_y": 1418.17,
+     "box": [
+      431.25,
+      1418.17,
+      217.5,
+      54.83
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t6",
+     "max_width_mm": 225.0,
+     "size_units": 63.81,
+     "px_at": {
+      "TVP": 63.8
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      80.0,
+      1828.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t7",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1000.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      811.11,
+      1828.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t8",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1848.0,
+     "top_y": 1830.12,
+     "box": [
+      395.92,
+      1830.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 960.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    }
+   ]
+  }
+ }
+}

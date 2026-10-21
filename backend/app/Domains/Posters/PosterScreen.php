@@ -9,13 +9,16 @@ use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 /**
- * The same design as a screen picture: 1920×1080 for the TV, and the social
- * sizes (1200×630, 1080 square, 1080×1350, 1080×1920). GD, like WeeklyMenuCard.
- * A missing font falls back to the built-in face so a file still exists.
+ * The same design as a screen picture: 1920×1080 for the TV (1080×1920 for a
+ * TV design made for a portrait screen), and the social sizes (1200×630,
+ * 1080 square, 1080×1350, 1080×1920). GD, like WeeklyMenuCard. A missing
+ * font falls back to the built-in face so a file still exists.
  */
 final class PosterScreen
 {
     public const TV = [1920, 1080];
+
+    public const TV_PORTRAIT = [1080, 1920];
 
     /** @var array<string, array{0: int, 1: int}> */
     public const SOCIAL = [
@@ -38,7 +41,26 @@ final class PosterScreen
 
     public static function tv(Poster $poster): string
     {
-        return self::store($poster, self::TV[0], self::TV[1], 'tv', 'posters/screens', 'png');
+        $screen = self::screenSize($poster);
+        [$w, $h] = $screen !== null && !$screen->landscape ? self::TV_PORTRAIT : self::TV;
+
+        return self::store($poster, $w, $h, 'tv', 'posters/screens', 'png');
+    }
+
+    /**
+     * The first screen size a poster carries (a TV design), else null. A TV
+     * design is drawn at that size and fitted to the picture, so a 4K design
+     * lands on the Full HD playlist whole.
+     */
+    public static function screenSize(Poster $poster): ?PaperSize
+    {
+        foreach (is_array($poster->sizes) ? $poster->sizes : [] as $name) {
+            if (is_string($name) && PaperSize::kindOf($name) === PaperSize::KIND_SCREEN) {
+                return PaperSize::named($name);
+            }
+        }
+
+        return null;
     }
 
     private static function store(Poster $poster, int $w, int $h, string $name, string $dir, string $ext): string
@@ -57,9 +79,10 @@ final class PosterScreen
         }
         $content = PosterContent::resolve($poster->toArray());
         if (is_string($poster->theme) && $poster->theme !== '') {
-            // A template poster is the design itself, fitted into the picture (PosterThemeRaster).
-            $sizeName = (string) ((is_array($poster->sizes) ? $poster->sizes : [])[0] ?? 'A4');
-            $built = PosterPieces::build($poster->toArray(), PaperSize::named($sizeName), $content);
+            // A template poster is the design itself, fitted into the picture (PosterThemeRaster):
+            // a TV design at its screen size, a print design at its first paper size.
+            $paper = self::screenSize($poster) ?? PaperSize::named((string) ((is_array($poster->sizes) ? $poster->sizes : [])[0] ?? 'A4'));
+            $built = PosterPieces::build($poster->toArray(), $paper, $content);
             $image = PosterThemeRaster::draw($built, $w, $h);
             ob_start();
             if ($png) {

@@ -1,0 +1,720 @@
+{
+ "id": "TV-006",
+ "key": "tv006-any-3-short-eats",
+ "title": "Any 3 Short Eats",
+ "kind": "screen",
+ "category": {
+  "key": "combo",
+  "number": "02",
+  "name": "Combos & Price Deals"
+ },
+ "style": "extra",
+ "style_label": "Extra colourful",
+ "layout": "big_grid",
+ "palette": "sunshine",
+ "has_photo": false,
+ "size_to_variant": {
+  "TV": "tv",
+  "TV4K": "tv",
+  "TVP": "tvp"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "tv": {
+   "variant": "tv",
+   "sizes": {
+    "TV": {
+     "px": [
+      1920,
+      1080
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    },
+    "TV4K": {
+     "px": [
+      3840,
+      2160
+     ],
+     "scale": 2.0,
+     "map": "page_px = u * 2.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1920.0,
+    "height": 1080.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1920.0,
+     1080.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tv.jpg",
+    "backdrop_svg": "backdrop-tv.svg",
+    "backdrop_draw_list": "backdrop-tv.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 160,
+    "top_y": 80.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 160,
+     "cy": 160.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Mix & match short eats",
+     "font": "fraunces-900-italic",
+     "colour": "#1C1408",
+     "align": "left",
+     "anchor_x": 300,
+     "baseline_y": 180,
+     "top_y": 140.8,
+     "box": [
+      300,
+      140.8,
+      650.3,
+      39.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 1500,
+     "size_units": 56,
+     "px_at": {
+      "TV": 56.0,
+      "TV4K": 112.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ANY",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 370.0,
+     "baseline_y": 475.0,
+     "top_y": 337.5,
+     "box": [
+      250.82,
+      337.5,
+      238.35,
+      137.5
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t2",
+     "max_width_mm": 480,
+     "size_units": 160,
+     "px_at": {
+      "TV": 160.0,
+      "TV4K": 320.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "3",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 475.0,
+     "top_y": 337.5,
+     "box": [
+      920.47,
+      337.5,
+      79.06,
+      137.5
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t3",
+     "max_width_mm": 480,
+     "size_units": 160,
+     "px_at": {
+      "TV": 160.0,
+      "TV4K": 320.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FOR",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 1550.0,
+     "baseline_y": 475.0,
+     "top_y": 337.5,
+     "box": [
+      1436.25,
+      337.5,
+      227.49,
+      137.5
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t4",
+     "max_width_mm": 480,
+     "size_units": 160,
+     "px_at": {
+      "TV": 160.0,
+      "TV4K": 320.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 370.0,
+     "baseline_y": 775.0,
+     "top_y": 637.5,
+     "box": [
+      229.85,
+      637.5,
+      280.3,
+      137.5
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t5",
+     "max_width_mm": 480,
+     "size_units": 160,
+     "px_at": {
+      "TV": 160.0,
+      "TV4K": 320.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "30",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 775.0,
+     "top_y": 637.5,
+     "box": [
+      878.54,
+      637.5,
+      162.93,
+      137.5
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t6",
+     "max_width_mm": 480,
+     "size_units": 160,
+     "px_at": {
+      "TV": 160.0,
+      "TV4K": 320.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "!",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 1550.0,
+     "baseline_y": 775.0,
+     "top_y": 637.5,
+     "box": [
+      1531.68,
+      637.5,
+      36.64,
+      137.5
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t7",
+     "max_width_mm": 480,
+     "size_units": 160,
+     "px_at": {
+      "TV": 160.0,
+      "TV4K": 320.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAJIYA · GULHA · KAVAABU · MASROSHI",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 930.8,
+     "top_y": 908.45,
+     "box": [
+      621.25,
+      908.45,
+      677.49,
+      22.35
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t8",
+     "max_width_mm": 677.5,
+     "size_units": 30,
+     "px_at": {
+      "TV": 30.0,
+      "TV4K": 60.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      80.0,
+      988.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1840.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      1651.11,
+      988.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t10",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 1008.0,
+     "top_y": 990.12,
+     "box": [
+      815.92,
+      990.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t11",
+     "max_width_mm": 1800.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    }
+   ]
+  },
+  "tvp": {
+   "variant": "tvp",
+   "sizes": {
+    "TVP": {
+     "px": [
+      1080,
+      1920
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1080.0,
+    "height": 1920.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1080.0,
+     1920.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tvp.jpg",
+    "backdrop_svg": "backdrop-tvp.svg",
+    "backdrop_draw_list": "backdrop-tvp.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 540.0,
+    "top_y": 90.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 540.0,
+     "cy": 170.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Mix & match short eats",
+     "font": "fraunces-900-italic",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 400,
+     "top_y": 360.8,
+     "box": [
+      214.85,
+      360.8,
+      650.3,
+      39.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 920.0,
+     "size_units": 56,
+     "px_at": {
+      "TVP": 56.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ANY",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 295.0,
+     "baseline_y": 677.2,
+     "top_y": 548.29,
+     "box": [
+      183.27,
+      548.29,
+      223.45,
+      128.91
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t2",
+     "max_width_mm": 390,
+     "size_units": 150,
+     "px_at": {
+      "TVP": 150.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "3",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 785.0,
+     "baseline_y": 677.2,
+     "top_y": 548.29,
+     "box": [
+      747.94,
+      548.29,
+      74.12,
+      128.91
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t3",
+     "max_width_mm": 390,
+     "size_units": 150,
+     "px_at": {
+      "TVP": 150.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FOR",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 295.0,
+     "baseline_y": 997.2,
+     "top_y": 868.29,
+     "box": [
+      188.36,
+      868.29,
+      213.27,
+      128.91
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t4",
+     "max_width_mm": 390,
+     "size_units": 150,
+     "px_at": {
+      "TVP": 150.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "MVR",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 785.0,
+     "baseline_y": 997.2,
+     "top_y": 868.29,
+     "box": [
+      653.61,
+      868.29,
+      262.78,
+      128.91
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t5",
+     "max_width_mm": 390,
+     "size_units": 150,
+     "px_at": {
+      "TVP": 150.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "30",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 295.0,
+     "baseline_y": 1317.2,
+     "top_y": 1188.29,
+     "box": [
+      218.63,
+      1188.29,
+      152.74,
+      128.91
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t6",
+     "max_width_mm": 390,
+     "size_units": 150,
+     "px_at": {
+      "TVP": 150.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "!",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 785.0,
+     "baseline_y": 1317.2,
+     "top_y": 1188.29,
+     "box": [
+      767.82,
+      1188.29,
+      34.35,
+      128.91
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "headline_or_offer",
+     "id": "t7",
+     "max_width_mm": 390,
+     "size_units": 150,
+     "px_at": {
+      "TVP": 150.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAJIYA · GULHA · KAVAABU · MASROSHI",
+     "font": "jakarta-800",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1550.8,
+     "top_y": 1528.45,
+     "box": [
+      201.25,
+      1528.45,
+      677.49,
+      22.35
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t8",
+     "max_width_mm": 677.5,
+     "size_units": 30,
+     "px_at": {
+      "TVP": 30.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      80.0,
+      1828.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t9",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1000.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      811.11,
+      1828.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t10",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1848.0,
+     "top_y": 1830.12,
+     "box": [
+      395.92,
+      1830.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t11",
+     "max_width_mm": 960.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    }
+   ]
+  }
+ }
+}

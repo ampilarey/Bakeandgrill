@@ -32,24 +32,38 @@ final class PosterSpec
         $pdf->Cell($w, 10, 'Print spec ' . $poster->code(), 0, 1, 'L');
 
         $purpose = PosterPurposes::get($poster->template_key);
-        $lines = [
-            'Poster' => $poster->name,
-            'Purpose' => $purpose['label'] ?? $poster->template_key,
-            'Sizes' => implode(', ', array_map('strval', $job['sizes'] ?? $poster->sizes)),
-            'Quantity' => self::quantities($job),
-            'Material' => PosterPreflight::MATERIALS[$job['material'] ?? 'foam']['label'] ?? (string) ($job['material'] ?? 'foam'),
-            'Finish' => (string) ($job['finish'] ?? 'matte'),
-            'White ink' => (string) ($job['white'] ?? 'none'),
-            'Gloss' => (string) ($job['gloss'] ?? 'none'),
-            'Layers' => (string) ($job['layers'] ?? 'masks'),
-            'Spot names' => trim((string) ($job['white_name'] ?? '') . ' ' . (string) ($job['gloss_name'] ?? '')),
-            'Mirrored' => (($job['mirror'] ?? false) === true) ? 'yes, for a window read from outside' : 'no',
-            'Mounting' => (string) ($job['mounting'] ?? 'none'),
-            'On the sheet' => (string) ($job['imposition'] ?? 'single'),
-            'Deadline' => (string) ($job['deadline'] ?? '—'),
-            'Place' => (string) ($poster->place ?: '—'),
-            'Take down' => $poster->take_down_on?->toDateString() ?? '—',
-        ];
+        $sizes = array_map('strval', is_array($job['sizes'] ?? null) ? $job['sizes'] : (array) $poster->sizes);
+        $screens = array_values(array_filter($sizes, static fn (string $s): bool => PaperSize::kindOf($s) === PaperSize::KIND_SCREEN));
+        if ($screens !== [] && count($screens) === count($sizes)) {
+            // A TV poster: the pictures and where they go, nothing about paper.
+            $lines = [
+                'Poster' => $poster->name,
+                'Purpose' => $purpose['label'] ?? $poster->template_key,
+                'Screens' => implode(', ', array_map(static fn (string $s): string => PaperSize::named($s)->label(), $screens)),
+                'Files' => 'PNG, one per screen, at the screen\'s exact pixels',
+                'Place' => (string) ($poster->place ?: '—'),
+                'Take down' => $poster->take_down_on?->toDateString() ?? '—',
+            ];
+        } else {
+            $lines = [
+                'Poster' => $poster->name,
+                'Purpose' => $purpose['label'] ?? $poster->template_key,
+                'Sizes' => implode(', ', $sizes),
+                'Quantity' => self::quantities($job),
+                'Material' => PosterPreflight::MATERIALS[$job['material'] ?? 'foam']['label'] ?? (string) ($job['material'] ?? 'foam'),
+                'Finish' => (string) ($job['finish'] ?? 'matte'),
+                'White ink' => (string) ($job['white'] ?? 'none'),
+                'Gloss' => (string) ($job['gloss'] ?? 'none'),
+                'Layers' => (string) ($job['layers'] ?? 'masks'),
+                'Spot names' => trim((string) ($job['white_name'] ?? '') . ' ' . (string) ($job['gloss_name'] ?? '')),
+                'Mirrored' => (($job['mirror'] ?? false) === true) ? 'yes, for a window read from outside' : 'no',
+                'Mounting' => (string) ($job['mounting'] ?? 'none'),
+                'On the sheet' => (string) ($job['imposition'] ?? 'single'),
+                'Deadline' => (string) ($job['deadline'] ?? '—'),
+                'Place' => (string) ($poster->place ?: '—'),
+                'Take down' => $poster->take_down_on?->toDateString() ?? '—',
+            ];
+        }
         PosterFonts::use($pdf, 'j5', 11);
         $yy = $y + 16;
         foreach ($lines as $label => $value) {
@@ -63,7 +77,9 @@ final class PosterSpec
 
         $pdf->SetXY($x, $yy + 4);
         PosterFonts::use($pdf, 'j5', 9);
-        $notes = ['Files are PDF/X-4, 3 mm bleed, FOGRA39. Crop marks are off; add your own if you need them.'];
+        $notes = [$screens !== [] && count($screens) === count($sizes)
+            ? 'Put the PNG on the TV, a USB stick or the signage player; My posters → TV puts it on the shop\'s playlist.'
+            : 'Files are PDF/X-4, 3 mm bleed, FOGRA39. Crop marks are off; add your own if you need them.'];
         foreach ($preflight as $sizeName => $checks) {
             foreach ($checks as $check) {
                 if (($check['level'] ?? '') === 'amber') {

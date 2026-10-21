@@ -5,30 +5,73 @@ from fontTools.pens.svgPathPen import SVGPathPen
 import qrcode
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = '/home/claude/ampilarey/bakeandgrill/'
+# The repository root: this file lives at docs/poster-themes/generator-source/.
+REPO = os.environ.get('POSTER_REPO') or os.path.abspath(os.path.join(HERE, '..', '..', '..')) + '/'
 
-# Design units = millimetres at A2 trim (420 x 594). Two variants share them:
+# Design units = millimetres at A2 trim (420 x 594). Two print variants share them:
 #   large -> printed at A2 (scale 1) and A3 (0.707). Bleed canvas 4.25 so A3 still gets 3 mm bleed.
 #   small -> printed at A4 (0.5) and A5 (0.352). Bleed canvas 8.52 so A5 still gets 3 mm bleed.
+# The screen variants are drawn in pixels at Full HD, with no bleed (2026-10-22, tv_archetypes.py):
+#   tv  -> a 1920 x 1080 television (scale 1) and 4K (scale 2).
+#   tvp -> a portrait 1080 x 1920 screen.
 VARIANT = os.environ.get('POSTER_VARIANT', 'large')
-TW, TH = 420.0, 594.0
-if VARIANT == 'small':
-    BLEED = 9.6                 # A5 is 148 x 210 (not exactly A2's ratio): covers its 3 mm bleed + 0.7 mm
-    SAFE = BLEED + 14.2         # 5 mm safe at A5
-    FLOOR = 9.1                 # min em size: 9 pt at A5, 13 pt at A4
-    CORNER = SAFE               # no stand-off corners at A4/A5
-    FOOT = 11.5
+SCREEN = VARIANT in ('tv', 'tvp')
+if VARIANT == 'tv':
+    TW, TH = 1920.0, 1080.0
+    BLEED = 0.0
+    SAFE = 60.0                 # a TV may hide the outer edge (overscan)
+    FLOOR = 24.0                # min em size in px: readable across a room on a 50" screen
+    CORNER = SAFE
+    FOOT = 26.0
+    OUTPUTS = {'TV': 1920.0, 'TV4K': 3840.0}
+    TRIM_H = {'TV': 1080.0, 'TV4K': 2160.0}
+elif VARIANT == 'tvp':
+    TW, TH = 1080.0, 1920.0
+    BLEED = 0.0
+    SAFE = 60.0
+    FLOOR = 24.0
+    CORNER = SAFE
+    FOOT = 26.0
+    OUTPUTS = {'TVP': 1080.0}
+    TRIM_H = {'TVP': 1920.0}
 else:
-    BLEED = 4.25
-    SAFE = BLEED + 8.0          # 8 mm safe at A2 (11 mm at A3)
-    FLOOR = 8.0                 # min em size: 22.7 pt at A2, 16 pt at A3
-    CORNER = BLEED + 31.0       # stand-off circles: 20 mm, centred 20 mm in from the cut (A2)
-    FOOT = 9.0
+    TW, TH = 420.0, 594.0
+    if VARIANT == 'small':
+        BLEED = 9.6                 # A5 is 148 x 210 (not exactly A2's ratio): covers its 3 mm bleed + 0.7 mm
+        SAFE = BLEED + 14.2         # 5 mm safe at A5
+        FLOOR = 9.1                 # min em size: 9 pt at A5, 13 pt at A4
+        CORNER = SAFE               # no stand-off corners at A4/A5
+        FOOT = 11.5
+    else:
+        BLEED = 4.25
+        SAFE = BLEED + 8.0          # 8 mm safe at A2 (11 mm at A3)
+        FLOOR = 8.0                 # min em size: 22.7 pt at A2, 16 pt at A3
+        CORNER = BLEED + 31.0       # stand-off circles: 20 mm, centred 20 mm in from the cut (A2)
+        FOOT = 9.0
+    OUTPUTS = {'large': {'A2': 420.0, 'A3': 297.0}, 'small': {'A4': 210.0, 'A5': 148.0}}[VARIANT]
+    TRIM_H = {'A2': 594.0, 'A3': 420.0, 'A4': 297.0, 'A5': 210.0}
 EYELET = 20.0
 W, H = TW + 2 * BLEED, TH + 2 * BLEED
 CX = W / 2
-OUTPUTS = {'large': {'A2': 420.0, 'A3': 297.0}, 'small': {'A4': 210.0, 'A5': 148.0}}[VARIANT]
-TRIM_H = {'A2': 594.0, 'A3': 420.0, 'A4': 297.0, 'A5': 210.0}
+
+# The TTFs: the generator's own ttf/ folder when it is there, else the copies the repo keeps
+# (Anton and Fraunces under resources/poster-themes/_fonts, Plus Jakarta Sans with the PDF fonts).
+FONT_FILES = {
+    'anton-latin-400-normal.ttf': 'backend/resources/poster-themes/_fonts/anton-latin-400-normal.ttf',
+    'fraunces-latin-500-italic.ttf': 'backend/resources/poster-themes/_fonts/fraunces-latin-500-italic.ttf',
+    'fraunces-latin-700-italic.ttf': 'backend/resources/poster-themes/_fonts/fraunces-latin-700-italic.ttf',
+    'fraunces-latin-900-italic.ttf': 'backend/resources/poster-themes/_fonts/fraunces-latin-900-italic.ttf',
+    'plus-jakarta-sans-latin-500-normal.ttf': 'backend/public/fonts/pdf/PlusJakartaSans-500.ttf',
+    'plus-jakarta-sans-latin-700-normal.ttf': 'backend/public/fonts/pdf/PlusJakartaSans-700.ttf',
+    'plus-jakarta-sans-latin-800-normal.ttf': 'backend/public/fonts/pdf/PlusJakartaSans-800.ttf',
+}
+
+
+def font_path(fn):
+    local = os.path.join(HERE, 'ttf', fn)
+    if os.path.isfile(local):
+        return local
+    return os.path.join(REPO, FONT_FILES[fn])
 
 # Brand palette (docs/brand/PALETTE.md)
 RUST = '#B74B0C'
@@ -42,7 +85,7 @@ GOLDHI = '#F8D021'
 
 class Font:
     def __init__(self, fn):
-        self.f = TTFont(os.path.join(HERE, 'ttf', fn))
+        self.f = TTFont(font_path(fn))
         self.gs = self.f.getGlyphSet()
         self.cmap = self.f.getBestCmap()
         self.upm = self.f['head'].unitsPerEm
@@ -90,7 +133,9 @@ def text(s, font, size, x, y, fill, anchor='start', track=0.0, opacity=1, stroke
                        'anchor_x': round(ax, 2), 'baseline_y': round(y, 2), 'top_y': round(y - font.cap * size, 2),
                        'box': [round(left, 2), round(y - font.cap * size, 2), round(w, 2), round(font.cap * size, 2)],
                        'tracking_em': track, 'opacity': opacity,
-                       'shadow': _CTX.get('shadow'), 'role_hint': _CTX.get('role')})
+                       'shadow': _CTX.get('shadow'), 'role_hint': _CTX.get('role'),
+                       # A screen layout says how wide its text column is (tv_archetypes.maxw); print leaves it to the safe area.
+                       'maxw_hint': _CTX.get('maxw')})
         return ''
 
     if anchor == 'middle':

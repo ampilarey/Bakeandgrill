@@ -182,4 +182,121 @@ class PosterThemeScreensTest extends TestCase
         $this->assertSame(1200, $proofInfo[1] ?? 0, '1200 px tall');
         $this->assertEqualsWithDelta(1200 * 426 / 600, $proofInfo[0] ?? 0, 1.0, 'the A2 page shape');
     }
+
+    public function test_a_tv_design_is_drawn_at_the_screens_pixels_and_checked_for_a_screen(): void
+    {
+        $poster = $this->poster(['t2' => 'TWO FOR ONE'], [], 'tv007-donuts-buy1get1');
+        $content = PosterContent::resolve($poster);
+        foreach (['TV' => [1920, 1080], 'TV4K' => [3840, 2160], 'TVP' => [1080, 1920]] as $size => [$w, $h]) {
+            $paper = PaperSize::named($size);
+            $built = PosterPieces::build($poster, $paper, $content);
+            $this->assertSame((float) $w, $built['w'], $size);
+            $this->assertSame((float) $h, $built['h'], $size);
+            $this->assertSame($size, $built['theme']['size']);
+            $this->assertSame([$w, $h], $built['theme']['px']);
+            $this->assertFalse($built['theme']['keepout'], $size . ' has no stand-off corners');
+            $image = PosterThemeRaster::draw($built, $w, $h);
+            $this->assertSame([$w, $h], [imagesx($image), imagesy($image)], $size);
+            // Nothing is letterboxed: the corners carry the design's own background, not a bar.
+            $colours = [];
+            for ($x = 0; $x < $w; $x += (int) ($w / 48)) {
+                for ($y = 0; $y < $h; $y += (int) ($h / 27)) {
+                    $colours[imagecolorat($image, $x, $y)] = true;
+                }
+            }
+            $this->assertGreaterThan(60, count($colours), $size . ': the design is drawn');
+            imagedestroy($image);
+
+            $rows = [];
+            foreach (PosterPreflight::check($poster, $content, $built, $paper, ['material' => 'foam']) as $row) {
+                $rows[$row['id']] ??= $row;
+            }
+            $this->assertSame('ok', $rows['type']['level'], $size . ' ' . $rows['type']['message']);
+            $this->assertSame('ok', $rows['safe']['level'], $size . ' ' . $rows['safe']['message']);
+            $this->assertSame('ok', $rows['fit']['level'], $size);
+            $this->assertSame('ok', $rows['photo']['level'], $size . ' ' . $rows['photo']['message']);
+            $this->assertStringContainsString('px', $rows['photo']['message'], $size . ': a screen is measured in pixels');
+            foreach (['ink', 'white', 'keepout', 'contrast', 'spots'] as $paperOnly) {
+                $this->assertArrayNotHasKey($paperOnly, $rows, $size . ' has no ' . $paperOnly . ' check');
+            }
+        }
+
+        // The 4K text floor is twice Full HD's, and the type on these designs clears it; a QR design passes its QR check.
+        $qr = $this->checks($this->poster([], [], 'tv027-scan-and-order'), 'TV4K');
+        $this->assertSame('ok', $qr['qr']['level'], $qr['qr']['message']);
+        $this->assertSame('ok', $qr['type']['level'], $qr['type']['message']);
+
+        // A small photo in a big slot is stretched: amber at twice, red beyond.
+        $im = imagecreatetruecolor(300, 300);
+        $tmp = tempnam(sys_get_temp_dir(), 'bg-small') . '.jpg';
+        imagejpeg($im, $tmp, 80);
+        imagedestroy($im);
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $small = (string) $this->post('/api/posters/photo', ['photo' => new \Illuminate\Http\UploadedFile($tmp, 'small.jpg', 'image/jpeg', null, true)])->assertCreated()->json('photo_path');
+        $stretched = $this->checks($this->poster(['p1' => ['photo_path' => $small]], [], 'tv007-donuts-buy1get1'), 'TV');
+        $this->assertSame('red', $stretched['photo']['level'], $stretched['photo']['message']);
+        $this->assertStringContainsString('Use a bigger photo', $stretched['photo']['message']);
+        @unlink(storage_path('app/' . $small));
+
+        // A classic layout has no screen version.
+        $classic = ['template_key' => 'plain_notice', 'layout' => 'notice', 'language' => 'en', 'slots' => ['headline' => 'Open'], 'bindings' => []];
+        $classicRows = [];
+        foreach (PosterPreflight::check($classic, PosterContent::resolve($classic), ['pieces' => [], 'flags' => []], PaperSize::named('TV')) as $row) {
+            $classicRows[$row['id']] = $row;
+        }
+        $this->assertSame('red', $classicRows['kind']['level']);
+    }
+
+    public function test_a_tv_poster_goes_to_the_tv_whole_and_exports_as_pictures(): void
+    {
+        Storage::fake('public');
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $id = $this->postJson('/api/posters', [
+            'name' => 'Donuts', 'template_key' => PosterPurposes::THEMED, 'layout' => PosterPurposes::THEMED,
+            'theme' => 'tv007-donuts-buy1get1', 'sizes' => ['TV4K', 'TV'], 'slots' => ['t2' => 'TWO FOR ONE'],
+        ])->assertCreated()->json('id');
+        $poster = Poster::query()->findOrFail($id);
+
+        $sent = $this->postJson("/api/posters/{$id}/tv")->assertOk();
+        $path = Storage::disk('public')->path('posters/screens/' . $poster->code() . '-tv.png');
+        $this->assertSame([1920, 1080], array_slice(getimagesize($path) ?: [0, 0], 0, 2), 'a 4K design lands on the Full HD playlist');
+        $tv = imagecreatefrompng($path);
+        // The design fills the picture: the page colour at the corner is the design's, and the middle is busy.
+        $this->assertNotSame(imagecolorat($tv, 2, 2), imagecolorat($tv, 1500, 540), 'no letterbox bar');
+        imagedestroy($tv);
+        $slide = collect(\App\Models\SignagePlaylist::query()->findOrFail($sent->json('playlist_id'))->slides)->firstWhere('id', 'poster-' . $poster->code());
+        $image = collect($slide['elements'])->firstWhere('type', 'image');
+        $this->assertSame('contain', $image['style']['objectFit'], 'shown whole');
+        $this->assertArrayNotHasKey('animation', $image, 'and still');
+        $text = collect($slide['elements'])->firstWhere('type', 'text');
+        $this->assertSame('', $text['text'] ?? '', 'no caption over the artwork');
+
+        // A portrait design goes to the TV as a portrait picture.
+        $poster->update(['sizes' => ['TVP']]);
+        $this->postJson("/api/posters/{$id}/tv")->assertOk();
+        $this->assertSame([1080, 1920], array_slice(getimagesize($path) ?: [0, 0], 0, 2));
+
+        // The download is a PNG per screen at its exact pixels, with the spec sheet; no PDF, no mask.
+        $poster->update(['sizes' => ['TV', 'TVP']]);
+        $pack = \App\Domains\Posters\PosterPack::make($poster->fresh(), ['sizes' => ['TV', 'TV4K'], 'masks' => true]);
+        $this->assertFalse($pack['blocked']);
+        $this->assertSame(['TV', 'TV4K'], array_keys($pack['preflight']));
+        $zip = new \ZipArchive;
+        $tmp = tempnam(sys_get_temp_dir(), 'bg-tv-zip');
+        file_put_contents($tmp, $pack['bytes']);
+        $this->assertTrue($zip->open($tmp));
+        $names = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $names[] = $zip->getNameIndex($i);
+        }
+        $this->assertSame(['BG-' . $poster->code() . '-TV-1920x1080-v1.png', 'BG-' . $poster->code() . '-TV4K-3840x2160-v1.png', 'BG-' . $poster->code() . '-SPEC.pdf'], $names);
+        $png = (string) $zip->getFromName($names[0]);
+        $this->assertSame([1920, 1080], array_slice(getimagesizefromstring($png) ?: [0, 0], 0, 2));
+        $this->assertStringStartsWith('%PDF', (string) $zip->getFromName($names[2]));
+        $zip->close();
+        @unlink($tmp);
+
+        $proof = PosterProof::jpeg($poster->fresh());
+        $this->assertSame([1200, 675], array_slice(getimagesizefromstring($proof) ?: [0, 0], 0, 2), 'the proof is 1200 px on the long edge, in the screen\'s shape');
+    }
 }

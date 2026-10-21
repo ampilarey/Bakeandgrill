@@ -16,11 +16,12 @@ final class PosterProof
     {
         $content = PosterContent::resolve($poster->toArray());
         if (is_string($poster->theme) && $poster->theme !== '') {
-            // A template poster's proof is the design as it prints, 1200 px tall (PosterThemeRaster).
-            $sizeName = (string) ((is_array($poster->sizes) ? $poster->sizes : [])[0] ?? 'A4');
-            $paper = PaperSize::named($sizeName);
+            // A template poster's proof is the design as it prints (or shows), 1200 px on its long edge (PosterThemeRaster).
+            $paper = PosterScreen::screenSize($poster) ?? PaperSize::named((string) ((is_array($poster->sizes) ? $poster->sizes : [])[0] ?? 'A4'));
             $built = PosterPieces::build($poster->toArray(), $paper, $content);
-            $image = PosterThemeRaster::draw($built, (int) round(1200 * $paper->bleedWidth() / $paper->bleedHeight()), 1200);
+            $ratio = $paper->bleedWidth() / $paper->bleedHeight();
+            [$w, $h] = $ratio > 1 ? [1200, (int) round(1200 / $ratio)] : [(int) round(1200 * $ratio), 1200];
+            $image = PosterThemeRaster::draw($built, $w, $h);
             ob_start();
             imagejpeg($image, null, 82);
             $bytes = (string) ob_get_clean();

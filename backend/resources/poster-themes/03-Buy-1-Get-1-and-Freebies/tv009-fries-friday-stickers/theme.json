@@ -1,0 +1,938 @@
+{
+ "id": "TV-009",
+ "key": "tv009-fries-friday-stickers",
+ "title": "Fries Friday Stickers",
+ "kind": "screen",
+ "category": {
+  "key": "free",
+  "number": "03",
+  "name": "Buy 1 Get 1 & Freebies"
+ },
+ "style": "extra",
+ "style_label": "Extra colourful",
+ "layout": "sticker_bomb",
+ "palette": "chili",
+ "has_photo": false,
+ "size_to_variant": {
+  "TV": "tv",
+  "TV4K": "tv",
+  "TVP": "tvp"
+ },
+ "draw_order": "backdrop draw list in order; {\"photo_slot\":\"pN\"} = draw photo slot pN there. Then logo, QR, text slots.",
+ "slot_ids_match_across_variants": true,
+ "variants": {
+  "tv": {
+   "variant": "tv",
+   "sizes": {
+    "TV": {
+     "px": [
+      1920,
+      1080
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    },
+    "TV4K": {
+     "px": [
+      3840,
+      2160
+     ],
+     "scale": 2.0,
+     "map": "page_px = u * 2.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1920.0,
+    "height": 1080.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1920.0,
+     1080.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tv.jpg",
+    "backdrop_svg": "backdrop-tv.svg",
+    "backdrop_draw_list": "backdrop-tv.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 160,
+    "top_y": 80.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 160,
+     "cy": 160.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Every Friday",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 250,
+     "top_y": 210.8,
+     "box": [
+      772.9,
+      210.8,
+      374.19,
+      39.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 1500,
+     "size_units": 56,
+     "px_at": {
+      "TV": 56.0,
+      "TV4K": 112.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FRIES FRIDAY",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 420,
+     "top_y": 273.91,
+     "box": [
+      529.36,
+      273.91,
+      861.28,
+      146.09
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 7.65
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 1600,
+     "size_units": 170,
+     "px_at": {
+      "TV": 170.0,
+      "TV4K": 340.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE FRIES WITH ANY BURGER",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 500,
+     "top_y": 470.2,
+     "box": [
+      603.62,
+      470.2,
+      712.76,
+      29.8
+     ],
+     "tracking_em": 0.12,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 1600,
+     "size_units": 40,
+     "px_at": {
+      "TV": 40.0,
+      "TV4K": 80.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 300,
+     "baseline_y": 767.0,
+     "top_y": 696.1,
+     "box": [
+      229.93,
+      696.1,
+      140.15,
+      70.9
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t4",
+     "max_width_mm": 225.0,
+     "size_units": 82.5,
+     "px_at": {
+      "TV": 82.5,
+      "TV4K": 165.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ANY",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 640,
+     "baseline_y": 742.0,
+     "top_y": 721.74,
+     "box": [
+      605.37,
+      721.74,
+      69.25,
+      20.26
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t5",
+     "max_width_mm": 240.0,
+     "size_units": 27.2,
+     "px_at": {
+      "TV": 27.2,
+      "TV4K": 54.4
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BURGER",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 640,
+     "baseline_y": 825.2,
+     "top_y": 754.04,
+     "box": [
+      524.0,
+      754.04,
+      232.0,
+      71.16
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t6",
+     "max_width_mm": 240.0,
+     "size_units": 82.81,
+     "px_at": {
+      "TV": 82.8,
+      "TV4K": 165.6
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ALL",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 980,
+     "baseline_y": 695.0,
+     "top_y": 676.0,
+     "box": [
+      951.62,
+      676.0,
+      56.76,
+      19.0
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t7",
+     "max_width_mm": 225.0,
+     "size_units": 25.5,
+     "px_at": {
+      "TV": 25.5,
+      "TV4K": 51.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "DAY",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 980,
+     "baseline_y": 773.0,
+     "top_y": 702.1,
+     "box": [
+      921.23,
+      702.1,
+      117.55,
+      70.9
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t8",
+     "max_width_mm": 225.0,
+     "size_units": 82.5,
+     "px_at": {
+      "TV": 82.5,
+      "TV4K": 165.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "DINE IN OR",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 1320,
+     "baseline_y": 742.0,
+     "top_y": 721.74,
+     "box": [
+      1223.56,
+      721.74,
+      192.88,
+      20.26
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t9",
+     "max_width_mm": 240.0,
+     "size_units": 27.2,
+     "px_at": {
+      "TV": 27.2,
+      "TV4K": 54.4
+     }
+    },
+    {
+     "kind": "text",
+     "default": "TAKEAWAY",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 1320,
+     "baseline_y": 825.2,
+     "top_y": 773.99,
+     "box": [
+      1204.0,
+      773.99,
+      232.0,
+      51.21
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t10",
+     "max_width_mm": 240.0,
+     "size_units": 59.59,
+     "px_at": {
+      "TV": 59.6,
+      "TV4K": 119.2
+     }
+    },
+    {
+     "kind": "text",
+     "default": "EVERY",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 1650,
+     "baseline_y": 695.0,
+     "top_y": 676.0,
+     "box": [
+      1598.63,
+      676.0,
+      102.74,
+      19.0
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t11",
+     "max_width_mm": 225.0,
+     "size_units": 25.5,
+     "px_at": {
+      "TV": 25.5,
+      "TV4K": 51.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FRIDAY",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 1650,
+     "baseline_y": 773.0,
+     "top_y": 702.1,
+     "box": [
+      1545.77,
+      702.1,
+      208.47,
+      70.9
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t12",
+     "max_width_mm": 225.0,
+     "size_units": 82.5,
+     "px_at": {
+      "TV": 82.5,
+      "TV4K": 165.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      80.0,
+      988.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t13",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1840.0,
+     "baseline_y": 1008.0,
+     "top_y": 988.63,
+     "box": [
+      1651.11,
+      988.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t14",
+     "max_width_mm": 1780.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TV": 26.0,
+      "TV4K": 52.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 960.0,
+     "baseline_y": 1008.0,
+     "top_y": 990.12,
+     "box": [
+      815.92,
+      990.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t15",
+     "max_width_mm": 1800.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TV": 24.0,
+      "TV4K": 48.0
+     }
+    }
+   ]
+  },
+  "tvp": {
+   "variant": "tvp",
+   "sizes": {
+    "TVP": {
+     "px": [
+      1080,
+      1920
+     ],
+     "scale": 1.0,
+     "map": "page_px = u * 1.0"
+    }
+   },
+   "canvas": {
+    "units": "design units = px at Full HD",
+    "width": 1080.0,
+    "height": 1920.0,
+    "bleed_units": 0,
+    "trim_box": [
+     0,
+     0,
+     1080.0,
+     1920.0
+    ],
+    "safe_inset_units": 60.0,
+    "min_text_units": 24.0,
+    "cutout_under_units": 360,
+    "corner_keepout": null
+   },
+   "files": {
+    "preview": "preview-tvp.jpg",
+    "backdrop_svg": "backdrop-tvp.svg",
+    "backdrop_draw_list": "backdrop-tvp.json.gz"
+   },
+   "logo": {
+    "kind": "logo",
+    "centre_x": 540.0,
+    "top_y": 90.5,
+    "height_mm": 150,
+    "cream_badge": true,
+    "badge_circle": {
+     "cx": 540.0,
+     "cy": 170.0,
+     "r": 90.0,
+     "fill": "#F7F5F2"
+    },
+    "source": "backend/public/brand/logo-animated.svg (light logo, dark lettering)"
+   },
+   "qr": null,
+   "photo_slots": [],
+   "text_slots": [
+    {
+     "kind": "text",
+     "default": "Every Friday",
+     "font": "fraunces-900-italic",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 400,
+     "top_y": 360.8,
+     "box": [
+      352.9,
+      360.8,
+      374.19,
+      39.2
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "eyebrow",
+     "id": "t1",
+     "max_width_mm": 920.0,
+     "size_units": 56,
+     "px_at": {
+      "TVP": 56.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FRIES FRIDAY",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 560,
+     "top_y": 431.09,
+     "box": [
+      160.03,
+      431.09,
+      759.95,
+      128.91
+     ],
+     "tracking_em": 0.03,
+     "opacity": 1,
+     "shadow": {
+      "colour": "#5A1A2E",
+      "offset_mm": 6.75
+     },
+     "role_hint": "headline",
+     "id": "t2",
+     "max_width_mm": 920.0,
+     "size_units": 150,
+     "px_at": {
+      "TVP": 150.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE FRIES WITH ANY BURGER",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 640,
+     "top_y": 613.18,
+     "box": [
+      219.26,
+      613.18,
+      641.48,
+      26.82
+     ],
+     "tracking_em": 0.12,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t3",
+     "max_width_mm": 920.0,
+     "size_units": 36,
+     "px_at": {
+      "TVP": 36.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FREE",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 230,
+     "baseline_y": 947.0,
+     "top_y": 876.1,
+     "box": [
+      159.93,
+      876.1,
+      140.15,
+      70.9
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "price_or_offer",
+     "id": "t4",
+     "max_width_mm": 225.0,
+     "size_units": 82.5,
+     "px_at": {
+      "TVP": 82.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ANY",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540,
+     "baseline_y": 932.0,
+     "top_y": 911.74,
+     "box": [
+      505.37,
+      911.74,
+      69.25,
+      20.26
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t5",
+     "max_width_mm": 240.0,
+     "size_units": 27.2,
+     "px_at": {
+      "TVP": 27.2
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BURGER",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 540,
+     "baseline_y": 1015.2,
+     "top_y": 944.04,
+     "box": [
+      424.0,
+      944.04,
+      232.0,
+      71.16
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t6",
+     "max_width_mm": 240.0,
+     "size_units": 82.81,
+     "px_at": {
+      "TVP": 82.8
+     }
+    },
+    {
+     "kind": "text",
+     "default": "ALL",
+     "font": "jakarta-800",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 850,
+     "baseline_y": 875.0,
+     "top_y": 856.0,
+     "box": [
+      821.62,
+      856.0,
+      56.76,
+      19.0
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t7",
+     "max_width_mm": 225.0,
+     "size_units": 25.5,
+     "px_at": {
+      "TVP": 25.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "DAY",
+     "font": "anton",
+     "colour": "#1C1408",
+     "align": "center",
+     "anchor_x": 850,
+     "baseline_y": 953.0,
+     "top_y": 882.1,
+     "box": [
+      791.23,
+      882.1,
+      117.55,
+      70.9
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t8",
+     "max_width_mm": 225.0,
+     "size_units": 82.5,
+     "px_at": {
+      "TVP": 82.5
+     }
+    },
+    {
+     "kind": "text",
+     "default": "DINE IN OR",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 380,
+     "baseline_y": 1312.0,
+     "top_y": 1291.74,
+     "box": [
+      283.56,
+      1291.74,
+      192.88,
+      20.26
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t9",
+     "max_width_mm": 240.0,
+     "size_units": 27.2,
+     "px_at": {
+      "TVP": 27.2
+     }
+    },
+    {
+     "kind": "text",
+     "default": "TAKEAWAY",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 380,
+     "baseline_y": 1395.2,
+     "top_y": 1343.99,
+     "box": [
+      264.0,
+      1343.99,
+      232.0,
+      51.21
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t10",
+     "max_width_mm": 240.0,
+     "size_units": 59.59,
+     "px_at": {
+      "TVP": 59.6
+     }
+    },
+    {
+     "kind": "text",
+     "default": "EVERY",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 720,
+     "baseline_y": 1372.0,
+     "top_y": 1351.74,
+     "box": [
+      665.21,
+      1351.74,
+      109.59,
+      20.26
+     ],
+     "tracking_em": 0.2,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t11",
+     "max_width_mm": 240.0,
+     "size_units": 27.2,
+     "px_at": {
+      "TVP": 27.2
+     }
+    },
+    {
+     "kind": "text",
+     "default": "FRIDAY",
+     "font": "anton",
+     "colour": "#FFF3DC",
+     "align": "center",
+     "anchor_x": 720,
+     "baseline_y": 1455.2,
+     "top_y": 1379.58,
+     "box": [
+      608.82,
+      1379.58,
+      222.36,
+      75.62
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "detail",
+     "id": "t12",
+     "max_width_mm": 240.0,
+     "size_units": 88.0,
+     "px_at": {
+      "TVP": 88.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "BAKEANDGRILL.MV",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "left",
+     "anchor_x": 80.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      80.0,
+      1828.63,
+      283.79,
+      19.37
+     ],
+     "tracking_em": 0.08,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t13",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "+960 912 0011",
+     "font": "jakarta-800",
+     "colour": "#FFF3DC",
+     "align": "right",
+     "anchor_x": 1000.0,
+     "baseline_y": 1848.0,
+     "top_y": 1828.63,
+     "box": [
+      811.11,
+      1828.63,
+      188.89,
+      19.37
+     ],
+     "tracking_em": 0.04,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t14",
+     "max_width_mm": 940.0,
+     "size_units": 26.0,
+     "px_at": {
+      "TVP": 26.0
+     }
+    },
+    {
+     "kind": "text",
+     "default": "Terms & conditions apply",
+     "font": "jakarta-500",
+     "colour": "#FFC72C",
+     "align": "center",
+     "anchor_x": 540.0,
+     "baseline_y": 1848.0,
+     "top_y": 1830.12,
+     "box": [
+      395.92,
+      1830.12,
+      288.17,
+      17.88
+     ],
+     "tracking_em": 0.0,
+     "opacity": 1,
+     "shadow": null,
+     "role_hint": "footer",
+     "id": "t15",
+     "max_width_mm": 960.0,
+     "size_units": 24.0,
+     "px_at": {
+      "TVP": 24.0
+     }
+    }
+   ]
+  }
+ }
+}
