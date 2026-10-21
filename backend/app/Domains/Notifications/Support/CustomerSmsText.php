@@ -64,6 +64,7 @@ final class CustomerSmsText
         'customer_deposit_paid_out' => 'Bake & Grill: ވޯލެޓުން MVR {{amount}} އަނބުރާ ދެވިއްޖެ. ވޯލެޓުގެ ބާކީ: MVR {{balance}}.',
         'customer_deposit_on_hold' => 'Bake & Grill: ތިޔަ ވޯލެޓް ވަގުތީގޮތުން ހިފަހައްޓާފައި، މިވަގުތު ބޭނުމެއް ނުކުރެވޭނެ. ގުޅުއްވާ.',
         'customer_deposit_active' => 'Bake & Grill: ތިޔަ ވޯލެޓް އަލުން ބޭނުންކުރެވޭނެ. ބާކީ: MVR {{balance}}.',
+        'customer_credit_statement' => 'Bake & Grill: {{month}} ގެ ކްރެޑިޓް އެކައުންޓް ސްޓޭޓްމަންޓް: ދައްކަންޖެހޭ ޖުމްލަ MVR {{balance}}{{overdue_note}}. އިންވޮއިސްތައް ބައްލަވައި އޮންލައިންކޮށް ދައްކަވާ: {{link}}',
         'customer_wallet_topup_link' => 'Bake & Grill: ކާޑުން ވޯލެޓަށް {{what}} ވައްދަން މި ލިންކު ބޭނުންކުރައްވާ: {{link}} ލިންކު 7 ދުވަހަށް ބޭނުންކުރެވޭނެ.',
     ];
 

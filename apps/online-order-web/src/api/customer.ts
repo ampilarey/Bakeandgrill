@@ -271,6 +271,12 @@ export type CustomerDepositSummary = {
   balance_mvr: number;
   status: 'active' | 'frozen' | 'closed';
   can_use: boolean;
+  /** Part of an unpaid online order is on hold (owner, 2026-10-21). */
+  held_mvr?: number;
+  /** What may be spent now: the balance less what is on hold. */
+  available_mvr?: number;
+  /** The customer's own choice: the wallet first at checkout. */
+  wallet_first?: boolean;
 };
 
 export type CustomerDepositTransaction = {
@@ -305,6 +311,77 @@ export async function addGiftCardToWallet(code: string): Promise<{ added_laar: n
 /** Pay what an order still owes from the wallet; refused unless the wallet covers all of it. */
 export async function payOrderFromWallet(orderId: number): Promise<{ order: { id: number; status: string; payment_status: string }; balance_laar: number }> {
   return request(`/customer/orders/${orderId}/pay-wallet`, { method: 'POST' });
+}
+
+/**
+ * The wallet does not cover the order: put what it has on hold and pay the
+ * rest by card (owner, 2026-10-21). Nothing leaves the wallet until the bank
+ * confirms the card.
+ */
+export async function holdWalletForOrder(orderId: number): Promise<{ held_laar: number; remaining_laar: number }> {
+  return request(`/customer/orders/${orderId}/hold-wallet`, { method: 'POST' });
+}
+
+/** The wallet was unticked before paying by card: a hold from an earlier tap goes. */
+export async function releaseWalletHold(orderId: number): Promise<{ released: number }> {
+  return request(`/customer/orders/${orderId}/hold-wallet`, { method: 'DELETE' });
+}
+
+// ── The credit account paid online as a whole (owner, 2026-10-21) ────────────
+
+export type CreditStatementInvoice = {
+  id: number;
+  invoice_number: string;
+  order_id: number | null;
+  issue_date: string | null;
+  due_date: string | null;
+  overdue: boolean;
+  days_overdue: number;
+  total_mvr: number;
+  balance_due_mvr: number;
+  view_url: string | null;
+};
+
+export type CreditStatement = {
+  enabled: boolean;
+  status: string;
+  balance_mvr: number;
+  available_mvr: number;
+  limit_mvr: number;
+  overdue_mvr: number;
+  next_due_date: string | null;
+  payment_terms_days: number;
+  invoices: CreditStatementInvoice[];
+  /** The public statement page, printable, with Pay online. */
+  statement_url: string;
+  can_pay_online: boolean;
+};
+
+export type CreditPaymentStatus = {
+  token: string;
+  number: string;
+  status: 'pending' | 'paid' | 'expired' | 'cancelled';
+  amount_mvr: number;
+  balance_after_mvr: number | null;
+  paid_at: string | null;
+  expires_at: string | null;
+};
+
+export async function getCreditStatement(): Promise<{ statement: CreditStatement | null }> {
+  return request('/customer/credit/statement');
+}
+
+/** Pay the whole balance by card, or an amount of it; the reply carries the bank's page. */
+export async function startCreditPayment(amountMvr?: number): Promise<{ credit_payment: CreditPaymentStatus; payment_url: string }> {
+  return request('/customer/credit/pay', {
+    method: 'POST',
+    body: JSON.stringify(amountMvr !== undefined ? { amount_laar: Math.round(amountMvr * 100) } : {}),
+  });
+}
+
+/** How a credit payment went; while pending the server asks the bank. */
+export async function getCreditPayment(token: string): Promise<{ credit_payment: CreditPaymentStatus; balance_mvr: number }> {
+  return request(`/customer/credit/payments/${encodeURIComponent(token)}`);
 }
 
 // ── Money into the wallet by card (owner, 2026-10-21) ───────────────────────

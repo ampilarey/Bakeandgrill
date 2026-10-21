@@ -58,6 +58,8 @@ class Customer extends Model implements AuthenticatableContract
         'credit_notes',
         'credit_payment_terms_days',
         'credit_reminder_sms',
+        'credit_statement_token',
+        'wallet_first',
     ];
 
     /**
@@ -103,6 +105,7 @@ class Customer extends Model implements AuthenticatableContract
         'credit_balance_laar' => 'integer',
         'credit_payment_terms_days' => 'integer',
         'credit_reminder_sms' => 'boolean',
+        'wallet_first' => 'boolean',
         'phone_unverified' => 'boolean',
         'phone_verified_at' => 'datetime',
         'set_aside_at' => 'datetime',

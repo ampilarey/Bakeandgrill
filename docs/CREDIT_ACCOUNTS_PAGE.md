@@ -155,6 +155,30 @@ schedule off.
 | Wording | migration `2026_10_21_120000_credit_and_wallet_customer_texts`, `SmsTemplateWording` |
 | Tests | `backend/tests/Feature/Credit/CreditAndWalletTextsTest.php` |
 
+## Paid online as a whole, the statement, and overdue alerts (2026-10-21)
+
+Phase 3 of the deposit plan. Before, a customer could pay one invoice online from its page; the
+account as a whole had no page and nothing told the owner when credit went overdue.
+
+| Where | What |
+|---|---|
+| Order app, Account → Credit Account → **Pay online** | "Pay MVR x now by card" for the whole balance, or an amount typed under it; "MVR y of this is overdue" when any is; a link to the printable statement. Back from the bank the panel confirms "MVR x received… You now owe MVR z" (it asks the bank itself while the webhook is on its way). |
+| `/credit/{token}` | The customer's statement: what is owed, what is overdue, every open invoice with its page, Pay by card (whole or part), Print. Linked from the monthly statement text. Not indexed. |
+| Notifications → **Credit account monthly statement (customer)** | On the 1st, every customer owing money is texted what they owe, what is overdue and the statement link (`credit:send-statements`, once per month, their reminder switch honoured). |
+| Notifications → **Owner: customer credit 30 / 60 days overdue** | Owners and managers are texted once when an invoice crosses 30 days and once at 60 (`credit:alert-overdue`, daily 09:07), everyone in one message, "Chase them in Customers → Accounts on credit." |
+| Needs attention → **Credit accounts with an overdue invoice** | Counts customers with an invoice past due; red once one is a month late; opens Customers → Accounts on credit. |
+| Charged to credit account text | Ends with " Only MVR x of your MVR y limit is left." when a fifth or less of the limit remains. |
+
+| Piece | File |
+|---|---|
+| Statement, Pay now, settle (oldest first; more than owed → the wallet), heal, sweep, the monthly text | `App\Domains\Credit\Services\CreditPaymentService`, `App\Models\CreditPayment` (`credit_payments`, `payments.credit_payment_id`) |
+| Customer API | `CustomerCreditPaymentController`: `GET /api/customer/credit/statement`, `POST /api/customer/credit/pay`, `GET /api/customer/credit/payments/{token}` |
+| Page | `CreditStatementPageController`, `resources/views/credit/statement.blade.php`, `GET /credit/{token}`, `POST /credit/{token}/pay` |
+| Commands | `credit:send-statements` (1st, 09:30), `credit:alert-overdue` (daily 09:07; `invoices.overdue_alert_stage`) |
+| Order app | `CreditPayCard.tsx` (`CreditPayCard`, `CreditPaymentResult`), Account page `?creditpay=&payment=` |
+| Wording | migration `2026_10_21_170000_credit_payments_and_wallet_holds` (`customer_credit_statement`, `{{limit_note}}` on the charged text) |
+| Tests | `backend/tests/Feature/Credit/CreditSpendTest.php` |
+
 ## Saved for later (2026-10-06)
 
 Owner: "save for later, we have something to do with credit acc". Offered in the

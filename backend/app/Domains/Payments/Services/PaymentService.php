@@ -455,6 +455,10 @@ class PaymentService
             }
         }
 
+        // Part of the order held on the customer's wallet (DepositHolds): the
+        // card session is for what is left, and the hold is taken at confirm.
+        $paidLaar += \App\Domains\Deposits\Support\DepositHolds::heldOnOrderLaar($order);
+
         return max(0, $orderTotalLaar - $paidLaar);
     }
 
@@ -950,9 +954,15 @@ class PaymentService
 
     private function confirmPaymentOnce(Payment $payment, array $payload): void
     {
-        // Money into a customer's wallet by card (owner, 2026-10-21) — no order.
+        // Money into a customer's wallet, or onto their credit account, by card
+        // (owner, 2026-10-21) — no order.
         if ($payment->wallet_topup_id !== null && $payment->order_id === null) {
             $this->confirmTopUpPaymentOnce($payment, $payload);
+
+            return;
+        }
+        if ($payment->credit_payment_id !== null && $payment->order_id === null) {
+            $this->confirmCreditPaymentOnce($payment, $payload);
 
             return;
         }
@@ -1033,6 +1043,14 @@ class PaymentService
             $this->paymentCommission->applyToPayment($locked);
 
             $this->attributeGatewayPaymentToOpenShift($locked);
+
+            // Part of the order held on the wallet (owner, 2026-10-21): the card
+            // has paid the rest, so the held money is taken now, in this
+            // transaction, and counts below as paid.
+            \App\Domains\Deposits\Support\DepositHolds::settle(
+                $order,
+                app(\App\Domains\Deposits\Services\DepositLedgerService::class),
+            );
 
             // C-2: Compare in laari (integer) to avoid float precision errors where
             // e.g. 100.00 (float) >= 100.00 (float) could fail with 99.9999... representation.
@@ -1200,6 +1218,8 @@ class PaymentService
                 'cancellation_reason' => \App\Domains\Orders\Support\SystemCancelReasons::PAYMENT_FAILED,
                 'cancelled_at' => now(),
             ]);
+            // Wallet money held for this order is free again.
+            \App\Domains\Deposits\Support\DepositHolds::release($order);
 
             Log::info('BML: Order cancelled due to payment failure', [
                 'order_id' => $order->id,
@@ -1562,40 +1582,68 @@ class PaymentService
         });
     }
 
-    // ── Wallet top-ups by card (owner, 2026-10-21) ─────────────────────────
+    // ── Standalone card payments: wallet top-ups and credit account payments ──
+    // (owner, 2026-10-21). No order: the payment points at a WalletTopUp or a
+    // CreditPayment the way an invoice payment points at its invoice, and the
+    // settle credits the wallet or records the repayment once however many
+    // times the bank reports it. The same session rules as an invoice
+    // payment: a second tap reopens the page the bank already gave, a lost
+    // or stale session is closed and a new one minted.
 
-    /**
-     * Start a BML payment that puts money into a customer's wallet. No order:
-     * the payment points at the WalletTopUp, and confirmTopUpPaymentOnce()
-     * credits the wallet once however many times the bank reports it. The
-     * same session rules as an invoice payment: a second tap reopens the
-     * page the bank already gave, a lost or stale session is closed and a
-     * new one minted.
-     *
-     * @return array{payment_url: string, payment_id: int, reused: bool}
-     */
+    /** @return array{payment_url: string, payment_id: int, reused: bool} */
     public function initiateBmlTopUpPayment(WalletTopUp $topUp, string $returnUrl): array
     {
-        $amountLaar = (int) $topUp->amount_laar;
-        if ($amountLaar <= 0) {
-            throw new \InvalidArgumentException('Choose an amount first.');
-        }
         if ($topUp->status !== WalletTopUp::STATUS_PENDING) {
             throw new \InvalidArgumentException('This top-up is not open.');
         }
 
-        $idempotencyKey = 'bml:wallet:' . $topUp->id . ':' . $amountLaar;
-        $this->dropStaleTopUpBmlSessions($topUp, $amountLaar);
+        return $this->initiateStandaloneBmlPayment('wallet_topup_id', $topUp->id, 'BG-WAL-', (int) $topUp->amount_laar, $returnUrl, WalletTopUp::class);
+    }
+
+    /** @return array{payment_url: string, payment_id: int, reused: bool} */
+    public function initiateBmlCreditPayment(\App\Models\CreditPayment $row, string $returnUrl): array
+    {
+        if ($row->status !== \App\Models\CreditPayment::STATUS_PENDING) {
+            throw new \InvalidArgumentException('This payment is not open.');
+        }
+
+        return $this->initiateStandaloneBmlPayment('credit_payment_id', $row->id, 'BG-CRP-', (int) $row->amount_laar, $returnUrl, \App\Models\CreditPayment::class);
+    }
+
+    /** The bank's return URL for a top-up: ask the bank and settle if it says CONFIRMED. */
+    public function confirmFromTopUpReturnUrl(int $topUpId, string $transactionId): void
+    {
+        $this->confirmStandaloneFromReturnUrl('wallet_topup_id', $topUpId, $transactionId, 'return_url_wallet_topup');
+    }
+
+    /** The bank's return URL for a credit account payment. */
+    public function confirmFromCreditPaymentReturnUrl(int $creditPaymentId, string $transactionId): void
+    {
+        $this->confirmStandaloneFromReturnUrl('credit_payment_id', $creditPaymentId, $transactionId, 'return_url_credit_payment');
+    }
+
+    /**
+     * @param class-string<\Illuminate\Database\Eloquent\Model> $lockModel
+     * @return array{payment_url: string, payment_id: int, reused: bool}
+     */
+    private function initiateStandaloneBmlPayment(string $column, int $id, string $localPrefix, int $amountLaar, string $returnUrl, string $lockModel): array
+    {
+        if ($amountLaar <= 0) {
+            throw new \InvalidArgumentException('Choose an amount first.');
+        }
+
+        $idempotencyKey = 'bml:' . $column . ':' . $id . ':' . $amountLaar;
+        $this->dropStaleStandaloneBmlSessions($column, $id, $amountLaar);
         // A changed amount can open two sessions within one second: the local
         // id is unique at the bank and in payments, so it carries a nonce.
-        $localId = $this->bml->normalizeLocalId('BG-WAL-' . $topUp->id . '-' . now()->format('His') . bin2hex(random_bytes(2)));
+        $localId = $this->bml->normalizeLocalId($localPrefix . $id . '-' . now()->format('His') . bin2hex(random_bytes(2)));
 
-        $payment = DB::transaction(function () use ($topUp, $idempotencyKey, $localId, $amountLaar) {
-            WalletTopUp::query()->whereKey($topUp->id)->lockForUpdate()->firstOrFail();
+        $payment = DB::transaction(function () use ($column, $id, $idempotencyKey, $localId, $amountLaar, $lockModel) {
+            $lockModel::query()->whereKey($id)->lockForUpdate()->firstOrFail();
 
             return $this->payments->firstOrCreate(
                 ['idempotency_key' => $idempotencyKey],
-                $this->topUpPaymentAttributes($topUp, $localId, $amountLaar),
+                $this->standalonePaymentAttributes($column, $id, $localId, $amountLaar),
             );
         });
 
@@ -1606,9 +1654,9 @@ class PaymentService
         if (in_array((string) $payment->status, ['initiated', 'pending'], true) && filled($payment->provider_transaction_id)) {
             $payUrl = $this->bmlPayUrl($payment);
             if ($payUrl !== null) {
-                Log::info('BML: Reusing existing wallet top-up payment', [
+                Log::info('BML: Reusing existing standalone payment', [
                     'payment_id' => $payment->id,
-                    'wallet_topup_id' => $topUp->id,
+                    $column => $id,
                     'transaction_id' => $payment->provider_transaction_id,
                 ]);
 
@@ -1617,9 +1665,9 @@ class PaymentService
             if (!$this->closeLostBmlSession($payment)) {
                 throw new \RuntimeException('This payment could not be reopened. Please try again in a minute.');
             }
-            $payment = $this->mintTopUpBmlPayment($topUp, $idempotencyKey, $amountLaar);
+            $payment = $this->mintStandaloneBmlPayment($column, $id, $localPrefix, $idempotencyKey, $amountLaar);
         } elseif (in_array((string) $payment->status, ['failed', 'cancelled', 'expired', 'refunded'], true)) {
-            $payment = $this->mintTopUpBmlPayment($topUp, $idempotencyKey, $amountLaar);
+            $payment = $this->mintStandaloneBmlPayment($column, $id, $localPrefix, $idempotencyKey, $amountLaar);
         }
 
         try {
@@ -1654,15 +1702,11 @@ class PaymentService
         return ['payment_url' => $paymentUrl, 'payment_id' => $payment->id, 'reused' => false];
     }
 
-    /** The bank's return URL for a top-up: ask the bank and settle if it says CONFIRMED. */
-    public function confirmFromTopUpReturnUrl(int $topUpId, string $transactionId): void
+    private function confirmStandaloneFromReturnUrl(string $column, int $id, string $transactionId, string $source): void
     {
         $payment = $this->payments->findByProviderTransactionId($transactionId);
-        if (!$payment || (int) $payment->wallet_topup_id !== $topUpId || $payment->order_id !== null) {
-            Log::info('BML return: no matching wallet top-up payment', [
-                'wallet_topup_id' => $topUpId,
-                'transaction_id' => $transactionId,
-            ]);
+        if (!$payment || (int) $payment->{$column} !== $id || $payment->order_id !== null) {
+            Log::info('BML return: no matching standalone payment', [$column => $id, 'transaction_id' => $transactionId]);
 
             return;
         }
@@ -1674,10 +1718,7 @@ class PaymentService
         try {
             $fetched = $this->bml->getTransactionStatus($transactionId);
         } catch (\Throwable $e) {
-            Log::warning('BML return: wallet top-up status API unavailable', [
-                'wallet_topup_id' => $topUpId,
-                'error' => $e->getMessage(),
-            ]);
+            Log::warning('BML return: standalone payment status API unavailable', [$column => $id, 'error' => $e->getMessage()]);
 
             return;
         }
@@ -1691,26 +1732,49 @@ class PaymentService
             'transactionId' => $transactionId,
             'localId' => $payment->local_id,
             'state' => 'CONFIRMED',
-            'source' => 'return_url_wallet_topup',
+            'source' => $source,
         ]));
     }
 
     private function confirmTopUpPaymentOnce(Payment $payment, array $payload): void
     {
-        DB::transaction(function () use ($payment, $payload): void {
-            $topUp = WalletTopUp::query()->whereKey($payment->wallet_topup_id)->lockForUpdate()->first();
-            if (!$topUp) {
-                Log::error('BML: Wallet top-up not found during payment confirmation', [
-                    'payment_id' => $payment->id,
-                    'wallet_topup_id' => $payment->wallet_topup_id,
-                ]);
+        $this->confirmStandalonePaymentOnce(
+            'wallet_topup_id',
+            $payment,
+            $payload,
+            WalletTopUp::class,
+            fn (WalletTopUp $topUp, Payment $locked) => app(\App\Domains\Deposits\Services\WalletTopUpService::class)->settle($topUp, $locked),
+        );
+    }
+
+    private function confirmCreditPaymentOnce(Payment $payment, array $payload): void
+    {
+        $this->confirmStandalonePaymentOnce(
+            'credit_payment_id',
+            $payment,
+            $payload,
+            \App\Models\CreditPayment::class,
+            fn (\App\Models\CreditPayment $row, Payment $locked) => app(\App\Domains\Credit\Services\CreditPaymentService::class)->settle($row, $locked),
+        );
+    }
+
+    /**
+     * @param class-string<\Illuminate\Database\Eloquent\Model> $model
+     * @param \Closure(\Illuminate\Database\Eloquent\Model, Payment): void $settle
+     */
+    private function confirmStandalonePaymentOnce(string $column, Payment $payment, array $payload, string $model, \Closure $settle): void
+    {
+        DB::transaction(function () use ($column, $payment, $payload, $model, $settle): void {
+            $row = $model::query()->whereKey($payment->{$column})->lockForUpdate()->first();
+            if (!$row) {
+                Log::error('BML: standalone payment target not found during confirmation', ['payment_id' => $payment->id, $column => $payment->{$column}]);
 
                 return;
             }
 
             $locked = Payment::query()
                 ->where('id', $payment->id)
-                ->where('wallet_topup_id', $topUp->id)
+                ->where($column, $row->id)
                 ->whereNull('order_id')
                 ->lockForUpdate()
                 ->first();
@@ -1733,15 +1797,15 @@ class PaymentService
                 return;
             }
 
-            app(\App\Domains\Deposits\Services\WalletTopUpService::class)->settle($topUp, $locked->fresh());
+            $settle($row, $locked->fresh());
         });
     }
 
-    /** Close in-flight top-up sessions whose amount is no longer the one asked for. */
-    private function dropStaleTopUpBmlSessions(WalletTopUp $topUp, int $amountLaar): void
+    /** Close in-flight sessions whose amount is no longer the one asked for. */
+    private function dropStaleStandaloneBmlSessions(string $column, int $id, int $amountLaar): void
     {
         $stale = Payment::query()
-            ->where('wallet_topup_id', $topUp->id)
+            ->where($column, $id)
             ->whereNull('order_id')
             ->where('gateway', 'bml')
             ->whereIn('status', self::IN_FLIGHT_STATUSES)
@@ -1755,12 +1819,13 @@ class PaymentService
         }
     }
 
-    private function mintTopUpBmlPayment(WalletTopUp $topUp, string $idempotencyKey, int $amountLaar): Payment
+    private function mintStandaloneBmlPayment(string $column, int $id, string $localPrefix, string $idempotencyKey, int $amountLaar): Payment
     {
         return $this->payments->create(array_merge(
-            $this->topUpPaymentAttributes(
-                $topUp,
-                $this->bml->normalizeLocalId('BG-WAL-' . $topUp->id . '-' . now()->format('His') . bin2hex(random_bytes(2))),
+            $this->standalonePaymentAttributes(
+                $column,
+                $id,
+                $this->bml->normalizeLocalId($localPrefix . $id . '-' . now()->format('His') . bin2hex(random_bytes(2))),
                 $amountLaar,
             ),
             ['idempotency_key' => $idempotencyKey . ':retry:' . now()->timestamp],
@@ -1768,12 +1833,14 @@ class PaymentService
     }
 
     /** @return array<string, mixed> */
-    private function topUpPaymentAttributes(WalletTopUp $topUp, string $localId, int $amountLaar): array
+    private function standalonePaymentAttributes(string $column, int $id, string $localId, int $amountLaar): array
     {
         return [
             'order_id' => null,
             'invoice_id' => null,
-            'wallet_topup_id' => $topUp->id,
+            'wallet_topup_id' => null,
+            'credit_payment_id' => null,
+            $column => $id,
             'method' => 'bml_connect',
             'gateway' => 'bml',
             'currency' => config('bml.default_currency', 'MVR'),

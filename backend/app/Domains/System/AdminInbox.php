@@ -112,7 +112,26 @@ final class AdminInbox
                 'count' => fn () => count(ExpiringPrints::groups(2)),
                 'level' => $warn,
             ],
+            // Owner, 2026-10-21 (credit audit): customers whose credit invoices are past due; red once one is a month late.
+            'credit_overdue' => [
+                'label' => 'Credit accounts with an overdue invoice', 'link' => '/customers/credit', 'permission' => 'customers.credit.manage',
+                'count' => fn () => (int) self::overdueCreditInvoices()->distinct()->count('customer_id'),
+                'level' => fn (int $n) => self::overdueCreditInvoices()->where('due_date', '<', now()->subDays(30)->toDateString())->exists() ? 'danger' : 'warn',
+            ],
         ] + self::$extra;
+    }
+
+    /** Customer (not wholesale) credit invoices past their due date with a balance. */
+    private static function overdueCreditInvoices(): \Illuminate\Database\Eloquent\Builder
+    {
+        return \App\Models\Invoice::query()
+            ->whereNotNull('customer_id')
+            ->whereNull('trade_account_id')
+            ->where('type', 'sale')
+            ->whereIn('status', ['sent', 'overdue'])
+            ->whereNotNull('due_date')
+            ->where('due_date', '<', now()->toDateString())
+            ->whereRaw(\App\Models\Invoice::OPEN_BALANCE_SQL);
     }
 
     /**

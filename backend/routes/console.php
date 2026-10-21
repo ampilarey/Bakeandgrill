@@ -183,6 +183,19 @@ Schedule::command('credit:send-payment-reminders')
     ->onFailure($alertOnFailure('credit:send-payment-reminders'))
     ->after($trackSuccess('credit:send-payment-reminders'));
 
+// Credit audit, 2026-10-21: the owners hear when a customer's credit goes
+// 30 and 60 days overdue, and every customer who owes gets a statement on
+// the 1st with the page that pays the whole balance online.
+Schedule::command('credit:alert-overdue')
+    ->dailyAt('09:07')
+    ->onFailure($alertOnFailure('credit:alert-overdue'))
+    ->after($trackSuccess('credit:alert-overdue'));
+
+Schedule::command('credit:send-statements')
+    ->monthlyOn(1, '09:30')
+    ->onFailure($alertOnFailure('credit:send-statements'))
+    ->after($trackSuccess('credit:send-statements'));
+
 // Wholesale chasing (audit, 2026-09-26): owners hear about money 30/60 days
 // late, shops are nudged to report sales, stale deliveries reach the owners,
 // billing cycles prompt an invoice, and every shop gets a monthly statement.

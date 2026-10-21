@@ -237,6 +237,9 @@ export function usePosApp() {
   const [chargeCreditEligible, setChargeCreditEligible] = useState(false);
   const [chargeWalletAvailable, setChargeWalletAvailable] = useState(0);
   const [chargeWalletEligible, setChargeWalletEligible] = useState(false);
+  // Wallet first (owner, 2026-10-21): the customer asked, in the order app,
+  // to pay from the wallet first; the Charge screen picks it for them.
+  const [chargeWalletFirst, setChargeWalletFirst] = useState(false);
   // FIX 8 — timestamp of the last successful credit summary fetch for
   // the currently-attached customer. Bumped whenever the Charge overlay
   // opens, the cashier taps the Credit Account tender, or a
@@ -904,13 +907,16 @@ export function usePosApp() {
         setChargeCreditAvailable(0);
       }
       const deposit = summary.deposit;
-      const balanceMvr = (deposit?.balance_laar ?? 0) / 100;
+      // Money on hold for an unpaid online order is not spendable at the till.
+      const balanceMvr = (deposit?.available_laar ?? deposit?.balance_laar ?? 0) / 100;
       if (canUseWallet && deposit?.status === 'active' && balanceMvr > 0) {
         setChargeWalletEligible(Boolean(deposit.can_use));
         setChargeWalletAvailable(balanceMvr);
+        setChargeWalletFirst(Boolean(deposit.wallet_first));
       } else {
         setChargeWalletEligible(false);
         setChargeWalletAvailable(0);
+        setChargeWalletFirst(false);
       }
       setChargeCreditRefreshedAt(Date.now());
     } catch {
@@ -918,6 +924,7 @@ export function usePosApp() {
       setChargeCreditAvailable(0);
       setChargeWalletEligible(false);
       setChargeWalletAvailable(0);
+      setChargeWalletFirst(false);
     }
   }, [cart.attachedCustomer, canUseCredit, canUseWallet]);
 
@@ -1440,7 +1447,7 @@ export function usePosApp() {
     showSendBill, setShowSendBill, showRequestItemModal, setShowRequestItemModal,
     kitchenPane, setKitchenPane, showCharge, setShowCharge, chargeCreditAvailable,
     chargeCreditEligible, chargeCreditRefreshedAt, refreshChargeCreditSummary,
-    chargeWalletAvailable, chargeWalletEligible, showSaveTicket,
+    chargeWalletAvailable, chargeWalletEligible, chargeWalletFirst, showSaveTicket,
     setShowSaveTicket, showOpenShift, setShowOpenShift, showCloseShift, setShowCloseShift,
     openShiftBusy, openTicketsCount, openTicketsCritical, receiptsFocusOrderId, setReceiptsFocusOrderId,
     deviceBlockedMessage, onlineOrderWatcher,

@@ -33,6 +33,8 @@ import {
   cancelCustomerOrder,
   getCustomerDeposit,
   payOrderFromWallet,
+  holdWalletForOrder,
+  releaseWalletHold,
   type CustomerAddress,
   type LoyaltyAccount,
 } from "../api";
@@ -387,14 +389,25 @@ export function useCheckout() {
   const [partySize, setPartySize] = useState(2);
   const [delivery, setDelivery]     = useState<DeliveryForm>(EMPTY_DELIVERY);
   const [notes, setNotes]           = useState("");
-  // The wallet (iruali import plan, feature 12): pays the order when it covers all of it.
+  // The wallet (iruali import plan, feature 12): pays the order when it covers
+  // all of it; short of that, what it has goes on hold and the card pays the
+  // rest (owner, 2026-10-21). What is on hold for another unpaid order is not
+  // offered again (available_mvr). "Wallet first" is the customer's own choice
+  // on Account → Wallet: the box comes ticked.
   const [walletBalanceLaar, setWalletBalanceLaar] = useState(0);
   const [useWallet, setUseWallet] = useState(false);
+  const spendableLaar = (r: { deposit: { can_use: boolean; balance_mvr: number; available_mvr?: number } | null }) =>
+    r.deposit && r.deposit.can_use ? Math.round(Number(r.deposit.available_mvr ?? r.deposit.balance_mvr) * 100) : 0;
   useEffect(() => {
     if (!isAuthenticated) { setWalletBalanceLaar(0); return; }
     let live = true;
     getCustomerDeposit()
-      .then((r) => { if (live) setWalletBalanceLaar(r.deposit && r.deposit.can_use ? Math.round(Number(r.deposit.balance_mvr) * 100) : 0); })
+      .then((r) => {
+        if (!live) return;
+        const laar = spendableLaar(r);
+        setWalletBalanceLaar(laar);
+        if (laar > 0 && r.deposit?.wallet_first) setUseWallet(true);
+      })
       .catch(() => {});
     return () => { live = false; };
   }, [isAuthenticated]);
@@ -830,6 +843,8 @@ export function useCheckout() {
   const totalLaar = discountedSubtotalLaar + serviceChargeLaar + taxForTotalLaar + deliveryFeeLaar + packagingFeeLaar + smallOrderFeeLaar;
   /** Amount still owed after gift-card tender. */
   const amountDueLaar = Math.max(0, totalLaar - giftCardDelta);
+  /** What the wallet puts in when it does not cover the order: all it has, the card paying the rest. */
+  const walletPartLaar = useWallet && walletBalanceLaar > 0 && walletBalanceLaar < amountDueLaar ? walletBalanceLaar : 0;
 
   const earnPreviewPoints = useMemo(
     () => estimateEarnPointsForSubtotalMvr(discountedSubtotalLaar / 100, earnRatePerMvr, tierMultiplier),
@@ -1459,6 +1474,22 @@ export function useCheckout() {
         return;
       }
 
+      // The wallet covers part of it: hold what it has, the card pays the rest
+      // (owner, 2026-10-21). Nothing leaves the wallet until the bank confirms.
+      if (useWallet && walletBalanceLaar > 0 && walletBalanceLaar < dueLaar) {
+        try {
+          await holdWalletForOrder(orderId);
+        } catch (holdErr) {
+          // The wallet changed since the page loaded: show the fresh figure, and
+          // the next tap goes by it (or pays from the wallet when it now covers all).
+          getCustomerDeposit().then((r) => setWalletBalanceLaar(spendableLaar(r))).catch(() => {});
+          throw holdErr;
+        }
+      } else if (walletBalanceLaar > 0) {
+        // Not from the wallet on this tap: a hold from an earlier one goes.
+        await releaseWalletHold(orderId).catch(() => undefined);
+      }
+
       let payment;
       try {
         payment = await initiateOnlinePayment(orderId);
@@ -1546,7 +1577,7 @@ export function useCheckout() {
     partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,
     gift, setGift,
-    walletBalanceLaar, useWallet, setUseWallet,
+    walletBalanceLaar, useWallet, setUseWallet, walletPartLaar,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress, markAddressAsNew,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,

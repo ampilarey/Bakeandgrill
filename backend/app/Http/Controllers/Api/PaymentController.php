@@ -229,6 +229,24 @@ class PaymentController extends Controller
             return $this->backFromTopUp($request, (string) $state);
         }
 
+        // The credit account paid online as a whole (owner, 2026-10-21).
+        $creditPayId = $request->query('creditPayId');
+        if ($creditPayId && !$orderId && !$invoiceId) {
+            if ($state === 'CONFIRMED' && $transactionId) {
+                try {
+                    $this->paymentService->confirmFromCreditPaymentReturnUrl((int) $creditPayId, (string) $transactionId);
+                } catch (\Throwable $e) {
+                    Log::warning('BML return: credit payment fallback confirmation failed', [
+                        'credit_payment_id' => $creditPayId,
+                        'transaction_id' => $transactionId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            return $this->backFromCreditPayment($request, (string) $state);
+        }
+
         if ($state === 'CONFIRMED' && $invoiceId && $transactionId && !$orderId) {
             try {
                 $this->paymentService->confirmFromInvoiceReturnUrl((int) $invoiceId, (string) $transactionId);
@@ -332,6 +350,44 @@ class PaymentController extends Controller
             ->route('wallet-topup.show', ['token' => $token, 'payment' => $shownState])
             ->with($paid || $state === 'CONFIRMED' ? 'success' : 'error', $paid
                 ? 'Payment received. The money is in the wallet.'
+                : ($state === 'CONFIRMED'
+                    ? 'Payment is being confirmed with the bank. Refresh in a moment.'
+                    : 'Payment was not completed. You can try again from the Pay button.'));
+    }
+
+    /**
+     * Where a credit account payment's customer lands after the bank: the
+     * order app's Credit panel when the app started it, else the statement
+     * page. Both ask the bank once more first.
+     */
+    private function backFromCreditPayment(Request $request, string $state): \Illuminate\Http\RedirectResponse
+    {
+        $token = (string) $request->query('creditPayToken', '');
+        $row = $token !== '' ? \App\Models\CreditPayment::query()->where('token', $token)->first() : null;
+        if ($row === null) {
+            Log::warning('BML return: credit payment token unknown', ['token' => $token]);
+
+            return redirect($this->orderAppBase() . '/account');
+        }
+
+        app(\App\Domains\Credit\Services\CreditPaymentService::class)->heal($row, force: true);
+        $paid = $row->fresh()->status === \App\Models\CreditPayment::STATUS_PAID;
+        $shownState = $paid ? 'CONFIRMED' : $state;
+
+        if ($request->query('creditBack') === 'app') {
+            return redirect($this->orderAppBase() . '/account?creditpay=' . urlencode($token) . '&payment=' . urlencode($shownState));
+        }
+
+        $customer = $row->customer;
+        $statementToken = (string) ($customer?->credit_statement_token ?? '');
+        if ($statementToken === '') {
+            return redirect($this->orderAppBase() . '/account');
+        }
+
+        return redirect()
+            ->route('credit-statement.show', ['token' => $statementToken, 'payment' => $shownState])
+            ->with($paid || $state === 'CONFIRMED' ? 'success' : 'error', $paid
+                ? 'Payment received. Thank you.'
                 : ($state === 'CONFIRMED'
                     ? 'Payment is being confirmed with the bank. Refresh in a moment.'
                     : 'Payment was not completed. You can try again from the Pay button.'));

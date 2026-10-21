@@ -106,6 +106,12 @@ type Props = {
   /** Show customer deposit tender when customer has prepaid balance. */
   walletEligible?: boolean;
   walletAvailableMvr?: number;
+  /**
+   * The customer asked, in the order app, to pay from the wallet first
+   * (owner, 2026-10-21): the wallet tender is picked for them when it covers
+   * the ticket, and the wallet box says so. The cashier can still pick another.
+   */
+  walletFirst?: boolean;
   /** When true, only cash / card / transfer / QR are offered. */
   isOffline?: boolean;
   /** Hide tender types the cashier is not permitted to use. */
@@ -166,6 +172,7 @@ export function ChargeOverlay({
   onSelectCredit,
   walletEligible = false,
   walletAvailableMvr = 0,
+  walletFirst = false,
   isOffline = false,
   allowedTenders,
   onClose,
@@ -371,6 +378,22 @@ export function ChargeOverlay({
     if (counting) return;
     setMethod(baseMethods[0]);
   }, [method, baseMethods, counting]);
+
+  /**
+   * Wallet first (owner, 2026-10-21): the customer asked for it in the order
+   * app, so the wallet is picked once, when its figures land and it covers the
+   * ticket. Never over a tender the cashier has started counting, and never a
+   * second time, so a cashier who picked cash instead keeps cash.
+   */
+  const walletPicked = useRef(false);
+  useEffect(() => {
+    if (walletPicked.current) return;
+    if (!walletFirst || !walletEligible || isOffline) return;
+    if (total > walletAvailableMvr + 0.001) return;
+    if (counting || method === "house_account" || method === "wallet") return;
+    walletPicked.current = true;
+    setMethod("wallet");
+  }, [walletFirst, walletEligible, walletAvailableMvr, total, counting, method, isOffline]);
 
   /**
    * What the tender row shows. If the active method has just been dropped from
@@ -937,6 +960,9 @@ export function ChargeOverlay({
                     : walletPartialPay
                       ? `Deposit balance MVR ${walletAvailableMvr.toFixed(2)} — remainder will be collected in cash.`
                       : `Deposit balance: MVR ${walletAvailableMvr.toFixed(2)}`}
+                  {walletFirst && !walletOverLimit && (
+                    <span data-testid="pos-charge-wallet-first"> · The customer asked to pay from the wallet first.</span>
+                  )}
                 </div>
               )}
             </div>

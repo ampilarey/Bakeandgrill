@@ -159,7 +159,7 @@ export function PosShellLayout() {
     showRequestItemModal, setShowRequestItemModal, showSendBill, setShowSendBill,
     showCharge, setShowCharge, chargeCreditEligible, chargeCreditAvailable,
     chargeCreditRefreshedAt, refreshChargeCreditSummary,
-    chargeWalletEligible, chargeWalletAvailable, showSaveTicket, setShowSaveTicket,
+    chargeWalletEligible, chargeWalletAvailable, chargeWalletFirst, showSaveTicket, setShowSaveTicket,
     showCloseShift, setShowCloseShift, showOpenShift, setShowOpenShift, openShiftBusy,
     receiptsFocusOrderId, setReceiptsFocusOrderId, idleLockMinutes, setIdleLockMinutes,
     cartSide, setCartSide, isOnline,
@@ -1112,6 +1112,7 @@ export function PosShellLayout() {
           onSelectCredit={() => { void refreshChargeCreditSummary(); }}
           walletEligible={canUseWallet && chargeWalletEligible && isReachable}
           walletAvailableMvr={chargeWalletAvailable}
+          walletFirst={chargeWalletFirst}
           isOffline={!isReachable}
           allowedTenders={{
             cash: canPayCash,

@@ -1138,6 +1138,49 @@ page as the receipt (`{{receipt}}`). A pending top-up past its date is expired, 
 bank may still confirm keeps it open. `WalletTopUpTest`, `AddMoneyCard.test.tsx`. A new way to put
 money in the wallet goes through `WalletTopUpService` and its rules, never a second ledger path.
 
+## Spending the wallet and the credit account
+
+Owner, 2026-10-21 (phase 3 of the deposit plan). **Part of an online order from the wallet**: when
+the wallet does not cover the order, checkout offers "Use my wallet (MVR x) and pay the rest (MVR y)
+by card"; `POST /api/customer/orders/{id}/hold-wallet` puts a pending `customer_deposit` Payment on
+the order (`App\Domains\Deposits\Support\DepositHolds`, one hold per order, resized on a second
+call), nothing leaves the wallet, `PaymentService::getRemainingBalanceLaar` counts the hold as
+covered so the BML session is for the rest, and the order confirm transaction takes the held money
+through `DepositLedgerService::recordUsage` (`DepositHolds::settle`, the owner as actor and looked up
+only when a hold exists). A failed or cancelled card releases it (`cancelOrderOnPaymentFailure`), and
+`DELETE …/hold-wallet` releases it when the customer unticks the wallet (`releaseWalletHold` in
+`useCheckout`, called on any card tap that is not from the wallet). Held money is not spendable
+anywhere meanwhile: `DepositEligibilityService` subtracts `DepositHolds::heldLaar()` (`held_laar` /
+`available_laar` on the summaries, `held_mvr` / `available_mvr` to the customer), the till's Charge
+reads `available_laar`, and a hold older than 48 h is not a hold. **Wallet first** is the customer's
+own switch (`customers.wallet_first`, Account → Wallet, `PATCH /customer/profile`): the checkout box
+comes ticked, and the till's Charge picks the wallet tender once when it covers the ticket
+(`ChargeOverlay` `walletFirst`, never over a tender being counted) and says so in the wallet box.
+**The credit account paid online as a whole**: `GET /api/customer/credit/statement`
+(`CreditPaymentService::statement`: balance, overdue, every open invoice) and the public statement
+page `/credit/{token}` (`customers.credit_statement_token`, `CreditStatementPageController`,
+`credit/statement.blade.php`, `noindex`); Pay now in the app (`CreditPayCard`, `POST
+/api/customer/credit/pay`, whole balance or an amount) or Pay by card on the page makes a
+`credit_payments` row (`App\Models\CreditPayment`) whose BML payment carries
+`payments.credit_payment_id`, the fourth leg of the XOR beside order, invoice and wallet top-up;
+`confirmPaymentOnce` settles it through `CreditPaymentService::settle` (one repayment, card, source
+`online`, oldest invoices first; anything over what is owed by then goes into the wallet, never
+refused); the bank's return (`creditPayId` / `creditPayToken` / `creditBack` app|page) lands on
+Account → Credit (`?creditpay=&payment=`, `CreditPaymentResult`) or back on the page, which heals
+the latest pending row by asking the bank; `payments:reconcile-pending-bml` sweeps these too. The
+standalone BML plumbing (`initiateStandaloneBmlPayment`, `confirmStandalonePaymentOnce`) is shared
+with wallet top-ups: a new thing paid by card with no order adds a column to the XOR and a branch
+there, not a second copy. **The monthly statement**: `credit:send-statements` on the 1st texts every
+retail customer owing money (row `customer_credit_statement`, their reminder switch honoured, once
+per month) what they owe, what is overdue and the statement link. **Overdue to the owners**:
+`credit:alert-overdue` daily texts owners and managers once when an invoice crosses 30 and again at
+60 days (`invoices.overdue_alert_stage`, row `owner_credit_overdue`), and Needs attention carries
+`credit_overdue` (red once one is a month late). **Near the limit**: the charged text ends with
+" Only MVR x of your MVR y limit is left." when a fifth or less remains
+(`CreditAccountNotifier::limitNote`, `{{limit_note}}`, appended when the wording lacks it).
+`CreditSpendTest`. A new way to spend the wallet online goes through `DepositHolds` or
+`payOrder`, never a ledger write of its own.
+
 ## Poster print PDFs (PDF/X-4)
 
 Posters render through TCPDF via `App\Domains\Posters\Pdf\PdfX4Document`, not dompdf

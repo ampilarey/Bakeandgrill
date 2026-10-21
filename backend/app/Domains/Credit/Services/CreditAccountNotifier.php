@@ -120,6 +120,7 @@ class CreditAccountNotifier
     public function chargedText(Order $order, array $credit, ?string $phone): string
     {
         $due = $credit['due_date'] ?? null;
+        $limitNote = self::limitNote((int) ($credit['limit_laar'] ?? 0), (int) $credit['available_laar'], $phone);
         $vars = [
             'amount' => self::mvr((int) $credit['amount_laar']),
             'order_number' => (string) $order->order_number,
@@ -128,9 +129,31 @@ class CreditAccountNotifier
             'balance' => self::mvr((int) $credit['balance_laar']),
             'available' => self::mvr((int) $credit['available_laar']),
             'link' => (string) ($credit['pay_url'] ?? ''),
+            'limit_note' => $limitNote,
         ];
 
-        return $this->builder->build(self::TYPE_CHARGED, $vars, self::FALLBACK_CHARGED, $phone);
+        $message = $this->builder->build(self::TYPE_CHARGED, $vars, self::FALLBACK_CHARGED, $phone);
+        // A wording without {{limit_note}} of its own still carries the warning.
+        if ($limitNote !== '' && !str_contains($message, trim($limitNote))) {
+            $message .= $limitNote;
+        }
+
+        return $message;
+    }
+
+    /** A fifth of the limit or less is left (owner, 2026-10-21: the near-limit nudge). */
+    public const NEAR_LIMIT_SHARE = 0.2;
+
+    public static function limitNote(int $limitLaar, int $availableLaar, ?string $phone): string
+    {
+        if ($limitLaar <= 0 || $availableLaar > (int) floor($limitLaar * self::NEAR_LIMIT_SHARE)) {
+            return '';
+        }
+        if (\App\Domains\Notifications\Support\CustomerSmsText::language((string) $phone) === 'dv') {
+            return sprintf(' ތިބާގެ MVR %s ލިމިޓުން ބާކީ ހުރީ MVR %s އެކަނި.', self::mvr($limitLaar), self::mvr(max(0, $availableLaar)));
+        }
+
+        return sprintf(' Only MVR %s of your MVR %s limit is left.', self::mvr(max(0, $availableLaar)), self::mvr($limitLaar));
     }
 
     /**

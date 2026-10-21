@@ -1,6 +1,7 @@
 import { AddGiftCardToWallet } from '../components/AddGiftCardToWallet';
 import { AddMoneyCard } from '../components/AddMoneyCard';
 import { WalletTopUpResult } from '../components/WalletTopUpResult';
+import { CreditPayCard, CreditPaymentResult } from '../components/CreditPayCard';
 import { ReviewPhotoPicker } from '../components/ReviewPhotoPicker';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
@@ -17,6 +18,7 @@ import {
   getCustomerCredit,
   getCustomerDepositLedger,
   updateCustomerCreditPreferences,
+  updateCustomerProfile,
 } from '../api';
 import type {
   CustomerReservation, FavouriteItem,
@@ -133,13 +135,25 @@ export function AccountPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [topUpReturn, setTopUpReturn] = useState<{ token: string; state: string } | null>(null);
   const [topUpRefresh, setTopUpRefresh] = useState(0);
+  // Back from the bank after Pay now on the credit account: the same, on the Credit panel.
+  const [creditPayReturn, setCreditPayReturn] = useState<{ token: string; state: string } | null>(null);
+  const [creditRefresh, setCreditRefresh] = useState(0);
+  // Wallet first (owner, 2026-10-21): the customer's own choice, saved on the account.
+  const [walletFirstSaving, setWalletFirstSaving] = useState(false);
   useEffect(() => {
     const token = searchParams.get('topup');
-    if (!token) return;
-    setTopUpReturn({ token, state: searchParams.get('payment') ?? '' });
-    setPanel('deposit');
+    const creditToken = searchParams.get('creditpay');
+    if (!token && !creditToken) return;
+    if (token) {
+      setTopUpReturn({ token, state: searchParams.get('payment') ?? '' });
+      setPanel('deposit');
+    } else if (creditToken) {
+      setCreditPayReturn({ token: creditToken, state: searchParams.get('payment') ?? '' });
+      setPanel('credit');
+    }
     const next = new URLSearchParams(searchParams);
     next.delete('topup');
+    next.delete('creditpay');
     next.delete('payment');
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
@@ -597,6 +611,13 @@ export function AccountPage() {
 
           {panel === 'credit' && (
             <>
+              {creditPayReturn && (
+                <CreditPaymentResult
+                  token={creditPayReturn.token}
+                  state={creditPayReturn.state}
+                  onSettled={() => { setCreditLoaded(false); setCreditRefresh((n) => n + 1); }}
+                />
+              )}
               {creditError && <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{creditError}</p>}
               {creditLoading ? (
                 <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted)' }}>{t('account.loading')}</div>
@@ -641,6 +662,8 @@ export function AccountPage() {
                       )}
                     </div>
                   </div>
+
+                  {credit.balance_mvr > 0 && <CreditPayCard refreshKey={creditRefresh} />}
 
                   <SectionCard title={t('account.credit_sms_title')}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, cursor: 'pointer' }}>
@@ -759,7 +782,37 @@ export function AccountPage() {
                         {t('account.deposit_status_note').replace('{status}', deposit.status)}
                       </p>
                     )}
+                    {(deposit.held_mvr ?? 0) > 0 && (
+                      <p style={{ margin: '12px 0 0', fontSize: 13, color: '#065F46' }} data-testid="wallet-held">
+                        {t('wallet.held').replace('{amount}', (deposit.held_mvr ?? 0).toFixed(2))}
+                      </p>
+                    )}
                   </div>
+
+                  <SectionCard title={t('wallet.first_title')}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(deposit.wallet_first)}
+                        disabled={walletFirstSaving || !isAuthenticated}
+                        data-testid="wallet-first-toggle"
+                        onChange={(e) => {
+                          if (!isAuthenticated) return;
+                          const on = e.target.checked;
+                          setWalletFirstSaving(true);
+                          setDepositError('');
+                          updateCustomerProfile({ wallet_first: on })
+                            .then(() => setDeposit((d) => (d ? { ...d, wallet_first: on } : d)))
+                            .catch((err: Error) => setDepositError(err.message || t('account.err_deposit')))
+                            .finally(() => setWalletFirstSaving(false));
+                        }}
+                      />
+                      {t('wallet.first_label')}
+                    </label>
+                    <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      {t('wallet.first_hint')}
+                    </p>
+                  </SectionCard>
 
                   <SectionCard title={t('account.deposit_activity')}>
                     {depositTransactions.length === 0 ? (

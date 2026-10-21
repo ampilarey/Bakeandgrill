@@ -275,7 +275,8 @@ final class DepositLedgerService
             }
 
             $amountLaar = (int) $payment->amount_laar;
-            $this->eligibility->assertCanUseDeposit($customer, $amountLaar, $account);
+            // A hold being taken (DepositHolds) must not count against itself.
+            $this->eligibility->assertCanUseDeposit($customer, $amountLaar, $account, $payment->id);
 
             $balanceBefore = (int) $account->balance_laar;
             $newBalance = $balanceBefore - $amountLaar;

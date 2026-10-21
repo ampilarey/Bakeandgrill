@@ -126,6 +126,12 @@ export type PosCustomerSummary = {
     status: 'active' | 'frozen' | 'closed';
     balance_laar: number;
     can_use: boolean;
+    /** On hold for an unpaid online order (owner, 2026-10-21); not spendable here. */
+    held_laar?: number;
+    /** What may be spent now: the balance less what is on hold. */
+    available_laar?: number;
+    /** The customer asked for the wallet first at checkout. */
+    wallet_first?: boolean;
   };
 };
 

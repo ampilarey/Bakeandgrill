@@ -695,6 +695,8 @@ class CustomerController extends Controller
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|max:255',
             'preferred_language' => 'sometimes|in:en,dv,ar',
+            // The wallet first at checkout (owner, 2026-10-21).
+            'wallet_first' => 'sometimes|boolean',
             'date_of_birth' => 'sometimes|nullable|date|before:today|after:1900-01-01',
             // Promotional SMS on or off, from Account → Settings (SMS audit, 2026-09-24).
             'sms_opt_out' => 'sometimes|boolean',

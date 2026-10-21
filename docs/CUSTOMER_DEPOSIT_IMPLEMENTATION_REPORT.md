@@ -211,6 +211,23 @@ the first wins. A bank refusal leaves the top-up open for another try. Tests:
 `tests/Feature/Deposits/WalletTopUpTest.php`, `AddMoneyCard.test.tsx`, `CreditAccountSettings.test.tsx`,
 `CustomersPanel.test.tsx`.
 
+## 8d. Spending it better (2026-10-21, phase 3)
+
+| Where | What |
+|---|---|
+| Order app checkout | The wallet box is offered whenever the wallet has money. Covering the order: "Pay from my wallet". Short of it: "Use my wallet (MVR x) and pay the rest (MVR y) by card", with the Pay button showing only the card part. The wallet money is put on hold and taken only once the bank confirms the card; a failed card frees it. |
+| Order app, Account → Wallet | "MVR x is on hold for an order you are paying" while a hold stands; **Wallet first** switch: the box comes ticked at checkout. |
+| Till, Charge | A customer who asked for the wallet first finds the wallet tender picked when it covers the ticket, and the wallet box says so. Money on hold for an unpaid online order is not offered at the till. The customer card shows "(MVR x on hold)" and "wallet first". |
+
+How it is wired: a hold is a pending `customer_deposit` Payment on the order (`DepositHolds`:
+`hold`, `settle` inside the BML confirm transaction, `release` on a failed card or `DELETE
+/api/customer/orders/{id}/hold-wallet`); `getRemainingBalanceLaar` counts it as covered;
+`DepositEligibilityService` subtracts `heldLaar()` from what may be spent (`held_laar`,
+`available_laar`, `wallet_first` on every summary). The customer's switch is
+`customers.wallet_first` through `PATCH /api/customer/profile`. Tests:
+`tests/Feature/Credit/CreditSpendTest.php`. The credit account's online payment, statement
+and alerts are in `docs/CREDIT_ACCOUNTS_PAGE.md` § Paid online as a whole.
+
 ## 9. Gap matrix (plan vs delivered)
 
 | Area | Status |

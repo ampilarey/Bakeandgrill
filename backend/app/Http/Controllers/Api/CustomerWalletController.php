@@ -110,6 +110,67 @@ class CustomerWalletController extends Controller
         ]);
     }
 
+    /**
+     * POST /api/customer/orders/{id}/hold-wallet (owner, 2026-10-21): the
+     * wallet does not cover the order, so put what it has on hold and pay the
+     * rest by card. Nothing leaves the wallet until the bank confirms the
+     * card; a cancelled order frees it.
+     */
+    public function holdForOrder(Request $request, int $id, PaymentService $payments): JsonResponse
+    {
+        $customer = $this->customer($request);
+        $order = Order::query()->findOrFail($id);
+        abort_unless((int) $order->customer_id === (int) $customer->id, 403, 'Not your order.');
+        if (in_array($order->status, ['paid', 'completed', 'cancelled'], true)) {
+            abort(422, 'This order is already finished.');
+        }
+
+        $result = DB::transaction(function () use ($order, $customer, $payments): array {
+            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $held = \App\Domains\Deposits\Support\DepositHolds::heldOnOrderLaar($locked);
+            // What is due with this order's own hold set aside, so a second
+            // call sizes the hold afresh rather than on top of itself.
+            $due = $payments->getRemainingBalanceLaar($locked) + $held;
+            if ($due <= 0) {
+                abort(422, 'Nothing is due on this order.');
+            }
+            $account = CustomerDepositAccount::query()->where('customer_id', $customer->id)->first();
+            if ($account === null || $account->status !== 'active') {
+                abort(422, 'Your wallet cannot be used right now.');
+            }
+            $available = max(0, (int) $account->balance_laar - \App\Domains\Deposits\Support\DepositHolds::heldLaar($customer->id));
+            $available += $held;
+            if ($available <= 0) {
+                abort(422, 'Your wallet is empty.');
+            }
+            if ($available >= $due) {
+                abort(422, 'Your wallet covers this order; pay it from the wallet instead.');
+            }
+            $hold = \App\Domains\Deposits\Support\DepositHolds::hold($customer, $locked, $available);
+
+            return ['held_laar' => (int) $hold->amount_laar, 'remaining_laar' => $due - (int) $hold->amount_laar];
+        });
+
+        return response()->json($result);
+    }
+
+    /**
+     * DELETE /api/customer/orders/{id}/hold-wallet: the customer unticked the
+     * wallet before paying by card, so a hold from an earlier tap goes; the
+     * card then pays the whole order.
+     */
+    public function releaseHold(Request $request, int $id): JsonResponse
+    {
+        $customer = $this->customer($request);
+        $order = Order::query()->findOrFail($id);
+        abort_unless((int) $order->customer_id === (int) $customer->id, 403, 'Not your order.');
+        $released = $order->status === 'payment_pending'
+            ? \App\Domains\Deposits\Support\DepositHolds::release($order)
+            : 0;
+
+        return response()->json(['released' => $released]);
+    }
+
     private function customer(Request $request): Customer
     {
         $customer = $request->user();

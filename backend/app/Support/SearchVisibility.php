@@ -21,7 +21,7 @@ final class SearchVisibility
 {
     /** Paths no search engine has any business indexing. */
     public const PRIVATE_PREFIXES = [
-        '/receipts/', '/invoices/', '/pay/', '/payments/', '/wallet/', '/social/approve/', '/sms',
+        '/receipts/', '/invoices/', '/pay/', '/payments/', '/wallet/', '/credit/', '/social/approve/', '/sms',
         '/customer/', '/admin', '/pos', '/kds', '/driver', '/board', '/dashboard',
         '/menu/print',
         // The order app is the till, not a second home page for search engines.

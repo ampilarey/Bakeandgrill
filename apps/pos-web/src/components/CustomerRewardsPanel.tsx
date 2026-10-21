@@ -159,6 +159,8 @@ export function CustomerRewardsPanel({
   const tier = summary?.loyalty.tier ?? summary?.customer.tier ?? customer?.tier ?? "bronze";
   const lastPaidAt = summary?.lifetime.last_paid_at;
   const depositBalanceMvr = (summary?.deposit?.balance_laar ?? 0) / 100;
+  const depositHeldMvr = (summary?.deposit?.held_laar ?? 0) / 100;
+  const depositWalletFirst = Boolean(summary?.deposit?.wallet_first);
   const depositStatus = summary?.deposit?.status ?? 'active';
   const creditEnabled = summary?.credit?.enabled ?? false;
   const creditAvailableMvr = (summary?.credit?.available_laar ?? 0) / 100;
@@ -408,11 +410,12 @@ export function CustomerRewardsPanel({
                 <Stat label="Lifetime orders" value={lifetimeOrders.toLocaleString()} />
                 <Stat label="Lifetime spent" value={`MVR ${lifetimeSpent.toFixed(2)}`} />
                 <Stat
-                  label="Deposit balance"
+                  label={depositWalletFirst ? "Deposit balance · wallet first" : "Deposit balance"}
                   value={
-                    depositStatus !== 'active'
+                    (depositStatus !== 'active'
                       ? `${depositStatus.toUpperCase()} · MVR ${depositBalanceMvr.toFixed(2)}`
-                      : `MVR ${depositBalanceMvr.toFixed(2)}`
+                      : `MVR ${depositBalanceMvr.toFixed(2)}`)
+                    + (depositHeldMvr > 0 ? ` (MVR ${depositHeldMvr.toFixed(2)} on hold)` : '')
                   }
                 />
                 {creditEnabled && (
@@ -425,9 +428,9 @@ export function CustomerRewardsPanel({
                     }
                   />
                 )}
-                {creditEnabled && (
+                {creditEnabled && creditBalanceMvr > 0 && (
                   <div style={{ gridColumn: "1 / -1", fontSize: 11, color: COLOR.subtle, fontStyle: "italic" }}>
-                    Collect repayments in Admin → Customers.
+                    Record a repayment on the Customers tab; the customer can also pay online from the order app.
                   </div>
                 )}
                 {lastPaidAt && (

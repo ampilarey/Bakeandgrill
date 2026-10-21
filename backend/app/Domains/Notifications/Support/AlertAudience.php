@@ -133,6 +133,7 @@ final class AlertAudience
         'owner_social_digest' => self::OWNERS_MANAGERS,
         'trade_reconcile_mismatch_owner' => self::OWNERS_MANAGERS,
         'owner_trade_overdue' => self::OWNERS_MANAGERS,
+        'owner_credit_overdue' => self::OWNERS_MANAGERS,
         'owner_trade_unreconciled' => self::OWNERS_MANAGERS,
         'owner_trade_sales_reported' => self::OWNERS_MANAGERS,
         'owner_trade_billing_due' => self::OWNERS_MANAGERS,

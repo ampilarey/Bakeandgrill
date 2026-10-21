@@ -7,6 +7,7 @@ use App\Http\Controllers\ImageThumbController;
 use App\Http\Controllers\InvoicePageController;
 use App\Http\Controllers\PosPayPageController;
 use App\Http\Controllers\ReceiptPageController;
+use App\Http\Controllers\CreditStatementPageController;
 use App\Http\Controllers\WalletTopUpPageController;
 use Illuminate\Support\Facades\Route;
 
@@ -318,6 +319,18 @@ Route::post('/wallet/top-up/{token}/pay', [WalletTopUpPageController::class, 'pa
     ->withoutMiddleware([Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
     ->middleware('throttle:10,1')
     ->name('wallet-topup.pay');
+
+// A customer's credit statement with Pay online for the whole balance
+// (owner, 2026-10-21). Token-gated like an invoice; the session stays on so
+// the Pay button's refusals show; no CSRF, like the pay page.
+Route::get('/credit/{token}', [CreditStatementPageController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->name('credit-statement.show');
+Route::post('/credit/{token}/pay', [CreditStatementPageController::class, 'pay'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->withoutMiddleware([Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
+    ->middleware('throttle:10,1')
+    ->name('credit-statement.pay');
 
 // BML Return URL (non-authoritative — redirects to frontend)
 Route::get('/payments/bml/return', [App\Http\Controllers\Api\PaymentController::class, 'bmlReturn'])->name('bml.return');

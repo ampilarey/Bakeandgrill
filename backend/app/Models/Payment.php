@@ -14,6 +14,7 @@ class Payment extends Model
         'order_id',
         'invoice_id',
         'wallet_topup_id',
+        'credit_payment_id',
         'collected_by_user_id',
         'shift_id',
         'method',
@@ -42,6 +43,7 @@ class Payment extends Model
         'order_id' => 'integer',
         'invoice_id' => 'integer',
         'wallet_topup_id' => 'integer',
+        'credit_payment_id' => 'integer',
         'collected_by_user_id' => 'integer',
         'shift_id' => 'integer',
         'amount' => 'decimal:2',
@@ -70,6 +72,12 @@ class Payment extends Model
     public function walletTopUp(): BelongsTo
     {
         return $this->belongsTo(WalletTopUp::class, 'wallet_topup_id');
+    }
+
+    /** The credit account paid online as a whole (owner, 2026-10-21); no order, no invoice. */
+    public function creditPayment(): BelongsTo
+    {
+        return $this->belongsTo(CreditPayment::class, 'credit_payment_id');
     }
 
     public function collectedBy(): BelongsTo

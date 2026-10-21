@@ -21,13 +21,16 @@ class ReconcilePendingBmlPayments extends Command
 
     protected $description = 'Settle BML card payments the bank confirmed but no webhook or return URL told us about';
 
-    public function handle(PendingBmlPaymentHealer $healer, WalletTopUpService $topUps): int
+    public function handle(PendingBmlPaymentHealer $healer, WalletTopUpService $topUps, \App\Domains\Credit\Services\CreditPaymentService $credit): int
     {
         $result = $healer->sweep();
         $this->info(sprintf('Checked %d order(s), settled %d.', $result['checked'], $result['settled']));
 
         $wallet = $topUps->sweep();
         $this->info(sprintf('Checked %d wallet top-up(s), settled %d, expired %d.', $wallet['checked'], $wallet['settled'], $wallet['expired']));
+
+        $cp = $credit->sweep();
+        $this->info(sprintf('Checked %d credit payment(s), settled %d, expired %d.', $cp['checked'], $cp['settled'], $cp['expired']));
 
         return self::SUCCESS;
     }

@@ -224,7 +224,7 @@ export function CheckoutPage() {
     partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,
     gift, setGift,
-    walletBalanceLaar, useWallet, setUseWallet,
+    walletBalanceLaar, useWallet, setUseWallet, walletPartLaar,
     savedAddresses, selectedAddressId, applySavedAddress, markAddressAsNew,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,
     promoCode, setPromoCode, promoApplied,
@@ -493,7 +493,9 @@ export function CheckoutPage() {
           ? 'Online payment unavailable'
           : (amountDueLaar <= 0 || zeroBalanceConflict)
             ? t('checkout.place_no_payment')
-            : t('checkout.pay_bml').replace('{amount}', String(laarToMvr(amountDueLaar)));
+            : useWallet && walletBalanceLaar >= amountDueLaar
+              ? t('checkout.pay_wallet').replace('{amount}', String(laarToMvr(amountDueLaar)))
+              : t('checkout.pay_bml').replace('{amount}', String(laarToMvr(amountDueLaar - walletPartLaar)));
 
   // ── Section bodies (bare content — AccordionItem provides title/chrome) ──────
 
@@ -856,18 +858,21 @@ export function CheckoutPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {walletBalanceLaar > 0 && (
         <div data-testid="checkout-wallet">
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: walletBalanceLaar >= amountDueLaar ? 'pointer' : 'not-allowed', fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>
             <input
               type="checkbox"
-              checked={useWallet && walletBalanceLaar >= amountDueLaar}
-              disabled={walletBalanceLaar < amountDueLaar}
+              checked={useWallet}
               onChange={(e) => setUseWallet(e.target.checked)}
               data-testid="checkout-wallet-toggle"
             />
-            {t('wallet.pay_toggle').replace('{amount}', (walletBalanceLaar / 100).toFixed(2))}
+            {walletBalanceLaar >= amountDueLaar
+              ? t('wallet.pay_toggle').replace('{amount}', (walletBalanceLaar / 100).toFixed(2))
+              : t('wallet.pay_part_toggle')
+                .replace('{amount}', (walletBalanceLaar / 100).toFixed(2))
+                .replace('{rest}', ((amountDueLaar - walletBalanceLaar) / 100).toFixed(2))}
           </label>
           {walletBalanceLaar < amountDueLaar && (
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>{t('wallet.pay_short').replace('{amount}', (walletBalanceLaar / 100).toFixed(2))}</p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }} data-testid="checkout-wallet-part-hint">{t('wallet.pay_part_hint')}</p>
           )}
         </div>
       )}

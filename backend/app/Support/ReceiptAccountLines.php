@@ -65,6 +65,7 @@ final class ReceiptAccountLines
             'invoice_balance_due_laar' => max(0, $invoiceDue),
             'invoice_paid' => $invoice !== null && $invoiceDue <= 0,
             'balance_laar' => max(0, $balance),
+            'limit_laar' => (int) ($customer?->credit_limit_laar ?? 0),
             'available_laar' => $active ? max(0, (int) $customer->credit_limit_laar - $balance) : 0,
             // The site's own address, as the reminders use: a text must not
             // carry the till's request host.

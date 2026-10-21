@@ -142,6 +142,14 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     // The wallet (iruali import plan, feature 12): a gift card into it, and paying an order from it.
     Route::post('/wallet/gift-card', [App\Http\Controllers\Api\CustomerWalletController::class, 'addGiftCard'])->middleware('throttle:10,10');
     Route::post('/orders/{id}/pay-wallet', [App\Http\Controllers\Api\CustomerWalletController::class, 'payOrder'])->whereNumber('id')->middleware('throttle:20,1');
+    // Part of an order from the wallet, the rest by card (owner, 2026-10-21): a hold until the bank confirms.
+    Route::post('/orders/{id}/hold-wallet', [App\Http\Controllers\Api\CustomerWalletController::class, 'holdForOrder'])->whereNumber('id')->middleware('throttle:20,1');
+    Route::delete('/orders/{id}/hold-wallet', [App\Http\Controllers\Api\CustomerWalletController::class, 'releaseHold'])->whereNumber('id')->middleware('throttle:20,1');
+    // The credit account paid online as a whole (owner, 2026-10-21): the statement, Pay now, and how it went.
+    Route::get('/credit/statement', [App\Http\Controllers\Api\CustomerCreditPaymentController::class, 'statement']);
+    Route::post('/credit/pay', [App\Http\Controllers\Api\CustomerCreditPaymentController::class, 'start'])->middleware('throttle:10,10');
+    Route::get('/credit/payments/{token}', [App\Http\Controllers\Api\CustomerCreditPaymentController::class, 'show'])
+        ->where('token', '[A-Za-z0-9]+')->middleware('throttle:60,1');
     // Money into the wallet by card (owner, 2026-10-21): the rules, start one, and how it went.
     Route::get('/wallet/top-ups/rules', [App\Http\Controllers\Api\CustomerWalletTopUpController::class, 'rules']);
     Route::post('/wallet/top-ups', [App\Http\Controllers\Api\CustomerWalletTopUpController::class, 'start'])->middleware('throttle:10,10');
