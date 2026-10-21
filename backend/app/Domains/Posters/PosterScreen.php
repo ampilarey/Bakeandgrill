@@ -56,6 +56,25 @@ final class PosterScreen
             throw new RuntimeException('The screen picture needs GD.');
         }
         $content = PosterContent::resolve($poster->toArray());
+        if (is_string($poster->theme) && $poster->theme !== '') {
+            // A template poster is the design itself, fitted into the picture (PosterThemeRaster).
+            $sizeName = (string) ((is_array($poster->sizes) ? $poster->sizes : [])[0] ?? 'A4');
+            $built = PosterPieces::build($poster->toArray(), PaperSize::named($sizeName), $content);
+            $image = PosterThemeRaster::draw($built, $w, $h);
+            ob_start();
+            if ($png) {
+                imagepng($image);
+            } else {
+                imagejpeg($image, null, 86);
+            }
+            $bytes = (string) ob_get_clean();
+            imagedestroy($image);
+            if ($bytes === '') {
+                throw new RuntimeException('The screen picture came out empty.');
+            }
+
+            return $bytes;
+        }
         $mood = PosterMoods::get((string) $poster->mood);
         $image = imagecreatetruecolor($w, $h);
         if ($image === false) {

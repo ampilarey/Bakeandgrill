@@ -15,6 +15,19 @@ final class PosterProof
     public static function jpeg(Poster $poster): string
     {
         $content = PosterContent::resolve($poster->toArray());
+        if (is_string($poster->theme) && $poster->theme !== '') {
+            // A template poster's proof is the design as it prints, 1200 px tall (PosterThemeRaster).
+            $sizeName = (string) ((is_array($poster->sizes) ? $poster->sizes : [])[0] ?? 'A4');
+            $paper = PaperSize::named($sizeName);
+            $built = PosterPieces::build($poster->toArray(), $paper, $content);
+            $image = PosterThemeRaster::draw($built, (int) round(1200 * $paper->bleedWidth() / $paper->bleedHeight()), 1200);
+            ob_start();
+            imagejpeg($image, null, 82);
+            $bytes = (string) ob_get_clean();
+            imagedestroy($image);
+
+            return $bytes;
+        }
         $mood = PosterMoods::get((string) $poster->mood);
         $landscape = (bool) $poster->landscape;
         $long = 1200;

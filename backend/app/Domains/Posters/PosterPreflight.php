@@ -35,6 +35,10 @@ final class PosterPreflight
         $flags = is_array($built['flags'] ?? null) ? $built['flags'] : [];
         $pieces = is_array($built['pieces'] ?? null) ? $built['pieces'] : [];
         $mood = PosterMoods::get((string) ($poster['mood'] ?? 'dark'));
+        // A poster drawn on a template (docs/POSTER_THEMES_HANDOFF.md § 5.8): its photos are
+        // checked slot by slot, its safe area is the design's own, and its colours are the
+        // design's rather than a mood's, so the mood contrast does not apply.
+        $theme = is_array($built['theme'] ?? null) ? $built['theme'] : null;
 
         $photo = null;
         foreach ($pieces as $piece) {
@@ -43,7 +47,9 @@ final class PosterPreflight
                 break;
             }
         }
-        if ($photo !== null && is_string($photo['path'] ?? null) && is_file($photo['path'])) {
+        if ($theme !== null) {
+            $checks = array_merge($checks, self::themedPhotos($pieces, $size));
+        } elseif ($photo !== null && is_string($photo['path'] ?? null) && is_file($photo['path'])) {
             $info = @getimagesize($photo['path']);
             $ppi = is_array($info) ? min($info[0] / max(0.1, $photo['w'] / 25.4), $info[1] / max(0.1, $photo['h'] / 25.4)) : 0;
             if ($ppi < PaperSize::PPI_RED) {
@@ -98,7 +104,7 @@ final class PosterPreflight
             $checks[] = self::row('language', 'amber', 'Both languages is on, and a line has no Dhivehi twin.');
         }
 
-        [$safeX, $safeY, $safeW, $safeH] = $size->safeBox();
+        [$safeX, $safeY, $safeW, $safeH] = $theme !== null && is_array($theme['safe'] ?? null) ? $theme['safe'] : $size->safeBox();
         $outside = false;
         $qrSmall = false;
         $qrAmber = false;
@@ -133,18 +139,24 @@ final class PosterPreflight
             $checks[] = self::row('qr', 'ok', 'QR size is fine.');
         }
 
-        $ratio = self::contrast($mood['text'], $mood['bg']);
-        if ($ratio < 4.5) {
-            $checks[] = self::row('contrast', 'red', 'Text contrast is under 4.5 : 1.');
-        } elseif ($ratio < 7 && $size->name === 'A2') {
-            $checks[] = self::row('contrast', 'amber', 'Contrast is under 7 : 1 for a window poster.');
-        } else {
-            $checks[] = self::row('contrast', 'ok', 'Contrast is ' . number_format($ratio, 1) . ' : 1.');
+        if ($theme === null) {
+            $ratio = self::contrast($mood['text'], $mood['bg']);
+            if ($ratio < 4.5) {
+                $checks[] = self::row('contrast', 'red', 'Text contrast is under 4.5 : 1.');
+            } elseif ($ratio < 7 && $size->name === 'A2') {
+                $checks[] = self::row('contrast', 'amber', 'Contrast is under 7 : 1 for a window poster.');
+            } else {
+                $checks[] = self::row('contrast', 'ok', 'Contrast is ' . number_format($ratio, 1) . ' : 1.');
+            }
         }
 
         $ink = 0.0;
-        foreach ([$mood['bg'], $mood['text'], $mood['accent'], BrandCmyk::RICH_BLACK] as $cmyk) {
-            $ink = max($ink, array_sum($cmyk));
+        if ($theme !== null) {
+            $ink = self::themedInk($pieces);
+        } else {
+            foreach ([$mood['bg'], $mood['text'], $mood['accent'], BrandCmyk::RICH_BLACK] as $cmyk) {
+                $ink = max($ink, array_sum($cmyk));
+            }
         }
         if ($ink > 300) {
             $checks[] = self::row('ink', 'red', 'A colour is over 300% total ink.');
@@ -162,7 +174,12 @@ final class PosterPreflight
         }
         $live = (string) ($content['price_live'] ?? '');
         $printed = (string) ($content['price'] ?? '');
-        if ($live !== '' && $printed !== '' && !str_contains($printed, preg_replace('/From /', '', $live) ?: $live)) {
+        if ($theme !== null) {
+            $price = self::themedPrice($pieces, $live);
+            if ($price !== null) {
+                $checks[] = $price;
+            }
+        } elseif ($live !== '' && $printed !== '' && !str_contains($printed, preg_replace('/From /', '', $live) ?: $live)) {
             $checks[] = self::row('price', 'red', 'The printed price does not match the live price (' . $live . ').');
         } elseif ($live !== '') {
             $checks[] = self::row('price', 'ok', 'The price matches the menu.');
@@ -178,7 +195,11 @@ final class PosterPreflight
         }
 
         $mounting = (string) ($job['mounting'] ?? 'none');
-        if (in_array($mounting, ['standoffs', 'eyelets'], true)) {
+        if (in_array($mounting, ['standoffs', 'eyelets'], true) && $theme !== null && ($theme['keepout'] ?? false) !== true) {
+            // The counter designs (A4, A5) keep nothing clear at the corners (docs/POSTER_THEMES_HANDOFF.md § 1).
+            $what = $mounting === 'standoffs' ? 'stand-offs' : 'eyelets';
+            $checks[] = self::row('keepout', 'amber', 'Counter and table cards have no corners kept clear for ' . $what . '. Choose None or Tape, or print A2 or A3 for a wall.');
+        } elseif (in_array($mounting, ['standoffs', 'eyelets'], true)) {
             // A circle at each corner for the stand-off or eyelet (docs/POSTER_PLAN.md § 3):
             // 15 mm across (20 mm on A2), centred that far in from the cut.
             $d = $size->keepOutMm();
@@ -237,6 +258,140 @@ final class PosterPreflight
     private static function spotNameOk(string $name): bool
     {
         return (bool) preg_match('/^[A-Za-z0-9][A-Za-z0-9 _-]{0,31}$/', $name);
+    }
+
+    /**
+     * A template's photo slots, one row each: the picture's resolution in
+     * its slot (a cut-out sits inside the slot with its inset, so it is
+     * measured at the size it comes out), and a dish that has only its
+     * small website photo.
+     *
+     * @param list<array<string, mixed>> $pieces
+     * @return list<array{id: string, level: string, message: string}>
+     */
+    private static function themedPhotos(array $pieces, PaperSize $size): array
+    {
+        $rows = [];
+        $n = 0;
+        foreach ($pieces as $piece) {
+            if (($piece['type'] ?? '') !== 'photo') {
+                continue;
+            }
+            $n++;
+            $label = 'Photo ' . $n;
+            $source = (string) ($piece['source'] ?? 'placeholder');
+            if ($source === 'crop') {
+                $rows[] = self::row('photo', 'red', $label . ' has only the dish\'s small website photo. Upload a poster photo, or upload the dish photo again on the menu so its full-size original is kept.');
+
+                continue;
+            }
+            $path = $piece['path'] ?? null;
+            $info = is_string($path) && is_file($path) ? @getimagesize($path) : false;
+            if (!is_array($info)) {
+                $rows[] = self::row('photo', 'amber', $label . ' has no picture that can be read.');
+
+                continue;
+            }
+            $pw = max(1, (int) $info[0]);
+            $ph = max(1, (int) $info[1]);
+            $w = (float) $piece['w'];
+            $h = (float) $piece['h'];
+            if (($piece['contain'] ?? false) === true) {
+                $pad = min($w, $h) * 0.04;
+                $mmPerPx = min(max(0.01, $w - 2 * $pad) / $pw, max(0.01, $h - 2 * $pad) / $ph);
+                $ppi = 25.4 / $mmPerPx;
+            } else {
+                $ppi = min($pw / max(0.1, $w / 25.4), $ph / max(0.1, $h / 25.4));
+            }
+            $what = $source === 'placeholder' ? $label . ' (the design\'s own picture)' : $label;
+            if ($ppi < PaperSize::PPI_RED) {
+                $rows[] = self::row('photo', 'red', $what . ' is under 100 ppi on this size (' . (int) $ppi . ').');
+            } elseif ($ppi < $size->amberPpi()) {
+                $rows[] = self::row('photo', 'amber', $what . ' is under ' . $size->amberPpi() . ' ppi (' . (int) $ppi . '). Fine up close, soft from the street.');
+            } else {
+                $rows[] = self::row('photo', 'ok', $what . ' is ' . (int) $ppi . ' ppi.');
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The heaviest ink a template lays down: every fill, gradient stop,
+     * stroke, text and badge colour on the page.
+     *
+     * @param list<array<string, mixed>> $pieces
+     */
+    private static function themedInk(array $pieces): float
+    {
+        $max = 0.0;
+        $take = static function ($cmyk) use (&$max): void {
+            if (is_array($cmyk) && count($cmyk) === 4) {
+                $max = max($max, (float) array_sum($cmyk));
+            }
+        };
+        foreach ($pieces as $piece) {
+            switch ((string) ($piece['type'] ?? '')) {
+                case 'backdrop':
+                    foreach ($piece['items'] ?? [] as $item) {
+                        $take($item['fill'] ?? null);
+                        foreach ($item['gradient']['stops'] ?? [] as $stop) {
+                            $take($stop[1] ?? null);
+                        }
+                        $take($item['stroke']['cmyk'] ?? null);
+                    }
+                    break;
+                case 'text':
+                    $take($piece['cmyk'] ?? null);
+                    $take($piece['shadow']['cmyk'] ?? null);
+                    break;
+                case 'logo':
+                    $take($piece['badge']['cmyk'] ?? null);
+                    break;
+                case 'qr':
+                case 'photo':
+                    $take($piece['cmyk'] ?? $piece['fill_behind'] ?? null);
+                    break;
+            }
+        }
+
+        return $max;
+    }
+
+    /**
+     * The first price slot against the menu: a typed number that differs
+     * from the dish's live price is red; a percent is an offer, not a price.
+     *
+     * @param list<array<string, mixed>> $pieces
+     * @return array{id: string, level: string, message: string}|null
+     */
+    private static function themedPrice(array $pieces, string $live): ?array
+    {
+        if ($live === '' || preg_match('/(\d+(?:\.\d+)?)/', $live, $m) !== 1) {
+            return null;
+        }
+        $liveNumber = self::plainNumber($m[1]);
+        foreach ($pieces as $piece) {
+            if (($piece['type'] ?? '') !== 'text' || ($piece['role'] ?? '') !== 'price_or_offer') {
+                continue;
+            }
+            $text = (string) ($piece['text'] ?? '');
+            if (str_contains($text, '%') || preg_match('/(\d+(?:\.\d+)?)/', $text, $pm) !== 1) {
+                continue;
+            }
+
+            return self::plainNumber($pm[1]) === $liveNumber
+                ? self::row('price', 'ok', 'The price matches the menu.')
+                : self::row('price', 'red', 'The printed price (' . $text . ') does not match the live price (' . $live . ').');
+        }
+
+        return null;
+    }
+
+    /** "85.00" → "85", "85.50" → "85.5", "100" → "100". */
+    private static function plainNumber(string $number): string
+    {
+        return str_contains($number, '.') ? rtrim(rtrim($number, '0'), '.') : $number;
     }
 
     /** @return array{id: string, level: string, message: string} */
