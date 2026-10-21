@@ -3,8 +3,8 @@ import { ChevronDown, EyeOff, Eye, RotateCcw } from 'lucide-react';
 import { Btn } from '../SharedUI';
 import { inputFont } from '../../utils/cssVars';
 import {
-  slotPhoto, uploadPosterPhoto,
-  type PosterDraft, type PosterPhotoPick, type PosterSheet, type PosterTheme, type PosterThemePhotoSlot, type PosterThemeTextSlot,
+  isScreenTheme, slotPhoto, uploadPosterPhoto,
+  type PosterDraft, type PosterPhotoPick, type PosterScreenSize, type PosterSheet, type PosterTheme, type PosterThemePhotoSlot, type PosterThemeTextSlot,
 } from '../../api';
 
 type Lookups = {
@@ -27,49 +27,89 @@ const SHAPE_WORDS: Record<string, string> = {
 
 export const SIZE_WORDS: Record<string, string> = {
   A2: 'wall poster', A3: 'wall poster', A4: 'counter card', A5: 'table card',
+  TV: 'TV screen', TV4K: '4K TV screen', TVP: 'portrait TV screen',
 };
+
+/** The screen's short name on its button (PaperSize::SCREENS). */
+export const SCREEN_WORDS: Record<string, string> = { TV: 'Full HD', TV4K: '4K', TVP: 'Portrait' };
+
+/** What a variant is, in the size note and under the preview. */
+export const VARIANT_WORDS: Record<string, string> = {
+  large: 'wall design, bigger headline',
+  small: 'counter design, bigger small print',
+  tv: 'landscape TV design, drawn at the screen’s pixels',
+  tvp: 'portrait TV design, drawn at the screen’s pixels',
+};
+
+/** The screens a TV design offers when the catalog sent none (an older server). */
+const DEFAULT_SCREENS: PosterScreenSize[] = [
+  { key: 'TV', label: 'TV · Full HD (1920 × 1080)', px: [1920, 1080], landscape: true },
+  { key: 'TV4K', label: 'TV · 4K (3840 × 2160)', px: [3840, 2160], landscape: true },
+  { key: 'TVP', label: 'TV · portrait (1080 × 1920)', px: [1080, 1920], landscape: false },
+];
 
 /**
  * The editor of a poster drawn on a template (docs/POSTER_THEMES_HANDOFF.md
  * § 5): the size (which picks the variant), a dish and an offer to bind, one
  * photo picker per photo slot and one input per text slot, the footer lines
  * folded. An input left empty prints the design's own words (or the live
- * price); Hide blanks the line.
+ * price); Hide blanks the line. A TV design offers screens instead of paper:
+ * Full HD and 4K draw the landscape variant, a portrait screen the portrait one.
  */
-export function ThemedEditor({ draft, theme, lookups, sheet, sizes, onChange }: {
+export function ThemedEditor({ draft, theme, lookups, sheet, sizes, screenSizes, onChange }: {
   draft: PosterDraft;
   theme: PosterTheme;
   lookups: Lookups | null;
   sheet: PosterSheet | null;
+  /** The paper sizes, A5 to A2. */
   sizes: string[];
+  /** The TV screens, with their pixels. */
+  screenSizes?: PosterScreenSize[];
   onChange: (next: PosterDraft) => void;
 }) {
-  const previewSize = draft.sizes[0] ?? 'A4';
-  const variantName = theme.size_to_variant[previewSize] ?? 'small';
-  const variant = theme.variants[variantName];
+  const screen = isScreenTheme(theme);
+  const screens = screenSizes && screenSizes.length > 0 ? screenSizes : DEFAULT_SCREENS;
+  const previewSize = draft.sizes[0] ?? (screen ? 'TV' : 'A4');
+  const variantName = theme.size_to_variant[previewSize] ?? (screen ? 'tv' : 'small');
+  const variant = theme.variants[variantName] ?? Object.values(theme.variants)[0];
   const pieces = sheet?.theme?.key === theme.key ? sheet.pieces : [];
   const setSlot = (id: string, value: PosterDraft['slots'][string]) => onChange({ ...draft, slots: { ...draft.slots, [id]: value } });
   const main = variant.text_slots.filter((s) => s.role_hint !== 'footer');
   const footer = variant.text_slots.filter((s) => s.role_hint === 'footer');
+  const toggleSize = (s: string) => {
+    const on = draft.sizes.includes(s);
+    const next = on ? draft.sizes.filter((x) => x !== s) : [...draft.sizes, s];
+    onChange({ ...draft, sizes: next.length > 0 ? next : [s] });
+  };
+  const px = screens.find((s) => s.key === previewSize)?.px;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} data-testid="poster-themed-editor">
       <section style={sectionStyle}>
-        <h3 style={h3Style}>Size</h3>
+        <h3 style={h3Style}>{screen ? 'Screen' : 'Size'}</h3>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {sizes.map((s) => {
-            const on = draft.sizes.includes(s);
-            return (
-              <Btn key={s} small variant={on ? 'primary' : 'ghost'} aria-pressed={on} onClick={() => {
-                const next = on ? draft.sizes.filter((x) => x !== s) : [...draft.sizes, s];
-                onChange({ ...draft, sizes: next.length > 0 ? next : [s] });
-              }}>{s}</Btn>
-            );
-          })}
+          {screen
+            ? screens.map((s) => {
+              const on = draft.sizes.includes(s.key);
+              return (
+                <Btn key={s.key} small variant={on ? 'primary' : 'ghost'} aria-pressed={on} title={s.label} onClick={() => toggleSize(s.key)}>
+                  {SCREEN_WORDS[s.key] ?? s.key} · {s.px[0]} × {s.px[1]}
+                </Btn>
+              );
+            })
+            : sizes.map((s) => {
+              const on = draft.sizes.includes(s);
+              return <Btn key={s} small variant={on ? 'primary' : 'ghost'} aria-pressed={on} onClick={() => toggleSize(s)}>{s}</Btn>;
+            })}
           <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }} data-testid="poster-variant-note">
-            Preview: {previewSize}, a {SIZE_WORDS[previewSize] ?? 'poster'} ({variantName === 'large' ? 'wall design, bigger headline' : 'counter design, bigger small print'}).
+            Preview: {screen ? (SCREEN_WORDS[previewSize] ?? previewSize) : previewSize}, a {SIZE_WORDS[previewSize] ?? 'poster'}{px ? ` of ${px[0]} × ${px[1]} px` : ''} ({VARIANT_WORDS[variantName] ?? variantName}).
           </span>
         </div>
+        {screen && (
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
+            Full HD and 4K are the same design, the 4K picture drawn twice the size. Portrait is its own design for a screen on its side.
+          </p>
+        )}
       </section>
 
       {lookups && (
@@ -104,6 +144,7 @@ export function ThemedEditor({ draft, theme, lookups, sheet, sizes, onChange }: 
                 pick={slotPhoto(draft.slots, slot.id)}
                 piece={pieces.find((p) => p.type === 'photo' && p.slot === slot.id) ?? null}
                 items={lookups?.items ?? []}
+                screen={screen}
                 onChange={(pick) => setSlot(slot.id, pick)}
               />
             ))}
@@ -172,12 +213,14 @@ function SlotInput({ slot, value, piece, onChange }: {
   );
 }
 
-function PhotoSlotField({ index, slot, pick, piece, items, onChange }: {
+function PhotoSlotField({ index, slot, pick, piece, items, screen = false, onChange }: {
   index: number;
   slot: PosterThemePhotoSlot;
   pick: PosterPhotoPick | null;
   piece: { src?: string | null; source?: string } | null;
   items: Lookups['items'];
+  /** The design is for a TV: a small photo looks soft on the screen rather than in print. */
+  screen?: boolean;
   onChange: (pick: PosterPhotoPick | null) => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -188,7 +231,7 @@ function PhotoSlotField({ index, slot, pick, piece, items, onChange }: {
   const words = {
     upload: 'Your uploaded photo.',
     master: 'The dish’s full-size photo.',
-    crop: 'Only the dish’s small website photo: upload a sharper one for print.',
+    crop: screen ? 'Only the dish’s small website photo: upload a sharper one so it is not soft on the screen.' : 'Only the dish’s small website photo: upload a sharper one for print.',
     cutout: 'The dish’s cut-out on the design’s colour.',
     placeholder: pick?.item_id ? 'That dish has no photo yet; the design’s picture stands in.' : 'The design’s own picture. Pick a dish or upload a photo.',
   }[source] ?? '';

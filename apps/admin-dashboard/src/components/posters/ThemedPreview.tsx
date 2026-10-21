@@ -2,6 +2,9 @@ import { useEffect, type CSSProperties } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import type { PosterPiece, PosterSheet } from '../../api';
 
+/** What each variant is called under the preview. */
+const VARIANT_CAPTION: Record<string, string> = { large: 'wall design', small: 'counter design', tv: 'TV design', tvp: 'portrait TV design' };
+
 /** The CSS face for each poster font key (PosterFonts::FILES). Jakarta is the admin's own. */
 const FONT_CSS: Record<string, CSSProperties> = {
   anton: { fontFamily: "'Anton', 'Plus Jakarta Sans', sans-serif", fontWeight: 400 },
@@ -41,10 +44,11 @@ export function useThemeFonts(fontUrls: Record<string, string> | undefined) {
  * layers with each photo between the art before and after it, the photos
  * clipped to their slots, the logo on its badge, the QR, and the text set on
  * its baseline in the print faces. Everything is laid out at one pixel per
- * millimetre and scaled as a whole, so the clip paths and sizes the server
- * sends in page millimetres are used as they are.
+ * page unit and scaled as a whole, so the clip paths and sizes the server
+ * sends in page millimetres (or, for a TV design, in the screen's pixels) are
+ * used as they are. A landscape sheet gets the preview column's full width.
  */
-export function ThemedPreview({ sheet, width = 280, gloss = false, keepOut = 0, fontUrls, assetOrigin = '' }: {
+export function ThemedPreview({ sheet, width, gloss = false, keepOut = 0, fontUrls, assetOrigin = '' }: {
   sheet: PosterSheet;
   width?: number;
   gloss?: boolean;
@@ -55,7 +59,7 @@ export function ThemedPreview({ sheet, width = 280, gloss = false, keepOut = 0, 
   useThemeFonts(fontUrls);
   const theme = sheet.theme;
   if (!theme) return null;
-  const scale = width / sheet.w;
+  const scale = (width ?? (sheet.w > sheet.h ? 320 : 280)) / sheet.w;
   const m = theme.map;
   const photos = new Map<string, PosterPiece>();
   sheet.pieces.forEach((p) => { if (p.type === 'photo' && p.slot) photos.set(p.slot, p); });
@@ -112,8 +116,8 @@ export function ThemedPreview({ sheet, width = 280, gloss = false, keepOut = 0, 
         {gloss && <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(135deg, transparent, transparent 6px, var(--color-text) 6px, var(--color-text) 7px)', opacity: 0.28, pointerEvents: 'none' }} />}
         <KeepOutRings w={sheet.w} h={sheet.h} scale={scale} keepOut={keepOut} />
       </div>
-      <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center' }}>
-        {theme.id} · {theme.title} · {theme.size} ({theme.variant === 'large' ? 'wall design' : 'counter design'})
+      <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center' }} data-testid="poster-preview-caption">
+        {theme.id} · {theme.title} · {theme.px ? (theme.size_label ?? `${theme.size} (${theme.px[0]} × ${theme.px[1]})`) : theme.size} ({VARIANT_CAPTION[theme.variant] ?? theme.variant})
       </p>
     </aside>
   );

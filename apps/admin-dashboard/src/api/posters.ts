@@ -95,12 +95,24 @@ export type PosterDraft = {
   pinned?: boolean;
 };
 
-export type PosterThemeCategory = { key: string; number: string; name: string; description: string; count: number };
+/** A design is for paper (A2 to A5, `large` and `small` variants) or for a TV screen (`tv` and `tvp`). */
+export type PosterThemeKind = 'print' | 'screen';
+
+export type PosterThemeCategory = {
+  key: string;
+  number: string;
+  name: string;
+  description: string;
+  count: number;
+  /** How many of its designs print and how many are for screens. */
+  counts?: { print: number; screen: number };
+};
 
 export type PosterThemeSummary = {
   id: string;
   key: string;
   title: string;
+  kind: PosterThemeKind | string;
   category: string;
   style: string;
   style_label: string;
@@ -109,15 +121,26 @@ export type PosterThemeSummary = {
   text_slots: number;
   preview_url: string;
   preview_small_url: string;
+  /** The first preview's shape (design units), for the picker's card. */
+  aspect?: [number, number];
 };
 
 export type PosterThemeCatalog = {
   categories: PosterThemeCategory[];
   styles: Record<string, string>;
-  sizes: Record<string, 'large' | 'small'>;
+  /** The two kinds of design and their words (Print, TV screens). */
+  kinds?: Record<string, string>;
+  /** Which variant each size draws: A2 and A3 `large`, A4 and A5 `small`, TV and TV4K `tv`, TVP `tvp`. */
+  sizes: Record<string, string>;
   font_urls: Record<string, string>;
   themes: PosterThemeSummary[];
 };
+
+/** A TV screen a design can be drawn for, with its pixels. */
+export type PosterScreenSize = { key: string; label: string; px: [number, number]; landscape: boolean };
+
+export const isScreenSize = (key: string | undefined, screens?: PosterScreenSize[]): boolean =>
+  key !== undefined && (screens && screens.length > 0 ? screens.some((s) => s.key === key) : /^TV/i.test(key));
 
 export type PosterThemeTextSlot = {
   id: string;
@@ -142,9 +165,10 @@ export type PosterThemePhotoSlot = {
 };
 
 export type PosterThemeVariant = {
-  variant: 'large' | 'small';
+  /** `large` or `small` on paper; `tv` (1920 × 1080) or `tvp` (1080 × 1920) on a screen. */
+  variant: 'large' | 'small' | 'tv' | 'tvp' | string;
   canvas: { width: number; height: number; bleed_units: number; safe_inset_units: number; min_text_units: number };
-  sizes: Record<string, { scale: number; page_mm: [number, number] }>;
+  sizes: Record<string, { scale: number; page_mm?: [number, number]; px?: [number, number] }>;
   photo_slots: PosterThemePhotoSlot[];
   text_slots: PosterThemeTextSlot[];
   qr: { x: number; y: number; size_mm: number } | null;
@@ -155,22 +179,32 @@ export type PosterTheme = {
   id: string;
   key: string;
   title: string;
+  kind?: PosterThemeKind | string;
   category: { key: string; number: string; name: string };
   style: string;
   style_label: string;
   has_photo: boolean;
-  size_to_variant: Record<string, 'large' | 'small'>;
-  variants: { large: PosterThemeVariant; small: PosterThemeVariant };
+  size_to_variant: Record<string, string>;
+  variants: Record<string, PosterThemeVariant>;
   fonts: Record<string, string>;
 };
+
+/** A design made for TV screens (drawn at the screen's pixels) rather than paper. */
+export const isScreenTheme = (theme: Pick<PosterTheme, 'kind' | 'variants'> | null | undefined): boolean =>
+  theme != null && (theme.kind === 'screen' || (theme.kind == null && ('tv' in theme.variants || 'tvp' in theme.variants)));
 
 /** What a themed preview sheet carries beside its pieces. */
 export type PosterSheetTheme = {
   key: string;
   id: string;
   title: string;
-  variant: 'large' | 'small';
+  kind?: PosterThemeKind | string;
+  variant: 'large' | 'small' | 'tv' | 'tvp' | string;
   size: string;
+  /** "TV · Full HD (1920 × 1080)" on a screen; the paper's name otherwise. */
+  size_label?: string;
+  /** The screen's pixels; null on paper. */
+  px?: [number, number] | null;
   map: { s: number; dy: number; bleed_units: number; ox: number; oy: number };
   canvas: [number, number];
   safe: [number, number, number, number];
@@ -238,7 +272,10 @@ export const fetchPosterCatalog = () => req<{
   purposes: PosterPurpose[];
   layouts: string[];
   moods: string[];
+  /** The paper sizes, A5 to A2. */
   sizes: string[];
+  /** The TV screens a screen design shows on (Full HD, 4K, portrait). */
+  screen_sizes?: PosterScreenSize[];
   places: string[];
   materials: { key: string; label: string; white: boolean; mirror?: boolean }[];
   themes?: PosterThemeCatalog;
@@ -291,12 +328,27 @@ export type PosterTemplateRow = {
   mood: string;
   language: string;
   slots: PosterSlots;
+  /** The sizes and the dish or offer the poster was bound to when it was saved (2026-10-22; older rows have none). */
+  sizes?: string[] | null;
+  bindings?: Record<string, number | null> | null;
   locked: boolean;
 };
 
 export const fetchPosterTemplates = () => req<PosterTemplateRow[]>('/posters/templates');
 
-export const savePosterTemplate = (body: { name: string; template_key: string; layout: string; theme?: string | null; mood: string; language: string; slots: PosterSlots }) =>
+export type PosterTemplateBody = {
+  name: string;
+  template_key: string;
+  layout: string;
+  theme?: string | null;
+  mood: string;
+  language: string;
+  slots: PosterSlots;
+  sizes?: string[];
+  bindings?: Record<string, number | null>;
+};
+
+export const savePosterTemplate = (body: PosterTemplateBody) =>
   req<PosterTemplateRow>('/posters/templates', { method: 'POST', body: JSON.stringify(body) });
 
 export const lockPosterTemplate = (id: number, locked: boolean) =>

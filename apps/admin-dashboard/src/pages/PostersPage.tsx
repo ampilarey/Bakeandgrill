@@ -9,9 +9,9 @@ import { ThemedEditor } from '../components/posters/ThemedEditor';
 import { KeepOutRings, ThemedPreview } from '../components/posters/ThemedPreview';
 import {
   advancePosterOrder, approvePosterQuote, createPoster, deletePoster, deletePosterTemplate, downloadPosterZip, duplicatePoster, exportPoster, fetchPosterExport, uploadPosterPhoto,
-  fetchPosterCatalog, fetchPosterLookups, fetchPosterOrders, fetchPosters, fetchPosterTemplates, fetchPosterTheme, fetchPrintShops, lockPosterTemplate,
+  fetchPosterCatalog, fetchPosterLookups, fetchPosterOrders, fetchPosters, fetchPosterTemplates, fetchPosterTheme, fetchPrintShops, isScreenSize, isScreenTheme, lockPosterTemplate,
   draftPosterSocial, previewPoster, quotePosterOrder, savePosterTemplate, savePrintShop, sendPosterToShop, sendPosterToTv, setPosterHomeBanner, setPosterProofApproval, slotText, updatePoster,
-  type PosterCheck, type PosterDraft, type PosterOrderRow, type PosterPurpose, type PosterRow, type PosterSheet, type PosterTemplateRow, type PosterTheme, type PosterThemeCatalog, type PosterThemeSummary, type PrintShop,
+  type PosterCheck, type PosterDraft, type PosterOrderRow, type PosterPurpose, type PosterRow, type PosterScreenSize, type PosterSheet, type PosterTemplateRow, type PosterTheme, type PosterThemeCatalog, type PosterThemeSummary, type PrintShop,
 } from '../api';
 import { inputFont } from '../utils/cssVars';
 
@@ -19,7 +19,9 @@ const MOODS = ['dark', 'cream', 'rust', 'gold', 'photo'] as const;
 const GROUPS = ['Offers', 'Dishes', 'Times', 'Ordering', 'Inside'];
 /** The purpose and layout of a poster drawn on a template (PosterPurposes::THEMED). */
 const THEMED = 'themed';
-const NO_THEMES: PosterThemeCatalog = { categories: [], styles: {}, sizes: {}, font_urls: {}, themes: [] };
+const NO_THEMES: PosterThemeCatalog = { categories: [], styles: {}, kinds: {}, sizes: {}, font_urls: {}, themes: [] };
+/** Where a TV design starts: a Full HD screen (PaperSize::SCREENS). */
+const FIRST_SCREEN = 'TV';
 
 /** A poster or a saved template handed to the editor from another tab. */
 type Start = { kind: 'poster'; row: PosterRow } | { kind: 'template'; row: PosterTemplateRow } | null;
@@ -50,7 +52,8 @@ function themedDraft(theme: PosterThemeSummary): PosterDraft {
     mood: 'dark',
     language: 'en',
     landscape: false,
-    sizes: ['A4'],
+    // A TV design starts on a Full HD screen; a print design on A4 (the counter design).
+    sizes: [theme.kind === 'screen' ? FIRST_SCREEN : 'A4'],
     slots: {},
     bindings: {},
     place: null,
@@ -92,6 +95,7 @@ function MakeTab({ manage, start, startKey }: { manage: boolean; start: Start; s
   const [theme, setTheme] = useState<PosterTheme | null>(null);
   const [classic, setClassic] = useState(false);
   const [sizes, setSizes] = useState<string[]>(['A5', 'A4', 'A3', 'A2']);
+  const [screenSizes, setScreenSizes] = useState<PosterScreenSize[]>([]);
   const [places, setPlaces] = useState<string[]>([]);
   const [materials, setMaterials] = useState<{ key: string; label: string; white: boolean; mirror?: boolean }[]>([]);
   const [shops, setShops] = useState<PrintShop[]>([]);
@@ -115,6 +119,7 @@ function MakeTab({ manage, start, startKey }: { manage: boolean; start: Start; s
     fetchPosterCatalog().then((c) => {
       setPurposes(c.purposes);
       setSizes(c.sizes);
+      setScreenSizes(c.screen_sizes ?? []);
       setPlaces(c.places);
       setMaterials(c.materials);
       setThemes(c.themes ?? NO_THEMES);
@@ -142,11 +147,12 @@ function MakeTab({ manage, start, startKey }: { manage: boolean; start: Start; s
       setSavedId(p.id);
       loadTheme(p.theme);
     } else {
+      // A saved template keeps its sizes and the dish or offer it was bound to (2026-10-22); an older one starts on A4.
       const t = start.row;
       setDraft({
         name: t.name, template_key: t.template_key, layout: t.layout, theme: t.theme ?? null, mood: t.mood,
         language: (t.language === 'en' || t.language === 'dv' || t.language === 'both') ? t.language : 'both',
-        landscape: false, sizes: ['A4'], slots: t.slots ?? {}, bindings: {}, place: null, take_down_on: null,
+        landscape: false, sizes: t.sizes?.length ? t.sizes : ['A4'], slots: t.slots ?? {}, bindings: t.bindings ?? {}, place: null, take_down_on: null,
       });
       setSavedId(null);
       loadTheme(t.theme);
@@ -155,6 +161,16 @@ function MakeTab({ manage, start, startKey }: { manage: boolean; start: Start; s
     setStep(2);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startKey]);
+
+  // The sizes have to be of the design's kind: a TV design on screens, a print design on paper
+  // (the server refuses the other). An older template with no sizes saved lands here too.
+  useEffect(() => {
+    if (!theme || !draft?.theme || draft.theme !== theme.key) return;
+    const screenTheme = isScreenTheme(theme);
+    const fits = draft.sizes.length > 0 && draft.sizes.every((s) => isScreenSize(s, screenSizes) === screenTheme);
+    if (!fits) setDraft({ ...draft, sizes: [screenTheme ? FIRST_SCREEN : 'A4'] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [theme]);
 
   useEffect(() => {
     if (!draft || step < 3) return;
@@ -187,8 +203,10 @@ function MakeTab({ manage, start, startKey }: { manage: boolean; start: Start; s
   const purpose = purposes.find((p) => p.key === draft?.template_key);
   const reds = checks.filter((c) => c.level === 'red');
   const themed = Boolean(draft?.theme);
+  // A TV design is drawn at the screen's pixels: no material, mounting, gloss or print shop, pictures instead of a print file.
+  const screen = themed && (theme && theme.key === draft?.theme ? isScreenTheme(theme) : isScreenSize(draft?.sizes[0], screenSizes));
   // A4 and A5 templates have no stand-off corners (docs/POSTER_THEMES_HANDOFF.md § 1).
-  const smallTheme = themed && (sheet?.theme ? sheet.theme.variant === 'small' : ['A4', 'A5'].includes(draft?.sizes[0] ?? 'A4'));
+  const smallTheme = themed && !screen && (sheet?.theme ? sheet.theme.variant === 'small' : ['A4', 'A5'].includes(draft?.sizes[0] ?? 'A4'));
   useEffect(() => {
     if (smallTheme && (mounting === 'standoffs' || mounting === 'eyelets')) setMounting('none');
   }, [smallTheme, mounting]);
@@ -218,6 +236,8 @@ function MakeTab({ manage, start, startKey }: { manage: boolean; start: Start; s
   }
 
   function job() {
+    // A screen poster's export is its pictures, one PNG per screen, with the spec sheet: nothing of the print job applies.
+    if (screen) return { sizes: draft?.sizes, imposition: 'single', mounting: 'none' };
     const mat = materials.find((m) => m.key === material);
     const shop = shops.find((s) => s.id === shopId);
     return {
@@ -239,7 +259,7 @@ function MakeTab({ manage, start, startKey }: { manage: boolean; start: Start; s
       const id = await save();
       if (!id) return;
       // The file is made on the queue: wait for it, then download (POSTER_PLAN § 12.5).
-      setNote('Preparing your file…');
+      setNote(screen ? 'Preparing your pictures…' : 'Preparing your file…');
       let exp = await exportPoster(id, job());
       const started = Date.now();
       while (exp.status === 'queued') {
@@ -262,9 +282,46 @@ function MakeTab({ manage, start, startKey }: { manage: boolean; start: Start; s
       a.download = `poster-${id}.zip`;
       a.click();
       URL.revokeObjectURL(url);
-      setNote('ZIP downloaded. Send it to the shop by WhatsApp, Viber or email.');
+      setNote(screen
+        ? 'ZIP downloaded: one PNG per screen. Put it on the TV, a USB stick or the signage player.'
+        : 'ZIP downloaded. Send it to the shop by WhatsApp, Viber or email.');
     } catch (e) {
       setNote(e instanceof Error ? e.message : 'Export failed.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** The poster onto the shop's TV playlist as one slide (My posters → TV does the same). */
+  async function sendTv() {
+    setBusy(true);
+    setNote('');
+    try {
+      const id = await save();
+      if (!id) return;
+      const r = await sendPosterToTv(id);
+      setNote(`On the TV${r.date_end ? ` until ${r.date_end}` : ''}. The signage board shows it on its next turn.`);
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : 'Could not send it to the TV.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** The poster's design, words, photo choices, sizes and bindings kept under Templates (never the poster's own name or place). */
+  async function saveAsTemplate() {
+    if (!draft) return;
+    setBusy(true);
+    setNote('');
+    try {
+      await save();
+      await savePosterTemplate({
+        name: draft.name || 'Template', template_key: draft.template_key, layout: draft.layout, theme: draft.theme ?? null,
+        mood: draft.mood, language: draft.language, slots: draft.slots, sizes: draft.sizes, bindings: draft.bindings,
+      });
+      setNote('Saved as a template. Find it under Templates.');
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : 'Could not save the template.');
     } finally {
       setBusy(false);
     }
@@ -357,7 +414,7 @@ function MakeTab({ manage, start, startKey }: { manage: boolean; start: Start; s
 
             {themed ? (
               theme ? (
-                <ThemedEditor draft={draft} theme={theme} lookups={lookups} sheet={sheet} sizes={sizes} onChange={setDraft} />
+                <ThemedEditor draft={draft} theme={theme} lookups={lookups} sheet={sheet} sizes={sizes} screenSizes={screenSizes} onChange={setDraft} />
               ) : <p style={{ color: 'var(--color-text-muted)' }}>Loading the template…</p>
             ) : (
               <>
@@ -411,27 +468,36 @@ function MakeTab({ manage, start, startKey }: { manage: boolean; start: Start; s
             </div>
             {step === 2 && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Btn onClick={() => setStep(3)}>Check and download</Btn>
+                <Btn onClick={() => setStep(3)}>{screen ? 'Check and send to TV' : 'Check and download'}</Btn>
                 <Btn variant="ghost" onClick={saveDraft} disabled={busy}>{savedId ? 'Save changes' : 'Save for later'}</Btn>
+                {manage && themed && <Btn variant="ghost" onClick={saveAsTemplate} disabled={busy}>Save as template</Btn>}
                 {note && <span style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>{note}</span>}
               </div>
             )}
             {step === 3 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Select label="Material" value={material} onChange={setMaterial} options={materials.map((m) => ({ value: m.key, label: m.label }))} />
-                <Select label="On the sheet" value={imposition} onChange={setImposition} options={[
-                  { value: 'single', label: 'One per page' },
-                  { value: 'tent', label: 'Tent (two A5 on A4)' },
-                  { value: '2up', label: '2-up' },
-                  { value: '4up', label: '4-up' },
-                ]} />
-                <Select label="Mounting" value={mounting} onChange={setMounting} options={mountingOptions} />
-                {smallTheme && <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Counter and table cards have no stand-off corners; print A2 or A3 for a wall.</span>}
-                <Select label="Gloss" value={gloss} onChange={setGloss} options={[{ value: 'none', label: 'No gloss' }, { value: 'logo and price', label: 'Gloss on logo and large type' }]} />
-                <Select label="Print shop" value={shopId} onChange={(v) => setShopId(v ? Number(v) : '')} options={shops.map((s) => ({ value: s.id, label: s.name }))} />
-                <label style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44 }}>
-                  <input type="checkbox" checked={masks} onChange={(e) => setMasks(e.target.checked)} /> White and gloss masks
-                </label>
+                {screen ? (
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }} data-testid="poster-screen-note">
+                    A TV design is drawn at the screen’s pixels: nothing to print. Download gives one PNG per screen picked, with a spec sheet; Send to TV puts it on the shop’s signage playlist.
+                  </p>
+                ) : (
+                  <>
+                    <Select label="Material" value={material} onChange={setMaterial} options={materials.map((m) => ({ value: m.key, label: m.label }))} />
+                    <Select label="On the sheet" value={imposition} onChange={setImposition} options={[
+                      { value: 'single', label: 'One per page' },
+                      { value: 'tent', label: 'Tent (two A5 on A4)' },
+                      { value: '2up', label: '2-up' },
+                      { value: '4up', label: '4-up' },
+                    ]} />
+                    <Select label="Mounting" value={mounting} onChange={setMounting} options={mountingOptions} />
+                    {smallTheme && <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Counter and table cards have no stand-off corners; print A2 or A3 for a wall.</span>}
+                    <Select label="Gloss" value={gloss} onChange={setGloss} options={[{ value: 'none', label: 'No gloss' }, { value: 'logo and price', label: 'Gloss on logo and large type' }]} />
+                    <Select label="Print shop" value={shopId} onChange={(v) => setShopId(v ? Number(v) : '')} options={shops.map((s) => ({ value: s.id, label: s.name }))} />
+                    <label style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44 }}>
+                      <input type="checkbox" checked={masks} onChange={(e) => setMasks(e.target.checked)} /> White and gloss masks
+                    </label>
+                  </>
+                )}
                 <ul style={{ margin: 0, paddingLeft: 18 }}>
                   {checks.filter((c) => c.level !== 'ok').map((c) => (
                     <li key={c.id + c.message} style={{ color: c.level === 'red' ? 'var(--color-danger)' : 'var(--color-warning)' }}>{c.message}</li>
@@ -439,9 +505,18 @@ function MakeTab({ manage, start, startKey }: { manage: boolean; start: Start; s
                   {checks.every((c) => c.level === 'ok') && <li style={{ color: 'var(--color-success)' }}>All checks passed.</li>}
                 </ul>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <Btn onClick={download} disabled={busy || reds.length > 0}><Download size={16} /> {busy ? 'Preparing…' : 'Download for print'}</Btn>
-                  <Btn variant="ghost" onClick={send} disabled={busy || reds.length > 0 || shopId === ''}><Send size={16} /> Send to print shop</Btn>
-                  {manage && <Btn variant="ghost" onClick={async () => { await save(); if (draft) { await savePosterTemplate({ name: draft.name || 'Template', template_key: draft.template_key, layout: draft.layout, theme: draft.theme ?? null, mood: draft.mood, language: draft.language, slots: draft.slots }); setNote('Saved as a template.'); } }}>Save as template</Btn>}
+                  {screen ? (
+                    <>
+                      <Btn onClick={sendTv} disabled={busy || reds.length > 0}><Monitor size={16} /> {busy ? 'Working…' : 'Send to TV'}</Btn>
+                      <Btn variant="secondary" onClick={download} disabled={busy || reds.length > 0}><Download size={16} /> Download pictures</Btn>
+                    </>
+                  ) : (
+                    <>
+                      <Btn onClick={download} disabled={busy || reds.length > 0}><Download size={16} /> {busy ? 'Preparing…' : 'Download for print'}</Btn>
+                      <Btn variant="ghost" onClick={send} disabled={busy || reds.length > 0 || shopId === ''}><Send size={16} /> Send to print shop</Btn>
+                    </>
+                  )}
+                  {manage && <Btn variant="ghost" onClick={saveAsTemplate} disabled={busy}>Save as template</Btn>}
                 </div>
                 {note && <p style={{ color: 'var(--color-text-secondary)' }}>{note}</p>}
               </div>
@@ -450,7 +525,7 @@ function MakeTab({ manage, start, startKey }: { manage: boolean; start: Start; s
         )}
       </div>
       {sheet?.theme
-        ? <ThemedPreview sheet={sheet} gloss={gloss !== 'none'} keepOut={mounting === 'standoffs' || mounting === 'eyelets' ? keepOutMm(draft?.sizes[0]) : 0} fontUrls={themes?.font_urls} assetOrigin={assetOrigin} />
+        ? <ThemedPreview sheet={sheet} gloss={!screen && gloss !== 'none'} keepOut={!screen && (mounting === 'standoffs' || mounting === 'eyelets') ? keepOutMm(draft?.sizes[0]) : 0} fontUrls={themes?.font_urls} assetOrigin={assetOrigin} />
         : <Preview sheet={step >= 3 ? sheet : null} gloss={gloss !== 'none'} keepOut={mounting === 'standoffs' || mounting === 'eyelets' ? keepOutMm(draft?.sizes[0]) : 0} />}
     </div>
   );
@@ -629,7 +704,7 @@ function TemplatesTab({ manage, onUse }: { manage: boolean; onUse: (row: PosterT
       {rows.length === 0 && <p style={{ color: 'var(--color-text-muted)' }}>No saved templates. Save one from Make a poster.</p>}
       {rows.map((t) => (
         <div key={t.id} style={{ ...cardStyle, display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-          <div><strong>{t.name}</strong><div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t.theme ? `template ${t.theme}` : `${t.template_key} · ${t.mood}`}{t.locked ? ' · locked' : ''}</div></div>
+          <div><strong>{t.name}</strong><div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t.theme ? `template ${t.theme}` : `${t.template_key} · ${t.mood}`}{t.sizes?.length ? ` · ${t.sizes.join(', ')}` : ''}{t.locked ? ' · locked' : ''}</div></div>
           <div style={{ display: 'flex', gap: 4 }}>
             <Btn variant="secondary" onClick={() => onUse(t)} aria-label={`Use ${t.name}`}>Use</Btn>
             {manage && <Btn variant="ghost" onClick={() => lockPosterTemplate(t.id, !t.locked).then(load)}>{t.locked ? 'Unlock' : 'Lock'}</Btn>}
