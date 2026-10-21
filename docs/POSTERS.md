@@ -39,13 +39,15 @@ On the server the worker must be running (crontab keepalive, full deploys). **Se
 shop** makes the order at once with the file queued; once the file is ready the job emails
 the shop (or asks for the proof), and a shop with no email gets a note on the order.
 
-## Templates (the 110 designs)
+## Templates (110 print designs, 39 TV designs)
 
 Make a poster opens on the ready-made designs (`docs/POSTER_THEMES_HANDOFF.md`): 110 promo
 posters in 13 categories, 50 with photo frames, each in a `large` variant for A2 and A3 and
-a `small` one for A4 and A5 (bigger small print, no stand-off corners). Pick one by category,
-style (With item photo, Extra colourful, Colourful, Classic brand colours) or search; "No
-template (classic layout)" opens the purposes above.
+a `small` one for A4 and A5 (bigger small print, no stand-off corners), and 39 TV designs (three
+per category) drawn for screens (§ TV designs below). Pick one by category,
+style (With item photo, Extra colourful, Colourful, Classic brand colours) or search; the
+picker's **Print | TV screens** switch keeps the two kinds apart, since a design is drawn for
+paper or for a screen, never both; "No template (classic layout)" opens the purposes above.
 
 A template poster is purpose `themed` with the design's key in `posters.theme`. Its words and
 pictures live in `slots`: `t1…` a text slot's words (missing or null prints the design's own
@@ -69,6 +71,56 @@ may be bound as on any poster: the dish fills the first photo slot and the first
   keep-out on A2 and A3 only (A4 and A5 offer no stand-offs or eyelets).
 - **Screens.** TV, the social cards and the shop's proof are the design itself, drawn with GD
   (`PosterThemeRaster`): the host has no Ghostscript or Imagick.
+
+### TV designs and screen sizes
+
+Owner, 2026-10-22 ("make and add more templates and sizes for tv displays"). Beside the paper
+sizes there are three **screen sizes** (`PaperSize::SCREENS`): `TV`, Full HD 1920 × 1080; `TV4K`,
+3840 × 2160; and `TVP`, a portrait screen 1080 × 1920. A screen has no bleed, a 60 px safe inset
+("where a TV may cut the edge off"), and its page units are pixels, so one piece list serves the
+PDF engine's maths and the GD raster alike (`PaperSize::isScreen()`, `pixels()`, `screenScale()`:
+1 at Full HD and portrait, 2 at 4K). A screen size never prints: `PosterPack` writes one PNG per
+screen (`BG-<code>-TV-1920x1080-v1.png`) beside the spec sheet, the imposition is always single,
+mounting and the corner keep-out do not apply, and the spec sheet says where to put the file (the
+TV, a USB stick or the signage player).
+
+**TV designs** are themes of `kind: screen` (`TV-001 … TV-039`) with two variants, `tv`
+(1920 × 1080) for Full HD and 4K and `tvp` (1080 × 1920) for the portrait screen, in pixel units
+at Full HD (`PosterThemes::KIND_VARIANTS`, `VARIANT_TRIM`; `SIZE_VARIANTS` maps every size to its
+variant). Every slot keeps the same id, role and line across both variants (the archetypes run one
+code path, `tv_archetypes.py`), so a poster made for the wide screen shows the same words on the
+portrait one. A design of one kind takes only sizes of its kind: the editor offers screens for a
+TV design and paper for a print design, and the server refuses the rest with a 422
+(`PosterController::sizesFit`), a theme switch across kinds without new sizes included.
+Preflight on a screen (`PosterPreflight::screen()`) checks what matters there: each photo's
+pixels against its frame ("fills its frame sharp"; amber when stretched past 1×, red past 2×),
+the 24 px type floor (times `screenScale`), the safe inset, the QR at 100 / 160 px, and the data
+checks; no ink, no material, no mounting. The 4K picture is the Full HD design drawn at twice the
+size (`PosterThemeRaster`, supersampled under 2.1 Mpx), so a photo that is sharp on Full HD can
+be a little soft on 4K, which the amber check says.
+
+In the admin, Make a poster → TV screens lists the TV designs on wide cards; the editor's Size
+row becomes Screen (Full HD · 1920 × 1080, 4K · 3840 × 2160, Portrait · 1080 × 1920); step 3
+has nothing to print and offers **Send to TV** (the shop's signage playlist through `PosterTv`,
+the picture whole, no caption and no zoom) and **Download pictures** (the ZIP of PNGs). My
+posters → TV does the same for a saved one, choosing the portrait picture when the poster's first
+screen is portrait. The designs come from `docs/poster-themes/generator-source/`
+(`POSTER_VARIANT=tv python3 build_tv.py`, the same with `tvp`, then `python3 merge_tv.py`;
+handoff § 6).
+
+### Saved templates: what is kept, and how a template comes back
+
+A template (`poster_templates`; the Templates tab; `posters.manage` to save, lock and delete) is
+a poster's reusable part, never the poster itself: the design (`theme`, or the classic
+`template_key` + `layout` + `mood`), the language, the `slots` (words and photo choices as the
+poster had them) and, since 2026-10-22, the `sizes` and the `bindings` (the dish and the offer).
+It leaves out the poster's own name, place, take-down date, state, code and version. **Save as
+template** (offered at step 2 and step 3) saves the poster first, then copies those fields; **Use**
+opens a new, unsaved draft from them (`savedId` null in `PostersPage`), so printing it makes a new
+poster and the template stays as it was. A locked template refuses a change of its name or slots
+and a delete until it is unlocked (`locked: false` in the same call unlocks and changes). A template
+saved before 2026-10-22 has no sizes: a print design opens on A4, a TV design on Full HD. A
+template whose design has gone from the assets cannot be used (422 "Unknown template").
 
 Where things live: the assets under `backend/resources/poster-themes/` (`index.json`, one
 folder per theme with `theme.json`, the gzip draw lists, the backdrop SVGs, previews and
@@ -109,7 +161,7 @@ made on this page, so there is one design and one engine.
 
 On My posters, one design can go further than the print shop:
 
-- **TV** makes a 1920×1080 picture and adds one image slide to the dining playlist. The take-down date is that slide's `date_end`, so the rest of the board stays and the slide leaves on its own.
+- **TV** makes a 1920×1080 picture and adds one image slide to the dining playlist. The take-down date is that slide's `date_end`, so the rest of the board stays and the slide leaves on its own. A TV design goes whole at the screen's pixels (1080×1920 when the poster's first screen is the portrait one), shown without a caption or zoom; a print design is fitted into the picture.
 - **Instagram** saves a draft through the social drafter: approval, the next free time when a spacing rule would be broken, and channels that need a photo. The pictures are 1200×630, 1080×1080, 1080×1350 and 1080×1920. WhatsApp and Viber are share links for a phone.
 - **Home banner** adds the offer as one hero slide for the same period. The other slides stay.
 - **Scans** are `/p/{code}`. The printed QR uses that code once the poster is saved. Wi-Fi posters keep a Wi-Fi QR. My posters shows the count. A scan stores the poster and the time only.

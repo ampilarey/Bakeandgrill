@@ -1311,6 +1311,19 @@ has no Ghostscript). The admin picker, editor and layered preview are `component
 the backdrop SVG is served in layers split at its photo markers. Existing layouts and moods are
 untouched. Details: `docs/POSTERS.md` § Templates.
 
+TV designs (owner, 2026-10-22: "more templates and sizes for tv displays"): three screen sizes
+beside the paper ones (`PaperSize::SCREENS`: `TV` 1920 × 1080, `TV4K` 3840 × 2160, `TVP`
+1080 × 1920; no bleed, a 60 px safe inset, page units are pixels, `screenScale()` 2 at 4K) and 39
+themes of `kind: screen` (`TV-001…`, variants `tv` and `tvp`, `PosterThemes::KIND_VARIANTS`),
+drawn by `PosterThemeRaster` into one PNG per screen (`PosterPack::png`), never a PDF. A design
+takes only sizes of its kind (`PosterController::sizesFit`, 422 otherwise); preflight on a screen is
+`PosterPreflight::screen()` (photo pixels against the frame, 24 px type floor, safe inset, QR size).
+The picker's Print | TV screens switch, the editor's Screen row, Send to TV and Download pictures
+are in `components/posters/` and `PostersPage.tsx`. Saved templates keep `sizes` and `bindings`
+(migration 2026-10-22); a locked one refuses edits and deletes. The designs come from
+`docs/poster-themes/generator-source/` (`POSTER_VARIANT=tv|tvp python3 build_tv.py`, then
+`merge_tv.py`; handoff § 6). Audit and recommendations: `docs/POSTER_AUDIT_2026-10.md`.
+
 ## Needs attention
 
 iruali import plan, feature 14 (2026-10-18). One list of what wants a person today:

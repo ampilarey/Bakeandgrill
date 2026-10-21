@@ -295,7 +295,44 @@ layouts and moods must keep working unchanged.
   - template save/restore keeps the theme.
 - The existing mood and layout tests stay green.
 
-## 6. Notes
+## 6. Screen variants (TV designs, 2026-10-22)
+
+A second kind of theme, `kind: "screen"`, drawn for TV screens rather than paper (owner:
+"make and add more templates and sizes for tv displays"). Everything in § 1 to § 4 holds
+except what this section changes.
+
+| Variant | Shows on | Canvas (units = pixels at Full HD) | Bleed | Safe inset | Min text |
+|---|---|---|---|---|---|
+| `tv` | **TV** 1920 × 1080 (scale 1) and **TV4K** 3840 × 2160 (scale 2) | 1920 × 1080, trim box [0, 0, 1920, 1080] | 0 | 60 | 24 |
+| `tvp` | **TVP** 1080 × 1920 (scale 1) | 1080 × 1920, trim box [0, 0, 1080, 1920] | 0 | 60 | 24 |
+
+- `theme.json` carries `kind: "screen"`, `size_to_variant: {TV: tv, TV4K: tv, TVP: tvp}` and
+  `variants.tv` / `variants.tvp`; the `index.json` rows carry `kind`, and its `sizes` map gains
+  the three screens. A print theme has no `kind` and reads as `print`.
+- The mapping is § 1's with `bleed_units` 0 and no 3 mm: `page = u · s`, `s = screen width /
+  variant width`, `size_pt = units · s / 0.352778`. Page units are pixels, so the "pt" the
+  pieces carry is whatever makes `pt × 0.352778` give pixels again in every renderer.
+- `canvas.cutout_under_units` is 360 (a slot narrower than that takes a dish's cut-out by default).
+- Slot ids, roles and order are the same in `tv` and `tvp`: the archetypes (`tv_archetypes.py`)
+  run one code path with `pick(landscape, portrait)` for each position, so the portrait design is
+  the same poster rearranged, never a different set of boxes.
+- Roles follow the words: a sticker or pill holding money is `price_or_offer`, any other is
+  `detail` (`money_role()`), so the dish binding fills the first price and nothing else.
+- Footer text sits at `H − 72` so its descenders stay inside the 60 px safe inset.
+- The previews are 700 px wide (`tv`) and 394 px (`tvp`); the placeholders are drawn at twice the
+  slot's size.
+
+Build, from `docs/poster-themes/generator-source/`: `POSTER_VARIANT=tv python3 build_tv.py` and
+`POSTER_VARIANT=tvp python3 build_tv.py` write each design's folder under
+`backend/resources/poster-themes/<category>/<key>/` (preview, backdrop SVG, gzip draw list,
+placeholders, `variant-<v>.json`); `python3 merge_tv.py` writes the `theme.json` files and
+appends the rows to `index.json` (idempotent; it checks slot parity). `POSTER_REPO` points the
+scripts at another checkout. Run them without `-I`: the scripts import each other from their own
+folder. They need fontTools, qrcode, svgelements, cairosvg and Pillow. The designs are listed in
+`tv_posters.py` (`D`); a new one is a row there, built and merged the same way, and
+`PosterThemesTest` holds every screen theme to this section.
+
+## 7. Notes
 
 - All prices, discounts and times in the designs are placeholders.
 - The logo is the current light logo (dark lettering) from `public/brand/logo-animated.svg` via `LogoVector`. On colour it sits on a cream badge.
