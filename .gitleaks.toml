@@ -8,73 +8,48 @@ title = "Bake & Grill Gitleaks Config"
 # Use the official default ruleset as a base, then add our overrides below.
 useDefault = true
 
-# ── Allowlists ────────────────────────────────────────────────────────────────
-# These are known-safe patterns that gitleaks would otherwise flag as secrets.
-# Keep this list minimal — only add entries with a clear justification.
-# NOTE: Global allowlists use [[allowlists]] (not [[rules.allowlist]]) in gitleaks v8+.
-
-[[allowlists]]
-id = "placeholders"
-description = "CHANGE_ME placeholder tokens in .env.example files are intentional documentation"
+# ── Allowlist ─────────────────────────────────────────────────────────────────
+# One legacy [allowlist] block, on purpose (2026-10-21). CI runs gitleaks 8.24.3
+# (gitleaks-action v2's default), whose config reader has no global [[allowlists]]
+# at all: such entries are unknown keys and are dropped without a word, so the
+# [[allowlists]] entries this file carried never suppressed anything and only this
+# block did. Gitleaks 8.30 still loads a lone [allowlist] (deprecated) but refuses
+# one beside [[allowlists]], so this shape is the one that works on both. Checked
+# with both binaries on the poster-template merge: the old file flagged 68 theme
+# keys in index.json under 8.24.3, this one flags nothing under either.
+#
+# Paths and regexes are OR'ed and global, so nothing here may describe a real
+# secret. Keep the list minimal, each entry with its reason.
+[allowlist]
+description = "Known-safe patterns: placeholders, example IPs, empty keys, test fixtures, and asset folders that can hold no credential"
+# The regexes read the whole line, not just the captured secret, so the
+# line-shaped ones (idempotency_key => '…', STRIPE_X=) can match as written.
+regexTarget = "line"
+paths = [
+    # TEST_AUTO_DEPLOY.md's webhook curl examples use placeholders, not live credentials.
+    '''docs/TEST_AUTO_DEPLOY\.md''',
+    # Poster template assets: theme keys such as "bg042-…" in index.json are design
+    # names; generic-api-key matched 68 of them on the merge of 2026-10-21.
+    '''(^|/)backend/resources/poster-themes/''',
+    # PHPUnit fixtures use opaque idempotency and token strings that are not credentials.
+    '''(^|/)backend/tests/''',
+]
 regexes = [
+    # CHANGE_ME placeholder tokens in .env.example are intentional documentation.
     'CHANGE_ME_[A-Z0-9_]+',
-]
-paths = ['\.env\.example$']
-
-[[allowlists]]
-id = "test-tokens"
-description = "Test tokens generated in PHPUnit tests are not real credentials"
-paths = [
-    '''(^|/)backend/tests/.*''',
-]
-regexes = [
-    # PHPUnit fixtures often use opaque idempotency / token strings that trip generic-api-key.
+    # Idempotency keys typed into fixtures.
     '''idempotency_key['\"]?\s*=>\s*['\"][^'\"]+['\"]''',
-]
-
-[[allowlists]]
-id = "example-ips"
-description = "Example printer IPs in documentation are illustrative, not real infrastructure"
-paths = [
-    'docs/',
-    '\.md$',
-]
-regexes = [
+    # Example printer IPs in documentation are illustrative, not real infrastructure.
     '192\.168\.\d+\.\d+',
     '10\.\d+\.\d+\.\d+',
-]
-
-[[allowlists]]
-id = "poster-theme-assets"
-description = "Poster template assets: theme keys such as \"bg042-…\" in index.json are design names, not credentials"
-# generic-api-key matched 68 "key": "bg0xx-…" lines of index.json on the merge of 2026-10-21.
-# On gitleaks 8.24 this entry alone does not suppress them in a commit scan; the legacy
-# [allowlist] path at the bottom does. Keep both until CI moves to a newer gitleaks.
-paths = [
-    '''(^|/)backend/resources/poster-themes/.*''',
-]
-
-[[allowlists]]
-id = "laravel-app-key"
-description = "Laravel APP_KEY placeholder in .env.example is empty by design"
-regexes = [
+    # Empty placeholders in .env.example. A filled APP_KEY=base64:… is not allowlisted:
+    # the old entry for it was never in force (see above), and one in a committed
+    # file should be caught.
     'APP_KEY=$',
-    'APP_KEY=base64:[A-Za-z0-9+/]{43}=',
-]
-
-[[allowlists]]
-id = "empty-api-keys"
-description = "Stripe/Xero keys in .env.example are empty placeholders"
-regexes = [
     'STRIPE_[A-Z_]+=\s*$',
     'XERO_[A-Z_]+=\s*$',
-]
-
-# gitleaks 8.24 (CI) still honors legacy [allowlist] for path skips; [[allowlists]]
-# path-only entries were not suppressing curl-auth-header on historical commits.
-[allowlist]
-description = "TEST_AUTO_DEPLOY.md webhook curl examples use placeholders, not live credentials; poster template assets hold design names, not keys"
-paths = [
-    '''docs/TEST_AUTO_DEPLOY\.md''',
-    '''backend/resources/poster-themes/''',
+    # AppleProvider::privateKey() wraps the key read from .env in the PEM header and
+    # footer on one source line, which the private-key rule reads as a key. The regex
+    # is that PHP line, not a key.
+    '''BEGIN PRIVATE KEY-----\\n" \. chunk_split\(''',
 ]
