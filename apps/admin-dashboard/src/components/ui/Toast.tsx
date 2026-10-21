@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { CheckCircle, XCircle, Info, AlertTriangle, X } from 'lucide-react';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -35,16 +35,34 @@ const styles: Record<ToastType, string> = {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  // Each toast's auto-dismiss timer, cleared when the toast is dismissed by
+  // hand and when the provider unmounts. A timer outliving the provider set
+  // state on a gone tree (CI, 2026-10-21: "window is not defined" from a
+  // timer that fired after a test file's window was torn down).
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   const dismiss = useCallback((id: string) => {
+    const timer = timers.current.get(id);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      timers.current.delete(id);
+    }
     setToasts((t) => t.filter((x) => x.id !== id));
   }, []);
 
   const toast = useCallback((type: ToastType, message: string) => {
     const id = Math.random().toString(36).slice(2);
     setToasts((t) => [...t, { id, type, message }]);
-    setTimeout(() => dismiss(id), 4000);
+    timers.current.set(id, setTimeout(() => dismiss(id), 4000));
   }, [dismiss]);
+
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      pending.forEach((timer) => clearTimeout(timer));
+      pending.clear();
+    };
+  }, []);
 
   const value: ToastContextValue = {
     toast,
