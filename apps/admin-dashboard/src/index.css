@@ -7139,3 +7139,29 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 @media (min-width: 801px) {
   .poster-make { grid-template-columns: minmax(0, 1fr) minmax(220px, 320px); }
 }
+
+/* Posters: the template picker and a template's editor (docs/POSTER_THEMES_HANDOFF.md). Mobile first. */
+.poster-picker { display: flex; flex-direction: column; gap: 10px; }
+.poster-theme-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
+.poster-theme-card {
+  display: flex; flex-direction: column; gap: 2px; padding: 0 0 8px; text-align: left;
+  background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border);
+  border-radius: 10px; overflow: hidden; cursor: pointer; font: inherit;
+}
+.poster-theme-card:hover, .poster-theme-card:focus-visible {
+  border-color: var(--color-primary); outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+.poster-theme-card img { width: 100%; aspect-ratio: 420 / 594; object-fit: cover; display: block; background: var(--color-bg); }
+.poster-theme-card__id { font-size: 11px; color: var(--color-text-muted); padding: 6px 8px 0; letter-spacing: 0.04em; }
+.poster-theme-card strong { font-size: 13px; padding: 0 8px; line-height: 1.25; }
+.poster-theme-card__meta { font-size: 11px; color: var(--color-text-secondary); padding: 0 8px; }
+.poster-chip {
+  min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--color-border);
+  background: var(--color-surface); color: var(--color-text-secondary); font: inherit; font-size: 13px; cursor: pointer;
+}
+.poster-chip--on { background: var(--color-tone-rust-bg); color: var(--color-tone-rust-text); border-color: var(--color-tone-rust-border); }
+.poster-upload-btn {
+  display: inline-flex; align-items: center; min-height: 32px; padding: 0 10px; border-radius: 8px;
+  border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); cursor: pointer; font-size: 13px;
+}

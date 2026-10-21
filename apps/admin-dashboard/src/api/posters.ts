@@ -24,25 +24,165 @@ export type PosterPiece = {
   url?: string;
   colourway?: string;
   strike?: boolean;
+  // A template's pieces (docs/POSTER_THEMES_HANDOFF.md). Text: where its baseline sits, its face and tracking.
+  slot?: string;
+  role?: string;
+  font?: string;
+  pt?: number;
+  baseline?: number;
+  ascent?: number;
+  anchor?: number;
+  tracking?: number;
+  shadow?: { dx: number; dy: number; hex: string } | null;
+  opacity?: number;
+  auto?: boolean;
+  dv?: boolean;
+  // Photo: the picture's address, its clip in page mm, its tilt and how it sits.
+  src?: string | null;
+  source?: 'upload' | 'master' | 'crop' | 'cutout' | 'placeholder' | string;
+  item_id?: number | null;
+  clip_d?: string;
+  rotation?: number;
+  centre?: [number, number];
+  contain?: boolean;
+  hex_behind?: string;
+  shape?: string;
+  // Logo on its cream badge; a QR drawn bare in the design's ink.
+  badge?: { cx: number; cy: number; r: number; hex: string } | null;
+  bare?: boolean;
 };
 
 export type PosterCheck = { id: string; level: 'red' | 'amber' | 'ok' | string; message: string };
+
+/** A template's photo slot choice: a dish's photo or cut-out, or a poster upload. */
+export type PosterPhotoPick = { item_id?: number | null; use?: 'main' | 'cutout' | null; photo_path?: string | null };
+
+/**
+ * One entry of a poster's `slots`: a classic slot's words; for a template,
+ * a text slot's words, `null` (or missing) for the design's own wording, or
+ * `false` for a line the owner blanked (an empty string arrives as null on the
+ * server); a photo slot's choice, or null for the design's placeholder.
+ */
+export type PosterSlotValue = string | false | null | PosterPhotoPick;
+export type PosterSlots = Record<string, PosterSlotValue>;
+
+/** The words a slot holds for an input box: a blanked or design line reads as empty. */
+export const slotText = (slots: PosterSlots | undefined, key: string): string => {
+  const v = slots?.[key];
+  return typeof v === 'string' ? v : '';
+};
+
+export const slotPhoto = (slots: PosterSlots | undefined, key: string): PosterPhotoPick | null => {
+  const v = slots?.[key];
+  return v && typeof v === 'object' ? v : null;
+};
 
 export type PosterDraft = {
   name?: string;
   template_key: string;
   layout: string;
+  /** A ready-made design's key; the server sets the purpose and layout from it. */
+  theme?: string | null;
   mood: string;
   language: 'en' | 'dv' | 'both';
   landscape: boolean;
   sizes: string[];
-  slots: Record<string, string>;
+  slots: PosterSlots;
   bindings: Record<string, number | null>;
   take_down_on?: string | null;
   place?: string | null;
   state?: string;
   pinned?: boolean;
 };
+
+export type PosterThemeCategory = { key: string; number: string; name: string; description: string; count: number };
+
+export type PosterThemeSummary = {
+  id: string;
+  key: string;
+  title: string;
+  category: string;
+  style: string;
+  style_label: string;
+  has_photo: boolean;
+  photo_slots: number;
+  text_slots: number;
+  preview_url: string;
+  preview_small_url: string;
+};
+
+export type PosterThemeCatalog = {
+  categories: PosterThemeCategory[];
+  styles: Record<string, string>;
+  sizes: Record<string, 'large' | 'small'>;
+  font_urls: Record<string, string>;
+  themes: PosterThemeSummary[];
+};
+
+export type PosterThemeTextSlot = {
+  id: string;
+  default: string;
+  role_hint: 'eyebrow' | 'headline' | 'headline_or_offer' | 'price_or_offer' | 'detail' | 'footer' | string;
+  font: string;
+  size_units: number;
+  colour: string | { fallback: string };
+  align: 'left' | 'center' | 'right' | string;
+  max_width_mm: number;
+};
+
+export type PosterThemePhotoSlot = {
+  id: string;
+  shape: string;
+  box: [number, number, number, number];
+  rotation_deg: number;
+  cutout_ok: boolean;
+  fill_behind: string;
+  placeholder_url: string;
+  min_px_for_150ppi: [number, number];
+};
+
+export type PosterThemeVariant = {
+  variant: 'large' | 'small';
+  canvas: { width: number; height: number; bleed_units: number; safe_inset_units: number; min_text_units: number };
+  sizes: Record<string, { scale: number; page_mm: [number, number] }>;
+  photo_slots: PosterThemePhotoSlot[];
+  text_slots: PosterThemeTextSlot[];
+  qr: { x: number; y: number; size_mm: number } | null;
+  urls: { preview: string; backdrop: string };
+};
+
+export type PosterTheme = {
+  id: string;
+  key: string;
+  title: string;
+  category: { key: string; number: string; name: string };
+  style: string;
+  style_label: string;
+  has_photo: boolean;
+  size_to_variant: Record<string, 'large' | 'small'>;
+  variants: { large: PosterThemeVariant; small: PosterThemeVariant };
+  fonts: Record<string, string>;
+};
+
+/** What a themed preview sheet carries beside its pieces. */
+export type PosterSheetTheme = {
+  key: string;
+  id: string;
+  title: string;
+  variant: 'large' | 'small';
+  size: string;
+  map: { s: number; dy: number; bleed_units: number; ox: number; oy: number };
+  canvas: [number, number];
+  safe: [number, number, number, number];
+  min_pt: number;
+  keepout: boolean;
+  photo_order: string[];
+  layers: number;
+  backdrop_url: string;
+  layer_urls: string[];
+};
+
+export type PosterSheet = { w: number; h: number; hex_bg: string; pieces: PosterPiece[]; theme?: PosterSheetTheme };
 
 export type PosterRow = PosterDraft & {
   id: number;
@@ -82,7 +222,7 @@ export type PosterOrderRow = {
 
 export type PosterPreview = {
   content: Record<string, unknown>;
-  sheet: { w: number; h: number; hex_bg: string; pieces: PosterPiece[] };
+  sheet: PosterSheet;
   preflight: PosterCheck[];
   imposition: string;
 };
@@ -101,7 +241,11 @@ export const fetchPosterCatalog = () => req<{
   sizes: string[];
   places: string[];
   materials: { key: string; label: string; white: boolean; mirror?: boolean }[];
+  themes?: PosterThemeCatalog;
 }>('/posters/catalog');
+
+/** One ready-made design with both variants, its slots and the links the preview draws it from. */
+export const fetchPosterTheme = (key: string) => req<PosterTheme>(`/posters/themes/${encodeURIComponent(key)}`);
 
 export const fetchPosterLookups = (q = '') => req<{
   items: { id: number; name: string; name_dv: string | null; price: { price: number; from: boolean } }[];
@@ -143,15 +287,16 @@ export type PosterTemplateRow = {
   name: string;
   template_key: string;
   layout: string;
+  theme?: string | null;
   mood: string;
   language: string;
-  slots: Record<string, string>;
+  slots: PosterSlots;
   locked: boolean;
 };
 
 export const fetchPosterTemplates = () => req<PosterTemplateRow[]>('/posters/templates');
 
-export const savePosterTemplate = (body: { name: string; template_key: string; layout: string; mood: string; language: string; slots: Record<string, string> }) =>
+export const savePosterTemplate = (body: { name: string; template_key: string; layout: string; theme?: string | null; mood: string; language: string; slots: PosterSlots }) =>
   req<PosterTemplateRow>('/posters/templates', { method: 'POST', body: JSON.stringify(body) });
 
 export const lockPosterTemplate = (id: number, locked: boolean) =>

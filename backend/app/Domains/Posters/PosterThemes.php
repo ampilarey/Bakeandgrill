@@ -258,6 +258,63 @@ final class PosterThemes
     }
 
     /**
+     * The photo slots in the order the artwork draws them (its markers).
+     *
+     * @param array<string, mixed> $theme from get()
+     * @return list<string>
+     */
+    public static function photoOrder(array $theme, string $variant): array
+    {
+        $order = [];
+        foreach (self::drawList($theme, $variant) as $item) {
+            if (isset($item['photo_slot'])) {
+                $order[] = (string) $item['photo_slot'];
+            }
+        }
+
+        return $order;
+    }
+
+    /**
+     * One layer of a variant's backdrop SVG for the on-screen preview: the
+     * artwork split at its photo markers (`<rect id="__photo_marker_pN">`),
+     * so a photo can sit between what the design draws before it and what
+     * it draws after it (a polaroid's tape, a price badge). Layer 0 is
+     * everything before the first photo; the last layer everything after the
+     * last. Null for a layer the variant does not have.
+     *
+     * @param array<string, mixed> $theme from get()
+     */
+    public static function backdropLayer(array $theme, string $variant, int $layer): ?string
+    {
+        if (!in_array($variant, self::VARIANTS, true) || $layer < 0) {
+            return null;
+        }
+        $name = (string) ($theme['variants'][$variant]['files']['backdrop_svg'] ?? '');
+        $file = self::root() . '/' . $theme['path'] . '/' . $name;
+        $svg = $name !== '' ? @file_get_contents($file) : false;
+        if ($svg === false || $svg === '') {
+            throw new RuntimeException("Poster template backdrop missing: {$file}");
+        }
+        if (preg_match('/^(.*?<svg\b[^>]*>)(.*)(<\/svg>\s*)$/s', $svg, $m) !== 1) {
+            throw new RuntimeException("Poster template backdrop is not an SVG: {$file}");
+        }
+        $body = $m[2];
+        // The gradients live in one <defs> block at the top; every layer needs it.
+        $defs = '';
+        if (preg_match('/<defs>.*?<\/defs>/s', $body, $d) === 1) {
+            $defs = $d[0];
+            $body = str_replace($defs, '', $body);
+        }
+        $parts = preg_split('/<rect id="__photo_marker_p\d+"[^>]*\/>/', $body) ?: [$body];
+        if ($layer >= count($parts)) {
+            return null;
+        }
+
+        return $m[1] . $defs . $parts[$layer] . $m[3];
+    }
+
+    /**
      * The absolute path of a file the admin may fetch from a theme's folder
      * (a preview, a backdrop SVG or a placeholder), or null when the theme or
      * the file is not one of ours.

@@ -26,6 +26,7 @@ use App\Models\Promotion;
 use App\Models\RestaurantTable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -97,9 +98,22 @@ class PosterController extends Controller
         return response()->json($theme);
     }
 
-    /** A theme's preview, backdrop SVG or placeholder picture (PosterThemes::FILE_PATTERN). */
-    public function themeFile(string $key, string $file): BinaryFileResponse
+    /**
+     * A theme's preview, backdrop SVG or placeholder picture
+     * (PosterThemes::FILE_PATTERN), or one layer of the backdrop
+     * (`backdrop-large-2.svg`) for the preview to stack its photos between.
+     */
+    public function themeFile(string $key, string $file): BinaryFileResponse|Response
     {
+        if (preg_match('/^backdrop-(large|small)-(\d{1,2})\.svg$/', $file, $m) === 1) {
+            $theme = PosterThemes::get($key);
+            $layer = $theme === null ? null : PosterThemes::backdropLayer($theme, $m[1], (int) $m[2]);
+            if ($layer === null) {
+                abort(404);
+            }
+
+            return response($layer, 200, ['Content-Type' => 'image/svg+xml', 'Cache-Control' => 'private, max-age=86400']);
+        }
         $path = PosterThemes::file($key, $file);
         if ($path === null) {
             abort(404);
@@ -455,7 +469,14 @@ class PosterController extends Controller
             'pieces' => $pieces,
         ];
         if ($theme !== null) {
-            $sheet['theme'] = $theme + ['backdrop_url' => $this->themeFileUrl((string) $theme['key'], 'backdrop-' . $theme['variant'] . '.svg')];
+            $layers = [];
+            for ($i = 0; $i < (int) ($theme['layers'] ?? 1); $i++) {
+                $layers[] = $this->themeFileUrl((string) $theme['key'], 'backdrop-' . $theme['variant'] . '-' . $i . '.svg');
+            }
+            $sheet['theme'] = $theme + [
+                'backdrop_url' => $this->themeFileUrl((string) $theme['key'], 'backdrop-' . $theme['variant'] . '.svg'),
+                'layer_urls' => $layers,
+            ];
         }
 
         return $sheet;
@@ -487,10 +508,17 @@ class PosterController extends Controller
      */
     private function themeCatalog(): array
     {
+        $fonts = [];
+        foreach (['anton', 'fri5', 'fri7', 'fri9'] as $key) {
+            $fonts[$key] = url('/fonts/pdf/' . \App\Domains\Posters\Pdf\PosterFonts::FILES[$key]);
+        }
+
         return [
             'categories' => PosterThemes::categories(),
             'styles' => PosterThemes::styles(),
             'sizes' => PosterThemes::SIZE_VARIANTS,
+            // The template faces the page loads for its preview (Jakarta is the admin's own).
+            'font_urls' => $fonts,
             'themes' => array_map(fn (array $row): array => [
                 'id' => $row['id'],
                 'key' => $row['key'],

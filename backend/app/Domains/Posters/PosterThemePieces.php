@@ -101,6 +101,7 @@ final class PosterThemePieces
 
         $inset = PosterThemes::mapLength($map, (float) $variant['canvas']['safe_inset_units'] - (float) $variant['canvas']['bleed_units']);
         $safe = [$size->bleed + $inset, $size->bleed + $map['dy'] + $inset, $size->trimWidth - 2 * $inset, $size->trimHeight - 2 * $inset];
+        $photoOrder = PosterThemes::photoOrder($theme, $variantName);
 
         return [
             'w' => $pageW,
@@ -120,6 +121,9 @@ final class PosterThemePieces
                 'safe' => $safe,
                 'min_pt' => $floorPt,
                 'keepout' => $variantName === 'large',
+                // The preview stacks the backdrop's layers with a photo between each pair (PosterThemes::backdropLayer).
+                'photo_order' => $photoOrder,
+                'layers' => count($photoOrder) + 1,
             ],
         ];
     }

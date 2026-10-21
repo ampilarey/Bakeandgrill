@@ -1,25 +1,35 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { Copy, Download, Monitor, Pin, Send, Share2, Trash2 } from 'lucide-react';
+import { Copy, Download, Monitor, Pencil, Pin, Send, Share2, Trash2 } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { PageHeader, Btn } from '../components/SharedUI';
 import { SeeAlso } from '../components/SeeAlso';
+import { ThemePicker } from '../components/posters/ThemePicker';
+import { ThemedEditor } from '../components/posters/ThemedEditor';
+import { KeepOutRings, ThemedPreview } from '../components/posters/ThemedPreview';
 import {
   advancePosterOrder, approvePosterQuote, createPoster, deletePoster, deletePosterTemplate, downloadPosterZip, duplicatePoster, exportPoster, fetchPosterExport, uploadPosterPhoto,
-  fetchPosterCatalog, fetchPosterLookups, fetchPosterOrders, fetchPosters, fetchPosterTemplates, fetchPrintShops, lockPosterTemplate,
-  draftPosterSocial, previewPoster, quotePosterOrder, savePosterTemplate, savePrintShop, sendPosterToShop, sendPosterToTv, setPosterHomeBanner, setPosterProofApproval, updatePoster,
-  type PosterCheck, type PosterDraft, type PosterOrderRow, type PosterPiece, type PosterPurpose, type PosterRow, type PosterTemplateRow, type PrintShop,
+  fetchPosterCatalog, fetchPosterLookups, fetchPosterOrders, fetchPosters, fetchPosterTemplates, fetchPosterTheme, fetchPrintShops, lockPosterTemplate,
+  draftPosterSocial, previewPoster, quotePosterOrder, savePosterTemplate, savePrintShop, sendPosterToShop, sendPosterToTv, setPosterHomeBanner, setPosterProofApproval, slotText, updatePoster,
+  type PosterCheck, type PosterDraft, type PosterOrderRow, type PosterPurpose, type PosterRow, type PosterSheet, type PosterTemplateRow, type PosterTheme, type PosterThemeCatalog, type PosterThemeSummary, type PrintShop,
 } from '../api';
 import { inputFont } from '../utils/cssVars';
 
 const MOODS = ['dark', 'cream', 'rust', 'gold', 'photo'] as const;
 const GROUPS = ['Offers', 'Dishes', 'Times', 'Ordering', 'Inside'];
+/** The purpose and layout of a poster drawn on a template (PosterPurposes::THEMED). */
+const THEMED = 'themed';
+const NO_THEMES: PosterThemeCatalog = { categories: [], styles: {}, sizes: {}, font_urls: {}, themes: [] };
+
+/** A poster or a saved template handed to the editor from another tab. */
+type Start = { kind: 'poster'; row: PosterRow } | { kind: 'template'; row: PosterTemplateRow } | null;
 
 function emptyDraft(purpose: PosterPurpose): PosterDraft {
   return {
     name: purpose.label,
     template_key: purpose.key,
     layout: purpose.layout,
+    theme: null,
     mood: 'dark',
     language: 'both',
     landscape: purpose.landscape,
@@ -31,11 +41,31 @@ function emptyDraft(purpose: PosterPurpose): PosterDraft {
   };
 }
 
+function themedDraft(theme: PosterThemeSummary): PosterDraft {
+  return {
+    name: theme.title,
+    template_key: THEMED,
+    layout: THEMED,
+    theme: theme.key,
+    mood: 'dark',
+    language: 'en',
+    landscape: false,
+    sizes: ['A4'],
+    slots: {},
+    bindings: {},
+    place: null,
+    take_down_on: null,
+  };
+}
+
 export function PostersPage() {
   usePageTitle('Posters');
   const { can } = useCurrentUserPermissions();
   const manage = can('posters.manage');
   const [tab, setTab] = useState<'make' | 'mine' | 'templates' | 'shops'>('make');
+  const [start, setStart] = useState<Start>(null);
+  const [startKey, setStartKey] = useState(0);
+  const open = (next: Start) => { setStart(next); setStartKey((k) => k + 1); setTab('make'); };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -48,16 +78,19 @@ export function PostersPage() {
           <Btn key={id} variant={tab === id ? 'primary' : 'ghost'} onClick={() => setTab(id)}>{label}</Btn>
         ))}
       </div>
-      {tab === 'make' && <MakeTab manage={manage} />}
-      {tab === 'mine' && <MineTab onEdit={() => setTab('make')} />}
-      {tab === 'templates' && <TemplatesTab manage={manage} />}
+      {tab === 'make' && <MakeTab manage={manage} start={start} startKey={startKey} />}
+      {tab === 'mine' && <MineTab onEdit={(row) => open({ kind: 'poster', row })} onMake={() => open(null)} />}
+      {tab === 'templates' && <TemplatesTab manage={manage} onUse={(row) => open({ kind: 'template', row })} />}
       {tab === 'shops' && <ShopsTab manage={manage} />}
     </div>
   );
 }
 
-function MakeTab({ manage }: { manage: boolean }) {
+function MakeTab({ manage, start, startKey }: { manage: boolean; start: Start; startKey: number }) {
   const [purposes, setPurposes] = useState<PosterPurpose[]>([]);
+  const [themes, setThemes] = useState<PosterThemeCatalog | null>(null);
+  const [theme, setTheme] = useState<PosterTheme | null>(null);
+  const [classic, setClassic] = useState(false);
   const [sizes, setSizes] = useState<string[]>(['A5', 'A4', 'A3', 'A2']);
   const [places, setPlaces] = useState<string[]>([]);
   const [materials, setMaterials] = useState<{ key: string; label: string; white: boolean; mirror?: boolean }[]>([]);
@@ -68,7 +101,7 @@ function MakeTab({ manage }: { manage: boolean }) {
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<PosterDraft | null>(null);
   const [savedId, setSavedId] = useState<number | null>(null);
-  const [sheet, setSheet] = useState<{ w: number; h: number; hex_bg: string; pieces: PosterPiece[] } | null>(null);
+  const [sheet, setSheet] = useState<PosterSheet | null>(null);
   const [checks, setChecks] = useState<PosterCheck[]>([]);
   const [material, setMaterial] = useState('foam');
   const [imposition, setImposition] = useState('single');
@@ -84,10 +117,44 @@ function MakeTab({ manage }: { manage: boolean }) {
       setSizes(c.sizes);
       setPlaces(c.places);
       setMaterials(c.materials);
+      setThemes(c.themes ?? NO_THEMES);
     }).catch(() => setNote('Could not load purposes.'));
     fetchPosterLookups().then(setLookups).catch(() => undefined);
     fetchPrintShops().then((r) => setShops(r.shops)).catch(() => undefined);
   }, []);
+
+  function loadTheme(key: string | null | undefined) {
+    setTheme(null);
+    if (!key) return;
+    fetchPosterTheme(key).then(setTheme).catch(() => setNote('Could not load the template.'));
+  }
+
+  // A poster from My posters or a saved template opens in the editor as it was.
+  useEffect(() => {
+    if (!start) return;
+    if (start.kind === 'poster') {
+      const p = start.row;
+      setDraft({
+        name: p.name, template_key: p.template_key, layout: p.layout, theme: p.theme ?? null, mood: p.mood, language: p.language,
+        landscape: p.landscape, sizes: p.sizes?.length ? p.sizes : ['A4'], slots: p.slots ?? {}, bindings: p.bindings ?? {},
+        place: p.place ?? null, take_down_on: p.take_down_on ?? null,
+      });
+      setSavedId(p.id);
+      loadTheme(p.theme);
+    } else {
+      const t = start.row;
+      setDraft({
+        name: t.name, template_key: t.template_key, layout: t.layout, theme: t.theme ?? null, mood: t.mood,
+        language: (t.language === 'en' || t.language === 'dv' || t.language === 'both') ? t.language : 'both',
+        landscape: false, sizes: ['A4'], slots: t.slots ?? {}, bindings: {}, place: null, take_down_on: null,
+      });
+      setSavedId(null);
+      loadTheme(t.theme);
+    }
+    setNote('');
+    setStep(2);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startKey]);
 
   useEffect(() => {
     if (!draft || step < 3) return;
@@ -105,9 +172,39 @@ function MakeTab({ manage }: { manage: boolean }) {
     return () => clearTimeout(handle);
   }, [draft, step, material, imposition, mounting, shopId, shops, gloss]);
 
+  // A template poster is previewed from step 2, since its editor shows what each slot prints.
+  useEffect(() => {
+    if (!draft?.theme || step !== 2) return;
+    const handle = setTimeout(() => {
+      previewPoster({ ...draft, material, imposition, mounting })
+        .then((res) => { setSheet(res.sheet); setChecks(res.preflight); })
+        .catch(() => setNote('Preview failed.'));
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [draft, step, material, imposition, mounting]);
+
   const grouped = useMemo(() => GROUPS.map((g) => ({ g, rows: purposes.filter((p) => p.group === g) })), [purposes]);
   const purpose = purposes.find((p) => p.key === draft?.template_key);
   const reds = checks.filter((c) => c.level === 'red');
+  const themed = Boolean(draft?.theme);
+  // A4 and A5 templates have no stand-off corners (docs/POSTER_THEMES_HANDOFF.md § 1).
+  const smallTheme = themed && (sheet?.theme ? sheet.theme.variant === 'small' : ['A4', 'A5'].includes(draft?.sizes[0] ?? 'A4'));
+  useEffect(() => {
+    if (smallTheme && (mounting === 'standoffs' || mounting === 'eyelets')) setMounting('none');
+  }, [smallTheme, mounting]);
+  const assetOrigin = useMemo(() => {
+    const url = themes?.font_urls?.anton;
+    try { return url ? new URL(url).origin : ''; } catch { return ''; }
+  }, [themes]);
+
+  function pickTheme(summary: PosterThemeSummary) {
+    setNote('');
+    setSavedId(null);
+    setSheet(null);
+    setDraft(themedDraft(summary));
+    loadTheme(summary.key);
+    setStep(2);
+  }
 
   async function save(): Promise<number | null> {
     if (!draft) return null;
@@ -194,83 +291,131 @@ function MakeTab({ manage }: { manage: boolean }) {
     }
   }
 
+  async function saveDraft() {
+    setBusy(true);
+    setNote('');
+    try {
+      const id = await save();
+      if (id) setNote('Saved. Find it under My posters.');
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : 'Could not save.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const mountingOptions = [
+    { value: 'none', label: 'None (leans or sits in a stand)' },
+    ...(smallTheme ? [] : [
+      { value: 'standoffs', label: 'Stand-offs at the corners' },
+      { value: 'eyelets', label: 'Eyelets at the corners' },
+    ]),
+    { value: 'tape', label: 'Tape on the back' },
+  ];
+
   return (
     <div className="poster-make">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {step === 1 && grouped.map(({ g, rows }) => (
-          <section key={g}>
-            <h2 style={{ fontSize: 14, margin: '8px 0', color: 'var(--color-text-secondary)' }}>{g}</h2>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {rows.map((p) => (
-                <button key={p.key} type="button" onClick={() => {
-                  if (p.external) { window.open(p.external, '_blank'); return; }
-                  setDraft(emptyDraft(p));
-                  setSavedId(null);
-                  setStep(2);
-                }} style={cardStyle}>
-                  <strong>{p.label}</strong>
-                  <span style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 12 }}>{p.layout.replace('_', ' ')} · used {p.used}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-        ))}
+        {step === 1 && (
+          <>
+            <ThemePicker catalog={themes} onPick={pickTheme} classic={classic} onClassic={() => setClassic((c) => !c)} />
+            {classic && grouped.map(({ g, rows }) => (
+              <section key={g}>
+                <h2 style={{ fontSize: 14, margin: '8px 0', color: 'var(--color-text-secondary)' }}>{g}</h2>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {rows.map((p) => (
+                    <button key={p.key} type="button" onClick={() => {
+                      if (p.external) { window.open(p.external, '_blank'); return; }
+                      setDraft(emptyDraft(p));
+                      setTheme(null);
+                      setSheet(null);
+                      setSavedId(null);
+                      setStep(2);
+                    }} style={cardStyle}>
+                      <strong>{p.label}</strong>
+                      <span style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: 12 }}>{p.layout.replace('_', ' ')} · used {p.used}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </>
+        )}
 
         {step >= 2 && draft && (
           <>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Btn variant="ghost" onClick={() => setStep(1)}>Purpose</Btn>
-              <span style={{ color: 'var(--color-text-secondary)' }}>{purpose?.label}</span>
+              <Btn variant="ghost" onClick={() => setStep(1)}>{themed ? 'Template' : 'Purpose'}</Btn>
+              <span style={{ color: 'var(--color-text-secondary)' }} data-testid="poster-editor-title">
+                {themed ? `${theme?.id ?? ''} ${theme?.title ?? draft.theme}`.trim() : purpose?.label}
+                {savedId ? ` · editing P${String(savedId).padStart(4, '0')}` : ''}
+              </span>
             </div>
             <label style={labelStyle}>Name
               <input style={inputFont(inputStyle)} value={draft.name ?? ''} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
             </label>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {MOODS.map((m) => (
-                <Btn key={m} variant={draft.mood === m ? 'primary' : 'ghost'} onClick={() => setDraft({ ...draft, mood: m })}>{m}</Btn>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {(['en', 'dv', 'both'] as const).map((l) => (
-                <Btn key={l} variant={draft.language === l ? 'primary' : 'ghost'} onClick={() => setDraft({ ...draft, language: l })}>{l === 'both' ? 'Both' : l === 'en' ? 'English' : 'Dhivehi'}</Btn>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {sizes.map((s) => {
-                const on = draft.sizes.includes(s);
-                return <Btn key={s} variant={on ? 'primary' : 'ghost'} onClick={() => setDraft({ ...draft, sizes: on ? draft.sizes.filter((x) => x !== s) : [...draft.sizes, s] })}>{s}</Btn>;
-              })}
-              <Btn variant={draft.landscape ? 'primary' : 'ghost'} onClick={() => setDraft({ ...draft, landscape: !draft.landscape })}>Landscape</Btn>
-            </div>
-            {purpose?.bind === 'item' && lookups && (
-              <Select label="Dish" value={draft.bindings.item_id ?? ''} onChange={(v) => setDraft({ ...draft, bindings: { ...draft.bindings, item_id: v ? Number(v) : null } })}
-                options={lookups.items.map((i) => ({ value: i.id, label: `${i.name} · MVR ${i.price.price.toFixed(2)}${i.price.from ? ' from' : ''}` }))} />
+
+            {themed ? (
+              theme ? (
+                <ThemedEditor draft={draft} theme={theme} lookups={lookups} sheet={sheet} sizes={sizes} onChange={setDraft} />
+              ) : <p style={{ color: 'var(--color-text-muted)' }}>Loading the template…</p>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {MOODS.map((m) => (
+                    <Btn key={m} variant={draft.mood === m ? 'primary' : 'ghost'} onClick={() => setDraft({ ...draft, mood: m })}>{m}</Btn>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {(['en', 'dv', 'both'] as const).map((l) => (
+                    <Btn key={l} variant={draft.language === l ? 'primary' : 'ghost'} onClick={() => setDraft({ ...draft, language: l })}>{l === 'both' ? 'Both' : l === 'en' ? 'English' : 'Dhivehi'}</Btn>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {sizes.map((s) => {
+                    const on = draft.sizes.includes(s);
+                    return <Btn key={s} variant={on ? 'primary' : 'ghost'} onClick={() => setDraft({ ...draft, sizes: on ? draft.sizes.filter((x) => x !== s) : [...draft.sizes, s] })}>{s}</Btn>;
+                  })}
+                  <Btn variant={draft.landscape ? 'primary' : 'ghost'} onClick={() => setDraft({ ...draft, landscape: !draft.landscape })}>Landscape</Btn>
+                </div>
+                {purpose?.bind === 'item' && lookups && (
+                  <Select label="Dish" value={draft.bindings.item_id ?? ''} onChange={(v) => setDraft({ ...draft, bindings: { ...draft.bindings, item_id: v ? Number(v) : null } })}
+                    options={lookups.items.map((i) => ({ value: i.id, label: `${i.name} · MVR ${i.price.price.toFixed(2)}${i.price.from ? ' from' : ''}` }))} />
+                )}
+                {purpose?.bind === 'promotion' && lookups && (
+                  <Select label="Offer" value={draft.bindings.promotion_id ?? ''} onChange={(v) => setDraft({ ...draft, bindings: { ...draft.bindings, promotion_id: v ? Number(v) : null } })}
+                    options={lookups.promotions.map((p) => ({ value: p.id, label: p.name + (p.code ? ` · ${p.code}` : '') }))} />
+                )}
+                {purpose?.bind === 'category' && lookups && (
+                  <Select label="Category" value={draft.bindings.category_id ?? ''} onChange={(v) => setDraft({ ...draft, bindings: { ...draft.bindings, category_id: v ? Number(v) : null } })}
+                    options={lookups.categories.map((c) => ({ value: c.id, label: c.name }))} />
+                )}
+                {purpose?.bind === 'table' && lookups && (
+                  <Select label="Table (blank = one card per table)" value={draft.bindings.table_id ?? ''} onChange={(v) => setDraft({ ...draft, bindings: { ...draft.bindings, table_id: v ? Number(v) : null } })}
+                    options={lookups.tables.map((t) => ({ value: t.id, label: t.name }))} />
+                )}
+                {(Array.from(new Set([...Object.keys(purpose?.slots ?? {}), 'headline', 'headline_dv', 'price', 'old_price', 'subhead', 'body', 'badge']))).map((key) => (
+                  <label key={key} style={labelStyle}>{key.replace('_', ' ')}
+                    <input style={inputFont(inputStyle)} value={slotText(draft.slots, key)} onChange={(e) => setDraft({ ...draft, slots: { ...draft.slots, [key]: e.target.value } })} />
+                  </label>
+                ))}
+                <PosterPhotoField draft={draft} source={photoSource} onChange={(path) => setDraft({ ...draft, slots: { ...draft.slots, photo_path: path } })} />
+              </>
             )}
-            {purpose?.bind === 'promotion' && lookups && (
-              <Select label="Offer" value={draft.bindings.promotion_id ?? ''} onChange={(v) => setDraft({ ...draft, bindings: { ...draft.bindings, promotion_id: v ? Number(v) : null } })}
-                options={lookups.promotions.map((p) => ({ value: p.id, label: p.name + (p.code ? ` · ${p.code}` : '') }))} />
-            )}
-            {purpose?.bind === 'category' && lookups && (
-              <Select label="Category" value={draft.bindings.category_id ?? ''} onChange={(v) => setDraft({ ...draft, bindings: { ...draft.bindings, category_id: v ? Number(v) : null } })}
-                options={lookups.categories.map((c) => ({ value: c.id, label: c.name }))} />
-            )}
-            {purpose?.bind === 'table' && lookups && (
-              <Select label="Table (blank = one card per table)" value={draft.bindings.table_id ?? ''} onChange={(v) => setDraft({ ...draft, bindings: { ...draft.bindings, table_id: v ? Number(v) : null } })}
-                options={lookups.tables.map((t) => ({ value: t.id, label: t.name }))} />
-            )}
-            {(Array.from(new Set([...Object.keys(purpose?.slots ?? {}), 'headline', 'headline_dv', 'price', 'old_price', 'subhead', 'body', 'badge']))).map((key) => (
-              <label key={key} style={labelStyle}>{key.replace('_', ' ')}
-                <input style={inputFont(inputStyle)} value={draft.slots[key] ?? ''} onChange={(e) => setDraft({ ...draft, slots: { ...draft.slots, [key]: e.target.value } })} />
-              </label>
-            ))}
-            <PosterPhotoField draft={draft} source={photoSource} onChange={(path) => setDraft({ ...draft, slots: { ...draft.slots, photo_path: path } })} />
+
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <label style={labelStyle}>Take down
                 <input type="date" style={inputFont(inputStyle)} value={draft.take_down_on ?? ''} onChange={(e) => setDraft({ ...draft, take_down_on: e.target.value || null })} />
               </label>
               <Select label="Place" value={draft.place ?? ''} onChange={(v) => setDraft({ ...draft, place: v || null })} options={places.map((p) => ({ value: p, label: p }))} />
             </div>
-            {step === 2 && <Btn onClick={() => setStep(3)}>Check and download</Btn>}
+            {step === 2 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Btn onClick={() => setStep(3)}>Check and download</Btn>
+                <Btn variant="ghost" onClick={saveDraft} disabled={busy}>{savedId ? 'Save changes' : 'Save for later'}</Btn>
+                {note && <span style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>{note}</span>}
+              </div>
+            )}
             {step === 3 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <Select label="Material" value={material} onChange={setMaterial} options={materials.map((m) => ({ value: m.key, label: m.label }))} />
@@ -280,12 +425,8 @@ function MakeTab({ manage }: { manage: boolean }) {
                   { value: '2up', label: '2-up' },
                   { value: '4up', label: '4-up' },
                 ]} />
-                <Select label="Mounting" value={mounting} onChange={setMounting} options={[
-                  { value: 'none', label: 'None (leans or sits in a stand)' },
-                  { value: 'standoffs', label: 'Stand-offs at the corners' },
-                  { value: 'eyelets', label: 'Eyelets at the corners' },
-                  { value: 'tape', label: 'Tape on the back' },
-                ]} />
+                <Select label="Mounting" value={mounting} onChange={setMounting} options={mountingOptions} />
+                {smallTheme && <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Counter and table cards have no stand-off corners; print A2 or A3 for a wall.</span>}
                 <Select label="Gloss" value={gloss} onChange={setGloss} options={[{ value: 'none', label: 'No gloss' }, { value: 'logo and price', label: 'Gloss on logo and large type' }]} />
                 <Select label="Print shop" value={shopId} onChange={(v) => setShopId(v ? Number(v) : '')} options={shops.map((s) => ({ value: s.id, label: s.name }))} />
                 <label style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44 }}>
@@ -300,7 +441,7 @@ function MakeTab({ manage }: { manage: boolean }) {
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <Btn onClick={download} disabled={busy || reds.length > 0}><Download size={16} /> {busy ? 'Preparing…' : 'Download for print'}</Btn>
                   <Btn variant="ghost" onClick={send} disabled={busy || reds.length > 0 || shopId === ''}><Send size={16} /> Send to print shop</Btn>
-                  {manage && <Btn variant="ghost" onClick={async () => { await save(); if (draft) { await savePosterTemplate({ name: draft.name || 'Template', template_key: draft.template_key, layout: draft.layout, mood: draft.mood, language: draft.language, slots: draft.slots }); setNote('Saved as a template.'); } }}>Save as template</Btn>}
+                  {manage && <Btn variant="ghost" onClick={async () => { await save(); if (draft) { await savePosterTemplate({ name: draft.name || 'Template', template_key: draft.template_key, layout: draft.layout, theme: draft.theme ?? null, mood: draft.mood, language: draft.language, slots: draft.slots }); setNote('Saved as a template.'); } }}>Save as template</Btn>}
                 </div>
                 {note && <p style={{ color: 'var(--color-text-secondary)' }}>{note}</p>}
               </div>
@@ -308,7 +449,9 @@ function MakeTab({ manage }: { manage: boolean }) {
           </>
         )}
       </div>
-      <Preview sheet={sheet} gloss={gloss !== 'none'} keepOut={mounting === 'standoffs' || mounting === 'eyelets' ? keepOutMm(draft?.sizes[0]) : 0} />
+      {sheet?.theme
+        ? <ThemedPreview sheet={sheet} gloss={gloss !== 'none'} keepOut={mounting === 'standoffs' || mounting === 'eyelets' ? keepOutMm(draft?.sizes[0]) : 0} fontUrls={themes?.font_urls} assetOrigin={assetOrigin} />
+        : <Preview sheet={step >= 3 ? sheet : null} gloss={gloss !== 'none'} keepOut={mounting === 'standoffs' || mounting === 'eyelets' ? keepOutMm(draft?.sizes[0]) : 0} />}
     </div>
   );
 }
@@ -326,7 +469,7 @@ const PHOTO_SOURCE_WORDS: Record<string, string> = {
 function PosterPhotoField({ draft, source, onChange }: { draft: PosterDraft; source: string | null; onChange: (path: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const has = Boolean(draft.slots.photo_path);
+  const has = slotText(draft.slots, 'photo_path') !== '';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <label style={labelStyle}>Poster photo (optional, sharper than the menu photo)
@@ -346,7 +489,7 @@ function PosterPhotoField({ draft, source, onChange }: { draft: PosterDraft; sou
   );
 }
 
-function Preview({ sheet, gloss, keepOut = 0 }: { sheet: { w: number; h: number; hex_bg: string; pieces: PosterPiece[] } | null; gloss: boolean; keepOut?: number }) {
+function Preview({ sheet, gloss, keepOut = 0 }: { sheet: PosterSheet | null; gloss: boolean; keepOut?: number }) {
   if (!sheet) {
     return <aside style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>The preview appears once a purpose is filled in. Screen colours follow the brand; the file uses the press mixes.</aside>;
   }
@@ -355,14 +498,7 @@ function Preview({ sheet, gloss, keepOut = 0 }: { sheet: { w: number; h: number;
     <aside>
       <div style={{ width: sheet.w * scale, height: sheet.h * scale, position: 'relative', background: sheet.hex_bg, borderRadius: 4, overflow: 'hidden', margin: '0 auto' }}>
         {gloss && <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(135deg, transparent, transparent 6px, var(--color-text) 6px, var(--color-text) 7px)', opacity: 0.28, pointerEvents: 'none' }} />}
-        {/* Where the stand-offs or eyelets go: drawn faintly, kept clear by the layout (§ 3). */}
-        {keepOut > 0 && [[0, 0], [1, 0], [0, 1], [1, 1]].map(([right, bottom]) => {
-          const bleed = 3;
-          const c = bleed + keepOut;
-          const cx = right ? sheet.w - c : c;
-          const cy = bottom ? sheet.h - c : c;
-          return <div key={`${right}${bottom}`} data-testid="poster-keepout" style={{ position: 'absolute', left: (cx - keepOut / 2) * scale, top: (cy - keepOut / 2) * scale, width: keepOut * scale, height: keepOut * scale, borderRadius: '50%', border: '1px dashed var(--color-text-muted)', opacity: 0.8, pointerEvents: 'none', zIndex: 2 }} />;
-        })}
+        <KeepOutRings w={sheet.w} h={sheet.h} scale={scale} keepOut={keepOut} />
         {sheet.pieces.map((p, i) => (
           <div key={i} style={{
             position: 'absolute', left: p.x * scale, top: p.y * scale, width: p.w * scale, height: p.h * scale,
@@ -377,7 +513,7 @@ function Preview({ sheet, gloss, keepOut = 0 }: { sheet: { w: number; h: number;
   );
 }
 
-function MineTab({ onEdit }: { onEdit: () => void }) {
+function MineTab({ onEdit, onMake }: { onEdit: (row: PosterRow) => void; onMake: () => void }) {
   const [rows, setRows] = useState<PosterRow[]>([]);
   const [down, setDown] = useState<PosterRow[]>([]);
   const [note, setNote] = useState('');
@@ -395,9 +531,10 @@ function MineTab({ onEdit }: { onEdit: () => void }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <div>
               <strong>{p.pinned ? '★ ' : ''}{p.code} · {p.name}</strong>
-              <div style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{p.state} · {(p.sizes ?? []).join(', ')}{p.place ? ` · ${p.place}` : ''}{p.take_down_on ? ` · down ${p.take_down_on}` : ''}{p.should_be_down ? ' · should be down' : ''}{typeof p.scans === 'number' ? ` · ${p.scans} scans` : ''}{p.banner ? ' · home banner' : ''}{p.stale ? ` · out of date${p.diff ? `: ${p.diff}` : ''}` : ''}{p.order ? ` · ${p.order.shop ?? 'shop'} ${p.order.state.replace(/_/g, ' ')}` : ''}</div>
+              <div style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{p.state} · {(p.sizes ?? []).join(', ')}{p.theme ? ` · template ${p.theme}` : ''}{p.place ? ` · ${p.place}` : ''}{p.take_down_on ? ` · down ${p.take_down_on}` : ''}{p.should_be_down ? ' · should be down' : ''}{typeof p.scans === 'number' ? ` · ${p.scans} scans` : ''}{p.banner ? ' · home banner' : ''}{p.stale ? ` · out of date${p.diff ? `: ${p.diff}` : ''}` : ''}{p.order ? ` · ${p.order.shop ?? 'shop'} ${p.order.state.replace(/_/g, ' ')}` : ''}</div>
             </div>
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              <Btn variant="ghost" onClick={() => onEdit(p)} aria-label={`Edit ${p.name}`}><Pencil size={14} /> Edit</Btn>
               <Btn variant="ghost" onClick={() => updatePoster(p.id, { pinned: !p.pinned }).then(load)}><Pin size={14} /></Btn>
               <Btn variant="ghost" onClick={() => duplicatePoster(p.id).then(load)}><Copy size={14} /></Btn>
               <Btn variant="ghost" onClick={() => { const name = window.prompt('Name', p.name); if (name) updatePoster(p.id, { name }).then(load); }}>Rename</Btn>
@@ -414,7 +551,7 @@ function MineTab({ onEdit }: { onEdit: () => void }) {
           </div>
         </div>
       ))}
-      <Btn variant="ghost" onClick={onEdit}>Make a poster</Btn>
+      <Btn variant="ghost" onClick={onMake}>Make a poster</Btn>
     </div>
   );
 }
@@ -483,7 +620,7 @@ function OrderRow({ order, manage, onChange }: { order: PosterOrderRow; manage: 
   );
 }
 
-function TemplatesTab({ manage }: { manage: boolean }) {
+function TemplatesTab({ manage, onUse }: { manage: boolean; onUse: (row: PosterTemplateRow) => void }) {
   const [rows, setRows] = useState<PosterTemplateRow[]>([]);
   const load = () => fetchPosterTemplates().then(setRows).catch(() => undefined);
   useEffect(() => { load(); }, []);
@@ -491,14 +628,13 @@ function TemplatesTab({ manage }: { manage: boolean }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {rows.length === 0 && <p style={{ color: 'var(--color-text-muted)' }}>No saved templates. Save one from Make a poster.</p>}
       {rows.map((t) => (
-        <div key={t.id} style={{ ...cardStyle, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <div><strong>{t.name}</strong><div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t.template_key} · {t.mood}{t.locked ? ' · locked' : ''}</div></div>
-          {manage && (
-            <div style={{ display: 'flex', gap: 4 }}>
-              <Btn variant="ghost" onClick={() => lockPosterTemplate(t.id, !t.locked).then(load)}>{t.locked ? 'Unlock' : 'Lock'}</Btn>
-              <Btn variant="ghost" onClick={() => deletePosterTemplate(t.id).then(load)}>Delete</Btn>
-            </div>
-          )}
+        <div key={t.id} style={{ ...cardStyle, display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          <div><strong>{t.name}</strong><div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t.theme ? `template ${t.theme}` : `${t.template_key} · ${t.mood}`}{t.locked ? ' · locked' : ''}</div></div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <Btn variant="secondary" onClick={() => onUse(t)} aria-label={`Use ${t.name}`}>Use</Btn>
+            {manage && <Btn variant="ghost" onClick={() => lockPosterTemplate(t.id, !t.locked).then(load)}>{t.locked ? 'Unlock' : 'Lock'}</Btn>}
+            {manage && <Btn variant="ghost" onClick={() => deletePosterTemplate(t.id).then(load)}>Delete</Btn>}
+          </div>
         </div>
       ))}
     </div>

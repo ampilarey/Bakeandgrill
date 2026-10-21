@@ -31,6 +31,8 @@ class PosterThemeMakeTest extends TestCase
         $this->assertCount(110, $catalog->json('themes.themes'));
         $this->assertSame('large', $catalog->json('themes.sizes.A3'));
         $this->assertSame('With item photo', $catalog->json('themes.styles.photo'));
+        $this->assertStringEndsWith('/fonts/pdf/Anton-400.ttf', $catalog->json('themes.font_urls.anton'));
+        $this->assertStringEndsWith('/fonts/pdf/Fraunces-900-Italic.ttf', $catalog->json('themes.font_urls.fri9'));
         $first = $catalog->json('themes.themes.0');
         $this->assertSame('BG-001', $first['id']);
         $this->assertStringEndsWith('/api/posters/themes/bg001-flash-sale-pastries/preview-large.jpg', $first['preview_url']);
@@ -62,6 +64,23 @@ class PosterThemeMakeTest extends TestCase
             ->assertOk()
             ->assertHeader('Content-Type', 'image/svg+xml');
         $this->get('/api/posters/themes/bg012-value-meals-menu/placeholder-large-p1.png')->assertOk();
+        // The backdrop split at its three photo markers: four layers, each a whole SVG, no marker left in.
+        $whole = (string) file_get_contents((string) \App\Domains\Posters\PosterThemes::file('bg012-value-meals-menu', 'backdrop-large.svg'));
+        $layers = [];
+        for ($i = 0; $i < 4; $i++) {
+            $layer = $this->get("/api/posters/themes/bg012-value-meals-menu/backdrop-large-{$i}.svg")
+                ->assertOk()
+                ->assertHeader('Content-Type', 'image/svg+xml');
+            $layers[] = (string) $layer->getContent();
+            $this->assertStringStartsWith('<svg', $layers[$i]);
+            $this->assertStringEndsWith('</svg>', rtrim($layers[$i]));
+            $this->assertStringNotContainsString('__photo_marker', $layers[$i]);
+        }
+        $this->assertSame(3, substr_count($whole, '__photo_marker'));
+        $this->assertStringContainsString('<defs>', $layers[0]);
+        $this->assertStringContainsString('<defs>', $layers[3], 'every layer keeps the head with its gradients');
+        $this->assertGreaterThan(strlen($layers[3]), strlen($layers[0]), 'the first layer carries most of the art');
+        $this->get('/api/posters/themes/bg012-value-meals-menu/backdrop-large-4.svg')->assertNotFound();
         $this->get('/api/posters/themes/bg012-value-meals-menu/theme.json')->assertNotFound();
         $this->get('/api/posters/themes/bg012-value-meals-menu/backdrop-large.json.gz')->assertNotFound();
         $this->get('/api/posters/themes/nope/preview-large.jpg')->assertNotFound();
@@ -150,6 +169,9 @@ class PosterThemeMakeTest extends TestCase
             $this->assertSame($variant, $preview->json('sheet.theme.variant'), $size);
             $this->assertSame('bg012-value-meals-menu', $preview->json('sheet.theme.key'));
             $this->assertStringEndsWith("/backdrop-{$variant}.svg", $preview->json('sheet.theme.backdrop_url'));
+            $this->assertSame(['p1', 'p2', 'p3'], $preview->json('sheet.theme.photo_order'));
+            $this->assertCount(4, $preview->json('sheet.theme.layer_urls'));
+            $this->assertStringEndsWith("/backdrop-{$variant}-3.svg", $preview->json('sheet.theme.layer_urls.3'));
             $pieces = collect($preview->json('sheet.pieces'));
             $t2 = $pieces->first(fn (array $p): bool => $p['type'] === 'text' && ($p['slot'] ?? '') === 't2');
             $this->assertSame('TIKKA DEALS', $t2['text'], $size);
