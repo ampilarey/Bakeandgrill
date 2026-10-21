@@ -144,6 +144,16 @@ Changing the cron line does not replace a running worker — `--max-time=3600`
 keeps it alive for up to an hour and flock stops a replacement starting. To
 apply a change now: `pkill -f "artisan queue:work"` and wait a minute.
 
+**How the queue worker is known to be alive.** Two stamps on one cache key
+(`QueueWorkerHeartbeat`): every finished job and the scheduled
+`QueueWorkerHeartbeatJob` (every minute, proof that a job goes end to end), and
+since 2026-10-21 the worker's own loop, once a minute (`QueueLoopHeartbeat` on
+the `Looping` event, proof that the process is up and can reach Redis). The
+second matters on TEST, which has no `schedule:run` line and queues nothing for
+minutes at a time: before it, `/api/health` there said "degraded: queue" for a
+worker that was fine. Five minutes without either stamp is "stale";
+`ops:watch-queue-worker` texts the owner after ten.
+
 ### The smoke test at the end of every deploy (`app:smoke`)
 
 After the page checks, `full-deploy.sh` runs `php artisan app:smoke`: it reads the menu

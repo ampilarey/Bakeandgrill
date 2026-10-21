@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Domains\Content\ContentResolver;
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\Providers\DhiraaguSmsProvider;
+use App\Domains\System\Services\QueueLoopHeartbeat;
 use App\Domains\System\Services\QueueWorkerHeartbeat;
 use App\Models\Category;
 use App\Models\Item;
@@ -25,6 +26,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
@@ -40,6 +42,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(SmsProviderInterface::class, DhiraaguSmsProvider::class);
         $this->app->singleton(\App\Services\PermissionService::class);
+        // The worker's own heartbeat throttle lives for the worker process.
+        $this->app->singleton(QueueLoopHeartbeat::class);
         // One alert, one message per person per channel, for one request or
         // queued job (owner, 2026-10-10; see the class).
         $this->app->scoped(\App\Domains\Notifications\Support\AlertOnce::class);
@@ -176,6 +180,16 @@ class AppServiceProvider extends ServiceProvider
         };
         Event::listen(JobProcessed::class, $recordWorkerBeat);
         Event::listen(JobFailed::class, $recordWorkerBeat);
+        // And the loop itself, once a minute, so an idle worker on a host with
+        // no scheduler (TEST) still reads alive. Returns nothing: the worker
+        // dispatches Looping with until(), and a non-null answer pauses it.
+        Event::listen(Looping::class, static function (): void {
+            try {
+                app(QueueLoopHeartbeat::class)->onLoop();
+            } catch (\Throwable) {
+                // Never let heartbeat bookkeeping stop the worker.
+            }
+        });
 
         View::composer([
             'layouts.pdf',
