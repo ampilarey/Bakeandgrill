@@ -130,10 +130,11 @@ describe('Order App Content — desktop', () => {
   it('opens on three tabs, and lands on Home without a landing screen first', async () => {
     openOrderApp();
 
-    const workspace = await screen.findByTestId('order-app-content-workspace');
-    expect(workspace.getAttribute('data-tab')).toBe('Home');
+    await screen.findByTestId('order-app-content-workspace');
+    // The tabs render once the content loads, a beat after the workspace.
+    const tabs = await screen.findByRole('tablist', { name: /order app screens/i });
+    expect(screen.getByTestId('order-app-content-workspace').getAttribute('data-tab')).toBe('Home');
 
-    const tabs = screen.getByRole('tablist', { name: /order app screens/i });
     expect(within(tabs).getAllByRole('tab').map((t) => t.textContent?.replace(/\d+$/, '')))
       .toEqual(['Home', 'Other pages', 'Everywhere']);
 
@@ -147,7 +148,7 @@ describe('Order App Content — desktop', () => {
     await screen.findByTestId('order-app-content-workspace');
 
     // Menu + Ordering + About + Privacy = 4 settings under one tab.
-    expect(screen.getByTestId('wcw-tab-Other pages').textContent).toMatch(/4$/);
+    expect((await screen.findByTestId('wcw-tab-Other pages')).textContent).toMatch(/4$/);
     expect(screen.getByTestId('wcw-tab-Everywhere').textContent).toMatch(/1$/);
   });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { act, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MessagesTab } from '../pages/Notifications/MessagesTab';
 import { renderWithRouter } from './testUtils';
 import * as api from '../api';
@@ -242,6 +242,14 @@ function grant(perms: string[]) {
 
 const MANAGE = ['sms.settings.manage', 'sms.templates.edit', 'sms.logs.view', 'settings.update', 'telegram.manage'];
 
+/**
+ * Let the work React has already scheduled land: a render from a resolved
+ * request and the effects that follow it run a scheduler hop after the DOM
+ * change a waitFor sees, so a check made straight after can look at the
+ * screen before they have.
+ */
+const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+
 /** Open one row's controls. Only one is open at a time, so queries can use screen. */
 async function expand(key: string): Promise<HTMLElement> {
   const row = await screen.findByTestId(`sms-type-${key}`);
@@ -454,6 +462,38 @@ describe('Notifications → Messages', () => {
     await waitFor(() => expect(back).toBeEnabled());
     fireEvent.click(back);
     await waitFor(() => expect(api.updateSmsType).toHaveBeenLastCalledWith('owner_stock_reorder', { audience: null }));
+  });
+
+  it('keeps a number still being typed when another change on the row lands', async () => {
+    vi.mocked(api.updateSmsType).mockImplementation(async (key, payload) => {
+      const audience = typeof payload === 'boolean' ? undefined : payload.audience;
+      return {
+        key,
+        audience: { ...OWNERS_MANAGERS, ...(audience ?? {}) },
+        audience_custom: true,
+        audience_people: { people: [], extras: [], groups: ['Owners'], note: null },
+      };
+    });
+    renderWithRouter(<MessagesTab />);
+    await expand('owner_stock_reorder');
+    const editor = () => within(screen.getByTestId('audience-owner_stock_reorder'));
+    const numbers = () => screen.getByLabelText('Numbers for Owner: stock at reorder point');
+    fireEvent.change(numbers(), { target: { value: '7771234' } });
+
+    // A group switched off while the number is still in the box: the saved
+    // audience comes back with the same (empty) numbers, so the box keeps
+    // what was typed and Save stays on.
+    fireEvent.click(editor().getByRole('button', { name: /^Managers/ }));
+    await waitFor(() => expect(editor().getByRole('button', { name: /^Managers/ })).toHaveAttribute('aria-pressed', 'false'));
+    await settle();
+    expect(numbers()).toHaveValue('7771234');
+    expect(editor().getAllByRole('button', { name: 'Save' })[0]).toBeEnabled();
+
+    // Saved numbers do reach the box: Back to the usual people clears them.
+    fireEvent.click(editor().getAllByRole('button', { name: 'Save' })[0]);
+    await waitFor(() => expect(api.updateSmsType).toHaveBeenLastCalledWith('owner_stock_reorder', { audience: expect.objectContaining({ phones: ['7771234'] }) }));
+    await waitFor(() => expect(editor().getAllByRole('button', { name: 'Save' })[0]).toBeDisabled());
+    expect(numbers()).toHaveValue('7771234');
   });
 
   it('says when an alert goes in its row, and 0 is not a way to switch it off', async () => {

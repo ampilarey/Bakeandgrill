@@ -241,9 +241,11 @@ describe('ContentHub desktop width', () => {
     );
 
     await screen.findByTestId('website-content-workspace');
+    // The tabs render once the content loads, a beat after the workspace
+    // (CI, 2026-10-21: the skeleton was still up when Home was looked for).
+    expect(await screen.findByTestId('wcw-tab-Home')).toBeTruthy();
     expect(screen.queryByTestId('section-rail')).toBeNull();
     expect(screen.queryByTestId('rail-collapse-btn')).toBeNull();
-    expect(screen.getByTestId('wcw-tab-Home')).toBeTruthy();
   });
 
   it('Order App desktop has page tabs instead of a section rail', async () => {
@@ -255,9 +257,9 @@ describe('ContentHub desktop width', () => {
     );
 
     await screen.findByTestId('order-app-content-workspace');
+    expect(await screen.findByTestId('wcw-tab-Home')).toBeTruthy();
     expect(screen.queryByTestId('section-rail')).toBeNull();
     expect(screen.queryByTestId('rail-collapse-btn')).toBeNull();
-    expect(screen.getByTestId('wcw-tab-Home')).toBeTruthy();
     // Three tabs, not eight — the small screens share "Other pages".
     expect(screen.queryByTestId('wcw-tab-Menu')).toBeNull();
   });
@@ -279,7 +281,8 @@ describe('ContentHub desktop width — mobile unchanged', () => {
     );
 
     await screen.findByTestId('order-app-content-workspace');
-    expect(screen.getByTestId('wcw-mobile-back')).toBeTruthy();
+    // The page renders once the content loads, a beat after the workspace.
+    expect(await screen.findByTestId('wcw-mobile-back')).toBeTruthy();
     expect(screen.getByTestId('wcw-sections')).toBeTruthy();
     expect(screen.queryByTestId('surface-builder-landing')).toBeNull();
     expect(screen.queryByTestId('hub-desktop-shell')).toBeNull();

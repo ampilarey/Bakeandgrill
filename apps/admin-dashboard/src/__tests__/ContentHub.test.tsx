@@ -92,8 +92,9 @@ describe('ContentHubPage', () => {
     );
 
     expect(await screen.findByRole('heading', { name: /Editing Website/i })).toBeTruthy();
-    // Page tabs carry a count chip, so match the tab itself.
-    expect(screen.getByTestId('wcw-tab-Everywhere')).toBeTruthy();
+    // Page tabs carry a count chip, so match the tab itself. They render once
+    // the content loads, a beat after the heading.
+    expect(await screen.findByTestId('wcw-tab-Everywhere')).toBeTruthy();
     expect(screen.getByTestId('wcw-tab-Home')).toBeTruthy();
   });
 

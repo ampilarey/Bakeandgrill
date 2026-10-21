@@ -137,6 +137,8 @@ describe('Website Content workspace — desktop', () => {
   it('shows the five page tabs in a row', async () => {
     mount();
     await screen.findByTestId('website-content-workspace');
+    // The tabs render once the content loads, a beat after the workspace.
+    await screen.findByTestId('wcw-tab-Home');
     for (const name of ['Home', 'Contact page', 'Hours page', 'Legal', 'Everywhere']) {
       expect(screen.getByTestId(`wcw-tab-${name}`)).toBeTruthy();
     }

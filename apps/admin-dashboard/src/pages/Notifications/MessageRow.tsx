@@ -789,11 +789,18 @@ function AudienceEditor({ row, disabled, staffOptions, groupOptions, onUpdated, 
   const [err, setErr] = useState('');
   const [morePick, setMorePick] = useState('');
 
+  // The typed numbers and emails follow what is saved, and only that. Every
+  // save hands the row a new audience object, and resetting on the object
+  // wiped a number still being typed when a group or a person's change
+  // landed (CI, 2026-10-21: Save stayed off because the typed number was
+  // gone by the time it was checked).
+  const savedPhones = audience.phones.join(', ');
+  const savedEmails = audience.emails.join(', ');
   useEffect(() => {
-    setPhones((row.audience ?? row.audience_default ?? EMPTY_AUDIENCE).phones.join(', '));
-    setEmails((row.audience ?? row.audience_default ?? EMPTY_AUDIENCE).emails.join(', '));
+    setPhones(savedPhones);
+    setEmails(savedEmails);
     setErr('');
-  }, [row.key, row.audience, row.audience_default]);
+  }, [row.key, savedPhones, savedEmails]);
 
   const save = async (next: Partial<AlertAudience> | null) => {
     if (disabled) return;

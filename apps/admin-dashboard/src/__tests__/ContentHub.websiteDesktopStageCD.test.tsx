@@ -153,6 +153,6 @@ describe('Website desktop Stages C+D', () => {
     await screen.findByTestId('order-app-content-workspace');
     expect(screen.queryByTestId('preview-toggle')).toBeNull();
     expect(screen.getByTestId('view-live-site')).toBeTruthy();
-    expect(screen.getByTestId('website-device-filter')).toBeTruthy();
+    expect(await screen.findByTestId('website-device-filter')).toBeTruthy();
   });
 });

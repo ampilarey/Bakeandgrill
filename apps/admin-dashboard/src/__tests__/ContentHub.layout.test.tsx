@@ -106,7 +106,8 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     );
 
     await screen.findByTestId('website-content-workspace');
-    expect(screen.getByTestId('wcw-tab-Home')).toBeTruthy();
+    // The tabs render once the content loads, a beat after the workspace.
+    expect(await screen.findByTestId('wcw-tab-Home')).toBeTruthy();
     expect(screen.getByTestId('wcw-sections')).toBeTruthy();
     expect(screen.queryByTestId('section-rail')).toBeNull();
     expect(screen.queryByTestId('preview-pane')).toBeNull();
