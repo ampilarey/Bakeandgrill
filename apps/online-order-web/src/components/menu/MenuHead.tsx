@@ -101,6 +101,22 @@ function barHeight(head: HTMLElement): number {
   return parseFloat(getComputedStyle(head).getPropertyValue('--mh-bar-h')) || 0;
 }
 
+/**
+ * The first section's photo above the strip, with its gap: the head pins that
+ * far above the sticky line, so the photo scrolls away with the page and the
+ * strip stays (see .mh-hero in index.css).
+ */
+function heroBlock(head: HTMLElement): number {
+  const hero = head.querySelector<HTMLElement>('.mh-hero');
+  if (!hero) return 0;
+  return hero.offsetHeight + (parseFloat(getComputedStyle(head).getPropertyValue('--mh-gap')) || 0);
+}
+
+/** What the pinned head takes of the screen: the strip and its gap, not the photo. */
+function pinnedHeight(head: HTMLElement): number {
+  return head.offsetHeight - heroBlock(head);
+}
+
 /** A section shows the button row when it has two or more sub-categories. */
 function hasRow(section: MenuHeadSection | null | undefined): boolean {
   return !!section && section.subs.length > 1;
@@ -132,6 +148,7 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
 ) {
   const { t } = useLanguage();
   const headRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const searchBtnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   // Owner, 2026-10-07: "it should be hidden on any click outside the box",
@@ -257,12 +274,15 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
     lastY.current = y;
     const head = headRef.current;
     if (!head) return;
-    setStuck(head.getBoundingClientRect().top <= stickyTop() + 1);
+    // Pinned once the head's own place in the page (the sentinel just above
+    // it) is past the sticky line, whatever the head's gliding position says.
+    const sentinel = sentinelRef.current;
+    if (sentinel) setStuck(sentinel.getBoundingClientRect().bottom <= stickyTop() - heroBlock(head) + 1);
     // A tap is travelling: keep its target lit rather than flickering
     // through every button on the way.
     if (lockRef.current || override) return;
     const current = sectionsRef.current.find((x) => x.key === activeRef.current.key);
-    const line = stickyTop() + head.offsetHeight + (hasRow(current) ? barHeight(head) : 0) + 12;
+    const line = stickyTop() + pinnedHeight(head) + (hasRow(current) ? barHeight(head) : 0) + 12;
     const found = sectionsRef.current
       .map((s) => ({ s, el: document.getElementById(s.domId) }))
       .filter((x): x is { s: MenuHeadSection; el: HTMLElement } => x.el !== null);
@@ -301,20 +321,16 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
     };
   }, [spy, syncAll, sections]);
 
-  // The banner's height, for anchors that land under it.
-  useEffect(() => {
+  // The pinned head's height, for anchors that land under it, and the photo
+  // above the strip, for how far above the sticky line the head pins. Before
+  // paint, so a page that opens scrolled pins where it should.
+  useLayoutEffect(() => {
     const head = headRef.current;
     if (!head) return undefined;
     const root = document.documentElement;
-    const banner = head.querySelector<HTMLElement>('.mh-banner');
     const apply = () => {
-      root.style.setProperty('--menu-head-height', `${Math.ceil(head.getBoundingClientRect().height + barHeight(head))}px`);
-      // The banner's 7:3 height at this width, so the fold animates from it;
-      // a computer caps it so the banner never takes the screen (.mh-banner).
-      if (banner) {
-        const cap = typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 1024px)').matches ? 320 : 9999;
-        head.style.setProperty('--mh-full', `${Math.round(Math.min(banner.clientWidth * 3 / 7, cap))}px`);
-      }
+      head.style.setProperty('--mh-hero', `${Math.round(heroBlock(head))}px`);
+      root.style.setProperty('--menu-head-height', `${Math.ceil(pinnedHeight(head) + barHeight(head))}px`);
     };
     apply();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
@@ -332,11 +348,11 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
     const sec = sectionsRef.current.find((s) => s.domId === domId || s.subs.some((b) => b.domId === domId));
     if (!el || !head || !sec) return;
     const under = hasRow(sec) ? barHeight(head) : 0;
-    const line = stickyTop() + head.offsetHeight + under + 12;
+    const line = stickyTop() + pinnedHeight(head) + under + 12;
     const dir: 1 | -1 = el.getBoundingClientRect().top > line ? 1 : -1;
     const quiet = instant || reduceMotion();
     choose(sec.key, sec.domId === domId ? (sec.subs[0]?.domId ?? null) : domId, dir, quiet);
-    const y = Math.max(0, window.scrollY + el.getBoundingClientRect().top - stickyTop() - head.offsetHeight - under + 2);
+    const y = Math.max(0, window.scrollY + el.getBoundingClientRect().top - stickyTop() - pinnedHeight(head) - under + 2);
     if (quiet) {
       window.scrollTo(0, y);
       lastY.current = window.scrollY;
@@ -405,17 +421,31 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
   // first section has one; further down the row floats over the dishes.
   const room = !override && hasRow(sections[0]);
   const allSubs = section?.subs ?? [];
+  // The cover photo at the top of the menu is the first section's, whole; the
+  // strip under it follows the section in view.
+  const heroImage = sections[0]?.image ?? null;
 
   return (
+    <>
+    {/* Just above the head: its place in the page, which says whether it is pinned. */}
+    <div ref={sentinelRef} className="mh-sentinel" aria-hidden="true" />
     <div
       ref={headRef}
       className={`mh${still ? ' mh--still' : ''}${showRow ? ' has-row' : ''}${panelShown ? ' has-panel' : ''}${room ? ' mh--room' : ''}${stuck ? ' is-stuck' : ''}`}
       data-testid="menu-head"
     >
-      {/* The tint sits behind the name once the banner folds, and is the banner itself without a photo. */}
+      {heroImage && (
+        <div
+          className="mh-hero"
+          style={{ backgroundImage: `url("${heroImage.replace(/"/g, '%22')}")` }}
+          aria-hidden="true"
+          data-testid="menu-head-hero"
+        />
+      )}
+      {/* The strip: the section's tint, its photo as a thumbnail once pinned, the name and the buttons. */}
       <div
         className={`mh-banner${shownImage ? '' : ' mh-banner--plain'}`}
-        style={{ '--mh-tint': override ? undefined : section?.tint } as CSSProperties}
+        style={{ '--mh-tint': override ? menuTint(0) : section?.tint } as CSSProperties}
       >
         {layers.map((url, i) => (
           <div
@@ -425,7 +455,6 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
             aria-hidden="true"
           />
         ))}
-        <div className="mh-shade" aria-hidden="true" />
         <div className="mh-copy" aria-live="polite">
           <span className="mh-title">
             {titles.map((line) => (
@@ -555,5 +584,6 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
         document.body,
       )}
     </div>
+    </>
   );
 });

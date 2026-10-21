@@ -30,8 +30,13 @@ function page() {
 
 /** Owner, 2026-10-07: "keep the main category in the rail and sub category below the banner". */
 describe('MenuHead', () => {
-  /** Owner, 2026-10-22: the pinned strip showed only a slice of the 7:3 banner. */
-  it('is the whole banner at the top and folds to a strip, the section tint behind the name, once pinned', () => {
+  /**
+   * Owner, 2026-10-22: the pinned strip showed only a slice of the 7:3 banner;
+   * then a strip that grew to the photo and folded back was "not smooth". The
+   * first section's photo sits whole above the strip and scrolls away; the
+   * strip stays, with the section's thumbnail and tint once pinned.
+   */
+  it("shows the first section's photo whole above the strip, which stays, with the section's thumbnail and tint once pinned", () => {
     const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect');
     const at = (top: number) => ({ top, bottom: top + 100, left: 0, right: 300, width: 300, height: 100, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
     rect.mockReturnValue(at(200));
@@ -41,22 +46,38 @@ describe('MenuHead', () => {
     const head = screen.getByTestId('menu-head');
     const banner = head.querySelector('.mh-banner') as HTMLElement;
 
-    // Above its pinning point: not folded; the section's tint is ready behind the name.
+    // The cover photo is the first section's, right above the strip.
+    expect(screen.getByTestId('menu-head-hero').getAttribute('style')).toContain('/media/food.jpg');
+    expect(head.querySelector('.mh-hero + .mh-banner')).toBe(banner);
+
+    // Its place in the page is below the sticky line: not pinned. The
+    // section's tint and its thumbnail are ready behind the name.
     act(() => ref.current?.goTo('sec-1', true));
     expect(head).not.toHaveClass('is-stuck');
     expect(banner).not.toHaveClass('mh-banner--plain');
     expect(banner.style.getPropertyValue('--mh-tint')).toBe('red');
+    expect(head.querySelector('.mh-img.is-on')?.getAttribute('style')).toContain('/media/food.jpg');
 
-    // At its pinning point: folded.
-    rect.mockReturnValue(at(0));
+    // Past the sticky line: pinned. A section without a photo wears its tint
+    // alone, and the cover photo stays the first section's.
+    rect.mockReturnValue(at(-100));
     act(() => { fireEvent(window, new Event('resize')); });
     expect(head).toHaveClass('is-stuck');
-
-    // A section without a photo wears its tint as the banner itself.
     act(() => ref.current?.goTo('sec-2', true));
     expect(banner).toHaveClass('mh-banner--plain');
     expect(banner.style.getPropertyValue('--mh-tint')).toBe('blue');
+    expect(screen.getByTestId('menu-head-hero').getAttribute('style')).toContain('/media/food.jpg');
     rect.mockRestore();
+  });
+
+  it('has no cover photo when the first section has none', () => {
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const ref = createRef<MenuHeadHandle>();
+    render(<>{page()}<MenuHead ref={ref} sections={[sections[1], sections[0]]} searchOpen={false} searchActive={false} onSearchToggle={() => {}} /></>);
+    expect(screen.queryByTestId('menu-head-hero')).toBeNull();
+    // The strip alone, on the section's tint.
+    act(() => ref.current?.goTo('sec-2', true));
+    expect(screen.getByTestId('menu-head').querySelector('.mh-banner')).toHaveClass('mh-banner--plain');
   });
 
   it('shows the section in view with its photo, count, Share and its sub-categories as buttons', () => {

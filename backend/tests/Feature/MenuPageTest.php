@@ -865,6 +865,24 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('<div class="mh-under">', $html);
     }
 
+    public function test_the_first_section_photo_sits_whole_above_the_strip(): void
+    {
+        $cat = $this->category('Hedhika', 1);
+        $cat->update(['image_url' => 'https://cdn.example.com/hedhika-banner.jpg']);
+        $this->item($cat, 'Bajiya', 4);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        // The first section's 7:3 photo, whole, above the strip: it scrolls
+        // away with the page while the strip stays (owner, 2026-10-22: a strip
+        // that grew to the photo and folded back was "not smooth"). The
+        // sentinel just above the head tells the script when it is pinned.
+        $this->assertStringContainsString('<div class="mh-sentinel" data-mh-sentinel aria-hidden="true"></div>', $html);
+        $this->assertStringContainsString("<div class=\"mh-hero\" style=\"background-image: url('https://cdn.example.com/hedhika-banner.jpg')\" aria-hidden=\"true\"></div>", $html);
+        $this->assertMatchesRegularExpression('#<div class="mh-banner" style="--mh-tint: linear-gradient[^"]*">#', $html);
+        $this->assertStringNotContainsString('mh-shade', $html);
+    }
+
     public function test_a_category_with_one_block_gets_no_buttons(): void
     {
         $cat = $this->category('Drinks', 1);
@@ -876,9 +894,10 @@ class MenuPageTest extends TestCase
         // No row means no strip under the banner (owner, 2026-10-07).
         $this->assertStringContainsString('<div class="mh" data-mh', $html);
         // The banner is drawn for the first section before any script runs.
-        // No photo: it wears the section's tint, which also sits behind the
-        // name once the banner folds to a strip (owner, 2026-10-22).
+        // No photo: the strip wears the section's tint, and there is no cover
+        // photo above it (owner, 2026-10-22).
         $this->assertMatchesRegularExpression('#<div class="mh-banner mh-banner--plain" style="--mh-tint: linear-gradient[^"]*">#', $html);
+        $this->assertStringNotContainsString('class="mh-hero"', $html);
         $this->assertMatchesRegularExpression('#<div class="mh-title"><span\s*>Drinks</span></div>#', $html);
         $this->assertStringContainsString('<span class="mh-count">1 item</span>', $html);
     }

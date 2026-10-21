@@ -638,15 +638,19 @@ cards and the signage magazine hero are 4:3, the order app's rail draws the cate
 and the newsletter's thumbs are 64 × 48 with width and height attributes (mail apps ignore
 `object-fit`; a square box squashed them). The round cards (website menu, order app, home
 specials, offers, signage lists) and the till's square tiles crop a 4:3 photo by design (the ZUS
-look; a cut-out is never cropped). The menu banner (`.mh` on both menus) is the whole 7:3 crop at
-the top of the menu and, once pinned, folds to a strip (`--mh-strip`) with the picture docked whole
-at its left as a small 7:3 thumbnail (`--mh-thumb`, 36 px tall on a phone; at the strip's full
-height it crowded the name off) and the name beside it on the section's tint (`--mh-tint`;
-`.mh-banner--plain` without a photo; the count hides while pinned; `--mh-full` is the measured 7:3
-height, capped at 320 px on a computer; `is-stuck` is set by the website script and by `MenuHead`'s
-`stuck` state; `.mh-banner` keeps `width: 100%`, since with `auto` a browser carries the strip's
-`max-height` through the aspect ratio into a max-width). A new frame for a stored picture uses its
-ratio, and a new email thumb carries width and height attributes in that ratio.
+look; a cut-out is never cropped). The menu banner (`.mh` on both menus) is a cover photo above a
+title strip (owner, 2026-10-22: a strip that grew to the photo and folded back was "not smooth",
+and sections without a photo became tall boxes): at the top of the menu the first section's whole
+7:3 crop (`.mh-hero`, capped at 320 px) sits above the strip (`--mh-strip`), and the head pins
+`--mh-hero` (the photo and its gap, measured by the website script and by `MenuHead`) above the
+sticky line, so the photo scrolls away with the page while the strip stays and the head's height
+in the page never changes. Pinned (`is-stuck`, read from the zero-height `.mh-sentinel` just above
+the head, since the head's own position is still gliding while the phone's header slides away),
+the strip shows the section in view with its photo as a small 7:3 thumbnail (`--mh-thumb`, 36 px
+on a phone) beside the name on the section's tint (`--mh-tint`; `.mh-banner--plain` without a
+photo) and hides the count; the hero fades while pinned, since on a computer its last rows would
+show between the header and the strip. A new frame for a stored picture uses its ratio, and a new
+email thumb carries width and height attributes in that ratio.
 
 ## Dhivehi addresses on the website
 

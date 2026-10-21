@@ -188,9 +188,11 @@ span.menu-rail-thumb {
    third of a second and only transform / opacity, and none of it runs for a
    visitor who asked their device for less motion. */
 .mh {
-    position: sticky; top: var(--menu-sticky); z-index: 30;
+    /* Pinned --mh-hero (the first section's photo and its gap) above the
+       line, so the photo scrolls away and the strip stays; see .mh-hero. */
+    position: sticky; top: calc(var(--menu-sticky) - var(--mh-hero, 0px)); z-index: 30;
     background: var(--bg);
-    padding-top: 0.5rem;
+    padding-top: var(--mh-gap, 0.5rem);
     margin-bottom: 0.25rem;
     /* The two flat side strips cover the 2px a dish photo's frame reaches
        past the column, so no sliver of a photo shows beside the banner. */
@@ -204,54 +206,45 @@ span.menu-rail-thumb {
     bottom: 100%; height: var(--menu-sticky);
     background: var(--bg);
 }
-/* At the top of the menu the banner is the admin's 7:3 crop, whole (owner,
-   2026-10-22: the strip showed only a slice of it). Once the head pins, the
-   banner folds to a strip (--mh-strip) and the picture docks at its left,
-   still whole, with the name beside it on the section's tint. --mh-full is
-   the 7:3 height the script measures, so the fold animates from the real
-   height; on a computer it is capped, so the banner never takes the screen. */
-.mh { --mh-strip: 88px; --mh-thumb: 52px; }
-.mh-banner {
-    position: relative; border-radius: 14px; overflow: hidden;
-    background: var(--amber-light);
-    /* An explicit width: with width auto, a browser carries the strip's
-       max-height through the aspect ratio into a max-width, and the pinned
-       banner shrank to a 140px box (TEST, 2026-10-22). */
-    width: 100%; height: auto; aspect-ratio: 7 / 3;
-    /* The fallback is the computer's cap, so a wide screen never jumps when the script measures. */
-    max-height: var(--mh-full, 320px);
-    transition: max-height 0.3s var(--mh-ease);
+/* At the top of the menu the first section's 7:3 photo sits whole above the
+   strip (owner, 2026-10-22: the strip showed only a slice of it; then, when
+   the strip itself grew to the photo and folded, "when it moves it shrinks
+   and it's not smooth"). The head's height in the page never changes: it
+   pins --mh-hero (the photo and its gap, measured by the script) above the
+   sticky line, so the photo scrolls away with the page and the strip stays.
+   Pinned, the strip shows the section in view with its photo as a small 7:3
+   thumbnail (--mh-thumb) beside the name on the section's tint; a section
+   without a photo is the strip and the tint alone, at the top as well. The
+   order app's MenuHead does the same. */
+.mh { --mh-strip: 88px; --mh-thumb: 52px; --mh-gap: 8px; }
+.mh-hero {
+    width: 100%; aspect-ratio: 7 / 3; max-height: 320px; margin-bottom: var(--mh-gap);
+    border-radius: 14px; background: var(--amber-light) center / cover no-repeat;
+    transition: opacity 0.25s ease;
 }
-.mh-banner--plain, .mh.is-stuck .mh-banner { background: var(--mh-tint, var(--amber-light)); }
-.mh.is-stuck .mh-banner { max-height: var(--mh-strip); }
+/* Pinned, the photo is past the sticky line; on a computer its last rows
+   would show between the site header and the strip, so it fades as it goes. */
+.mh.is-stuck .mh-hero { opacity: 0; }
+.mh-banner {
+    position: relative; height: var(--mh-strip); border-radius: 14px; overflow: hidden;
+    background: var(--mh-tint, var(--amber-light));
+}
 .mh-banner::before {
-    /* A faint scatter of flames; a photo covers it, so it shows only on a
-       section without one. */
+    /* A faint scatter of flames over the tint. */
     content: ""; position: absolute; inset: 0;
     background: url('/brand/flame-pattern.svg') 0 0 / 120px 120px repeat;
     opacity: 0.12; pointer-events: none;
 }
+/* The section's photo, a thumbnail at the strip's left once pinned; two
+   layers cross-fade from one section to the next. */
 .mh-img {
-    position: absolute; left: -6px; top: -6px; width: calc(100% + 12px); height: calc(100% + 12px);
+    position: absolute; left: 12px; top: calc(50% - var(--mh-thumb) / 2);
+    width: calc(var(--mh-thumb) * 7 / 3); height: var(--mh-thumb); border-radius: 8px;
     background-size: cover; background-position: center;
     opacity: 0; transform: scale(1.06);
-    transition: opacity 0.32s ease, transform 0.9s var(--mh-ease),
-        left 0.3s var(--mh-ease), top 0.3s var(--mh-ease), width 0.3s var(--mh-ease), height 0.3s var(--mh-ease);
+    transition: opacity 0.32s ease, transform 0.9s var(--mh-ease);
 }
-.mh-img.is-on { opacity: 1; transform: scale(1); }
-/* Pinned: the picture is a small 7:3 thumbnail at the left, whole, the name
-   beside it; at the strip's full height it crowded the name off a phone. */
-.mh.is-stuck .mh-img {
-    left: 12px; top: calc(50% - var(--mh-thumb) / 2);
-    width: calc(var(--mh-thumb) * 7 / 3); height: var(--mh-thumb);
-    border-radius: 8px;
-}
-.mh-shade {
-    position: absolute; inset: 0;
-    background: linear-gradient(90deg, rgba(28,20,8,0.72) 0%, rgba(28,20,8,0.28) 60%, rgba(28,20,8,0.1) 100%);
-    transition: opacity 0.3s ease;
-}
-.mh.is-stuck .mh-shade { opacity: 0; }
+.mh.is-stuck .mh-img.is-on { opacity: 1; transform: scale(1); }
 .mh-copy {
     position: absolute; inset: 0; z-index: 1;
     display: flex; align-items: center; gap: 0.6rem;
@@ -259,7 +252,7 @@ span.menu-rail-thumb {
     transition: padding 0.3s var(--mh-ease);
 }
 .mh.is-stuck .mh-banner:not(.mh-banner--plain) .mh-copy { padding-left: calc(22px + var(--mh-thumb) * 7 / 3); }
-/* The strip keeps the name and the buttons; the count waits for the full banner. */
+/* The strip keeps the name and the buttons; the count waits for the top of the menu. */
 .mh.is-stuck .mh-count { display: none; }
 .mh.is-stuck .mh-title { flex: 0 1 auto; min-width: 0; }
 .mh.is-stuck .mh-title span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
@@ -444,7 +437,7 @@ html.js .mh-panel .menu-filters { background: transparent; padding: 0.7rem 0 0.7
 .menu-sec + .menu-sec { margin-top: 1.1rem; padding-top: 0.9rem; border-top: 6px solid color-mix(in srgb, var(--border) 45%, transparent); }
 
 .mh { --mh-strip: 60px; --mh-thumb: 36px; }
-.mh-banner { border-radius: 12px; }
+.mh-banner, .mh-hero { border-radius: 12px; }
 .mh-copy { padding: 0 5.6rem 0 0.9rem; gap: 0.45rem; }
 .mh-title { height: 1.6rem; }
 .mh-title span { font-size: 1.15rem; line-height: 1.6rem; }
@@ -457,7 +450,7 @@ html.js .mh-panel .menu-filters { background: transparent; padding: 0.7rem 0 0.7
 .mh-all { height: 36px; padding: 0 0.6rem; }
 @media (min-width: 769px) {
   .mh { --mh-strip: 88px; --mh-thumb: 52px; }
-  .mh-banner { border-radius: 14px; }
+  .mh-banner, .mh-hero { border-radius: 14px; }
   .mh-copy { padding: 0 6.75rem 0 1.1rem; gap: 0.6rem; }
   .mh-title { height: 2rem; }
   .mh-title span { font-size: 1.5rem; line-height: 2rem; }
@@ -1313,11 +1306,16 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
              cross-fades, the name rolls, the buttons slide across. Drawn here
              for the first section so it reads right before any script runs. --}}
         @if($firstSec)
+        {{-- Just above the head: its place in the page, which says whether it is pinned. --}}
+        <div class="mh-sentinel" data-mh-sentinel aria-hidden="true"></div>
         <div class="mh{{ $firstSec['subs'] !== [] ? ' has-row mh--room' : '' }}" data-mh data-testid="menu-head">
+            {{-- The first section's photo, whole, above the strip; it scrolls away with the page. --}}
+            @if($firstSec['image'])
+            <div class="mh-hero" style="background-image: url('{{ $firstSec['image'] }}')" aria-hidden="true"></div>
+            @endif
             <div class="mh-banner{{ $firstSec['image'] ? '' : ' mh-banner--plain' }}" style="--mh-tint: {{ $firstSec['tint'] }}">
                 <div class="mh-img is-on" @if($firstSec['image']) style="background-image: url('{{ $firstSec['image'] }}')" @endif></div>
                 <div class="mh-img"></div>
-                <div class="mh-shade" aria-hidden="true"></div>
                 <div class="mh-copy" aria-live="polite">
                     <div class="mh-title"><span @if($firstSec['dv']) lang="dv" @endif>{{ $firstSec['name'] }}</span></div>
                     <span class="mh-count">{{ $firstSec['count'] }} {{ Str::plural('item', $firstSec['count']) }}</span>
@@ -1943,6 +1941,8 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     var railList = rail.querySelector('.menu-rail-list');
     var railPill = rail.querySelector('.menu-rail-pill');
     var banner = head.querySelector('.mh-banner');
+    var hero = head.querySelector('.mh-hero');
+    var sentinel = document.querySelector('[data-mh-sentinel]');
     var imgs = Array.prototype.slice.call(head.querySelectorAll('.mh-img'));
     var title = head.querySelector('.mh-title');
     var count = head.querySelector('.mh-count');
@@ -1953,17 +1953,18 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     var front = 0;
 
     function stickyTop() { return parseFloat(getComputedStyle(root).getPropertyValue('--menu-sticky')) || 0; }
-    // The banner's 7:3 height at this width, so the fold animates from it; a
-    // computer caps it so the banner never takes the screen (see .mh-banner).
-    function measure() {
-        var cap = window.matchMedia && window.matchMedia('(min-width: 1024px)').matches ? 320 : 9999;
-        head.style.setProperty('--mh-full', Math.round(Math.min(banner.clientWidth * 3 / 7, cap)) + 'px');
-    }
+    // The first section's photo above the strip, with its gap: the head pins
+    // that far above the sticky line, so the photo scrolls away with the page
+    // and the strip stays (see .mh-hero).
+    function heroBlock() { return hero ? hero.offsetHeight + (parseFloat(getComputedStyle(head).getPropertyValue('--mh-gap')) || 0) : 0; }
+    function measure() { head.style.setProperty('--mh-hero', Math.round(heroBlock()) + 'px'); }
+    // What the pinned head takes of the screen: the strip and its gap, not the photo.
+    function pinnedH() { return head.offsetHeight - heroBlock(); }
     // The line just under the pinned banner: whatever crosses it is "in view".
     // The button row floats under the banner (it does not push the list), so
     // it counts towards the line only while it is showing.
     function underH() { return head.classList.contains('has-row') ? (parseFloat(getComputedStyle(head).getPropertyValue('--mh-bar-h')) || 0) : 0; }
-    function line() { return stickyTop() + head.offsetHeight + underH() + 12; }
+    function line() { return stickyTop() + pinnedH() + underH() + 12; }
     function sections() {
         return Array.prototype.slice.call(document.querySelectorAll('.menu-sec')).filter(function (s) { return !s.hidden; });
     }
@@ -2120,7 +2121,11 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     function spy() {
         var dir = window.scrollY >= state.y ? 1 : -1;
         state.y = window.scrollY;
-        head.classList.toggle('is-stuck', head.getBoundingClientRect().top <= stickyTop() + 1);
+        // Pinned once the head's own place in the page (the sentinel just above
+        // it) is past the sticky line: the head's position would still be
+        // gliding while the phone's header slides away, and a scroll that
+        // ended mid-glide left the banner unfolded (owner, 2026-10-22).
+        if (sentinel) head.classList.toggle('is-stuck', sentinel.getBoundingClientRect().bottom <= stickyTop() - heroBlock() + 1);
         // A tap is travelling: keep its target lit rather than flickering
         // through every button on the way.
         if (state.lock) return;
@@ -2150,7 +2155,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     // A tap switches everything to the target at once, the page glides
     // there, and on arrival the label flashes and the first dishes rise.
     function targetY(el) {
-        return window.scrollY + el.getBoundingClientRect().top - stickyTop() - head.offsetHeight - underH() + 2;
+        return window.scrollY + el.getBoundingClientRect().top - stickyTop() - pinnedH() - underH() + 2;
     }
     // ── Phone: the site header gets out of the way ───────────────────
     // Down: it slides up and the banner takes its place. Up a little: it
