@@ -67,3 +67,13 @@ export function allowedOrderTypes(permissions: string[]): PosOrderType[] {
   if (!known) return [...POS_ORDER_TYPES];
   return POS_ORDER_TYPES.filter((t) => permissions.includes(ORDER_TYPE_PERMISSION[t]));
 }
+
+/**
+ * What a new ticket starts on: nothing (owner, 2026-10-21: takeaways were
+ * charged as dine-in because Dine-in was preselected, and the last ticket's
+ * type carried over to the next). The till asks at the first item. Someone
+ * allowed one type only is never asked.
+ */
+export function startingOrderType(permitted: PosOrderType[]): PosOrderType | null {
+  return permitted.length === 1 ? permitted[0] : null;
+}

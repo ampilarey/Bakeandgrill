@@ -1048,6 +1048,38 @@ Ordering → Features → Till turns it off (`pos_suggestion_strip_enabled`, def
 as `suggestion_strip` in the till tabs). Do not bring back anything that appears over the
 ticket or moves under the cashier's finger.
 
+## Till: a new ticket has no order type until the cashier says
+
+Owner, 2026-10-21: cashiers charged takeaways as dine-in, with the service charge instead of
+the packaging fee, because Dine-in was preselected; and the last ticket's type carried over to
+the next. A new ticket starts on no type (`startingOrderType` in `usePosPermissions.ts`: the one
+type when a person may ring only one, else null), and the type clears after every sale and
+Clear. The first tap on a dish, a chip or a scan is held by `useOrderTypeGate` while
+`OrderTypeSheet` asks: Dine-in and Takeaway as the big tiles, Pickup and Delivery under them,
+and only the types the person may ring (`allowedOrderTypes`, so one turned off in Admin → Staff
+is not there). Dine-in goes on to the tables (free ones bright, in use greyed with the ticket
+they hold, "Not seated yet"); the held tap runs once the type has landed, so packaging and the
+Configure decision follow it (`itemNeedsConfigure` in `utils/tileRules.ts`, one rule for the
+tiles, the strip and the gate). The cart's type buttons stay unchosen with a hint, the phone's
+folded cart bar reads "Tap to choose", and Charge, Save and `useOrderCreation` refuse with
+"Choose dine-in or takeaway first." A dine-in ticket with no table is reminded at Save (the
+modal's own picker, with a note) and at Charge (the sheet in table mode, "No table" a tap
+away). Switching the type or the table stays as it was, before and after save. Never bring
+back a preselected type. `useOrderTypeGate.test.ts`, `OrderTypeSheet.test.tsx`; the e2e
+helper `answerOrderTypeIfAsked` answers the sheet where a spec only wants an item on the ticket.
+Two money bugs the browser check of this change turned up (2026-10-21): the public settings
+(`GET /api/site-settings/public`, `GET /api/content?app=order_app`) are built from the content
+registry, which carries copy and branding only, so the till's cart and the order app's checkout
+never received the service charge settings, a dine-in cart showed a total without it and Charge
+stopped with "Order total changed". `App\Support\PublicOperationalSettings::KEYS` is the named
+list of operational keys those two payloads carry beside the registry (the service charge, the
+till's quick notes, the delivery estimate), read live from `site_settings` and never a second
+place to edit them; a new key the till or the order app reads by name from the public settings
+goes there (`PublicOperationalSettingsTest` holds the list to the apps' source; the website's
+payload stays registry only). And `reconcilePackagingOnEligibleSwitch` gives a flat-fee item
+with no packaging options its own fee on a switch to takeaway, as a fresh add does; it left
+with none, which the server took as sent.
+
 ## Poster print PDFs (PDF/X-4)
 
 Posters render through TCPDF via `App\Domains\Posters\Pdf\PdfX4Document`, not dompdf

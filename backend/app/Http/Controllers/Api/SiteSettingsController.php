@@ -10,16 +10,21 @@ use App\Domains\Permissions\Services\PermissionService;
 use App\Http\Controllers\Controller;
 use App\Models\SiteSetting;
 use App\Models\User;
+use App\Support\PublicOperationalSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class SiteSettingsController extends Controller
 {
-    /** GET /api/site-settings/public — alias of GET /api/content?app=order_app */
+    /**
+     * GET /api/site-settings/public — alias of GET /api/content?app=order_app,
+     * plus the operational keys the till and the order app price with
+     * (PublicOperationalSettings; the registry's own keys win).
+     */
     public function public(): JsonResponse
     {
-        $settings = ContentResolver::for('order_app')->allPublic();
+        $settings = ContentResolver::for('order_app')->allPublic() + PublicOperationalSettings::values();
 
         return response()->json(['settings' => $settings]);
     }

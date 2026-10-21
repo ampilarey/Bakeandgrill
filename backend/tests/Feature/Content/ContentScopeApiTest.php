@@ -6,6 +6,7 @@ namespace Tests\Feature\Content;
 
 use App\Domains\Content\ContentRegistry;
 use App\Models\SiteSetting;
+use App\Support\PublicOperationalSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -42,8 +43,20 @@ class ContentScopeApiTest extends TestCase
     {
         $map = $this->getJson('/api/content?app=order_app')->assertOk()->json('content');
         foreach (array_keys($map) as $key) {
+            // The order app's payload also carries the named operational keys it
+            // prices with (service charge, delivery estimate); nothing else
+            // outside the registry (PublicOperationalSettingsTest).
+            if (in_array((string) $key, PublicOperationalSettings::KEYS, true)) {
+                continue;
+            }
             $this->assertTrue(ContentRegistry::isPublic((string) $key));
             $this->assertTrue(ContentRegistry::targetsApp((string) $key, 'order_app'));
+        }
+
+        $website = $this->getJson('/api/content?app=website')->assertOk()->json('content');
+        foreach (array_keys($website) as $key) {
+            $this->assertTrue(ContentRegistry::isPublic((string) $key));
+            $this->assertTrue(ContentRegistry::targetsApp((string) $key, 'website'));
         }
     }
 

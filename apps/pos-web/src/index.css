@@ -3050,3 +3050,119 @@ html, body, #root {
 @media (min-width: 900px) {
   .pos-refresh-label { display: inline !important; }
 }
+
+/* ── Order type ask (owner, 2026-10-21): the sheet a new ticket shows before
+   its first item, and the table reminder at Save and Charge. Phone first; two
+   tiles across fit a 360px screen, and the table grid sizes itself. ──────── */
+.pos-type-sheet {
+  width: 100%;
+  max-width: 520px;
+  max-height: 100%;
+  margin: auto;
+  box-sizing: border-box;
+  padding: 18px 16px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.35);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.pos-type-sheet__head { display: flex; align-items: flex-start; gap: 10px; }
+.pos-type-sheet__title { margin: 0; font-size: 18px; font-weight: 800; color: #0F172A; }
+.pos-type-sheet__sub { margin: 4px 0 0; font-size: 13px; line-height: 1.4; color: #64748B; }
+.pos-type-sheet__close {
+  flex-shrink: 0;
+  min-width: 40px;
+  min-height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: #F1F5F9;
+  color: #475569;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.pos-type-sheet__types {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+/* The type's colour comes in as custom properties from orderTypeTone. */
+.pos-type-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 84px;
+  padding: 12px 14px;
+  border: 2px solid var(--tone-border);
+  border-radius: 14px;
+  background: var(--tone-tint);
+  color: var(--tone-ink);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pos-type-btn:focus-visible { outline: 3px solid var(--tone-solid); outline-offset: 2px; }
+.pos-type-btn--small {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  min-height: 52px;
+  font-size: 14px;
+}
+.pos-type-btn__dot { width: 10px; height: 10px; border-radius: 999px; background: var(--tone-solid); flex-shrink: 0; }
+.pos-type-btn__hint { font-size: 12px; font-weight: 600; opacity: 0.8; }
+.pos-type-btn--small .pos-type-btn__hint { margin-left: auto; }
+.pos-type-sheet__tables {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 88px), 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+.pos-table-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 58px;
+  padding: 6px;
+  border: 2px solid #99F6E4;
+  border-radius: 12px;
+  background: #F0FDFA;
+  color: #115E59;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pos-table-tile__note {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+.pos-table-tile:disabled { border-color: #E2E8F0; background: #F8FAFC; color: #94A3B8; cursor: not-allowed; }
+.pos-table-tile--ours { border-color: #B74B0C; background: #FFF7ED; color: #9A3412; }
+.pos-type-sheet__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.pos-type-sheet__actions > button { flex: 1 1 140px; }
+.pos-type-sheet__secondary {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #CBD5E1;
+  border-radius: 10px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}

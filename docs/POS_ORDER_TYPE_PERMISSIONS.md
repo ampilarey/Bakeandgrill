@@ -37,6 +37,25 @@ The owner always has every type.
   until the next sign-in or unlock (owner, 2026-10-10: Pickup switched off for
   cashiers still showed on a till, and Dine-in, switched on, did not).
 
+## A new ticket asks (2026-10-21)
+
+Owner: "Cashier mistakenly or carelessly charge takeaway orders as a dine in order. Because
+by default its selected." A new ticket now starts on no type, and the first item asks with a
+sheet: Dine-in and Takeaway big, Pickup and Delivery under them, only the types the person may
+ring (a type turned off above is not offered). Dine-in goes on to the free tables, with "Not
+seated yet" for a customer who sits down after ordering. A person allowed one type only is
+never asked. Charge and Save refuse until a type is chosen, the type clears after every sale,
+and a dine-in ticket with no table is reminded at Save and at Charge. Changing the type or the
+table afterwards works as before.
+
+Checked in a browser against a local server (owner's tablet width and a 390 px phone, the
+owner, a counter cashier with two types and a takeaway-only cashier), which found two money
+bugs beside the one reported: the public settings had stopped carrying the service charge
+settings, so the till's cart never showed it on dine-in and Charge stopped with "Order total
+changed" (fixed by `App\Support\PublicOperationalSettings`, the named list of operational keys
+the public settings carry beside the content registry); and a flat-fee item switched from
+dine-in to takeaway kept no packaging fee (fixed in `reconcilePackagingOnEligibleSwitch`).
+
 ## On deploy
 
 Nobody loses a type: Manager and Staff get all four by default, and the
@@ -53,6 +72,8 @@ server enforces the switches either way.
 |---|---|
 | Permissions | `PermissionCatalog::ORDER_TYPE_PERMISSIONS` (`pos.order_type.dine_in`, `.takeaway`, `.pickup`, `.delivery`) |
 | Server check | `App\Domains\Orders\Support\PosOrderTypeGate` |
-| Till | `allowedOrderTypes()` in `apps/pos-web/src/hooks/usePosPermissions.ts`; `OrderCart` `allowedOrderTypes` |
+| Till | `allowedOrderTypes()` and `startingOrderType()` in `apps/pos-web/src/hooks/usePosPermissions.ts`; `OrderCart` `allowedOrderTypes` |
+| The ask at the first item | `components/OrderTypeSheet.tsx` (type and table modes), `hooks/useOrderTypeGate.ts` (holds the tap), `utils/tileRules.ts` (add or Configure) |
+| Service charge and other pricing keys in the public settings | `App\Support\PublicOperationalSettings` (`PublicOperationalSettingsTest`) |
 | Till keeping the list current | `apps/pos-web/src/hooks/useStaffRefresh.ts` (used by `usePosApp`); `PERMISSIONS_STALE_EVENT` in `api/client.ts`, fired on a 403 that is not about the till itself |
 | Tests | `backend/tests/Feature/Pos/PosOrderTypePermissionsTest.php`, `OrderCart.layout.test.tsx`, `usePosPermissions.orderTypes.test.ts`, `useStaffRefresh.test.ts`, `client.deviceBlocked.test.ts` |

@@ -58,6 +58,8 @@ type DiscountApprovalUi = {
   declinedBy?: string | null;
 };
 
+const NO_TYPE_MESSAGE = "Choose dine-in or takeaway first.";
+
 const mapOrderType = (type: OrderType): "dine_in" | "takeaway" | "online_pickup" | "delivery" => {
   if (type === "Dine-in") return "dine_in";
   if (type === "Pickup") return "online_pickup";
@@ -194,7 +196,8 @@ type Params = {
   isReachable: boolean;
   deviceId: string;
   shiftId: number | null;
-  orderType: OrderType;
+  /** Null while a new ticket has no type yet: it asks at its first item (2026-10-21). */
+  orderType: OrderType | null;
   selectedTableId: number | null;
   deliveryDetails?: PosDeliveryDetails;
   setDeliveryDetails?: (d: PosDeliveryDetails) => void;
@@ -416,7 +419,13 @@ export function useOrderCreation(params: Params) {
   /** Staff who rang the ticket — used to label POS pickup vs app online pickup. */
   const [resumedStaffUserId, setResumedStaffUserId] = useState<number | null>(null);
 
-  const currentTicketType = () => mapOrderType(params.orderType);
+  /** Null while a new ticket has no type yet. */
+  const currentTicketType = () => (params.orderType === null ? null : mapOrderType(params.orderType));
+  /** The type a sale or a save goes out with; refused, with the reason, until one is chosen. */
+  const ticketType = (): OrderType => {
+    if (params.orderType === null) throw new Error(NO_TYPE_MESSAGE);
+    return params.orderType;
+  };
   const currentTicketTableId = () =>
     currentTicketType() === "dine_in" ? (params.selectedTableId ?? null) : null;
 
@@ -687,7 +696,7 @@ export function useOrderCreation(params: Params) {
 
     return {
       ...base,
-      type: mapOrderType(params.orderType),
+      type: mapOrderType(ticketType()),
       restaurant_table_id:
         params.orderType === "Dine-in" ? params.selectedTableId ?? undefined : undefined,
     };
@@ -842,7 +851,7 @@ export function useOrderCreation(params: Params) {
         device_identifier: params.deviceId,
         shift_id: shiftId,
         created_at_local: new Date().toISOString(),
-        type: mapOrderType(params.orderType),
+        type: mapOrderType(ticketType()),
         items: params.cartItems.map((item) => ({
           item_id: item.id,
           quantity: item.quantity,
@@ -1018,6 +1027,7 @@ export function useOrderCreation(params: Params) {
   ): Promise<boolean> => {
     if (params.cartItems.length === 0) return false;
     if (isSubmitting) return false;
+    if (params.orderType === null) { flashError(NO_TYPE_MESSAGE); return false; }
 
     const paymentSnapshot: PaymentRow[] = rows.map((r) => ({
       id: crypto.randomUUID(),
@@ -1071,7 +1081,7 @@ export function useOrderCreation(params: Params) {
           if (settled) {
             const cid = params.customerId;
             const cphone = params.customerPhone;
-            const settledType = resumedOrderType ?? mapOrderType(params.orderType);
+            const settledType = resumedOrderType ?? mapOrderType(ticketType());
             setResumedOrderId(null);
             setResumedOrderTotal(null);
             setResumedItemsFingerprint(null);
@@ -1274,7 +1284,7 @@ export function useOrderCreation(params: Params) {
           response.order.id,
           cid,
           cphone,
-          mapOrderType(params.orderType),
+          mapOrderType(ticketType()),
           paidOnCreditFromRows(paymentSnapshot),
           creditPartialLabel(paymentSnapshot),
           lastCreditBalanceRef.current,
@@ -1351,7 +1361,7 @@ export function useOrderCreation(params: Params) {
             orderId,
             cid,
             cphone,
-            mapOrderType(params.orderType),
+            mapOrderType(ticketType()),
             paidOnCreditFromRows(retryRows),
             creditPartialLabel(retryRows),
             lastCreditBalanceRef.current,
@@ -1386,6 +1396,7 @@ export function useOrderCreation(params: Params) {
   const handleSaveTicket = async (name: string, note?: string, fireToKitchen = false): Promise<void> => {
     if (!params.isOnline) throw new Error("Go online to save tickets.");
     if (params.cartItems.length === 0) throw new Error("Add items first.");
+    if (params.orderType === null) throw new Error(NO_TYPE_MESSAGE);
 
     const discountAmt = parsedDiscountAmount();
     const discountPreflightErr = preflightManualDiscount(discountAmt);
@@ -1704,6 +1715,7 @@ export function useOrderCreation(params: Params) {
       const currentFp = cartFingerprint(params.cartItems);
       const itemsChanged = resumedItemsFingerprint !== currentFp;
       const nextType = currentTicketType();
+      if (nextType === null) throw new Error(NO_TYPE_MESSAGE);
       const nextTableId = currentTicketTableId();
       const deliveryPayload = nextType === "delivery"
         ? resolveDeliveryDetails(

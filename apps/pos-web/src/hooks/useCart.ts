@@ -136,14 +136,15 @@ export function resolvePackagingSnapshot(
   };
 }
 
-export function mapPosOrderType(type: PosOrderType): "dine_in" | "takeaway" | "online_pickup" | "delivery" {
+/** No type yet (an empty ticket whose first item is being asked about) counts as takeaway: nothing is charged on nothing. */
+export function mapPosOrderType(type: PosOrderType | null): "dine_in" | "takeaway" | "online_pickup" | "delivery" {
   if (type === "Dine-in") return "dine_in";
   if (type === "Pickup") return "online_pickup";
   if (type === "Delivery") return "delivery";
   return "takeaway";
 }
 
-export function useCart(posOrderType: PosOrderType = "Takeaway") {
+export function useCart(posOrderType: PosOrderType | null = "Takeaway") {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [selectedModifiers, setSelectedModifiers] = useState<Modifier[]>([]);
@@ -484,7 +485,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
       // Dine-in never attaches packaging (matches PackagingFeeCalculator).
       // Explicit null option + zero fee so one-tap / barcode / configure
       // adds stay consistent; totals already zero packaging for dine_in.
-      const packaging = isPackagingEligible(posOrderType)
+      const packaging = posOrderType !== null && isPackagingEligible(posOrderType)
         ? resolvePackagingSnapshot(item, opts?.packagingOptionId)
         : {
             packaging_fee: 0,

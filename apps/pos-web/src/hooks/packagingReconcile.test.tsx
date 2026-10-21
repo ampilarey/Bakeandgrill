@@ -60,6 +60,20 @@ describe("packaging reconcile on order-type toggle", () => {
     expect(result.items[0].packaging_option_name).toBe("Box");
   });
 
+  it("Dine-in → Takeaway puts a flat-fee item's own fee on, as a fresh add would (no options to pick)", () => {
+    // Owner, 2026-10-21: a burger rung as dine-in and switched to takeaway left with no packaging fee.
+    const flatFeeItem = { id: 3, name: "Chicken Burger", base_price: 45, category_id: 1, packaging_fee: 5, packaging_fee_mode: "per_unit", packaging_options: [] } as unknown as Item;
+    const cart = [bareLine(flatFeeItem, 2)];
+    const result = reconcileCartPackagingForOrderTypeToggle("Takeaway", cart, [flatFeeItem]);
+    expect(result.needsPicker).toHaveLength(0);
+    expect(result.items[0].packaging_fee).toBe(5);
+    expect(result.items[0].packaging_option_id).toBeNull();
+    expect(result.items[0].quantity).toBe(2);
+
+    const back = reconcileCartPackagingForOrderTypeToggle("Dine-in", result.items, [flatFeeItem]);
+    expect(back.items[0].packaging_fee).toBe(0);
+  });
+
   it("Dine-in → Takeaway queues multi-option lines without packaging for the modal", () => {
     const cart = [bareLine(multiOptItem, 2)];
     const result = reconcileCartPackagingForOrderTypeToggle("Takeaway", cart, [multiOptItem]);

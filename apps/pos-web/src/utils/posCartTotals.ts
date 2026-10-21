@@ -205,7 +205,7 @@ export function cartGrandTotalMvr(
 export function withDeliveryFee(
   cartTotal: number,
   itemCount: number,
-  orderType: string,
+  orderType: string | null,
   deliveryFeeEst: number,
 ): number {
   if (orderType !== "Delivery" || !(deliveryFeeEst > 0) || itemCount <= 0) {

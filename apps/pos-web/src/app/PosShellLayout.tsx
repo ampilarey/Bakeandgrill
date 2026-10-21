@@ -2,6 +2,8 @@ import { lazy, Suspense, useMemo, useState } from 'react';
 import { makeCartKey } from '../hooks/useCart';
 import { MenuGrid } from '../components/MenuGrid';
 import { OrderCart } from '../components/OrderCart';
+import { OrderTypeSheet } from '../components/OrderTypeSheet';
+import { tableIsInUse } from '../utils/tableLabels';
 import { SuggestionStrip } from '../components/SuggestionStrip';
 import { SendBillPanel } from '../components/SendBillPanel';
 import { NotePickerModal } from '../components/NotePickerModal';
@@ -144,6 +146,7 @@ export function PosShellLayout() {
     canCashInOut, isReachable, offlineQueueCount, offlinePendingCount,
     offlinePendingTotals, showOfflineSyncPanel, setShowOfflineSyncPanel, deviceBlockedMessage,
     orderType, setOrderType, handleOrderTypeToggle, permittedOrderTypes,
+    typeGate, handleOrderTypeChosen, tableAsk, setTableAsk,
     packagingPickerLines, handlePackagingReconcileConfirm,
     deliveryDetails, setDeliveryDetails,
     customerAddresses, selectedDeliveryAddressId, setSelectedDeliveryAddressId, applyPosDeliveryAddress, tables,
@@ -193,7 +196,7 @@ export function PosShellLayout() {
     }
     const local = findLocalItem(code);
     if (local) {
-      cart.addToCart(local.item, local.variant ? { variant: local.variant } : undefined);
+      typeGate.addItem(local.item, local.variant ? { variant: local.variant } : undefined);
       return;
     }
     if (/^GC-\d{6,8}-\d{4}$/i.test(code)) {
@@ -208,7 +211,7 @@ export function PosShellLayout() {
       const res = await resolveScan(code);
       switch (res.kind) {
         case 'item':
-          cart.addToCart(res.item, res.variant ? { variant: res.variant } : undefined);
+          typeGate.addItem(res.item, res.variant ? { variant: res.variant } : undefined);
           return;
         case 'gift_card':
           setScanRequest({ kind: 'gift', code: res.code, nonce: Date.now() });
@@ -541,6 +544,7 @@ export function PosShellLayout() {
               orderType={orderType}
               setOrderType={handleOrderTypeToggle}
               allowedOrderTypes={permittedOrderTypes}
+              onChooseType={typeGate.askOnly}
               deliveryDetails={deliveryDetails}
               setDeliveryDetails={setDeliveryDetails}
               customerAddresses={customerAddresses}
@@ -614,6 +618,10 @@ export function PosShellLayout() {
               onCancelResume={() => void order.handleCancelResume().then(refreshOpenTickets)}
               onClearCart={handleClearCart}
               onSaveTicket={() => {
+                if (orderType === null) {
+                  order.flashError("Choose dine-in or takeaway first.");
+                  return;
+                }
                 if (orderType === "Delivery") {
                   if (!isReachable) {
                     order.flashError("Delivery orders require an internet connection.");
@@ -642,6 +650,10 @@ export function PosShellLayout() {
                 // the most common ones inline so the cashier sees them.
                 if (cart.cartItems.length === 0) return;
                 if (order.resumedIsPaid) return;
+                if (orderType === null) {
+                  order.flashError("Choose dine-in or takeaway first.");
+                  return;
+                }
                 if (orderType === "Delivery") {
                   if (!isReachable) {
                     order.flashError("Delivery orders require an internet connection.");
@@ -671,10 +683,14 @@ export function PosShellLayout() {
                     return;
                   }
                 }
-                // Table is OPTIONAL on Dine-in tickets — some venues
-                // ring up at the counter before seating, so we don't
-                // gate Charge on it. The cashier can still pick a
-                // table later from the Save Ticket modal if needed.
+                // A table stays optional on a dine-in ticket (some ring up at
+                // the counter before seating), but one with no table is asked
+                // once more here, "No table" a tap away (owner, 2026-10-21);
+                // the answer opens Charge straight away.
+                if (orderType === "Dine-in" && selectedTableId == null && tables.some((t) => !tableIsInUse(t))) {
+                  setTableAsk(true);
+                  return;
+                }
                 // Clear any stale error from a previous attempt so the
                 // overlay doesn't open with a red banner from a closed-
                 // but-not-resolved earlier flow (e.g. cashier hit
@@ -709,12 +725,13 @@ export function PosShellLayout() {
               selectedItem={cart.selectedItem}
               selectedModifiers={cart.selectedModifiers}
               handleSelectItem={cart.handleSelectItem}
+              tapItem={typeGate.tapItem}
               toggleModifier={cart.toggleModifier}
               addToCart={cart.addToCart}
               clearSelectedItem={() => cart.setSelectedItem(null)}
               barcode={order.barcode}
               setBarcode={order.setBarcode}
-              onBarcodeSubmit={(e) => order.handleBarcodeSubmit(e, menu.items, cart.addToCart)}
+              onBarcodeSubmit={(e) => order.handleBarcodeSubmit(e, menu.items, typeGate.addItem)}
               onScanCode={(code) => { void routeScannedCode(code); }}
               onOpenScanner={() => setScanner('any')}
               // Lock the menu only for paid online view-only resumes.
@@ -727,8 +744,9 @@ export function PosShellLayout() {
                   cartItems={cart.cartItems}
                   addToCart={cart.addToCart}
                   handleSelectItem={cart.handleSelectItem}
+                  tapItem={typeGate.tapItem}
                   readOnly={order.resumedOrderId !== null && !order.isEditingActive}
-                  packagingEligible={orderType !== "Dine-in"}
+                  packagingEligible={orderType !== null && orderType !== "Dine-in"}
                 />
               ) : undefined}
               onRefreshMenu={refreshAll}
@@ -1274,6 +1292,33 @@ export function PosShellLayout() {
           />
         );
       })()}
+
+      {typeGate.ask && (
+        <OrderTypeSheet
+          mode="type"
+          types={permittedOrderTypes}
+          tables={tables}
+          itemName={typeGate.ask.kind === "none" ? null : typeGate.ask.item.name}
+          onChoose={handleOrderTypeChosen}
+          onCancel={typeGate.cancel}
+        />
+      )}
+
+      {tableAsk && (
+        <OrderTypeSheet
+          mode="table"
+          types={permittedOrderTypes}
+          tables={tables}
+          ourOrderId={order.resumedOrderId}
+          onChoose={(_type, tableId) => {
+            setSelectedTableId(tableId);
+            setTableAsk(false);
+            order.setStatusMessage("");
+            setShowCharge(true);
+          }}
+          onCancel={() => setTableAsk(false)}
+        />
+      )}
 
       {packagingPickerLines && packagingPickerLines.length > 0 && (
         <PackagingReconcileModal

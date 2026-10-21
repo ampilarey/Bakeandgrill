@@ -61,8 +61,11 @@ export function shouldShowResumedGiftCardChargeHint(opts: {
 }
 
 type Props = {
-  orderType: OrderType;
+  /** Null until the cashier chooses (a new ticket asks at its first item, 2026-10-21). */
+  orderType: OrderType | null;
   setOrderType: (t: OrderType) => void;
+  /** The phone's folded cart bar: open the order type ask with nothing waiting behind it. */
+  onChooseType?: () => void;
   /** Types this person may ring (Admin, 2026-10-07); all when not given. */
   allowedOrderTypes?: OrderType[];
   deliveryDetails: PosDeliveryDetails;
@@ -221,7 +224,7 @@ const C = {
 
 export function OrderCart(p: Props) {
   const checkoutDisabled = p.cartItems.length === 0 || p.isSubmitting || p.canRingSales === false
-    || !!p.resumedIsPaid;
+    || !!p.resumedIsPaid || p.orderType === null;
   // Only the types this person may ring; the current one stays visible when
   // an existing order is already that type (2026-10-07).
   const allowedTypes = p.allowedOrderTypes ?? ORDER_TYPES;
@@ -232,6 +235,7 @@ export function OrderCart(p: Props) {
   const isDelivery = p.orderType === "Delivery";
   const deliveryFeeEst = isDelivery ? (p.deliveryFeeEst ?? 0) : 0;
   const isResumed = p.resumedOrderId !== null;
+  const saveDisabled = p.cartItems.length === 0 || p.isSubmitting || isResumed || p.orderType === null;
   /** Stacked phone/portrait only — skip dock on short landscape (side cart). */
   const isNarrowStack = useMediaQuery("(max-width: 840px) and (min-height: 501px)");
   const [cartExpanded, setCartExpanded] = useState(false);
@@ -304,6 +308,8 @@ export function OrderCart(p: Props) {
   // line of it runs across the top of the ticket, so the cashier sees at a
   // glance that this one is a delivery and not a table.
   const ticketTone = orderTypeTone(onlineFulfillment ? p.resumedOrderType : p.orderType);
+  /** An empty ticket with no type on a phone: the folded cart bar is where it is chosen. */
+  const chooseTypeCall = p.orderType === null && !!p.onChooseType && p.cartItems.length === 0 && !onlineFulfillment;
 
   const deliveryNeedsAddress = isDelivery && !onlineFulfillment && !p.deliveryDetails.addressLine1.trim();
   const showDeliveryForm = isDelivery && !onlineFulfillment;
@@ -462,14 +468,21 @@ export function OrderCart(p: Props) {
         <button
           type="button"
           onClick={() => {
-            if (p.cartItems.length === 0) return;
+            if (p.cartItems.length === 0) {
+              // An empty ticket with no type: the bar is where a phone chooses.
+              if (p.orderType === null && p.onChooseType) p.onChooseType();
+              return;
+            }
             setCartExpanded(true);
           }}
           aria-expanded={cartExpanded}
-          aria-label={p.cartItems.length === 0 ? "Cart empty" : "Expand cart"}
+          aria-label={p.cartItems.length === 0
+            ? (p.orderType === null && p.onChooseType ? "Choose the order type" : "Cart empty")
+            : "Expand cart"}
           style={{
             flex: 1, minWidth: 0, minHeight: 44, padding: 0,
-            border: "none", background: "transparent", cursor: p.cartItems.length === 0 ? "default" : "pointer",
+            border: "none", background: "transparent",
+            cursor: p.cartItems.length === 0 && !(p.orderType === null && p.onChooseType) ? "default" : "pointer",
             textAlign: "left", font: "inherit", color: "inherit",
             display: "flex", alignItems: "center", gap: 8,
           }}
@@ -485,13 +498,17 @@ export function OrderCart(p: Props) {
                 aria-hidden="true"
                 style={{ display: "inline-block", width: 8, height: 8, borderRadius: 999, background: ticketTone.solid, marginRight: 5, verticalAlign: "middle" }}
               />
-              <span style={{ color: ticketTone.ink }}>{onlineFulfillment ? fulfillmentLabel : p.orderType}</span>
-              {" · "}
-              {p.cartItems.length === 0
-                ? "Cart empty"
+              {/* With no type yet, one short call to action: a longer line truncated on a 390px phone. */}
+              <span style={{ color: ticketTone.ink }}>
+                {onlineFulfillment ? fulfillmentLabel : chooseTypeCall ? "Tap to choose type" : (p.orderType ?? "No type yet")}
+              </span>
+              {chooseTypeCall
+                ? null
+                : p.cartItems.length === 0
+                ? " · Cart empty"
                 : (
                   <>
-                    {`${itemCount} item${itemCount === 1 ? "" : "s"}`}
+                    {` · ${itemCount} item${itemCount === 1 ? "" : "s"}`}
                     {selectedTableName ? (
                       <span style={{ color: C.text }}>{`, ${selectedTableName}`}</span>
                     ) : null}
@@ -693,10 +710,10 @@ export function OrderCart(p: Props) {
           {p.canHoldResume !== false && (
           <button
             onClick={p.onSaveTicket}
-            disabled={p.cartItems.length === 0 || p.isSubmitting || isResumed}
-            title={isResumed ? 'Already a resumed ticket' : 'Save this ticket for later'}
+            disabled={saveDisabled}
+            title={isResumed ? 'Already a resumed ticket' : p.orderType === null ? 'Choose dine-in or takeaway first' : 'Save this ticket for later'}
             aria-label="Save ticket"
-            style={headerBtn(p.cartItems.length === 0 || p.isSubmitting || isResumed)}
+            style={headerBtn(saveDisabled)}
           >
             🎫 Save
           </button>
@@ -787,7 +804,7 @@ export function OrderCart(p: Props) {
               data-order-type={tone.key}
               aria-pressed={on}
               onClick={() => {
-                if (t !== p.orderType && p.cartItems.length > 0) {
+                if (p.orderType !== null && t !== p.orderType && p.cartItems.length > 0) {
                   setPendingOrderType(t);
                   return;
                 }
@@ -819,6 +836,16 @@ export function OrderCart(p: Props) {
             );
           })}
         </div>
+
+        {p.orderType === null && !onlineFulfillment && shownOrderTypes.length > 0 && (
+          <div
+            data-testid="order-type-hint"
+            role="status"
+            style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: '#92400E', lineHeight: 1.4 }}
+          >
+            Dine-in or takeaway? Pick one to start, or tap a dish and you will be asked.
+          </div>
+        )}
 
         {pendingOrderType && pendingOrderType !== p.orderType && p.cartItems.length > 0 && (
           <div
@@ -911,6 +938,11 @@ export function OrderCart(p: Props) {
                   );
                 })}
               </select>
+              {p.selectedTableId == null && p.cartItems.length > 0 && (
+                <div data-testid="no-table-hint" style={{ marginTop: 4, fontSize: 11, fontWeight: 600, color: '#92400E' }}>
+                  No table yet. Pick one when they sit down.
+                </div>
+              )}
             </div>
           )}
           <div style={{ flex: customerCellWide ? '1 1 100%' : '1 1 45%', minWidth: 140 }}>

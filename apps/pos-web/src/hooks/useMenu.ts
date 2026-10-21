@@ -43,7 +43,8 @@ function cacheableTabs(tabs: PosTillTabs) {
   };
 }
 
-function channelForOrderType(orderType: PosOrderType): PosSalesChannel {
+// No type yet (a new ticket asks at its first item): the in-store menu.
+function channelForOrderType(orderType: PosOrderType | null): PosSalesChannel {
   if (orderType === "Dine-in") return "dine_in";
   if (orderType === "Pickup") return "online_pickup";
   // Staff phone-in delivery uses the in-store menu (takeaway channel),
@@ -55,7 +56,7 @@ function channelForOrderType(orderType: PosOrderType): PosSalesChannel {
 
 export function useMenu(
   isLoggedIn: boolean,
-  orderType: PosOrderType,
+  orderType: PosOrderType | null,
   isReachable = true,
   onBootstrapShift?: (shift: PosBootstrapShift | null) => void,
   onBootstrapSmsNotifications?: (settings: PosSmsNotifications) => void,

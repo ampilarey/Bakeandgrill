@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { itemNeedsConfigure } from "../utils/tileRules";
 
 import { trackPosSuggestion, type PosPairings } from "../api";
 import { palette } from "../theme";
@@ -16,6 +17,8 @@ type Props = {
   addToCart: (item: Item) => void;
   /** Anything needing a variant / modifier / packaging choice opens configure. */
   handleSelectItem: (item: Item) => void;
+  /** When given, a chip tap goes here first: the order type ask. */
+  tapItem?: (item: Item) => void;
   readOnly?: boolean;
   /** Dine-in never treats a packaging choice as a reason to configure. */
   packagingEligible?: boolean;
@@ -45,6 +48,7 @@ export function SuggestionStrip({
   cartItems,
   addToCart,
   handleSelectItem,
+  tapItem,
   readOnly = false,
   packagingEligible = false,
   maxChips = 8,
@@ -168,11 +172,7 @@ export function SuggestionStrip({
           </span>
         )}
         {suggestions.map((item) => {
-          const needsConfigure =
-            item.has_variants
-            || (item.modifiers?.length ?? 0) > 0
-            || (item.platter_groups?.length ?? 0) > 0
-            || (packagingEligible && (item.packaging_options?.length ?? 0) > 1);
+          const needsConfigure = itemNeedsConfigure(item, packagingEligible);
           const disabled = readOnly || !armed;
           return (
             <button
@@ -183,7 +183,8 @@ export function SuggestionStrip({
               onClick={() => {
                 if (disabled) return;
                 // Same rule as the menu tiles, so a chip behaves like the item itself.
-                if (needsConfigure) handleSelectItem(item);
+                if (tapItem) tapItem(item);
+                else if (needsConfigure) handleSelectItem(item);
                 else addToCart(item);
                 if (mode === "goes") trackPosSuggestion("accepted", [item.id]);
               }}

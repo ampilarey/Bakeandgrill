@@ -75,7 +75,12 @@ export function reconcilePackagingOnEligibleSwitch(
     if (!menuItem) return line;
 
     const options = catalogOptions(menuItem);
-    if (options.length === 0) return line;
+    if (options.length === 0) {
+      // No options to choose from: the item's own flat fee, as a fresh add
+      // on this type would carry (a burger rung as dine-in and switched to
+      // takeaway was leaving with no packaging fee, 2026-10-21).
+      return { ...line, ...resolvePackagingSnapshot(menuItem) };
+    }
 
     if (options.length === 1) {
       const snap = resolvePackagingSnapshot(menuItem, options[0].id);

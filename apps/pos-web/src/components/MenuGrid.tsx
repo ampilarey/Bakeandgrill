@@ -6,6 +6,7 @@ import type { PosQuickLayout, PosQuickLayoutSource, PosQuickTab } from "../api";
 import { effectiveItemPrice, originalItemPrice } from "../hooks/useCart";
 import { useLongPress } from "../hooks/useLongPress";
 import { isPackagingEligible, type PosOrderType } from "../orderTypes";
+import { itemNeedsConfigure } from "../utils/tileRules";
 import { z } from "../theme";
 import {
   autoTabKey, fitPillRow, flattenTabs, moveInList, newTabId, tabKey, tabOpenAt,
@@ -31,6 +32,8 @@ type Props = {
   selectedItem: Item | null;
   selectedModifiers: Modifier[];
   handleSelectItem: (item: Item) => void;
+  /** When given, a tile tap goes here first: the order type ask, which runs the add-or-configure rule once the type is known. */
+  tapItem?: (item: Item) => void;
   toggleModifier: (mod: Modifier) => void;
   addToCart: (
     item: Item,
@@ -67,7 +70,7 @@ type Props = {
   lastRefreshedAt?: number | null;
 
   /** Current ticket order type — packaging picker only for takeaway/pickup/delivery. */
-  orderType: PosOrderType;
+  orderType: PosOrderType | null;
 
   /**
    * The Quick tabs (a cashier's own layout in front of the shared one) and
@@ -583,7 +586,7 @@ function FreshnessLabel({ ts, busy }: { ts: number | null; busy: boolean }) {
 export function MenuGrid({
   categories, selectedCategoryId, setSelectedCategoryId, filteredItems,
   isLoading, dataError, selectedItem, selectedModifiers,
-  handleSelectItem, toggleModifier, addToCart, clearSelectedItem,
+  handleSelectItem, tapItem, toggleModifier, addToCart, clearSelectedItem,
   barcode, setBarcode, onBarcodeSubmit, onScanCode, onOpenScanner, readOnly = false,
   suggestionStrip,
   onRefreshMenu, isRefreshingMenu = false, lastRefreshedAt = null,
@@ -592,7 +595,7 @@ export function MenuGrid({
   popularNow = [],
   ticketEmpty = true,
 }: Props) {
-  const packagingEligible = isPackagingEligible(orderType);  // Bug-024: the per-20s freshness tick lives inside <FreshnessLabel>
+  const packagingEligible = orderType !== null && isPackagingEligible(orderType);  // Bug-024: the per-20s freshness tick lives inside <FreshnessLabel>
   // now, NOT here at the top of MenuGrid. Re-rendering the entire
   // menu (300+ items, modifier sheets, search memos) every 20s just
   // to advance a "2m ago" string was visible jank on iPad. The label
@@ -1204,20 +1207,16 @@ export function MenuGrid({
         ) : (
           <div className="pos-menu-grid">
             {visibleItems.map((item) => {
-              const hasMods = (item.modifiers?.length ?? 0) > 0;
-              const hasVariants = item.has_variants;
-              const hasPackagingChoices =
-                packagingEligible && (item.packaging_options?.length ?? 0) > 1;
-              // A platter is nothing but a choice, so it always opens the
-              // panel — a one-tap add would send an order with no picks and
-              // the server would refuse it (owner's audit, 2026-09-06, F2).
-              const isPlatterTile = (item.platter_groups?.length ?? 0) > 0;
               // For items without modifiers, variants, or packaging choices,
-              // tap = direct add to cart. Otherwise open configure.
-              // Dine-in never counts packaging as a configure reason.
+              // tap = direct add to cart. Otherwise open configure (the rule
+              // is itemNeedsConfigure: a platter is nothing but a choice, and
+              // dine-in never counts packaging as a reason). With no order
+              // type yet the tap goes to the ask, which runs the same rule
+              // once the type is known.
               const onClick = () => {
                 if (readOnly) return;
-                if (isPlatterTile || hasMods || hasVariants || hasPackagingChoices) handleSelectItem(item);
+                if (tapItem) { tapItem(item); return; }
+                if (itemNeedsConfigure(item, packagingEligible)) handleSelectItem(item);
                 else addToCart(item);
               };
               return (

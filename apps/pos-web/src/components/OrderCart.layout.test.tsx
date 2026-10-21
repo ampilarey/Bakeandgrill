@@ -132,6 +132,48 @@ describe("Order type stays on show", () => {
 });
 
 // Owner, 2026-10-11: drop the "New Order" title and give its room to the buttons.
+// Owner, 2026-10-21: a new ticket has no type until the cashier says.
+describe("A ticket with no order type yet", () => {
+  it("shows the types unchosen with a hint, and a tap picks one straight away", () => {
+    const { setOrderType } = renderCart({ orderType: null, cartItems: [] });
+    const row = screen.getByTestId("cart-order-types");
+    for (const t of ["Dine-in", "Takeaway", "Pickup", "Delivery"]) {
+      expect(within(row).getByRole("button", { name: t })).toHaveAttribute("aria-pressed", "false");
+    }
+    expect(screen.getByTestId("order-type-hint")).toHaveTextContent("Dine-in or takeaway?");
+    fireEvent.click(within(row).getByRole("button", { name: "Takeaway" }));
+    expect(setOrderType).toHaveBeenCalledWith("Takeaway");
+  });
+
+  it("refuses Charge and Save until a type is chosen", () => {
+    renderCart({ orderType: null });
+    // The footer's Charge and the phone bar's both.
+    for (const charge of screen.getAllByRole("button", { name: /^Charge/ })) expect(charge).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save ticket" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save ticket" })).toHaveAttribute("title", "Choose dine-in or takeaway first");
+  });
+
+  it("lets the phone's folded cart bar open the ask", () => {
+    const onChooseType = vi.fn();
+    renderCart({ orderType: null, cartItems: [], onChooseType });
+    // One short call to action: "No type yet · Tap to choose" truncated on a 390px phone.
+    expect(screen.getByTestId("cart-dock-items")).toHaveTextContent("Tap to choose type");
+    expect(screen.getByTestId("cart-dock-items")).not.toHaveTextContent("·");
+    fireEvent.click(screen.getByRole("button", { name: "Choose the order type" }));
+    expect(onChooseType).toHaveBeenCalled();
+  });
+
+  it("reminds a dine-in ticket that it has no table yet", () => {
+    renderCart({ orderType: "Dine-in", selectedTableId: null });
+    expect(screen.getByTestId("no-table-hint")).toHaveTextContent("No table yet");
+  });
+
+  it("says nothing once a table is picked", () => {
+    renderCart({ orderType: "Dine-in", selectedTableId: 1 });
+    expect(screen.queryByTestId("no-table-hint")).toBeNull();
+  });
+});
+
 describe("Ticket header", () => {
   it("has no title, only the buttons, side by side", () => {
     renderCart();

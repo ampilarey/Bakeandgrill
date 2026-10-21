@@ -25,6 +25,7 @@ use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\MenuImageProcessor;
+use App\Support\PublicOperationalSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -59,6 +60,11 @@ class ContentController extends Controller
         }
 
         $content = ContentResolver::for($app, $locale)->allPublic();
+        if ($app === 'order_app') {
+            // The order app prices its checkout from these (service charge,
+            // delivery fee estimate), as the till does from the public alias.
+            $content += PublicOperationalSettings::values();
+        }
 
         return response()->json([
             'app' => $app,

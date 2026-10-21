@@ -23,7 +23,7 @@
  */
 import { test, expect, type Page } from '@playwright/test';
 import { obtainStaffToken } from '../fixtures/auth';
-import { ensurePosSalesScreen, isPosWaitingForApproval } from '../helpers/assertions';
+import { answerOrderTypeIfAsked, ensurePosSalesScreen, isPosWaitingForApproval } from '../helpers/assertions';
 
 const POS_URL = '/pos/';
 
@@ -94,8 +94,9 @@ test.describe('POS — offline sale then reconnect @pos-offline', () => {
     // Give useMenu/useShift a moment to write their caches to IndexedDB.
     await page.waitForTimeout(1_500);
 
-    // 2. Put one item in the cart.
+    // 2. Put one item in the cart (a new ticket asks the order type first).
     await itemBtn.click();
+    await answerOrderTypeIfAsked(page);
     await expect(page.getByText('No items in ticket')).toBeHidden({ timeout: 10_000 });
 
     // 3. Cut the network. The POS listens for the browser's offline event.

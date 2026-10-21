@@ -16,10 +16,11 @@ import type { RestaurantTable } from "../types";
 import { useMenu }          from "../hooks/useMenu";
 import { useCart }          from "../hooks/useCart";
 import { useOrderCreation } from "../hooks/useOrderCreation";
+import { useOrderTypeGate } from "../hooks/useOrderTypeGate";
 import { useAutoPromoPreview } from "../hooks/useAutoPromoPreview";
 import { useOps }           from "../hooks/useOps";
 import { useShift }         from "../hooks/useShift";
-import { allowedOrderTypes, canSeeCustomersTab, hasPosPermission } from "../hooks/usePosPermissions";
+import { allowedOrderTypes, canSeeCustomersTab, hasPosPermission, startingOrderType } from "../hooks/usePosPermissions";
 import { useIdleLock, resolveIdleLockMinutes } from "../hooks/useIdleLock";
 import { useStaffRefresh } from "../hooks/useStaffRefresh";
 import { makeCartKey }       from "../hooks/useCart";
@@ -258,11 +259,14 @@ export function usePosApp() {
   );
 
   // ── Tables / order type ─────────────────────────────────────────────────────
-  // Dine-in is the most common ticket type for an in-store cashier
-  // (someone walks up, picks a table, orders), so we default there.
-  // Cashiers can flip to Takeaway / Pickup with the segmented control
-  // at the top of the cart.
-  const [orderType, setOrderType] = useState<PosOrderType>("Dine-in");
+  // A new ticket has no type (owner, 2026-10-21: takeaways were charged as
+  // dine-in, with service charge instead of packaging, because Dine-in was
+  // preselected and the last ticket's type carried over). The first item
+  // asks (useOrderTypeGate → OrderTypeSheet); someone allowed one type only
+  // starts on it. Resumed and online orders bring their own type.
+  const [orderType, setOrderType] = useState<PosOrderType | null>(
+    () => startingOrderType(allowedOrderTypes(staffPermissions)),
+  );
   const [deliveryDetails, setDeliveryDetails] = useState<PosDeliveryDetails>(EMPTY_DELIVERY_DETAILS);
   const [customerAddresses, setCustomerAddresses] = useState<PosCustomerAddress[]>([]);
   const [selectedDeliveryAddressId, setSelectedDeliveryAddressId] = useState<number | "manual">("manual");
@@ -319,6 +323,12 @@ export function usePosApp() {
   const shiftOpen = !!shift.current;
   const menu = useMenu(isLoggedIn, orderType, isReachable, shift.seedFromBootstrap, setSmsNotifications, setDiscountControls);
   const cart = useCart(orderType);
+  // Holds the first item of a ticket with no type while the OrderTypeSheet asks.
+  const typeGate = useOrderTypeGate({
+    orderType,
+    addToCart: cart.addToCart,
+    selectItem: cart.handleSelectItem,
+  });
 
   /**
    * Cashier-facing order-type change. Reconciles packaging on cart lines
@@ -334,12 +344,27 @@ export function usePosApp() {
 
   // Order types this person may ring (Admin → Roles / staff page, 2026-10-07).
   const permittedOrderTypes = useMemo(() => allowedOrderTypes(staffPermissions), [staffPermissions]);
-  // A new, empty ticket starts on a type they are allowed; an order already
-  // of another type (resumed, or rung by someone else) is left as it is.
+  // An empty ticket never holds a type they may not ring, and someone allowed
+  // one type only is never asked; an order already of another type (resumed,
+  // or rung by someone else) is left as it is.
   useEffect(() => {
     if (cart.cartItems.length > 0 || permittedOrderTypes.length === 0) return;
-    if (!permittedOrderTypes.includes(orderType)) setOrderType(permittedOrderTypes[0]);
+    if (permittedOrderTypes.length === 1) {
+      if (orderType !== permittedOrderTypes[0]) setOrderType(permittedOrderTypes[0]);
+      return;
+    }
+    if (orderType !== null && !permittedOrderTypes.includes(orderType)) setOrderType(null);
   }, [permittedOrderTypes, orderType, cart.cartItems.length]);
+
+  /** The OrderTypeSheet's answer for a new ticket; the held tap runs once the type lands. */
+  const typeGateChosen = typeGate.chosen;
+  const handleOrderTypeChosen = useCallback((type: PosOrderType, tableId: number | null) => {
+    handleOrderTypeToggle(type);
+    setSelectedTableId(type === "Dine-in" ? tableId : null);
+    typeGateChosen();
+  }, [handleOrderTypeToggle, typeGateChosen]);
+  /** The table reminder at Charge: the OrderTypeSheet in table mode. */
+  const [tableAsk, setTableAsk] = useState(false);
 
   const handlePackagingReconcileConfirm = useCallback((selections: Record<string, number>) => {
     const menuById = new Map(menu.items.map((i) => [i.id, i]));
@@ -398,6 +423,8 @@ export function usePosApp() {
 
   const handleClearCart = useCallback(() => {
     cart.clearCart();
+    // The next ticket asks again: the type used to carry over (2026-10-21).
+    setOrderType(startingOrderType(permittedOrderTypes));
     setDeliveryDetails(EMPTY_DELIVERY_DETAILS);
     setCustomerAddresses([]);
     setSelectedDeliveryAddressId("manual");
@@ -407,7 +434,7 @@ export function usePosApp() {
     setSelectedTableId(null);
     // Failed settle must not pin Charge to a stale snapshot after Clear.
     clearPendingPaymentRef.current();
-  }, [cart]);
+  }, [cart, permittedOrderTypes]);
 
   const [deliveryFeeEst, setDeliveryFeeEst] = useState(0);
   const [deliveryFeeSettings, setDeliveryFeeSettings] = useState<{
@@ -1418,6 +1445,7 @@ export function usePosApp() {
     openShiftBusy, openTicketsCount, openTicketsCritical, receiptsFocusOrderId, setReceiptsFocusOrderId,
     deviceBlockedMessage, onlineOrderWatcher,
     orderType, setOrderType, handleOrderTypeToggle, permittedOrderTypes, packagingPickerLines, handlePackagingReconcileConfirm,
+    typeGate, handleOrderTypeChosen, tableAsk, setTableAsk,
     deliveryDetails, setDeliveryDetails, customerAddresses,
     selectedDeliveryAddressId, setSelectedDeliveryAddressId, tables, selectedTableId, setSelectedTableId, quickNotes,
     smsNotifications, discountControls, notePickerKey, setNotePickerKey, shift, canUseNonOrderFeatures,

@@ -17,6 +17,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { obtainStaffToken } from '../fixtures/auth';
 import {
+  answerOrderTypeIfAsked,
   assertPosAuthenticated,
   ensurePosSalesScreen,
   isPosWaitingForApproval,
@@ -182,6 +183,7 @@ test.describe('POS — authenticated sales screen', () => {
 
     await itemBtn.scrollIntoViewIfNeeded();
     await itemBtn.click();
+    await answerOrderTypeIfAsked(page);
 
     if (!hadItems) {
       await expect(emptyCart).toBeHidden({ timeout: 10_000 });

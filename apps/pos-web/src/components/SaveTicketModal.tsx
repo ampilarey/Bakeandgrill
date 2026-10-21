@@ -38,7 +38,7 @@ type Props = {
   /** Current order type — needed so we can flip to Dine-in when the
    *  cashier picks a table here (the backend only persists table_id on
    *  dine-in orders). */
-  orderType: OrderType;
+  orderType: OrderType | null;
   setOrderType: (t: OrderType) => void;
   /** Saved-name override — preserved from the existing single-arg
    *  callsite so we don't break the timestamp-fallback path. */
@@ -213,6 +213,11 @@ export function SaveTicketModal({
                 marginTop: 6, fontSize: 11, color: "#92400E",
               }}>
                 ⓘ Picking a table switches this ticket to Dine-in.
+              </div>
+            )}
+            {selectedTableId == null && orderType === "Dine-in" && (
+              <div data-testid="save-no-table" style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: "#92400E" }}>
+                Dine-in with no table yet. Pick one, or save without.
               </div>
             )}
           </Field>

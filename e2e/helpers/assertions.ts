@@ -66,3 +66,22 @@ export async function ensurePosSalesScreen(page: import('@playwright/test').Page
   await page.getByRole('button', { name: /sales/i }).click({ timeout: 5_000 });
   await expect(menuGrid).toBeVisible({ timeout: 15_000 });
 }
+
+/**
+ * A new till ticket has no order type and asks at the first item (owner,
+ * 2026-10-21). Answer when the sheet is up, so a flow that only wants an item
+ * on the ticket carries on; a person who may ring one type only is never
+ * asked, and the sheet is simply not there.
+ */
+export async function answerOrderTypeIfAsked(
+  page: import('@playwright/test').Page,
+  type: 'Takeaway' | 'Dine-in' = 'Takeaway',
+): Promise<void> {
+  const sheet = page.getByTestId('order-type-sheet');
+  if (!(await sheet.isVisible({ timeout: 2_000 }).catch(() => false))) return;
+  await sheet.getByRole('button', { name: new RegExp(`^${type}`) }).click();
+  if (type === 'Dine-in') {
+    const noTable = sheet.getByRole('button', { name: 'Not seated yet' });
+    if (await noTable.isVisible({ timeout: 1_000 }).catch(() => false)) await noTable.click();
+  }
+}
