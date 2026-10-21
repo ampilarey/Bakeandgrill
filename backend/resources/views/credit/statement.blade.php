@@ -3,7 +3,7 @@
 @php
     /** @var \App\Models\Customer $customer */
     /** @var array<string, mixed> $statement */
-    $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
+    $siteName = content('site_name', 'Bake & Grill');
     $tz = config('app.timezone', 'Indian/Maldives');
     $owed = (int) $statement['balance_laar'];
     $overdue = (int) $statement['overdue_laar'];

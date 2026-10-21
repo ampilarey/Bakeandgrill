@@ -2,7 +2,7 @@
 
 @php
     /** @var \App\Models\WalletTopUp $topUp */
-    $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
+    $siteName = content('site_name', 'Bake & Grill');
     $tz = config('app.timezone', 'Indian/Maldives');
     $status = (string) $topUp->status;
     $open = $topUp->isOpen();
