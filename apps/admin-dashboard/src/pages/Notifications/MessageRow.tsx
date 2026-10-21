@@ -77,6 +77,10 @@ export const TIMING: Record<string, TimingDef> = {
     note: 'Once per delivery.',
   },
   owner_cash_out: { kind: 'telegram', label: 'Only when the amount is at least (MVR)', min: 0, max: 100000, zeroMeans: 'every cash out' },
+  owner_deposit_large_topup: {
+    kind: 'site', key: 'wallet_topup_owner_alert_mvr', label: 'When a card top-up of the wallet is at least (MVR)', min: 1, max: 1000000, fallback: '2000',
+    note: 'Smaller top-ups are not told. The customer is texted either way, and the amounts a customer may add are on Settings → Credit & wallet.',
+  },
 };
 
 export function MessageRow({

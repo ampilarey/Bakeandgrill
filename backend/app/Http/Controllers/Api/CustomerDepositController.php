@@ -130,6 +130,47 @@ class CustomerDepositController extends Controller
     }
 
     /**
+     * POST /admin/customers/{id}/deposit/top-up-link (owner, 2026-10-21): a
+     * link the customer pays by card, texted to them and handed back for
+     * copying. With an amount, or open so they pick one on the page.
+     */
+    public function topUpLink(Request $request, int $id, \App\Domains\Deposits\Services\WalletTopUpService $topUps): JsonResponse
+    {
+        $customer = Customer::findOrFail($id);
+        $actor = $request->user();
+        abort_unless($actor !== null, 401);
+
+        $validated = $request->validate([
+            'amount_laar' => ['nullable', 'integer', 'min:1'],
+            'amount_mvr' => ['nullable', 'numeric', 'min:0.01'],
+            'note' => ['nullable', 'string', 'max:200'],
+        ]);
+
+        $amountLaar = isset($validated['amount_laar'])
+            ? (int) $validated['amount_laar']
+            : (isset($validated['amount_mvr']) ? (int) round(((float) $validated['amount_mvr']) * 100) : null);
+
+        $topUp = $topUps->createLink($customer, $amountLaar, $actor, $validated['note'] ?? null);
+        $phone = trim((string) $customer->phone);
+
+        return response()->json([
+            'top_up' => [
+                'id' => $topUp->id,
+                'number' => $topUp->number(),
+                'token' => $topUp->token,
+                'url' => $topUp->url(),
+                'amount_laar' => $topUp->amount_laar,
+                'amount_mvr' => $topUp->amount_laar !== null ? round($topUp->amount_laar / 100, 2) : null,
+                'expires_at' => $topUp->expires_at?->toIso8601String(),
+                'link_sent_at' => $topUp->link_sent_at?->toIso8601String(),
+            ],
+            'message' => $topUp->link_sent_at !== null
+                ? 'Top-up link texted to ' . $phone . '.'
+                : ($phone === '' ? 'Top-up link made. This customer has no phone, so copy it to them.' : 'Top-up link made, but the text did not go. Copy it to them.'),
+        ], 201);
+    }
+
+    /**
      * POST /admin/customers/{id}/deposit/adjust
      */
     public function adjust(Request $request, int $id): JsonResponse

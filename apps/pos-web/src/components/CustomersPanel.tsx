@@ -11,6 +11,7 @@ import {
   recordDepositTopUp,
   searchCustomers,
   sendCustomerSms,
+  sendDepositTopUpLink,
   updateCustomerDetail,
   updateCustomerFromPos,
 } from "../api";
@@ -294,7 +295,7 @@ function CustomerCard({ id, listRow, perms, onStartOrder, onSaved, onMoneyRecord
   const [summary, setSummary] = useState<PosCustomerSummary | null>(null);
   const [err, setErr] = useState("");
   const [notice, setNotice] = useState("");
-  const [mode, setMode] = useState<null | "edit" | "phone" | "sms" | "repay" | "topup">(null);
+  const [mode, setMode] = useState<null | "edit" | "phone" | "sms" | "repay" | "topup" | "topuplink">(null);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -454,14 +455,24 @@ function CustomerCard({ id, listRow, perms, onStartOrder, onSaved, onMoneyRecord
         <Section title="Deposit">
           {deposit.has_account && <Stat label="Status" value={deposit.status} />}
           <Stat label="Balance" value={`MVR ${(deposit.balance_laar / 100).toFixed(2)}`} />
-          {perms.canDepositReceive && deposit.status !== "frozen" && mode !== "topup" && (
-            <button type="button" onClick={() => setMode("topup")} style={{ ...secondaryBtn, marginTop: 8 }}>Add deposit</button>
+          {perms.canDepositReceive && deposit.status !== "frozen" && mode !== "topup" && mode !== "topuplink" && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              <button type="button" onClick={() => setMode("topup")} style={secondaryBtn}>Add deposit</button>
+              {/* A link they pay by card (owner, 2026-10-21). */}
+              <button type="button" onClick={() => setMode("topuplink")} style={secondaryBtn}>Send top-up link</button>
+            </div>
           )}
           {mode === "topup" && (
             <MoneyForm
               title="Deposit top-up"
               onCancel={() => setMode(null)}
               onSave={async (p) => { await recordDepositTopUp(id, p); done(`Deposit of MVR ${p.amount_mvr.toFixed(2)} added.`); }}
+            />
+          )}
+          {mode === "topuplink" && (
+            <TopUpLinkForm
+              onCancel={() => setMode(null)}
+              onSend={async (p) => { const res = await sendDepositTopUpLink(id, p); done(res.message); }}
             />
           )}
         </Section>
@@ -604,6 +615,37 @@ function MoneyForm({ title, max, onCancel, onSave }: {
       )}
       {err && <div style={errorBox}>{err}</div>}
       <FormButtons busy={busy} onCancel={onCancel} onSave={() => void save()} saveLabel="Record" />
+    </div>
+  );
+}
+
+/**
+ * A link the customer pays by card to put money in their wallet (owner,
+ * 2026-10-21). With an amount, or open so they pick one on the page; the
+ * server texts it and refuses a number nobody checked.
+ */
+function TopUpLinkForm({ onCancel, onSend }: { onCancel: () => void; onSend: (p: { amount_mvr?: number }) => Promise<void> }) {
+  const [amount, setAmount] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const send = async () => {
+    const typed = amount.trim();
+    const n = typed === "" ? undefined : Number.parseFloat(typed);
+    if (n !== undefined && (!Number.isFinite(n) || n <= 0)) { setErr("Enter an amount above zero, or leave it empty so they choose."); return; }
+    setBusy(true); setErr("");
+    try { await onSend(n === undefined ? {} : { amount_mvr: Math.round(n * 100) / 100 }); }
+    catch (e) { setErr((e as Error).message || "Could not send the link."); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #E2E8F0", display: "grid", gap: 8 }} data-testid="customer-topup-link-form">
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A" }}>Send a top-up link</div>
+      <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.4 }}>
+        They get a text with a link and pay by card; the money lands in their wallet when the bank confirms it. Leave the amount empty to let them choose. The link lasts 7 days.
+      </div>
+      <label style={label}>Amount (MVR, optional)<input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} style={field} /></label>
+      {err && <div style={errorBox}>{err}</div>}
+      <FormButtons busy={busy} onCancel={onCancel} onSave={() => void send()} saveLabel="Send link" />
     </div>
   );
 }

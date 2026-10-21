@@ -47,13 +47,19 @@ final class DepositNotifier
         private readonly CustomerSmsMessageBuilder $builder,
     ) {}
 
-    public function received(Customer $customer, int $amountLaar, string $method, int $balanceAfterLaar, int $ledgerId): void
+    /**
+     * Money added. A card top-up (owner, 2026-10-21) carries the link to its
+     * own page as the receipt, appended when the wording has no {{receipt}}.
+     */
+    public function received(Customer $customer, int $amountLaar, string $method, int $balanceAfterLaar, int $ledgerId, ?string $receiptUrl = null): void
     {
+        $receipt = $receiptUrl !== null && $receiptUrl !== '' ? ' Receipt: ' . $receiptUrl : '';
         $this->send($customer, self::TYPE_RECEIVED, self::TYPE_RECEIVED, [
             'amount' => self::mvr($amountLaar),
             'method' => self::methodWord($method),
             'balance' => self::mvr($balanceAfterLaar),
-        ], self::FALLBACK_RECEIVED, 'deposit:received:' . $ledgerId);
+            'receipt' => $receipt,
+        ], self::FALLBACK_RECEIVED, 'deposit:received:' . $ledgerId, $receipt);
     }
 
     public function paidOut(Customer $customer, int $amountLaar, string $method, int $balanceAfterLaar, int $ledgerId): void
@@ -102,25 +108,32 @@ final class DepositNotifier
             'cash' => 'cash',
             'card' => 'card',
             'bank_transfer' => 'bank transfer',
-            'online', 'bml' => 'online',
+            'online', 'bml' => 'online by card',
+            'gift_card' => 'gift card',
             default => str_replace('_', ' ', $method),
         };
     }
 
     /**
      * @param array<string, string> $vars
+     * @param string $tail A line the text must carry; appended when the wording left it out.
      */
-    private function send(Customer $customer, string $type, string $slug, array $vars, string $fallback, string $idempotencyKey): void
+    private function send(Customer $customer, string $type, string $slug, array $vars, string $fallback, string $idempotencyKey, string $tail = ''): void
     {
         $phone = trim((string) $customer->phone);
         if ($phone === '') {
             return;
         }
 
+        $message = $this->builder->build($slug, $vars, $fallback, $phone);
+        if ($tail !== '' && !str_contains($message, trim($tail))) {
+            $message .= $tail;
+        }
+
         try {
             $this->sms->send(new SmsMessage(
                 to: $phone,
-                message: $this->builder->build($slug, $vars, $fallback, $phone),
+                message: $message,
                 type: $type,
                 customerId: $customer->id,
                 referenceType: 'customer',

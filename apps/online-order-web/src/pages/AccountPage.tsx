@@ -1,7 +1,9 @@
 import { AddGiftCardToWallet } from '../components/AddGiftCardToWallet';
+import { AddMoneyCard } from '../components/AddMoneyCard';
+import { WalletTopUpResult } from '../components/WalletTopUpResult';
 import { ReviewPhotoPicker } from '../components/ReviewPhotoPicker';
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useAuth } from '../context/AuthContext';
 import { VerifyNumberCard } from '../components/VerifyNumberCard';
@@ -120,12 +122,27 @@ export function AccountPage() {
   const [creditLoaded, setCreditLoaded] = useState(false);
   const [reminderSaving, setReminderSaving] = useState(false);
 
-  // Deposit account
+  // The wallet (deposit account)
   const [deposit, setDeposit] = useState<CustomerDepositSummary | null>(null);
   const [depositTransactions, setDepositTransactions] = useState<CustomerDepositTransaction[]>([]);
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositError, setDepositError] = useState('');
   const [depositLoaded, setDepositLoaded] = useState(false);
+  // Back from the bank after Add money (owner, 2026-10-21): open the Wallet
+  // panel and ask how it went; the query is dropped so a refresh stays quiet.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [topUpReturn, setTopUpReturn] = useState<{ token: string; state: string } | null>(null);
+  const [topUpRefresh, setTopUpRefresh] = useState(0);
+  useEffect(() => {
+    const token = searchParams.get('topup');
+    if (!token) return;
+    setTopUpReturn({ token, state: searchParams.get('payment') ?? '' });
+    setPanel('deposit');
+    const next = new URLSearchParams(searchParams);
+    next.delete('topup');
+    next.delete('payment');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!authReady || !isAuthenticated) return;
@@ -693,6 +710,14 @@ export function AccountPage() {
 
           {panel === 'deposit' && (
             <>
+              {topUpReturn && (
+                <WalletTopUpResult
+                  token={topUpReturn.token}
+                  state={topUpReturn.state}
+                  onSettled={() => { setDepositLoaded(false); setTopUpRefresh((n) => n + 1); }}
+                />
+              )}
+              <AddMoneyCard refreshKey={topUpRefresh} />
               <AddGiftCardToWallet onAdded={() => setDepositLoaded(false)} />
               {depositError && <p style={{ color: 'var(--color-error, #dc2626)', fontSize: 13 }}>{depositError}</p>}
               {depositLoading ? (
@@ -715,7 +740,7 @@ export function AccountPage() {
                     padding: '24px 20px',
                   }}>
                     <p style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#047857', margin: '0 0 12px' }}>
-                      Deposit Balance · {deposit.status}
+                      {t('account.deposit_title_status').replace('{status}', deposit.status)}
                     </p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <div>

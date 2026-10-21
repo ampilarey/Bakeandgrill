@@ -57,6 +57,16 @@ class SiteSettingsController extends Controller
         'credit_accounts_mode',
         'credit_limit_max_mvr',
         'credit_payment_terms_default_days',
+        // Settings → Credit & wallet: money into the wallet by card (owner,
+        // 2026-10-21; WalletTopUpRules). The owner-alert amount is also the
+        // "When it sends" of the large top-up row in Admin → Notifications.
+        'wallet_topup_enabled',
+        'wallet_topup_presets',
+        'wallet_topup_min_mvr',
+        'wallet_topup_max_mvr',
+        'wallet_topup_daily_cap_mvr',
+        'wallet_balance_max_mvr',
+        'wallet_topup_owner_alert_mvr',
         // "When it sends" numbers on three rows of Admin → Notifications
         // (credit reminder repeats, the wholesale nudge and alert; they were
         // on Settings → Credit Accounts until the re-audit of 2026-10-10)

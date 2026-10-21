@@ -33,13 +33,14 @@ final class CustomerDepositService
      */
     public function customerFacingLedgerLabel(string $type): string
     {
+        // The customer's word is wallet (owner, 2026-10-21).
         return match ($type) {
-            'top_up' => 'Deposit received',
+            'top_up' => 'Money added',
             'usage' => 'Order payment',
-            'payout' => 'Refund to customer',
-            'refund' => 'Deposit credited',
+            'payout' => 'Paid back to you',
+            'refund' => 'Refund added',
             'reversal' => 'Order refund',
-            'transfer_to_credit' => 'Transfer to credit',
+            'transfer_to_credit' => 'Moved to your credit account',
             'adjustment', 'adjustment_add', 'adjustment_deduct' => 'Adjustment',
             default => ucfirst(str_replace('_', ' ', $type)),
         };

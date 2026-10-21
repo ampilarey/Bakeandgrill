@@ -7,6 +7,7 @@ use App\Http\Controllers\ImageThumbController;
 use App\Http\Controllers\InvoicePageController;
 use App\Http\Controllers\PosPayPageController;
 use App\Http\Controllers\ReceiptPageController;
+use App\Http\Controllers\WalletTopUpPageController;
 use Illuminate\Support\Facades\Route;
 
 // Thumbnails for local cafe images (faster load)
@@ -305,6 +306,18 @@ Route::post('/invoices/{token}/pay', [InvoicePageController::class, 'pay'])
     ->withoutMiddleware([Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
     ->middleware('throttle:10,1')
     ->name('invoices.pay');
+
+// Money into the wallet by card from a staff-sent link, and the receipt once
+// paid (owner, 2026-10-21). Token-gated like an invoice. The session stays on
+// so the Pay button's refusals show; no CSRF, like the pay page.
+Route::get('/wallet/top-up/{token}', [WalletTopUpPageController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->name('wallet-topup.show');
+Route::post('/wallet/top-up/{token}/pay', [WalletTopUpPageController::class, 'pay'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->withoutMiddleware([Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
+    ->middleware('throttle:10,1')
+    ->name('wallet-topup.pay');
 
 // BML Return URL (non-authoritative — redirects to frontend)
 Route::get('/payments/bml/return', [App\Http\Controllers\Api\PaymentController::class, 'bmlReturn'])->name('bml.return');

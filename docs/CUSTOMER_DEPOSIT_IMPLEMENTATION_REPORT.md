@@ -189,6 +189,28 @@ from it and the balance left (`App\Support\ReceiptAccountLines`). Sender:
 `App\Domains\Deposits\Services\DepositNotifier`, called from `DepositLedgerService`.
 Tests: `tests/Feature/Credit/CreditAndWalletTextsTest.php`.
 
+## 8c. Money in by card (2026-10-21)
+
+Owner: "when customer log in, option to pay deposit to his acc". A customer adds money to the
+wallet by card, and staff can send a link that does the same.
+
+| Where | What |
+|---|---|
+| Order app, Account → Wallet → **Add money** | The owner's presets as one-tap amounts, or an amount of their own; Pay by card goes to BML; the bank brings them back to the Wallet panel, which asks until the money is in and then says "MVR x added. Balance MVR y" with a link to the receipt. |
+| Admin, Customer → Deposit → **Send top-up link**; till, Customers → Deposit → **Send top-up link** | A text with a link (`customer_wallet_topup_link`), with an amount or open so the customer picks one. Needs `customers.deposit.receive`. Refused for a number nobody checked; a customer with no phone gets the link to copy. |
+| `/wallet/top-up/{token}` | The link's page: amount or the choice, Pay by card, and the receipt once paid (amount, reference, balance after). Lasts 7 days; an app top-up a day. |
+| Settings → Credit & wallet | On/off, amounts to offer, smallest and largest top-up, card top-ups a day, the most a wallet may hold (`WalletTopUpRules`, defaults 100/200/500/1,000, MVR 50 to 5,000, MVR 10,000 a day, MVR 20,000). |
+| Notifications → Owner: large wallet top-up by card | Owners and managers are texted at or above the amount under Edit → When it sends (`wallet_topup_owner_alert_mvr`, default MVR 2,000). |
+
+How it is wired: `wallet_topups` row + a BML payment with `payments.wallet_topup_id` (no order);
+`PaymentService::initiateBmlTopUpPayment` / `confirmTopUpPaymentOnce`; `WalletTopUpService::settle`
+credits once per payment through `DepositLedgerService::topUp` (method `online`, `payment_id` on the
+ledger row) and the customer's "money added" text carries the page as the receipt. The webhook, the
+return URL, the page, the app's poll and the `payments:reconcile-pending-bml` sweep all settle it;
+the first wins. A bank refusal leaves the top-up open for another try. Tests:
+`tests/Feature/Deposits/WalletTopUpTest.php`, `AddMoneyCard.test.tsx`, `CreditAccountSettings.test.tsx`,
+`CustomersPanel.test.tsx`.
+
 ## 9. Gap matrix (plan vs delivered)
 
 | Area | Status |

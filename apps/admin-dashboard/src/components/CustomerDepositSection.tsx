@@ -5,11 +5,13 @@ import {
   fetchCustomerDeposit,
   fetchCustomerDepositLedger,
   refundCustomerDeposit,
+  sendCustomerDepositTopUpLink,
   topUpCustomerDeposit,
   transferCustomerDepositToCredit,
   updateCustomerDeposit,
   type CustomerDepositInfo,
   type CustomerDepositLedgerRow,
+  type DepositTopUpLink,
 } from '../api';
 import { Badge, Btn, ErrorMsg } from './SharedUI';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -67,6 +69,10 @@ export function CustomerDepositSection({ customerId }: Props) {
   const [refundReason, setRefundReason] = useState('');
   const [transferAmount, setTransferAmount] = useState('');
   const [transferNotes, setTransferNotes] = useState('');
+  // A link the customer pays by card (owner, 2026-10-21).
+  const [linkAmount, setLinkAmount] = useState('');
+  const [linkResult, setLinkResult] = useState<{ message: string; link: DepositTopUpLink } | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const loadDeposit = async () => {
     if (!canView) return;
@@ -155,6 +161,35 @@ export function CustomerDepositSection({ customerId }: Props) {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleTopUpLink = async () => {
+    const typed = linkAmount.trim();
+    const amount = typed === '' ? undefined : parseFloat(typed);
+    if (amount !== undefined && (!Number.isFinite(amount) || amount <= 0)) {
+      setError('Enter an amount above zero, or leave it empty so they choose.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    setLinkResult(null);
+    try {
+      const res = await sendCustomerDepositTopUpLink(customerId, amount === undefined ? {} : { amount_mvr: Math.round(amount * 100) / 100 });
+      setLinkResult({ message: res.message, link: res.top_up });
+      setLinkAmount('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not send the link');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copyLink = () => {
+    if (!linkResult) return;
+    void navigator.clipboard?.writeText(linkResult.link.url).then(() => {
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 1500);
+    }).catch(() => { /* clipboard blocked; the link is on screen anyway */ });
   };
 
   const handleAdjust = async () => {
@@ -311,6 +346,33 @@ export function CustomerDepositSection({ customerId }: Props) {
               <input style={inputFont(inputStyle)} value={topUpReference} onChange={(e) => setTopUpReference(e.target.value)} placeholder="Reference (optional)" />
               <textarea style={inputFont({ ...inputStyle, height: 48, resize: 'vertical' })} value={topUpNotes} onChange={(e) => setTopUpNotes(e.target.value)} placeholder="Notes (optional)" />
               <Btn small onClick={() => void handleTopUp()} disabled={saving}>Record deposit</Btn>
+            </div>
+          )}
+
+          {canReceive && deposit.status !== 'closed' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="deposit-topup-link">
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Send a top-up link (they pay by card)</p>
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                They get a text with a link and pay by card; the money lands in the wallet when the bank confirms it. Leave the amount empty to let them choose. The link lasts 7 days.
+              </p>
+              <input
+                style={inputFont(inputStyle)}
+                type="number"
+                min="0"
+                step="0.01"
+                value={linkAmount}
+                onChange={(e) => setLinkAmount(e.target.value)}
+                placeholder="Amount MVR (optional)"
+                aria-label="Top-up link amount (MVR, optional)"
+              />
+              <Btn small variant="secondary" onClick={() => void handleTopUpLink()} disabled={saving}>Send top-up link</Btn>
+              {linkResult && (
+                <div role="status" style={{ fontSize: 12, color: 'var(--color-text-secondary)', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <span>{linkResult.message}</span>
+                  <a href={linkResult.link.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Open</a>
+                  <Btn small variant="ghost" onClick={copyLink}>{linkCopied ? 'Copied' : 'Copy link'}</Btn>
+                </div>
+              )}
             </div>
           )}
 

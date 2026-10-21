@@ -120,3 +120,14 @@ export async function recordDepositTopUp(
 ): Promise<unknown> {
   return request(`/admin/customers/${id}/deposit/top-up`, { method: "POST", body: JSON.stringify(payload) });
 }
+
+/**
+ * Text the customer a link to add money to their wallet by card (owner,
+ * 2026-10-21). With an amount, or open so they pick one on the page.
+ */
+export async function sendDepositTopUpLink(
+  id: number,
+  payload: { amount_mvr?: number; note?: string },
+): Promise<{ message: string; top_up: { url: string; amount_mvr: number | null; expires_at: string | null } }> {
+  return request(`/admin/customers/${id}/deposit/top-up-link`, { method: "POST", body: JSON.stringify(payload) });
+}

@@ -109,6 +109,7 @@ final class AlertAudience
         // Owner alerts
         'owner_daily_refund_summary' => self::OWNERS_MANAGERS,
         'owner_deposit_payout' => self::OWNERS_MANAGERS,
+        'owner_deposit_large_topup' => self::OWNERS_MANAGERS,
         'owner_shift_left_open' => self::OWNERS_MANAGERS,
         'owner_shift_variance' => self::OWNERS_MANAGERS,
         'owner_shift_float_mismatch' => self::OWNERS_MANAGERS,

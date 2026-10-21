@@ -121,9 +121,6 @@ class CustomerWalletController extends Controller
     /** Who the ledger names for a customer's own wallet action: the owner, as for gateway settlements. */
     private function systemActor(): User
     {
-        $actor = User::query()->where('is_active', true)->whereHas('role', fn ($q) => $q->where('slug', 'owner'))->orderBy('id')->first();
-        abort_if($actor === null, 503, 'The wallet is not available right now.');
-
-        return $actor;
+        return \App\Domains\Deposits\Support\WalletActor::system();
     }
 }

@@ -106,6 +106,8 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.manage']
 
     Route::middleware('permission:customers.deposit.receive')->group(function () {
         Route::post('/{id}/deposit/top-up', [App\Http\Controllers\Api\CustomerDepositController::class, 'topUp']);
+        // A link the customer pays by card (owner, 2026-10-21).
+        Route::post('/{id}/deposit/top-up-link', [App\Http\Controllers\Api\CustomerDepositController::class, 'topUpLink']);
     });
 
     Route::middleware('permission:customers.deposit.adjust')->group(function () {

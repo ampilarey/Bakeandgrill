@@ -263,6 +263,28 @@ export async function transferCustomerDepositToCredit(
   return req(`/admin/customers/${customerId}/deposit/transfer-to-credit`, { method: 'POST', body: JSON.stringify(data) });
 }
 
+export type DepositTopUpLink = {
+  id: number;
+  number: string;
+  token: string;
+  url: string;
+  amount_mvr: number | null;
+  expires_at: string | null;
+  link_sent_at: string | null;
+};
+
+/**
+ * Text the customer a link to add money to their wallet by card (owner,
+ * 2026-10-21). With an amount, or open so they pick one on the page. The link
+ * comes back for copying whether or not the text went.
+ */
+export async function sendCustomerDepositTopUpLink(
+  customerId: number,
+  data: { amount_mvr?: number; note?: string },
+): Promise<{ top_up: DepositTopUpLink; message: string }> {
+  return req(`/admin/customers/${customerId}/deposit/top-up-link`, { method: 'POST', body: JSON.stringify(data) });
+}
+
 export async function fetchAdminCustomers(params?: {
   search?: string;
   is_active?: boolean;

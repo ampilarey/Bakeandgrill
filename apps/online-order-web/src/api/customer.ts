@@ -307,6 +307,50 @@ export async function payOrderFromWallet(orderId: number): Promise<{ order: { id
   return request(`/customer/orders/${orderId}/pay-wallet`, { method: 'POST' });
 }
 
+// ── Money into the wallet by card (owner, 2026-10-21) ───────────────────────
+
+/** What this customer may add by card, and the amounts to offer (WalletTopUpRules). */
+export type WalletTopUpRules = {
+  enabled: boolean;
+  can_top_up: boolean;
+  reason: 'off' | 'no_phone' | 'verify_phone' | 'on_hold' | 'closed' | null;
+  message: string | null;
+  presets_mvr: number[];
+  min_mvr: number;
+  max_mvr: number | null;
+  daily_cap_mvr: number | null;
+  used_today_mvr: number;
+  max_balance_mvr: number | null;
+  balance_mvr: number;
+};
+
+export type WalletTopUp = {
+  token: string;
+  number: string;
+  status: 'pending' | 'paid' | 'expired' | 'cancelled';
+  amount_mvr: number | null;
+  amount_fixed: boolean;
+  balance_after_mvr: number | null;
+  paid_at: string | null;
+  expires_at: string | null;
+  /** The top-up's own page: the receipt once paid. */
+  url: string;
+};
+
+export async function getWalletTopUpRules(): Promise<{ rules: WalletTopUpRules }> {
+  return request('/customer/wallet/top-ups/rules');
+}
+
+/** Start a card top-up; the reply carries the bank's page to go to. */
+export async function startWalletTopUp(amountMvr: number): Promise<{ top_up: WalletTopUp; payment_url: string }> {
+  return request('/customer/wallet/top-ups', { method: 'POST', body: JSON.stringify({ amount_laar: Math.round(amountMvr * 100) }) });
+}
+
+/** How a top-up went; while pending the server asks the bank. */
+export async function getWalletTopUp(token: string): Promise<{ top_up: WalletTopUp; balance_mvr: number }> {
+  return request(`/customer/wallet/top-ups/${encodeURIComponent(token)}`);
+}
+
 /** Ask an owner to erase this account's personal data. Orders and amounts stay. */
 export async function requestAccountErasure(): Promise<{ message: string }> {
   return request('/customer/erasure-request', { method: 'POST' });

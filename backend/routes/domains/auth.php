@@ -142,6 +142,11 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     // The wallet (iruali import plan, feature 12): a gift card into it, and paying an order from it.
     Route::post('/wallet/gift-card', [App\Http\Controllers\Api\CustomerWalletController::class, 'addGiftCard'])->middleware('throttle:10,10');
     Route::post('/orders/{id}/pay-wallet', [App\Http\Controllers\Api\CustomerWalletController::class, 'payOrder'])->whereNumber('id')->middleware('throttle:20,1');
+    // Money into the wallet by card (owner, 2026-10-21): the rules, start one, and how it went.
+    Route::get('/wallet/top-ups/rules', [App\Http\Controllers\Api\CustomerWalletTopUpController::class, 'rules']);
+    Route::post('/wallet/top-ups', [App\Http\Controllers\Api\CustomerWalletTopUpController::class, 'start'])->middleware('throttle:10,10');
+    Route::get('/wallet/top-ups/{token}', [App\Http\Controllers\Api\CustomerWalletTopUpController::class, 'show'])
+        ->where('token', '[A-Za-z0-9]+')->middleware('throttle:60,1');
     Route::patch('/profile', [CustomerController::class, 'update']);
     Route::post('/erasure-request', [App\Http\Controllers\Api\CustomerErasureRequestController::class, 'store'])
         ->middleware('throttle:6,10');

@@ -3,16 +3,23 @@ import { SeeAlso } from '../../components/SeeAlso';
 import { Link } from 'react-router-dom';
 import { Save } from 'lucide-react';
 import { Button, Card } from '../../components/ui';
+import { Switch } from '../../components/SharedUI';
 import { getSiteSettings, updateSiteSettings } from '../../api';
 import { inputFont } from '../../utils/cssVars';
 
 /**
- * House policy for customer credit accounts.
+ * House policy for customer credit accounts, and for the wallet.
  *
  * Audit, 2026-09-03: `credit_limit_max_mvr` governed every manager approval
  * and nothing in this app could change it, so the ceiling was whatever the
  * migration seeded. Payment terms were a constant, and credit could only be
  * turned off by taking permissions away. All three live here now.
+ *
+ * Owner, 2026-10-21: customers add money to their wallet by card from the
+ * order app, or from a link staff send. The amounts offered, the smallest
+ * and largest top-up, the daily cap and what a wallet may hold are set here
+ * (WalletTopUpRules); the owner alert for a large top-up is on its row in
+ * Notifications.
  */
 
 const MODES = [
@@ -33,6 +40,15 @@ const MODES = [
   },
 ] as const;
 
+const WALLET_DEFAULTS = {
+  enabled: '1',
+  presets: '100,200,500,1000',
+  min: '50',
+  max: '5000',
+  dailyCap: '10000',
+  maxBalance: '20000',
+};
+
 const FIELD: React.CSSProperties = {
   width: '100%', padding: '10px 12px', borderRadius: 8,
   border: '1px solid var(--color-border)', fontSize: 14,
@@ -49,10 +65,34 @@ const HINT: React.CSSProperties = {
   margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5,
 };
 
+function isOn(v: string | undefined, fallback: string): boolean {
+  const s = (v ?? fallback).trim().toLowerCase();
+  return !['0', 'false', 'off', ''].includes(s);
+}
+
+/** "100, 200, 500" → [100, 200, 500], or null when a part is not a number. */
+function parsePresets(raw: string): number[] | null {
+  const parts = raw.split(/[\s,;]+/).filter((p) => p !== '');
+  const out: number[] = [];
+  for (const p of parts) {
+    const n = Number(p);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    out.push(n);
+  }
+  return out;
+}
+
 export function CreditAccountSettings() {
   const [maxLimit, setMaxLimit] = useState('');
   const [terms, setTerms] = useState('');
   const [mode, setMode] = useState<string>('open');
+  // The wallet (owner, 2026-10-21).
+  const [walletOn, setWalletOn] = useState(true);
+  const [presets, setPresets] = useState(WALLET_DEFAULTS.presets);
+  const [minTopUp, setMinTopUp] = useState(WALLET_DEFAULTS.min);
+  const [maxTopUp, setMaxTopUp] = useState(WALLET_DEFAULTS.max);
+  const [dailyCap, setDailyCap] = useState(WALLET_DEFAULTS.dailyCap);
+  const [maxBalance, setMaxBalance] = useState(WALLET_DEFAULTS.maxBalance);
   // The chasing numbers (wholesale audit, 2026-09-26) are "When it sends" on
   // their alerts in Notifications since the re-audit of 2026-10-10.
   const [loading, setLoading] = useState(true);
@@ -76,6 +116,12 @@ export function CreditAccountSettings() {
         setMaxLimit(map.credit_limit_max_mvr ?? '50000');
         setTerms(map.credit_payment_terms_default_days ?? '30');
         setMode(map.credit_accounts_mode ?? 'open');
+        setWalletOn(isOn(map.wallet_topup_enabled, WALLET_DEFAULTS.enabled));
+        setPresets(map.wallet_topup_presets ?? WALLET_DEFAULTS.presets);
+        setMinTopUp(map.wallet_topup_min_mvr ?? WALLET_DEFAULTS.min);
+        setMaxTopUp(map.wallet_topup_max_mvr ?? WALLET_DEFAULTS.max);
+        setDailyCap(map.wallet_topup_daily_cap_mvr ?? WALLET_DEFAULTS.dailyCap);
+        setMaxBalance(map.wallet_balance_max_mvr ?? WALLET_DEFAULTS.maxBalance);
         setLoaded(true);
       })
       .catch((e: Error) => setError(e.message))
@@ -93,6 +139,27 @@ export function CreditAccountSettings() {
       setError('Payment terms must be a whole number of days between 7 and 90.');
       return;
     }
+    const presetList = parsePresets(presets);
+    const minNum = Number(minTopUp);
+    const maxNum = Number(maxTopUp);
+    const capNum = Number(dailyCap);
+    const ceilingNum = Number(maxBalance);
+    if (presetList === null) {
+      setError('Amounts to offer must be numbers above zero, separated by commas.');
+      return;
+    }
+    if (!Number.isFinite(minNum) || minNum < 1) {
+      setError('The smallest top-up must be MVR 1 or more.');
+      return;
+    }
+    if (!Number.isFinite(maxNum) || maxNum < 0 || (maxNum > 0 && maxNum < minNum)) {
+      setError('The largest top-up must be 0 (no limit) or at least the smallest top-up.');
+      return;
+    }
+    if (!Number.isFinite(capNum) || capNum < 0 || !Number.isFinite(ceilingNum) || ceilingNum < 0) {
+      setError('The daily cap and the most a wallet may hold must be numbers, zero or more (0 means no limit).');
+      return;
+    }
     setSaving(true);
     setError('');
     setSaved(false);
@@ -101,6 +168,12 @@ export function CreditAccountSettings() {
         credit_limit_max_mvr: String(limitNum),
         credit_payment_terms_default_days: String(termsNum),
         credit_accounts_mode: mode,
+        wallet_topup_enabled: walletOn ? '1' : '0',
+        wallet_topup_presets: presetList.join(','),
+        wallet_topup_min_mvr: String(minNum),
+        wallet_topup_max_mvr: String(maxNum),
+        wallet_topup_daily_cap_mvr: String(capNum),
+        wallet_balance_max_mvr: String(ceilingNum),
       });
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2500);
@@ -207,26 +280,83 @@ export function CreditAccountSettings() {
               <Link to="/notifications/messages?open=owner_trade_unreconciled" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>unreconciled stock alert</Link>.
             </p>
           </div>
-
-          {error && (
-            <p role="alert" style={{ margin: 0, fontSize: 13, color: 'var(--color-danger)' }}>{error}</p>
-          )}
-          {!loaded && (
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
-              The current settings did not load, so Save is off: saving now would replace them with what is shown.
-            </p>
-          )}
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Button onClick={() => void save()} disabled={saving || !loaded}>
-              <Save size={16} /> {saving ? 'Saving…' : 'Save'}
-            </Button>
-            {saved && (
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-success)' }}>Saved</span>
-            )}
-          </div>
         </div>
       </Card>
+
+      <Card>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }} data-testid="wallet-settings">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <span style={{ ...LABEL, marginBottom: 2 }}>Wallet: money in by card</span>
+              <p style={{ ...HINT, margin: 0 }}>
+                Customers add money to their wallet from the order app (Account → Wallet → Add money), and staff can text them a
+                link to pay by card. Off, both go away; money at the counter still works.
+              </p>
+            </div>
+            <Switch
+              checked={walletOn}
+              onChange={setWalletOn}
+              aria-label="Customers can add money to their wallet by card"
+              data-testid="wallet-topup-enabled"
+            />
+          </div>
+
+          <div>
+            <label style={LABEL} htmlFor="wallet-presets">Amounts to offer (MVR, separated by commas)</label>
+            <input
+              id="wallet-presets"
+              data-testid="wallet-presets"
+              value={presets}
+              onChange={(e) => setPresets(e.target.value)}
+              inputMode="decimal"
+              style={inputFont(FIELD)}
+            />
+            <p style={HINT}>Shown as one-tap buttons in the app and on the link's page. Customers may also type their own amount.</p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 12 }}>
+            <div>
+              <label style={LABEL} htmlFor="wallet-min">Smallest top-up (MVR)</label>
+              <input id="wallet-min" data-testid="wallet-min" value={minTopUp} onChange={(e) => setMinTopUp(e.target.value)} inputMode="decimal" style={inputFont(FIELD)} />
+            </div>
+            <div>
+              <label style={LABEL} htmlFor="wallet-max">Largest top-up (MVR)</label>
+              <input id="wallet-max" data-testid="wallet-max" value={maxTopUp} onChange={(e) => setMaxTopUp(e.target.value)} inputMode="decimal" style={inputFont(FIELD)} />
+            </div>
+            <div>
+              <label style={LABEL} htmlFor="wallet-daily-cap">Card top-ups a day (MVR)</label>
+              <input id="wallet-daily-cap" data-testid="wallet-daily-cap" value={dailyCap} onChange={(e) => setDailyCap(e.target.value)} inputMode="decimal" style={inputFont(FIELD)} />
+            </div>
+            <div>
+              <label style={LABEL} htmlFor="wallet-max-balance">Most a wallet may hold (MVR)</label>
+              <input id="wallet-max-balance" data-testid="wallet-max-balance" value={maxBalance} onChange={(e) => setMaxBalance(e.target.value)} inputMode="decimal" style={inputFont(FIELD)} />
+            </div>
+          </div>
+          <p style={{ ...HINT, margin: 0 }}>
+            0 means no limit. Only a customer whose number was checked with a code may add money; a wallet on hold takes none.
+            A large top-up texts the owners; the amount is on that alert in Notifications:{' '}
+            <Link to="/notifications/messages?open=owner_deposit_large_topup" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>large wallet top-up</Link>.
+          </p>
+        </div>
+      </Card>
+
+      {error && (
+        <p role="alert" style={{ margin: 0, fontSize: 13, color: 'var(--color-danger)' }}>{error}</p>
+      )}
+      {!loaded && (
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+          The current settings did not load, so Save is off: saving now would replace them with what is shown.
+        </p>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <Button onClick={() => void save()} disabled={saving || !loaded}>
+          <Save size={16} /> {saving ? 'Saving…' : 'Save'}
+        </Button>
+        {saved && (
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-success)' }}>Saved</span>
+        )}
+      </div>
     </div>
   );
 }

@@ -1111,6 +1111,33 @@ own reminder switch is for the schedule. `CreditAndWalletTextsTest`. A new money
 customer goes into the registry, `DEFAULTS`, the migration and that test; a new place money
 moves sends through these notifiers, never a text of its own.
 
+## Money into the wallet by card
+
+Owner, 2026-10-21 ("when customer log in, option to pay deposit to his acc"). A card top-up is a
+`wallet_topups` row (`App\Models\WalletTopUp`), never an order: its BML payment carries
+`payments.wallet_topup_id` the way an invoice payment carries `invoice_id`, so nothing in the order
+code sees it, and `PaymentService::confirmPaymentOnce` takes that branch first
+(`confirmTopUpPaymentOnce` → `WalletTopUpService::settle`, which credits the wallet once per payment
+through `DepositLedgerService::topUp` with method `online`, the ledger row keeping `payment_id`).
+Three ways in: the order app's Account → Wallet → Add money (`AddMoneyCard`, `POST
+/api/customer/wallet/top-ups`, the bank sends them back to `/order/account?topup=…&payment=…`
+where `WalletTopUpResult` asks `GET /api/customer/wallet/top-ups/{token}` until paid); a link staff
+send from Admin (Customer → Deposit → Send top-up link) or the till's Customers panel (`POST
+/api/admin/customers/{id}/deposit/top-up-link`, `customers.deposit.receive`, texted as row
+`customer_wallet_topup_link`, with an amount or open so the customer picks one); and the public page
+`/wallet/top-up/{token}` (`WalletTopUpPageController`, `wallet/topup.blade.php`), which is also the
+receipt once paid. Whichever of the webhook, the return URL (`topUpId`, `topUpToken`, `topUpBack` on
+`bml.return`), the page, the app's poll or `payments:reconcile-pending-bml` (`WalletTopUpService::sweep`)
+hears first settles it; the rest find it paid. The rules are `WalletTopUpRules` (Settings → Credit &
+wallet: on/off, presets, smallest and largest, a daily cap, the most a wallet may hold; keys in
+`WRITABLE_KEYS`): only a number checked with a code may add money (a guest account on an unchecked
+number is set aside the day its owner signs in, so card money on it would be stranded), a wallet on
+hold takes none, and a top-up at or above `wallet_topup_owner_alert_mvr` (the "When it sends" of
+row `owner_deposit_large_topup`) texts the owners. The customer's "money added" text carries the
+page as the receipt (`{{receipt}}`). A pending top-up past its date is expired, unless a payment the
+bank may still confirm keeps it open. `WalletTopUpTest`, `AddMoneyCard.test.tsx`. A new way to put
+money in the wallet goes through `WalletTopUpService` and its rules, never a second ledger path.
+
 ## Poster print PDFs (PDF/X-4)
 
 Posters render through TCPDF via `App\Domains\Posters\Pdf\PdfX4Document`, not dompdf

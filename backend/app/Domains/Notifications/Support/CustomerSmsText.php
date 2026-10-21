@@ -64,6 +64,7 @@ final class CustomerSmsText
         'customer_deposit_paid_out' => 'Bake & Grill: ވޯލެޓުން MVR {{amount}} އަނބުރާ ދެވިއްޖެ. ވޯލެޓުގެ ބާކީ: MVR {{balance}}.',
         'customer_deposit_on_hold' => 'Bake & Grill: ތިޔަ ވޯލެޓް ވަގުތީގޮތުން ހިފަހައްޓާފައި، މިވަގުތު ބޭނުމެއް ނުކުރެވޭނެ. ގުޅުއްވާ.',
         'customer_deposit_active' => 'Bake & Grill: ތިޔަ ވޯލެޓް އަލުން ބޭނުންކުރެވޭނެ. ބާކީ: MVR {{balance}}.',
+        'customer_wallet_topup_link' => 'Bake & Grill: ކާޑުން ވޯލެޓަށް {{what}} ވައްދަން މި ލިންކު ބޭނުންކުރައްވާ: {{link}} ލިންކު 7 ދުވަހަށް ބޭނުންކުރެވޭނެ.',
     ];
 
     /** 'dv' when Dhivehi is on and the customer with this number keeps Dhivehi, else 'en'. */

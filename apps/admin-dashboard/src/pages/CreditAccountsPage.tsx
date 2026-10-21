@@ -200,7 +200,7 @@ export function CreditAccountsPage() {
   return (
     <PageShell>
       <PageHeader title="Accounts on credit" subtitle="Every customer buying on account: what they owe, how late, and the texts to chase it" />
-      <SeeAlso to="/settings/credit" label="Settings → Credit rules" testId="credit-see-rules">
+      <SeeAlso to="/settings/credit" label="Settings → Credit & wallet" testId="credit-see-rules">
         The approval ceiling, payment terms and whether credit is open are in
       </SeeAlso>
 

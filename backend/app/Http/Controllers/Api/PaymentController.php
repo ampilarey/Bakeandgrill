@@ -206,10 +206,30 @@ class PaymentController extends Controller
     {
         $orderId = $request->query('orderId');
         $invoiceId = $request->query('invoiceId');
+        $topUpId = $request->query('topUpId');
         $state = $request->query('state', 'UNKNOWN');
         $transactionId = $request->query('transactionId');
 
-        if ($state === 'CONFIRMED' && $invoiceId && $transactionId && ! $orderId) {
+        // Money into a wallet by card (owner, 2026-10-21): confirm, then ask
+        // the bank again whatever the query string said, and go back to the
+        // app that started it or to the link's own page.
+        if ($topUpId && !$orderId && !$invoiceId) {
+            if ($state === 'CONFIRMED' && $transactionId) {
+                try {
+                    $this->paymentService->confirmFromTopUpReturnUrl((int) $topUpId, (string) $transactionId);
+                } catch (\Throwable $e) {
+                    Log::warning('BML return: wallet top-up fallback confirmation failed', [
+                        'wallet_topup_id' => $topUpId,
+                        'transaction_id' => $transactionId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            return $this->backFromTopUp($request, (string) $state);
+        }
+
+        if ($state === 'CONFIRMED' && $invoiceId && $transactionId && !$orderId) {
             try {
                 $this->paymentService->confirmFromInvoiceReturnUrl((int) $invoiceId, (string) $transactionId);
             } catch (\Throwable $e) {
@@ -278,13 +298,54 @@ class PaymentController extends Controller
                 ->where('type', 'gift_card')
                 ->exists();
             if ($giftOrder) {
-                $orderAppBase = preg_replace('#/orders/?$#', '', rtrim((string) $baseUrl, '/')) ?: '/order';
-
-                return redirect(rtrim($orderAppBase, '/') . '/gift-cards/success?orderId=' . $orderId . '&payment=' . $state);
+                return redirect($this->orderAppBase() . '/gift-cards/success?orderId=' . $orderId . '&payment=' . $state);
             }
         }
 
         return redirect(rtrim($baseUrl, '/') . '/' . $orderId . '?payment=' . $state);
+    }
+
+    /**
+     * Where a wallet top-up's customer lands after the bank: the order app's
+     * Wallet panel when the app started it, else the top-up's own page. Both
+     * ask the bank once more first, so a paid top-up never shows as pending.
+     */
+    private function backFromTopUp(Request $request, string $state): \Illuminate\Http\RedirectResponse
+    {
+        $token = (string) $request->query('topUpToken', '');
+        $topUp = $token !== '' ? \App\Models\WalletTopUp::query()->where('token', $token)->first() : null;
+        if ($topUp === null) {
+            Log::warning('BML return: wallet top-up token unknown', ['token' => $token]);
+
+            return redirect($this->orderAppBase() . '/account');
+        }
+
+        app(\App\Domains\Deposits\Services\WalletTopUpService::class)->heal($topUp, force: true);
+        $paid = $topUp->fresh()->status === \App\Models\WalletTopUp::STATUS_PAID;
+        $shownState = $paid ? 'CONFIRMED' : $state;
+
+        if ($request->query('topUpBack') === 'app') {
+            return redirect($this->orderAppBase() . '/account?topup=' . urlencode($token) . '&payment=' . urlencode($shownState));
+        }
+
+        return redirect()
+            ->route('wallet-topup.show', ['token' => $token, 'payment' => $shownState])
+            ->with($paid || $state === 'CONFIRMED' ? 'success' : 'error', $paid
+                ? 'Payment received. The money is in the wallet.'
+                : ($state === 'CONFIRMED'
+                    ? 'Payment is being confirmed with the bank. Refresh in a moment.'
+                    : 'Payment was not completed. You can try again from the Pay button.'));
+    }
+
+    /** The order app's base path, from the configured order status URL (…/order/orders → …/order). */
+    private function orderAppBase(): string
+    {
+        $baseUrl = (string) config('frontend.order_status_url');
+        if ($baseUrl === '') {
+            $baseUrl = '/order/orders';
+        }
+
+        return rtrim(preg_replace('#/orders/?$#', '', rtrim($baseUrl, '/')) ?: '/order', '/');
     }
 
     /**

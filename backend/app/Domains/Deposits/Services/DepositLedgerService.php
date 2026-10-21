@@ -54,6 +54,10 @@ final class DepositLedgerService
         return $this->topUp($customer, $amountLaar, $method, $actor, $reference, $notes, $request);
     }
 
+    /**
+     * @param string|null $receiptUrl A card top-up's own page, carried on the customer's text (owner, 2026-10-21)
+     * @param int|null $paymentId The card payment that brought the money, kept on the ledger row
+     */
     public function topUp(
         Customer $customer,
         int $amountLaar,
@@ -62,6 +66,8 @@ final class DepositLedgerService
         ?string $reference = null,
         ?string $notes = null,
         ?Request $request = null,
+        ?string $receiptUrl = null,
+        ?int $paymentId = null,
     ): CustomerDepositLedger {
         $allowedMethods = ['cash', 'card', 'bank_transfer', 'online', 'bml'];
         if (!in_array($method, $allowedMethods, true)) {
@@ -72,7 +78,7 @@ final class DepositLedgerService
             abort(422, 'Top-up amount must be greater than zero.');
         }
 
-        return DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $reference, $notes, $request) {
+        return DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $reference, $notes, $request, $receiptUrl, $paymentId) {
             $account = CustomerDepositAccount::lockForUpdate()
                 ->firstOrCreate(
                     ['customer_id' => $customer->id],
@@ -117,6 +123,7 @@ final class DepositLedgerService
             $ledger = $this->writeLedger($account, 'top_up', $amountLaar, $balanceBefore, $newBalance, $actor, [
                 'method' => $method,
                 'shift_id' => $shift?->id,
+                'payment_id' => $paymentId,
                 'reference' => $reference,
                 'notes' => $notes ?? $reference,
             ]);
@@ -126,13 +133,13 @@ final class DepositLedgerService
                 'Customer',
                 $customer->id,
                 ['balance_laar' => $balanceBefore],
-                ['balance_laar' => $newBalance, 'amount_laar' => $amountLaar, 'method' => $method],
+                ['balance_laar' => $newBalance, 'amount_laar' => $amountLaar, 'method' => $method, 'payment_id' => $paymentId],
                 ['ledger_id' => $ledger->id],
                 $request,
             );
 
             // Owner, 2026-10-21: every wallet movement is told.
-            DB::afterCommit(fn () => app(DepositNotifier::class)->received($customer, $amountLaar, $method, $newBalance, $ledger->id));
+            DB::afterCommit(fn () => app(DepositNotifier::class)->received($customer, $amountLaar, $method, $newBalance, $ledger->id, $receiptUrl));
 
             return $ledger;
         });

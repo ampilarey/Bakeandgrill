@@ -36,6 +36,41 @@ describe('CreditAccountSettings', () => {
     expect(screen.queryByLabelText(/Then remind every/)).toBeNull();
   });
 
+  it('shows the wallet top-up rules and saves them beside the credit ones', async () => {
+    vi.spyOn(api, 'getSiteSettings').mockResolvedValue({
+      settings: {
+        credit: [
+          { key: 'credit_accounts_mode', value: 'open', type: 'string', label: 'm', description: null },
+          { key: 'credit_limit_max_mvr', value: '7000', type: 'number', label: 'l', description: null },
+          { key: 'credit_payment_terms_default_days', value: '14', type: 'number', label: 't', description: null },
+          { key: 'wallet_topup_enabled', value: '1', type: 'string', label: 'w', description: null },
+          { key: 'wallet_topup_presets', value: '50,150,300', type: 'string', label: 'p', description: null },
+          { key: 'wallet_topup_max_mvr', value: '300', type: 'number', label: 'x', description: null },
+        ],
+      },
+    });
+    const save = vi.spyOn(api, 'updateSiteSettings').mockResolvedValue();
+    render(<CreditAccountSettings />);
+
+    expect(await screen.findByTestId('wallet-presets')).toHaveValue('50,150,300');
+    expect(screen.getByTestId('wallet-max')).toHaveValue('300');
+    expect(screen.getByTestId('wallet-min')).toHaveValue('50');
+    expect(screen.getByTestId('wallet-topup-enabled')).toHaveAttribute('aria-checked', 'true');
+
+    const { fireEvent } = await import('@testing-library/react');
+    fireEvent.change(screen.getByTestId('wallet-presets'), { target: { value: '100, 250' } });
+    fireEvent.click(screen.getByTestId('wallet-topup-enabled'));
+    fireEvent.click(screen.getByRole('button', { name: /Save/ }));
+    await screen.findByText('Saved');
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({
+      wallet_topup_enabled: '0',
+      wallet_topup_presets: '100,250',
+      wallet_topup_min_mvr: '50',
+      wallet_topup_max_mvr: '300',
+      credit_limit_max_mvr: '7000',
+    }));
+  });
+
   it('will not save defaults over settings that did not load', async () => {
     vi.spyOn(api, 'getSiteSettings').mockRejectedValue(new Error('You do not have permission to perform this action.'));
     render(<CreditAccountSettings />);

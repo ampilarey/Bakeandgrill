@@ -208,6 +208,8 @@ final class SmsTypeRegistry
             self::def('staff_refund_requested', 'Staff: refund awaiting approval', 'staff', true, false, 'staff_refund_requested', 'sms_staff_refund_requested_enabled', 'sms.transactional.manage', false, 'Staff with orders.refund', false),
             self::def('owner_daily_refund_summary', 'Owner: daily refund summary', 'staff', true, false, 'owner_daily_refund_summary', 'sms_owner_daily_refund_summary_enabled', 'sms.transactional.manage', false, 'Owner phone(s)', false),
             self::def('owner_deposit_payout', 'Owner: customer deposit paid out', 'staff', true, false, null, 'sms_owner_deposit_payout_enabled', null, false, 'Owners & managers', false),
+            // Owner, 2026-10-21: money into a wallet by card at or above the amount under Edit → When it sends.
+            self::def('owner_deposit_large_topup', 'Owner: large wallet top-up by card', 'staff', true, false, null, 'sms_owner_deposit_large_topup_enabled', null, false, 'Owners & managers', false),
             // Ops audit, 2026-09-25: nothing watched a till left open overnight or a close that landed short.
             self::def('owner_shift_left_open', 'Owner: shift left open', 'staff', true, false, null, 'sms_owner_shift_left_open_enabled', null, false, 'Owners & managers', false),
             self::def('owner_shift_variance', 'Owner: shift closed with a cash variance', 'staff', true, false, null, 'sms_owner_shift_variance_enabled', null, false, 'Owners & managers', false),
@@ -318,6 +320,8 @@ final class SmsTypeRegistry
             self::def('customer_deposit_received', 'Wallet: money added', 'transactional', true, false, 'customer_deposit_received', 'sms_customer_deposit_received_enabled', 'sms.transactional.manage', false, 'The customer whose wallet was topped up', false),
             self::def('customer_deposit_paid_out', 'Wallet: money paid out', 'transactional', true, false, 'customer_deposit_paid_out', 'sms_customer_deposit_paid_out_enabled', 'sms.transactional.manage', false, 'The customer whose wallet money was paid back to them', false),
             self::def('customer_deposit_on_hold', 'Wallet on hold, or active again', 'transactional', true, false, 'customer_deposit_on_hold', 'sms_customer_deposit_on_hold_enabled', 'sms.transactional.manage', false, 'The customer whose wallet was frozen or reactivated', false),
+            // Owner, 2026-10-21: staff send a link the customer pays by card to put money in their wallet.
+            self::def('customer_wallet_topup_link', 'Wallet: top-up link', 'transactional', true, false, 'customer_wallet_topup_link', 'sms_customer_wallet_topup_link_enabled', 'sms.transactional.manage', false, 'The customer the link is sent to', true),
 
             // Staff
             self::def('staff_low_stock_menu', 'Staff: menu item low stock', 'staff', true, false, null, 'staff_sms_low_stock_enabled', 'sms.transactional.manage', false, 'Owners & managers', false),

@@ -14,6 +14,7 @@ const api = {
   sendCustomerSms: vi.fn(),
   recordCreditRepayment: vi.fn(),
   recordDepositTopUp: vi.fn(),
+  sendDepositTopUpLink: vi.fn(),
   searchCustomers: vi.fn(),
   fetchRecentCustomers: vi.fn(),
   quickCreateCustomer: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock("../api", () => Object.fromEntries(
   Object.keys({
     listCustomers: 1, listCustomerSegments: 1, getCustomerDetail: 1, fetchCustomerSummary: 1,
     updateCustomerDetail: 1, updateCustomerFromPos: 1, changeCustomerPhone: 1, sendCustomerSms: 1,
-    recordCreditRepayment: 1, recordDepositTopUp: 1, searchCustomers: 1, fetchRecentCustomers: 1, quickCreateCustomer: 1,
+    recordCreditRepayment: 1, recordDepositTopUp: 1, sendDepositTopUpLink: 1, searchCustomers: 1, fetchRecentCustomers: 1, quickCreateCustomer: 1,
   }).map((k) => [k, (...args: unknown[]) => (api as Record<string, (...a: unknown[]) => unknown>)[k](...args)]),
 ));
 
@@ -132,6 +133,21 @@ describe("CustomersPanel — owner and manager", () => {
     expect(patch.sms_opt_out).toBe(true);
     expect(patch.is_active).toBe(true);
     expect(await screen.findByRole("status")).toBeTruthy();
+  });
+
+  it("sends a wallet top-up link from the deposit section", async () => {
+    const user = userEvent.setup();
+    api.sendDepositTopUpLink.mockResolvedValue({ message: "Top-up link texted to +9607771234.", top_up: { url: "https://x/wallet/top-up/abc", amount_mvr: 300, expires_at: null } });
+    render(<CustomersPanel {...manager} onClose={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByTestId("customer-row-7")).toBeTruthy());
+    await user.click(screen.getByTestId("customer-row-7"));
+    await user.click(await screen.findByRole("button", { name: "Send top-up link" }));
+    const form = screen.getByTestId("customer-topup-link-form");
+    await user.type(within(form).getByLabelText("Amount (MVR, optional)"), "300");
+    await user.click(within(form).getByRole("button", { name: "Send link" }));
+    await waitFor(() => expect(api.sendDepositTopUpLink).toHaveBeenCalledWith(7, { amount_mvr: 300 }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Top-up link texted to +9607771234.");
   });
 
   it("records a cash credit repayment, capped at what they owe", async () => {

@@ -1,8 +1,8 @@
 backend/routes/domains/admin_customers.php:103:customers.deposit.freeze
 backend/routes/domains/admin_customers.php:107:customers.deposit.receive
-backend/routes/domains/admin_customers.php:111:customers.deposit.adjust
-backend/routes/domains/admin_customers.php:115:customers.deposit.refund
-backend/routes/domains/admin_customers.php:119:customers.deposit.transfer_credit
+backend/routes/domains/admin_customers.php:113:customers.deposit.adjust
+backend/routes/domains/admin_customers.php:117:customers.deposit.refund
+backend/routes/domains/admin_customers.php:121:customers.deposit.transfer_credit
 backend/routes/domains/admin_customers.php:21:events.manage
 backend/routes/domains/admin_customers.php:29:customers.manage
 backend/routes/domains/admin_customers.php:30:customers.analytics
