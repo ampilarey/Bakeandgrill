@@ -46,7 +46,7 @@ describe('CategoryRail', () => {
       <CategoryRail
         categories={[
           { id: 1, name: 'Breakfast Specials', sort_order: 1 },
-          { id: 2, name: 'Grills', sort_order: 2, image_url: '/media/grills.jpg' },
+          { id: 2, name: 'Grills', sort_order: 2, image_url: '/media/grills-banner.jpg', thumb_url: '/media/grills.jpg' },
         ]}
         activeCategoryId={2}
         onSelect={onSelect}
@@ -57,7 +57,10 @@ describe('CategoryRail', () => {
     expect(container.querySelector('.cat-rail__sub')).toBeNull();
     const grills = screen.getByRole('tab', { name: 'Grills, 5 items' });
     expect(grills).toHaveClass('is-active');
+    // The tile is 4:3, so it draws the category's 4:3 thumb, never the 7:3
+    // banner, which lost half its width here (owner, 2026-10-22).
     expect(grills.querySelector('img')?.getAttribute('src')).toContain('/media/grills.jpg');
+    expect(grills.querySelector('img')?.getAttribute('src')).not.toContain('grills-banner');
     // No visible count on the tile; it lives in the accessible name only.
     expect(grills.textContent?.trim()).toBe('Grills');
     // No photo → tinted initial.

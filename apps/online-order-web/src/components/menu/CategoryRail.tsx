@@ -46,8 +46,10 @@ type Props = {
  * which fits the photo to the rail width at each breakpoint.
  */
 function RailThumb({ category, size, className }: { category: Category; size: number; className: string }) {
-  const img = resolve(category.image_url);
-  const webp = resolve(category.image_webp_url);
+  // The tile is 4:3 (5:4 in a group), the shape of the category's thumb; the
+  // 7:3 banner lost half its width here (owner, 2026-10-22).
+  const img = resolve(category.thumb_url || category.image_url);
+  const webp = resolve(category.thumb_url ? category.thumb_webp_url : category.image_webp_url);
   const initial = (category.name?.trim()?.[0] ?? '?').toUpperCase();
   if (img) {
     return (

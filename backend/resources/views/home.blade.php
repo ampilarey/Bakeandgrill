@@ -953,7 +953,9 @@
     border-color: rgba(183,75,12,0.4);
 }
 .cat-img {
-    height: 180px;
+    /* The 4:3 the Content hub saves the picture in, whole (owner,
+       2026-10-22: a fixed height cut the top and bottom off on a computer). */
+    aspect-ratio: 4 / 3;
     overflow: hidden;
     background: var(--amber-light);
     position: relative;
@@ -997,11 +999,9 @@
     transition: gap 0.15s;
 }
 .cat-card:hover .cat-link { gap: 0.5rem; }
-.cat-img  { height: 130px; }
 .cat-name { font-size: 1rem; }
 .cat-hook { font-size: 0.78rem; }
 @media (min-width: 481px) {
-  .cat-img { height: 180px; }
   .cat-name { font-size: 1.15rem; }
   .cat-hook { font-size: 0.85rem; }
 }
@@ -1028,7 +1028,10 @@
 }
 .product-img {
     position: relative;
-    height: 200px;
+    /* The 4:3 the photo is saved in, whole (owner, 2026-10-22: at a fixed
+       200px a phone's card cut a quarter off the top and bottom, the tip of
+       a bajiya with it). The card's width sets the height. */
+    aspect-ratio: 4 / 3;
     overflow: hidden;
     background: linear-gradient(145deg, var(--amber-light), #F7E4C8);
 }

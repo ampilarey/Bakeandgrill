@@ -424,8 +424,9 @@ function SpecialsSection({
                 flexDirection: 'column',
               }}
             >
-              <div style={{ height: 100, position: 'relative', overflow: 'hidden' }}>
-                <MenuThumb src={src} alt={sp.item_name ?? ''} height={100} fontSize={26} />
+              {/* The 4:3 the photo is saved in (owner, 2026-10-22: a 3:2 box cut the top and bottom). */}
+              <div style={{ aspectRatio: '4 / 3', position: 'relative', overflow: 'hidden' }}>
+                <MenuThumb src={src} alt={sp.item_name ?? ''} height="100%" fontSize={26} />
                 {badge && (
                   <div
                     style={{

@@ -26,7 +26,7 @@
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;">
                         <tr>
                             @if (!empty($dish['image']))
-                                <td width="72" style="padding-{{ $dv ? 'left' : 'right' }}:12px;"><img src="{{ $dish['image'] }}" alt="" width="64" height="64" style="display:block; border-radius:10px; object-fit:cover;"></td>
+                                <td width="72" style="padding-{{ $dv ? 'left' : 'right' }}:12px;">{{-- 4:3, the thumb's own shape: mail apps ignore object-fit, so a square box squashed it (2026-10-22). --}}<img src="{{ $dish['image'] }}" alt="" width="64" height="48" style="display:block; width:64px; height:48px; border-radius:10px;"></td>
                             @endif
                             <td style="font-size:15px; color:#1C1408;">
                                 <a href="{{ $dish['url'] }}" style="color:#1C1408; font-weight:bold; text-decoration:none;">{{ $dv && !empty($dish['name_dv']) ? $dish['name_dv'] : $dish['name'] }}</a>

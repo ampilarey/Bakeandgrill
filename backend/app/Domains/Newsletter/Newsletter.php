@@ -120,7 +120,7 @@ final class Newsletter
         }
         $sections = $issue->sections ?? [];
         $removed = array_map('intval', $issue->removed_item_ids ?? []);
-        $dish = fn (Item $i) => ['id' => $i->id, 'name' => (string) ($i->card_name ?: $i->name), 'name_dv' => $i->name_dv, 'price' => (float) $i->base_price, 'image' => $i->image_url ? url((string) $i->image_url) : null, 'url' => url('/menu/' . $i->id)];
+        $dish = fn (Item $i) => ['id' => $i->id, 'name' => (string) ($i->card_name ?: $i->name), 'name_dv' => $i->name_dv, 'price' => (float) $i->base_price, 'image' => $i->thumb_url ? url((string) $i->thumb_url) : ($i->image_url ? url((string) $i->image_url) : null), 'url' => url('/menu/' . $i->id)];
         $out = ['new' => [], 'specials' => [], 'offer' => null, 'coming' => []];
         if (!empty($sections['new'])) {
             $days = max(1, min(90, (int) ($sections['new_days'] ?? 14)));

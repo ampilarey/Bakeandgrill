@@ -626,6 +626,25 @@ adds the dish in the same tap; the cards' quick "+" goes through the same questi
 and opens the sheet instead for a dish with sizes, extras, a platter, packaging or a
 minimum quantity.
 
+## Photo frames follow the stored shape
+
+Owner, 2026-10-22 ("some photos are not showing correctly": a best-seller card cut the tip off a
+bajiya). A dish photo is saved at 4:3 (`MenuImageProcessor`, 1200 × 900, a 400 × 300 thumb), a
+category banner at 7:3 (1400 × 600, with a 4:3 `thumb_url` cut from the same upload), a Content
+hub picture at 4:3; review, order-message, delivery-proof, inventory and poster photos keep their
+own shape. A frame that shows one of them takes that shape (`aspect-ratio: 4 / 3`, never a fixed
+height) so `cover` has nothing to cut: the website home's cards, the offer page hero, the Rewards
+cards and the signage magazine hero are 4:3, the order app's rail draws the category's 4:3 thumb,
+and the newsletter's thumbs are 64 × 48 with width and height attributes (mail apps ignore
+`object-fit`; a square box squashed them). The round cards (website menu, order app, home
+specials, offers, signage lists) and the till's square tiles crop a 4:3 photo by design (the ZUS
+look; a cut-out is never cropped). The menu banner (`.mh` on both menus) is the whole 7:3 crop at
+the top of the menu and, once pinned, folds to a strip (`--mh-strip`) with the picture docked whole
+at its left and the name beside it on the section's tint (`--mh-tint`; `.mh-banner--plain` without
+a photo; `--mh-full` is the measured 7:3 height, capped at 320 px on a computer; `is-stuck` is set
+by the website script and by `MenuHead`'s `stuck` state). A new frame for a stored picture uses its
+ratio, and a new email thumb carries width and height attributes in that ratio.
+
 ## Dhivehi addresses on the website
 
 iruali import plan, feature 3b, part 1 (2026-10-18). With **"Dhivehi on the website and in the

@@ -57,8 +57,8 @@ const VARIANT_CONFIG: Record<Variant, {
     width: CATEGORY_BANNER_WIDTH,
     height: CATEGORY_BANNER_HEIGHT,
     title: 'Edit category menu banner',
-    hint: 'Wide 7:3 crop for the order-app category promo. Keep the subject toward the centre-left so the title overlay stays readable on phones and desktop.',
-    help: 'Order-app category banner — 1400×600 (7:3). Fits mobile and desktop. Full photo kept for re-crop.',
+    hint: 'Wide 7:3 banner over the category on both menus: whole at the top of the menu, then a small picture beside the name while scrolling. Keep the subject toward the centre-left so the title stays readable.',
+    help: 'Category banner on the website and the order app — 1400×600 (7:3), shown whole. Full photo kept for re-crop.',
     previewAlt: 'Category banner preview',
     previewStyle: {
       width: '100%', maxWidth: 520, aspectRatio: '7 / 3', height: 'auto',

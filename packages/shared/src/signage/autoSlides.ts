@@ -204,13 +204,16 @@ function categorySlide(
     // One large photo — the first row that has one — beside a single column.
     const hero = rows.find((r) => r.image_url);
     if (hero) {
-      elements.push(el(`auto-cat-${key}-hero`, 'image', 4, 20, 40, 76, {
+      // A 4:3 box on the 16:9 screen (50 × 67 of 1920 × 1080), the shape a
+      // dish photo is saved in, so the whole photo shows (owner, 2026-10-22:
+      // the taller box cut a third off its sides).
+      elements.push(el(`auto-cat-${key}-hero`, 'image', 4, 25, 50, 67, {
         binding: { url: hero.image_url },
         style: { objectFit: 'cover', borderRadius: 24 },
         animation: { emphasis: 'ken-burns', duration: 14000 },
       }));
     }
-    elements.push(el(`auto-cat-${key}-list`, 'menu_list', hero ? 48 : 4, 20, hero ? 48 : 92, 76, {
+    elements.push(el(`auto-cat-${key}-list`, 'menu_list', hero ? 58 : 4, 20, hero ? 38 : 92, 76, {
       binding: ids,
       style: { fontSize: 2.8, color: '#FFF8F0', columns, showThumbs },
     }));

@@ -59,7 +59,9 @@
 }
 .offer-hero {
     position: relative;
-    aspect-ratio: 16 / 10;
+    /* The 4:3 the dish photo is saved in, as on the dish page (owner,
+       2026-10-22: at 16/10 the top and bottom were cut off). */
+    aspect-ratio: 4 / 3;
     border-radius: 16px;
     overflow: hidden;
     background: var(--amber-light);
