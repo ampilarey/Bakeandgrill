@@ -26,10 +26,17 @@ final class PosterPdf
      * @param array{mirror?: bool, spots?: array{white?: string, gloss?: string}} $options
      * @return array{pdf: string, masks: list<array{rects: list<array{0: float, 1: float, 2: float, 3: float}>, paths: list<list<array{0: string, 1: list<float>}>>}>, gloss: list<array{rects: list<array{0: float, 1: float, 2: float, 3: float}>, paths: list<list<array{0: string, 1: list<float>}>>}>}
      */
+    /** Photo pixels per inch by paper size: what the print needs, no more (docs/POSTER_PLAN.md § 7). */
+    public const PPI = ['A5' => 150, 'A4' => 200, 'A3' => 150, 'A2' => 120];
+
     public static function render(PaperSize $page, array $sheets, string $title, array $options = []): array
     {
         $pdf = new PdfX4Document(OutputIntent::fromConfig(), $title);
         $pdf->SetSubject($title);
+        if (($options['compress'] ?? true) === false) {
+            // Tests read the content stream as written.
+            $pdf->SetCompression(false);
+        }
         $spots = is_array($options['spots'] ?? null) ? $options['spots'] : [];
         $whiteName = trim((string) ($spots['white'] ?? ''));
         $glossName = trim((string) ($spots['gloss'] ?? ''));
@@ -143,6 +150,14 @@ final class PosterPdf
             $pdf->StartTransform();
             $pdf->Rotate(180, $ox + ((float) $built['w']) * $scale / 2, $oy + ((float) $built['h']) * $scale / 2);
         }
+        if (is_array($built['theme'] ?? null)) {
+            self::drawThemedCopy($pdf, $page, $built, $ox, $oy, $scale, $ink, $gloss);
+            if ($rotated) {
+                $pdf->StopTransform();
+            }
+
+            return;
+        }
         $bg = $built['background'];
         $pdf->SetFillColorArray($bg);
         $pdf->Rect($ox, $oy, ((float) $built['w']) * $scale, ((float) $built['h']) * $scale, 'F');
@@ -177,6 +192,196 @@ final class PosterPdf
         }
     }
 
+    /**
+     * A copy of a poster drawn on a template (PosterThemePieces): the
+     * imposition's offset and scale go through one PDF transform, so the
+     * artwork, the photos, the logo, the QR and the text are drawn in page
+     * millimetres as built. The whole bleed page counts as ink for the
+     * white mask (every design is full-bleed); gloss keeps the logo and big
+     * type.
+     *
+     * @param array<string, mixed> $built
+     * @param array{rects: list<array{0: float, 1: float, 2: float, 3: float}>, paths: list<list<array{0: string, 1: list<float>}>>} $ink
+     * @param array{rects: list<array{0: float, 1: float, 2: float, 3: float}>, paths: list<list<array{0: string, 1: list<float>}>>} $gloss
+     */
+    private static function drawThemedCopy(PdfX4Document $pdf, PaperSize $page, array $built, float $ox, float $oy, float $scale, array &$ink, array &$gloss): void
+    {
+        $w = (float) $built['w'];
+        $h = (float) $built['h'];
+        $transform = abs($scale - 1.0) > 1e-9 || abs($ox) > 1e-9 || abs($oy) > 1e-9;
+        if ($transform) {
+            $pdf->StartTransform();
+            $pdf->Translate($ox, $oy);
+            $pdf->ScaleXY($scale * 100, 0, 0);
+        }
+        $pdf->SetFillColorArray($built['background']);
+        $pdf->Rect(0, 0, $w, $h, 'F');
+        self::inkRect($ink, $ox, $oy, $w * $scale, $h * $scale, true);
+
+        $photos = [];
+        foreach ($built['pieces'] as $piece) {
+            if (($piece['type'] ?? '') === 'photo' && isset($piece['slot'])) {
+                $photos[(string) $piece['slot']] = $piece;
+            }
+        }
+        $drawn = [];
+        $at = static fn (float $x, float $y, float $pw, float $ph): array => [$ox + $x * $scale, $oy + $y * $scale, $pw * $scale, $ph * $scale];
+        foreach ($built['pieces'] as $piece) {
+            switch ((string) ($piece['type'] ?? '')) {
+                case 'backdrop':
+                    $pdf->drawBackdrop($piece['items'], function (string $slot) use ($pdf, $page, $photos, &$drawn): void {
+                        if (isset($photos[$slot]) && !isset($drawn[$slot])) {
+                            $drawn[$slot] = true;
+                            self::themedPhoto($pdf, $page, $photos[$slot]);
+                        }
+                    });
+                    break;
+                case 'photo':
+                    $slot = (string) ($piece['slot'] ?? '');
+                    if (!isset($drawn[$slot])) {
+                        $drawn[$slot] = true;
+                        self::themedPhoto($pdf, $page, $piece);
+                    }
+                    break;
+                case 'logo':
+                    self::themedLogo($pdf, $piece, $ox, $oy, $scale, $ink, $gloss);
+                    break;
+                case 'qr':
+                    self::qr($pdf, (string) ($piece['url'] ?? ''), (float) $piece['x'], (float) $piece['y'], min((float) $piece['w'], (float) $piece['h']), $piece['cmyk'] ?? null, (bool) ($piece['bare'] ?? false));
+                    break;
+                case 'text':
+                    self::themedText($pdf, $piece);
+                    if ((float) ($piece['pt'] ?? 0) >= 14) {
+                        [$gx, $gy, $gw, $gh] = $at((float) $piece['x'], (float) $piece['y'], (float) $piece['w'], (float) $piece['h']);
+                        self::inkRect($gloss, $gx, $gy, $gw, $gh, false);
+                    }
+                    break;
+            }
+        }
+        if ($transform) {
+            $pdf->StopTransform();
+        }
+    }
+
+    /**
+     * A template's photo slot: the colour behind, then the picture, both
+     * inside the slot's clip; a polaroid's tilt turns the picture about the
+     * slot's centre (the clip already carries the tilt).
+     *
+     * @param array<string, mixed> $piece
+     */
+    private static function themedPhoto(PdfX4Document $pdf, PaperSize $page, array $piece): void
+    {
+        $pdf->save();
+        $pdf->clipToPath($piece['clip_ops']);
+        $pdf->SetFillColorArray($piece['fill_behind']);
+        $pdf->Rect(-5, -5, $page->bleedWidth() + 10, $page->bleedHeight() + 10, 'F');
+        $path = $piece['path'] ?? null;
+        if (is_string($path) && is_file($path)) {
+            $ppi = self::PPI[$page->name] ?? 120;
+            $x = (float) $piece['x'];
+            $y = (float) $piece['y'];
+            $w = (float) $piece['w'];
+            $h = (float) $piece['h'];
+            $contain = (bool) ($piece['contain'] ?? false);
+            $behind = (string) ($piece['hex_behind'] ?? '#FFFFFF');
+            $key = $path . '|' . ($contain ? 'contain' : 'cover') . '|' . (int) $w . '|' . (int) $h . '|' . $ppi . '|' . $behind;
+            if (!isset(self::$photos[$key])) {
+                self::$photos[$key] = $contain
+                    ? PosterPhoto::contain($path, $w, $h, $ppi, $behind)
+                    : PosterPhoto::cover($path, $w, $h, $ppi, $behind);
+            }
+            $rotation = (float) ($piece['rotation'] ?? 0.0);
+            if (abs($rotation) > 1e-6) {
+                $pdf->StartTransform();
+                // SVG turns clockwise for a positive angle on a page read top-down; TCPDF counter-clockwise.
+                $pdf->Rotate(-$rotation, (float) $piece['centre'][0], (float) $piece['centre'][1]);
+            }
+            $pdf->Image('@' . self::$photos[$key]['jpeg'], $x, $y, $w, $h, 'JPEG', '', '', false, $ppi, '', false, false, 0, false, false, false);
+            if (abs($rotation) > 1e-6) {
+                $pdf->StopTransform();
+            }
+        }
+        $pdf->restore();
+    }
+
+    /**
+     * @param array<string, mixed> $piece
+     * @param array{rects: list<array{0: float, 1: float, 2: float, 3: float}>, paths: list<list<array{0: string, 1: list<float>}>>} $ink
+     * @param array{rects: list<array{0: float, 1: float, 2: float, 3: float}>, paths: list<list<array{0: string, 1: list<float>}>>} $gloss
+     */
+    private static function themedLogo(PdfX4Document $pdf, array $piece, float $ox, float $oy, float $scale, array &$ink, array &$gloss): void
+    {
+        if (is_array($piece['badge'] ?? null)) {
+            $b = $piece['badge'];
+            $pdf->fillPath(PdfX4Document::circleOps((float) $b['cx'], (float) $b['cy'], (float) $b['r']), $b['cmyk']);
+        }
+        foreach (LogoVector::fromFile()->placed((float) $piece['x'], (float) $piece['y'], (float) $piece['w'], (string) ($piece['colourway'] ?? 'light')) as $shape) {
+            $pdf->fillPath($shape['ops'], $shape['cmyk']);
+            $placed = self::placedOps($shape['ops'], $ox, $oy, $scale);
+            $ink['paths'][] = $placed;
+            $gloss['paths'][] = $placed;
+        }
+    }
+
+    /**
+     * A template's text slot: set on its baseline with its tracking, the
+     * hard offset shadow first when the design has one, at the slot's
+     * opacity.
+     *
+     * @param array<string, mixed> $piece
+     */
+    private static function themedText(PdfX4Document $pdf, array $piece): void
+    {
+        $pt = (float) $piece['pt'];
+        PosterFonts::use($pdf, (string) ($piece['font'] ?? 'j5'), $pt);
+        $pdf->setFontSpacing((float) ($piece['tracking'] ?? 0.0));
+        $text = (string) $piece['text'];
+        if (($piece['dv'] ?? false) === true) {
+            $text = ThaanaVisual::order($text, true);
+        }
+        $x = (float) $piece['x'];
+        $baseline = (float) $piece['baseline'];
+        $w = (float) $piece['w'] + 2;
+        $draw = static function (float $dx, float $dy, array $cmyk) use ($pdf, $x, $baseline, $w, $text): void {
+            $pdf->SetTextColorArray($cmyk);
+            $pdf->SetXY($x + $dx, $baseline + $dy);
+            $pdf->Cell($w, 0, $text, 0, 0, 'L', false, '', 0, true, 'L', 'T');
+        };
+        $pdf->withAlpha((float) ($piece['opacity'] ?? 1.0), static function () use ($draw, $piece): void {
+            if (is_array($piece['shadow'] ?? null)) {
+                $draw((float) $piece['shadow']['dx'], (float) $piece['shadow']['dy'], $piece['shadow']['cmyk']);
+            }
+            $draw(0.0, 0.0, $piece['cmyk']);
+        });
+        $pdf->setFontSpacing(0);
+    }
+
+    /**
+     * Ops under an imposition copy's offset and scale, for the mask lists.
+     *
+     * @param list<array{0: string, 1: list<float>}> $ops
+     * @return list<array{0: string, 1: list<float>}>
+     */
+    private static function placedOps(array $ops, float $ox, float $oy, float $scale): array
+    {
+        if (abs($scale - 1.0) < 1e-9 && abs($ox) < 1e-9 && abs($oy) < 1e-9) {
+            return $ops;
+        }
+        $out = [];
+        foreach ($ops as [$op, $p]) {
+            $q = [];
+            $n = count($p);
+            for ($i = 0; $i + 1 < $n; $i += 2) {
+                $q[] = $ox + $p[$i] * $scale;
+                $q[] = $oy + $p[$i + 1] * $scale;
+            }
+            $out[] = [$op, $q];
+        }
+
+        return $out;
+    }
+
     /** @param array{0: float, 1: float, 2: float, 3: float} $cmyk */
     private static function rect(PdfX4Document $pdf, float $x, float $y, float $w, float $h, array $cmyk): void
     {
@@ -186,8 +391,8 @@ final class PosterPdf
 
     private static function photo(PdfX4Document $pdf, PaperSize $page, float $x, float $y, float $w, float $h, string $path): void
     {
-        $ppi = ['A5' => 150, 'A4' => 200, 'A3' => 150, 'A2' => 120][$page->name] ?? 120;
-        $key = $path . '|' . (int) $w . '|' . (int) $h . '|' . $ppi;
+        $ppi = self::PPI[$page->name] ?? 120;
+        $key = $path . '|cover|' . (int) $w . '|' . (int) $h . '|' . $ppi . '|#FFFFFF';
         if (!isset(self::$photos[$key])) {
             self::$photos[$key] = PosterPhoto::cover($path, $w, $h, $ppi);
         }
@@ -216,18 +421,27 @@ final class PosterPdf
         }
     }
 
-    private static function qr(PdfX4Document $pdf, string $text, float $x, float $y, float $side): void
+    /**
+     * A QR on a paper-white rounded box with a four-cell quiet zone, or bare
+     * (modules only, in the design's ink) where a template draws its own
+     * surround.
+     *
+     * @param array{0: float, 1: float, 2: float, 3: float}|null $ink
+     */
+    private static function qr(PdfX4Document $pdf, string $text, float $x, float $y, float $side, ?array $ink = null, bool $bare = false): void
     {
         if ($text === '') {
             return;
         }
         $matrix = Encoder::encode($text, ErrorCorrectionLevel::M(), Encoder::DEFAULT_BYTE_MODE_ENCODING)->getMatrix();
         $n = $matrix->getWidth();
-        $quiet = 4;
+        $quiet = $bare ? 0 : 4;
         $cell = $side / ($n + 2 * $quiet);
-        $pdf->SetFillColorArray(BrandCmyk::PAPER_WHITE);
-        $pdf->RoundedRect($x, $y, $side, $side, $cell * 2, '1111', 'F');
-        $pdf->SetFillColorArray(BrandCmyk::TEXT_BLACK);
+        if (!$bare) {
+            $pdf->SetFillColorArray(BrandCmyk::PAPER_WHITE);
+            $pdf->RoundedRect($x, $y, $side, $side, $cell * 2, '1111', 'F');
+        }
+        $pdf->SetFillColorArray($ink ?? BrandCmyk::TEXT_BLACK);
         for ($r = 0; $r < $n; $r++) {
             for ($c = 0; $c < $n; $c++) {
                 if ($matrix->get($c, $r) !== 1) {

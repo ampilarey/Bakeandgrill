@@ -89,6 +89,56 @@ final class BrandCmyk
         return $out;
     }
 
+    /**
+     * The poster templates' extra colours as press mixes
+     * (docs/POSTER_THEMES_HANDOFF.md § 4): inside the CMYK gamut for UV
+     * printing, so the plain conversion is not used for them.
+     *
+     * @var array<string, array{0: float, 1: float, 2: float, 3: float}>
+     */
+    public const PRESS_MIXES = [
+        '#FFC72C' => [0.0, 22.0, 88.0, 0.0],   // sunshine yellow
+        '#D92B1C' => [0.0, 92.0, 98.0, 4.0],   // chili red
+        '#0B7A75' => [88.0, 22.0, 55.0, 12.0], // lagoon teal
+        '#064A47' => [90.0, 45.0, 60.0, 40.0], // deep lagoon
+        '#FFF3DC' => [0.0, 4.0, 14.0, 0.0],    // warm cream
+        '#5A1A2E' => [40.0, 95.0, 55.0, 45.0], // wine
+        '#E5007D' => [0.0, 100.0, 0.0, 0.0],   // berry (process magenta)
+        '#9E0F57' => [30.0, 100.0, 30.0, 15.0], // deep berry
+        '#00A3E0' => [100.0, 15.0, 0.0, 0.0],  // cyan
+        '#0077B6' => [100.0, 45.0, 0.0, 5.0],  // deep cyan
+        '#04395E' => [100.0, 70.0, 25.0, 30.0], // navy
+        '#8DC63F' => [50.0, 0.0, 100.0, 0.0],  // lime
+        '#0A8A43' => [90.0, 10.0, 100.0, 10.0], // flag green
+        '#D21034' => [0.0, 100.0, 80.0, 10.0], // flag red
+        '#E9A23B' => [5.0, 40.0, 85.0, 0.0],   // bun
+    ];
+
+    /**
+     * The press mix for a screen hex: a brand colour through the owner's
+     * swatch pick, a template colour through the table above, anything else
+     * through the plain conversion.
+     *
+     * @return array{0: float, 1: float, 2: float, 3: float}
+     */
+    public static function forHex(string $hex): array
+    {
+        $key = '#' . strtoupper(ltrim(trim($hex), '#'));
+        if (strlen($key) === 4) {
+            $key = '#' . $key[1] . $key[1] . $key[2] . $key[2] . $key[3] . $key[3];
+        }
+        foreach (self::HEX as $role => $roleHex) {
+            if (strtoupper($roleHex) === $key) {
+                return self::chosen($role);
+            }
+        }
+        if (isset(self::PRESS_MIXES[$key])) {
+            return self::PRESS_MIXES[$key];
+        }
+
+        return self::fromHex($key);
+    }
+
     /** The CMYK the posters use for a role: the owner's pick, else candidate A. */
     public static function chosen(string $role): array
     {

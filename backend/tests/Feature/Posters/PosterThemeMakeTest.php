@@ -123,6 +123,59 @@ class PosterThemeMakeTest extends TestCase
         $this->assertSame('TIKKA DEALS', Poster::query()->findOrFail($copy->json('id'))->slots['t2']);
     }
 
+    public function test_the_preview_shows_the_edited_words_and_photo_at_a2_and_a5(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $item = Item::factory()->create(['name' => 'Chicken tikka', 'base_price' => 85, 'is_active' => true]);
+        $im = imagecreatetruecolor(1200, 900);
+        imagefilledrectangle($im, 0, 0, 1199, 899, (int) imagecolorallocate($im, 180, 60, 20));
+        $tmp = tempnam(sys_get_temp_dir(), 'bg-photo') . '.jpg';
+        imagejpeg($im, $tmp, 90);
+        imagedestroy($im);
+        $upload = $this->post('/api/posters/photo', ['photo' => new \Illuminate\Http\UploadedFile($tmp, 'dish.jpg', 'image/jpeg', null, true)])->assertCreated();
+        $photoPath = (string) $upload->json('photo_path');
+
+        $draft = [
+            'name' => 'Meal deals',
+            'template_key' => PosterPurposes::THEMED,
+            'layout' => PosterPurposes::THEMED,
+            'theme' => 'bg012-value-meals-menu',
+            'sizes' => ['A2'],
+            'slots' => ['t2' => 'TIKKA DEALS', 'p1' => ['photo_path' => $photoPath]],
+            'bindings' => ['item_id' => $item->id],
+        ];
+        foreach (['A2' => 'large', 'A5' => 'small'] as $size => $variant) {
+            $draft['sizes'] = [$size];
+            $preview = $this->postJson('/api/posters/preview', $draft)->assertOk();
+            $this->assertSame($variant, $preview->json('sheet.theme.variant'), $size);
+            $this->assertSame('bg012-value-meals-menu', $preview->json('sheet.theme.key'));
+            $this->assertStringEndsWith("/backdrop-{$variant}.svg", $preview->json('sheet.theme.backdrop_url'));
+            $pieces = collect($preview->json('sheet.pieces'));
+            $t2 = $pieces->first(fn (array $p): bool => $p['type'] === 'text' && ($p['slot'] ?? '') === 't2');
+            $this->assertSame('TIKKA DEALS', $t2['text'], $size);
+            $this->assertArrayNotHasKey('cmyk', $t2);
+            $this->assertSame('#FFF3DC', $t2['hex']);
+            $p1 = $pieces->first(fn (array $p): bool => $p['type'] === 'photo' && ($p['slot'] ?? '') === 'p1');
+            $this->assertSame('upload', $p1['source'], $size);
+            $this->assertStringEndsWith('/api/posters/photo/' . basename($photoPath), $p1['src']);
+            $this->assertArrayNotHasKey('path', $p1);
+            $this->assertArrayNotHasKey('clip_ops', $p1);
+            $this->assertStringStartsWith('M ', $p1['clip_d']);
+            $p2 = $pieces->first(fn (array $p): bool => $p['type'] === 'photo' && ($p['slot'] ?? '') === 'p2');
+            $this->assertSame('placeholder', $p2['source']);
+            $this->assertStringEndsWith("/placeholder-{$variant}-p2.png", $p2['src']);
+            $backdrop = $pieces->first(fn (array $p): bool => $p['type'] === 'backdrop');
+            $this->assertArrayNotHasKey('items', $backdrop, 'the artwork stays on the server; the page draws the SVG');
+            // The first price slot takes the dish's live price in the design's own format.
+            $t6 = $pieces->first(fn (array $p): bool => $p['type'] === 'text' && ($p['slot'] ?? '') === 't6');
+            $this->assertSame('85', $t6['text'], $size);
+            $this->assertTrue($t6['auto']);
+            $this->assertSame('85', $preview->json('content.price') === 'MVR 85.00' ? '85' : $t6['text']);
+        }
+        $this->get('/api/posters/photo/' . basename($photoPath))->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+        $this->get('/api/posters/photo/' . str_repeat('0', 24) . '.jpg')->assertNotFound();
+    }
+
     public function test_a_bad_template_choice_is_refused(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);

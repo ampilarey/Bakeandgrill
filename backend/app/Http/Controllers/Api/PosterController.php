@@ -427,21 +427,55 @@ class PosterController extends Controller
      */
     private function previewSheet(array $built): array
     {
+        $theme = is_array($built['theme'] ?? null) ? $built['theme'] : null;
         $pieces = [];
         foreach ($built['pieces'] as $piece) {
             if (($piece['type'] ?? '') === 'skip') {
                 continue;
             }
-            unset($piece['path'], $piece['cmyk']);
+            // Server paths, press ink and the artwork's op lists stay here: the page draws the
+            // backdrop from its SVG, a photo from its picture's address and its clip path.
+            unset($piece['path'], $piece['cmyk'], $piece['fill_behind'], $piece['clip_ops'], $piece['items']);
+            if (($piece['type'] ?? '') === 'photo' && $theme !== null) {
+                $piece['src'] = $this->photoSrc($piece, (string) $theme['key']);
+                unset($piece['url']);
+            }
+            if (is_array($piece['shadow'] ?? null)) {
+                unset($piece['shadow']['cmyk']);
+            }
+            if (is_array($piece['badge'] ?? null)) {
+                unset($piece['badge']['cmyk']);
+            }
             $pieces[] = $piece;
         }
-
-        return [
+        $sheet = [
             'w' => $built['w'],
             'h' => $built['h'],
             'hex_bg' => $built['hex_bg'],
             'pieces' => $pieces,
         ];
+        if ($theme !== null) {
+            $sheet['theme'] = $theme + ['backdrop_url' => $this->themeFileUrl((string) $theme['key'], 'backdrop-' . $theme['variant'] . '.svg')];
+        }
+
+        return $sheet;
+    }
+
+    /**
+     * Where the page loads a template's photo slot from: the poster upload
+     * route, the dish's public picture, or the design's placeholder.
+     *
+     * @param array<string, mixed> $piece
+     */
+    private function photoSrc(array $piece, string $themeKey): ?string
+    {
+        return match ((string) ($piece['source'] ?? 'placeholder')) {
+            'upload' => url('/api/posters/photo/' . basename((string) $piece['photo_path'])),
+            'placeholder' => $this->themeFileUrl($themeKey, (string) $piece['placeholder_image']),
+            default => is_string($piece['url'] ?? null) && $piece['url'] !== ''
+                ? (str_starts_with($piece['url'], 'http') ? $piece['url'] : url($piece['url']))
+                : null,
+        };
     }
 
     /**

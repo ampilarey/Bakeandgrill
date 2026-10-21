@@ -23,11 +23,13 @@ final class PosterPhoto
 
     /**
      * The picture cropped to cover $wMm × $hMm at $ppi, as JPEG bytes with
-     * an sRGB profile. Returns the pixel size it came out at too.
+     * an sRGB profile. Returns the pixel size it came out at too. A picture
+     * with transparency (a PNG placeholder, a cut-out) is laid on $behindHex
+     * first, since a JPEG has no alpha and PDF/X-4 wants no bare RGB mask.
      *
      * @return array{jpeg: string, w: int, h: int, source_w: int, source_h: int}
      */
-    public static function cover(string $path, float $wMm, float $hMm, int $ppi): array
+    public static function cover(string $path, float $wMm, float $hMm, int $ppi, string $behindHex = '#FFFFFF'): array
     {
         $src = self::open($path);
         $sw = imagesx($src);
@@ -38,8 +40,8 @@ final class PosterPhoto
         // Never upscale: the preflight reports the ppi the source allows.
         $scale = min(1.0, $sw / $tw, $sh / $th);
         if ($scale < 1.0) {
-            $tw = (int) floor($tw * $scale);
-            $th = (int) floor($th * $scale);
+            $tw = max(1, (int) floor($tw * $scale));
+            $th = max(1, (int) floor($th * $scale));
         }
 
         $srcRatio = $sw / $sh;
@@ -56,19 +58,80 @@ final class PosterPhoto
             $cy = (int) floor(($sh - $ch) / 2);
         }
 
-        $dst = imagecreatetruecolor($tw, $th);
-        if (!$dst instanceof GdImage) {
-            throw new RuntimeException('GD could not make the poster photo.');
-        }
+        $dst = self::canvas($tw, $th, $behindHex);
         imagecopyresampled($dst, $src, 0, 0, $cx, $cy, $tw, $th, $cw, $ch);
         imagedestroy($src);
 
+        return self::finish($dst, $tw, $th, $sw, $sh);
+    }
+
+    /**
+     * The picture fitted whole inside $wMm × $hMm, centred on $behindHex
+     * with $inset of the box left clear around it: how a cut-out sits in a
+     * template's photo slot (docs/POSTER_THEMES_HANDOFF.md § 3, 4 %).
+     *
+     * @return array{jpeg: string, w: int, h: int, source_w: int, source_h: int}
+     */
+    public static function contain(string $path, float $wMm, float $hMm, int $ppi, string $behindHex, float $inset = 0.04): array
+    {
+        $src = self::open($path);
+        $sw = imagesx($src);
+        $sh = imagesy($src);
+
+        $tw = max(1, (int) ceil($wMm / 25.4 * $ppi));
+        $th = max(1, (int) ceil($hMm / 25.4 * $ppi));
+        $pad = (int) round(min($tw, $th) * max(0.0, min(0.4, $inset)));
+        $boxW = max(1, $tw - 2 * $pad);
+        $boxH = max(1, $th - 2 * $pad);
+        // Never upscale the picture itself: a small cut-out stays small on the fill.
+        $fit = min($boxW / $sw, $boxH / $sh, 1.0);
+        $dw = max(1, (int) round($sw * $fit));
+        $dh = max(1, (int) round($sh * $fit));
+
+        $dst = self::canvas($tw, $th, $behindHex);
+        imagecopyresampled($dst, $src, (int) floor(($tw - $dw) / 2), (int) floor(($th - $dh) / 2), 0, 0, $dw, $dh, $sw, $sh);
+        imagedestroy($src);
+
+        return self::finish($dst, $tw, $th, $sw, $sh);
+    }
+
+    /** A truecolor canvas filled with a flat colour, blending what is drawn on it. */
+    private static function canvas(int $w, int $h, string $hex): GdImage
+    {
+        $dst = imagecreatetruecolor($w, $h);
+        if (!$dst instanceof GdImage) {
+            throw new RuntimeException('GD could not make the poster photo.');
+        }
+        [$r, $g, $b] = self::rgb($hex);
+        imagealphablending($dst, true);
+        imagefilledrectangle($dst, 0, 0, $w - 1, $h - 1, (int) imagecolorallocate($dst, $r, $g, $b));
+
+        return $dst;
+    }
+
+    /** @return array{jpeg: string, w: int, h: int, source_w: int, source_h: int} */
+    private static function finish(GdImage $dst, int $tw, int $th, int $sw, int $sh): array
+    {
         ob_start();
         imagejpeg($dst, null, self::JPEG_QUALITY);
         $jpeg = (string) ob_get_clean();
         imagedestroy($dst);
 
         return ['jpeg' => self::withSrgbProfile($jpeg), 'w' => $tw, 'h' => $th, 'source_w' => $sw, 'source_h' => $sh];
+    }
+
+    /** @return array{0: int, 1: int, 2: int} */
+    public static function rgb(string $hex): array
+    {
+        $hex = ltrim(trim($hex), '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+        }
+        if (strlen($hex) !== 6 || !ctype_xdigit($hex)) {
+            return [255, 255, 255];
+        }
+
+        return [(int) hexdec(substr($hex, 0, 2)), (int) hexdec(substr($hex, 2, 2)), (int) hexdec(substr($hex, 4, 2))];
     }
 
     /** The JPEG with TCPDF's sRGB profile in an APP2 segment, after the JFIF header. */

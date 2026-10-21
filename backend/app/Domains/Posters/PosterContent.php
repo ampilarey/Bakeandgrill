@@ -324,7 +324,8 @@ final class PosterContent
         return ['path' => $crop, 'source' => $crop !== null ? 'crop' : null];
     }
 
-    private static function photoFile(?string $url): ?string
+    /** The file behind a menu photo's URL or path (public or storage), or null when it is not on this disk. */
+    public static function photoFile(?string $url): ?string
     {
         if (!is_string($url) || $url === '') {
             return null;

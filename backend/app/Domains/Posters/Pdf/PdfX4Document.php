@@ -113,6 +113,20 @@ class PdfX4Document extends TCPDF
      */
     public function fillPathCurrent(array $ops): void
     {
+        $s = $this->pathString($ops);
+        if ($s !== '') {
+            $this->_out($s . 'f');
+        }
+    }
+
+    /**
+     * The content-stream path for ops in page millimetres: y measured from
+     * the top, as every piece is, turned into PDF points from the bottom.
+     *
+     * @param list<array{0: string, 1: list<float>}> $ops
+     */
+    public function pathString(array $ops): string
+    {
         $k = $this->k;
         $h = $this->h;
         $s = '';
@@ -140,9 +154,204 @@ class PdfX4Document extends TCPDF
                     break;
             }
         }
-        if ($s !== '') {
-            $this->_out($s . 'f');
+
+        return $s;
+    }
+
+    /**
+     * Fill and/or stroke a path, the way a poster template's artwork asks
+     * (docs/POSTER_THEMES_HANDOFF.md § 3): nonzero or even-odd fill, and a
+     * stroke with its width, dash and cap. Widths are page millimetres.
+     *
+     * @param list<array{0: string, 1: list<float>}> $ops
+     * @param array{0: float, 1: float, 2: float, 3: float}|null $fill CMYK percentages; null for no fill
+     * @param array{cmyk: array{0: float, 1: float, 2: float, 3: float}, width: float, dash?: list<float>|null, cap?: string}|null $stroke
+     */
+    public function paintPath(array $ops, ?array $fill, string $rule = 'nonzero', ?array $stroke = null): void
+    {
+        $path = $this->pathString($ops);
+        if ($path === '') {
+            return;
         }
+        $evenOdd = $rule === 'evenodd';
+        $out = '';
+        if ($fill !== null) {
+            $this->SetFillColorArray($fill);
+        }
+        if ($stroke !== null) {
+            $k = $this->k;
+            $this->SetDrawColorArray($stroke['cmyk']);
+            $out .= sprintf('%.4F w ', max(0.0, (float) $stroke['width']) * $k);
+            $dash = $stroke['dash'] ?? null;
+            if (is_array($dash) && $dash !== []) {
+                $out .= '[' . implode(' ', array_map(static fn ($d): string => sprintf('%.4F', max(0.01, (float) $d) * $k), $dash)) . '] 0 d ';
+            } else {
+                $out .= '[] 0 d ';
+            }
+            $out .= match ((string) ($stroke['cap'] ?? 'butt')) {
+                'round' => '1 J 1 j ',
+                'square' => '2 J 0 j ',
+                default => '0 J 0 j ',
+            };
+        }
+        $op = match (true) {
+            $fill !== null && $stroke !== null => $evenOdd ? 'B*' : 'B',
+            $fill !== null => $evenOdd ? 'f*' : 'f',
+            $stroke !== null => 'S',
+            default => 'n',
+        };
+        $this->_out($out . $path . $op);
+        if ($stroke !== null) {
+            // Back to TCPDF's own line state for whatever it draws next.
+            $this->_out('[] 0 d 0 J 0 j ' . sprintf('%.4F w', $this->LineWidth * $this->k));
+        }
+    }
+
+    /**
+     * Fill a path with a linear or radial gradient: the path clips, the unit
+     * square is laid over $bbox (y up, as TCPDF's own gradients have it, so
+     * the SVG's y-down stops are flipped), and TCPDF paints the shading.
+     * Gradient() ends with the restore that matches the save made here.
+     *
+     * @param list<array{0: string, 1: list<float>}> $ops
+     * @param array{0: float, 1: float, 2: float, 3: float} $bbox page mm
+     * @param array{type: string, coords: list<float>, stops: list<array{0: float, 1: array{0: float, 1: float, 2: float, 3: float}}>} $gradient coords in the box's unit square, y down
+     */
+    public function fillPathGradient(array $ops, string $rule, array $bbox, array $gradient): void
+    {
+        $path = $this->pathString($ops);
+        [$x, $y, $w, $h] = $bbox;
+        if ($path === '' || $w <= 0 || $h <= 0) {
+            return;
+        }
+        $k = $this->k;
+        $this->_outSaveGraphicsState();
+        $this->_out($path . ($rule === 'evenodd' ? 'W* n' : 'W n'));
+        $this->_out(sprintf('%.4F 0 0 %.4F %.4F %.4F cm', $w * $k, $h * $k, $x * $k, ($this->h - ($y + $h)) * $k));
+        $stops = [];
+        foreach ($gradient['stops'] as [$offset, $cmyk]) {
+            $stops[] = ['color' => $cmyk, 'offset' => max(0.0, min(1.0, (float) $offset)), 'exponent' => 1, 'opacity' => 1];
+        }
+        if ($stops === []) {
+            $this->_outRestoreGraphicsState();
+
+            return;
+        }
+        $c = array_map('floatval', $gradient['coords']);
+        if (($gradient['type'] ?? 'linear') === 'radial') {
+            $this->Gradient(3, [$c[0], 1 - $c[1], $c[0], 1 - $c[1], $c[2]], $stops);
+        } else {
+            $this->Gradient(2, [$c[0], 1 - $c[1], $c[2], 1 - $c[3]], $stops);
+        }
+    }
+
+    /**
+     * Clip what follows to a path (until restore()).
+     *
+     * @param list<array{0: string, 1: list<float>}> $ops
+     */
+    public function clipToPath(array $ops, string $rule = 'nonzero'): void
+    {
+        $path = $this->pathString($ops);
+        if ($path !== '') {
+            $this->_out($path . ($rule === 'evenodd' ? 'W* n' : 'W n'));
+        }
+    }
+
+    /** Clip what follows to a rectangle in page millimetres (until restore()). */
+    public function clipToRect(float $x, float $y, float $w, float $h): void
+    {
+        $k = $this->k;
+        $this->_out(sprintf('%.4F %.4F %.4F %.4F re W n', $x * $k, ($this->h - $y) * $k, $w * $k, -$h * $k));
+    }
+
+    public function save(): void
+    {
+        $this->_outSaveGraphicsState();
+    }
+
+    public function restore(): void
+    {
+        $this->_outRestoreGraphicsState();
+    }
+
+    /**
+     * Draw with a constant alpha, then put the opaque state back. PDF/X-4
+     * allows transparency; the ExtGState lives inside a save/restore so
+     * nothing after it inherits the alpha.
+     *
+     * @param callable(): void $draw
+     */
+    public function withAlpha(float $alpha, callable $draw): void
+    {
+        if ($alpha >= 0.999) {
+            $draw();
+
+            return;
+        }
+        $this->save();
+        $this->setAlpha($alpha, 'Normal', $alpha);
+        $draw();
+        $this->restore();
+        $this->alpha = ['CA' => 1, 'ca' => 1, 'BM' => '/Normal', 'AIS' => false];
+    }
+
+    /**
+     * A template's artwork, already mapped to page millimetres and press
+     * ink by PosterThemePieces, in order. A `{photo_slot: pN}` item hands
+     * over to $drawPhotoSlot, so frames and shadows around a photo land
+     * before and after it as the design has them.
+     *
+     * @param list<array<string, mixed>> $items
+     * @param callable(string): void $drawPhotoSlot
+     */
+    public function drawBackdrop(array $items, callable $drawPhotoSlot): void
+    {
+        foreach ($items as $item) {
+            if (isset($item['photo_slot'])) {
+                $drawPhotoSlot((string) $item['photo_slot']);
+
+                continue;
+            }
+            $this->withAlpha((float) ($item['opacity'] ?? 1.0), function () use ($item): void {
+                $clip = $item['clip_rect'] ?? null;
+                if (is_array($clip)) {
+                    $this->save();
+                    $this->clipToRect((float) $clip[0], (float) $clip[1], (float) $clip[2], (float) $clip[3]);
+                }
+                $rule = (string) ($item['rule'] ?? 'nonzero');
+                if (is_array($item['gradient'] ?? null)) {
+                    $this->fillPathGradient($item['ops'], $rule, $item['bbox'], $item['gradient']);
+                    if (is_array($item['stroke'] ?? null)) {
+                        $this->paintPath($item['ops'], null, $rule, $item['stroke']);
+                    }
+                } else {
+                    $this->paintPath($item['ops'], $item['fill'] ?? null, $rule, $item['stroke'] ?? null);
+                }
+                if (is_array($clip)) {
+                    $this->restore();
+                }
+            });
+        }
+    }
+
+    /**
+     * A circle as four cubic curves, in page millimetres, for fillPath().
+     *
+     * @return list<array{0: string, 1: list<float>}>
+     */
+    public static function circleOps(float $cx, float $cy, float $r): array
+    {
+        $k = 0.5522847498 * $r;
+
+        return [
+            ['M', [$cx + $r, $cy]],
+            ['C', [$cx + $r, $cy + $k, $cx + $k, $cy + $r, $cx, $cy + $r]],
+            ['C', [$cx - $k, $cy + $r, $cx - $r, $cy + $k, $cx - $r, $cy]],
+            ['C', [$cx - $r, $cy - $k, $cx - $k, $cy - $r, $cx, $cy - $r]],
+            ['C', [$cx + $k, $cy - $r, $cx + $r, $cy - $k, $cx + $r, $cy]],
+            ['Z', []],
+        ];
     }
 
     /**
