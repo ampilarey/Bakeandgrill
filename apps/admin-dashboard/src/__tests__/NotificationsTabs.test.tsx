@@ -32,6 +32,11 @@ const budget: api.SmsBudgetSnapshot = {
   period_segments_used: 12, period_cost_mvr: 3, period_blocked_count: 0, monthly_remaining: 988, monthly_exhausted: false,
 };
 
+const deliveryRules: api.SmsDeliveryRules = {
+  quiet_hours_enabled: false, quiet_hours_start: '22:00', quiet_hours_end: '08:00', quiet_hours_alerts: false, marketing_daily_cap: 1,
+  bulk_daily_recipient_cap: 5000, log_retention_days: 365, marketing_opt_out_line: 'Stop: {url}',
+};
+
 function mockControlCenter(overrides?: Partial<api.SmsControlCenterResponse>) {
   vi.spyOn(api, 'getSmsControlCenter').mockResolvedValue({
     global_kill_switch: false,
@@ -43,10 +48,7 @@ function mockControlCenter(overrides?: Partial<api.SmsControlCenterResponse>) {
     },
     permission_options: [],
     types: [],
-    delivery_rules: {
-      quiet_hours_enabled: false, quiet_hours_start: '22:00', quiet_hours_end: '08:00', quiet_hours_alerts: false, marketing_daily_cap: 1,
-      bulk_daily_recipient_cap: 5000, log_retention_days: 365, marketing_opt_out_line: 'Stop: {url}',
-    },
+    delivery_rules: deliveryRules,
     quiet_now: false,
     deferred_count: 0,
     telegram_alerts_on: true,
@@ -114,6 +116,9 @@ describe('Notifications → Rules', () => {
   it('saves the spending limits', async () => {
     renderWithRouter(<RulesTab />);
     await screen.findByText('Spending limit');
+    // The loaded limits reach the boxes a beat after the heading; typed
+    // before that, they would be written over (local run, 2026-10-21).
+    await waitFor(() => expect(screen.getByLabelText(/Monthly segments/i)).toHaveValue(1000));
     fireEvent.change(screen.getByLabelText(/Monthly segments/i), { target: { value: '750' } });
     fireEvent.change(screen.getByLabelText(/Per-campaign segments/i), { target: { value: '150' } });
     fireEvent.click(screen.getByRole('button', { name: /Save limits/i }));
@@ -128,8 +133,14 @@ describe('Notifications → Rules', () => {
   });
 
   it('saves quiet hours and the marketing limit', async () => {
+    // The loaded rules reach the boxes a beat after the summary line, and
+    // every field here matches the defaults the boxes start on, so an hourly
+    // email limit of its own says when they have landed; typed before that,
+    // the changes would be written over.
+    mockControlCenter({ delivery_rules: { ...deliveryRules, email_copy_hourly_cap: 250 } });
     renderWithRouter(<RulesTab />);
     await screen.findByText(/Quiet hours off/);
+    await waitFor(() => expect(screen.getByLabelText(/Emails per hour/i)).toHaveValue(250));
     fireEvent.click(screen.getByLabelText(/^Quiet hours$/i));
     fireEvent.change(screen.getByLabelText(/^Until$/i), { target: { value: '07:30' } });
     fireEvent.change(screen.getByLabelText(/Marketing texts per number per day/i), { target: { value: '2' } });
