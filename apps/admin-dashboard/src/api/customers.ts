@@ -178,6 +178,10 @@ export type CustomerDepositInfo = {
   total_used_mvr?: number;
   credit_balance_laar?: number;
   credit_balance_mvr?: number;
+  /** The family wallet (phase 4): who shares their wallet with this customer, when someone does. */
+  shares_wallet_of?: string | null;
+  /** Who this customer shares their wallet with. */
+  shared_with?: Array<{ id: number; name: string; phone: string }>;
 };
 
 export type CustomerDepositLedgerRow = {

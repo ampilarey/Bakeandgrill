@@ -202,3 +202,6 @@ are built, with two more from the deposit plan.
 | Till | `CustomerRewardsPanel` (`canTakeRepayment`), `CustomersPanel` (`MoneyForm` with `allowOwnerCash` / `surplusToWallet`, `TransferForm`), `customerAdmin.ts` |
 | Admin | `CustomerCreditSection` (settle switch, owner cash, surplus tick), `CreditAccountSettings` (online orders, bonus) |
 | Tests | `backend/tests/Feature/Credit/CreditExtrasTest.php` |
+
+The family wallet (a customer shares their wallet with up to four others, who pay from it when
+their own is empty) is in `docs/CUSTOMER_DEPOSIT_IMPLEMENTATION_REPORT.md` § 8f.

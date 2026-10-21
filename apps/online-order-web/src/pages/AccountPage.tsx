@@ -1,5 +1,6 @@
 import { AddGiftCardToWallet } from '../components/AddGiftCardToWallet';
 import { AddMoneyCard } from '../components/AddMoneyCard';
+import { WalletMembersCard } from '../components/WalletMembersCard';
 import { WalletTopUpResult } from '../components/WalletTopUpResult';
 import { CreditPayCard, CreditPaymentResult } from '../components/CreditPayCard';
 import { ReviewPhotoPicker } from '../components/ReviewPhotoPicker';
@@ -812,7 +813,14 @@ export function AccountPage() {
                         {t('wallet.held').replace('{amount}', (deposit.held_mvr ?? 0).toFixed(2))}
                       </p>
                     )}
+                    {deposit.shared_from && (
+                      <p style={{ margin: '12px 0 0', fontSize: 13, color: '#065F46' }} data-testid="wallet-shared-from">
+                        {t('wallet.shared_from_line').replace('{name}', deposit.shared_from)}
+                      </p>
+                    )}
                   </div>
+
+                  <WalletMembersCard onChanged={() => setDepositLoaded(false)} />
 
                   <SectionCard title={t('wallet.first_title')}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, cursor: 'pointer' }}>

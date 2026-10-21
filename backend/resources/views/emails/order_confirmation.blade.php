@@ -99,7 +99,7 @@
     @if ($account['wallet'] !== null)
         <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; margin:0 0 22px; padding:12px 14px; background:#FBF6F0; border-radius:12px; font-size:14px; line-height:22px;">
             <tr><td colspan="2" style="padding:0 0 6px; font-weight:bold; color:#1C1408;">{{ __('Wallet') }}</td></tr>
-            <tr><td style="color:#6B5D4F;">{{ __('Paid from your wallet') }}</td><td align="right" style="color:#1C1408;">{{ $money($account['wallet']['amount_laar'] / 100) }}</td></tr>
+            <tr><td style="color:#6B5D4F;">{{ $account['wallet']['shared_from'] ? __(":name's wallet paid", ['name' => $account['wallet']['shared_from']]) : __('Paid from your wallet') }}</td><td align="right" style="color:#1C1408;">{{ $money($account['wallet']['amount_laar'] / 100) }}</td></tr>
             <tr><td style="color:#6B5D4F;">{{ __('Wallet balance') }}</td><td align="right" style="color:#1C1408;">{{ $money($account['wallet']['balance_laar'] / 100) }}</td></tr>
         </table>
     @endif

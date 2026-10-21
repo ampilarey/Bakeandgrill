@@ -487,6 +487,10 @@ function CustomerCard({ id, listRow, perms, onStartOrder, onSaved, onMoneyRecord
         <Section title="Deposit">
           {deposit.has_account && <Stat label="Status" value={deposit.status} />}
           <Stat label="Balance" value={`MVR ${(deposit.balance_laar / 100).toFixed(2)}${(deposit.held_laar ?? 0) > 0 ? ` (MVR ${((deposit.held_laar ?? 0) / 100).toFixed(2)} on hold)` : ""}`} />
+          {/* The family wallet (phase 4): whose money this is, and who else may spend it. */}
+          {deposit.shared_from && <Stat label="Whose wallet" value={`${deposit.shared_from}'s, shared with them`} />}
+          {!deposit.shared_from && deposit.shares_wallet_of && <Stat label="Also pays from" value={`${deposit.shares_wallet_of}'s wallet when their own is empty`} />}
+          {(deposit.shared_with?.length ?? 0) > 0 && <Stat label="Shared with" value={(deposit.shared_with ?? []).map((m) => m.name).join(", ")} />}
           {deposit.wallet_first && <Stat label="At checkout" value="Wallet first" />}
           {perms.canDepositReceive && deposit.status !== "frozen" && mode !== "topup" && mode !== "topuplink" && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>

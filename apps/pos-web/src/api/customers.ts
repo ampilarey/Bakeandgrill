@@ -132,6 +132,12 @@ export type PosCustomerSummary = {
     available_laar?: number;
     /** The customer asked for the wallet first at checkout. */
     wallet_first?: boolean;
+    /** The family wallet (phase 4): whose wallet this is when it is not their own. */
+    shared_from?: string | null;
+    /** Who shares their wallet with this customer, when someone does. */
+    shares_wallet_of?: string | null;
+    /** Who this customer shares their wallet with. */
+    shared_with?: Array<{ id: number; name: string; phone: string }>;
   };
 };
 

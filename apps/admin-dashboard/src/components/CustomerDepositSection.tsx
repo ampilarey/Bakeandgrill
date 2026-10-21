@@ -326,6 +326,18 @@ export function CustomerDepositSection({ customerId }: Props) {
             </div>
           </div>
 
+          {/* The family wallet (phase 4, owner 2026-10-21): the customer shares it from the order app. */}
+          {((deposit.shared_with?.length ?? 0) > 0 || deposit.shares_wallet_of) && (
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5 }} data-testid="deposit-family">
+              {(deposit.shared_with?.length ?? 0) > 0 && (
+                <>Shared with {(deposit.shared_with ?? []).map((m) => `${m.name} (${m.phone})`).join(', ')}: they pay from this wallet when their own is empty.</>
+              )}
+              {deposit.shares_wallet_of && (
+                <>Pays from {deposit.shares_wallet_of}&rsquo;s wallet when this one is empty.</>
+              )}
+            </p>
+          )}
+
           {canFreeze && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <Btn small variant="secondary" onClick={() => void setStatus('active')} disabled={saving}>Activate</Btn>

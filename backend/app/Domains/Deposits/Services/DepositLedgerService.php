@@ -286,17 +286,18 @@ final class DepositLedgerService
         }
 
         return DB::transaction(function () use ($customer, $order, $payment, $actor, $request) {
-            $account = CustomerDepositAccount::lockForUpdate()
-                ->where('customer_id', $customer->id)
-                ->first();
-
-            if ($account === null) {
+            // The family wallet (phase 4): the customer's own wallet while it
+            // has money, else the one shared with them.
+            ['account' => $resolved, 'owner' => $owner] = $this->eligibility->spendingAccount($customer);
+            if ($resolved === null) {
                 abort(422, 'This customer has no prepaid deposit balance.');
             }
+            $account = CustomerDepositAccount::lockForUpdate()->findOrFail($resolved->id);
+            $byMember = (int) $owner->id !== (int) $customer->id;
 
             $amountLaar = (int) $payment->amount_laar;
             // A hold being taken (DepositHolds) must not count against itself.
-            $this->eligibility->assertCanUseDeposit($customer, $amountLaar, $account, $payment->id);
+            $this->eligibility->assertCanUseDeposit($owner, $amountLaar, $account, $payment->id);
 
             $balanceBefore = (int) $account->balance_laar;
             $newBalance = $balanceBefore - $amountLaar;
@@ -310,23 +311,31 @@ final class DepositLedgerService
                 'order_id' => $order->id,
                 'payment_id' => $payment->id,
                 'shift_id' => $payment->shift_id,
-                'notes' => 'Customer deposit payment for order ' . ($order->order_number ?? $order->id),
+                'spent_by_customer_id' => $byMember ? $customer->id : null,
+                'notes' => 'Customer deposit payment for order ' . ($order->order_number ?? $order->id)
+                    . ($byMember ? ' by ' . ($customer->name ?: $customer->phone) : ''),
             ]);
 
             $this->audit->log(
                 'customer.deposit.usage',
                 'Customer',
-                $customer->id,
+                $owner->id,
                 [],
                 [
                     'amount_laar' => $amountLaar,
                     'balance_after_laar' => $newBalance,
                     'order_id' => $order->id,
                     'payment_id' => $payment->id,
+                    'spent_by_customer_id' => $byMember ? $customer->id : null,
                 ],
                 [],
                 $request,
             );
+
+            // The wallet's owner hears when someone they share it with pays from it.
+            if ($byMember) {
+                DB::afterCommit(fn () => app(DepositNotifier::class)->memberSpent($owner, $amountLaar, $customer, $order, $newBalance, $ledger->id));
+            }
 
             return $ledger;
         });
@@ -530,8 +539,13 @@ final class DepositLedgerService
         }
 
         DB::transaction(function () use ($order, $reversalLaar, $refund, $actor) {
+            // The money goes back to the wallet that paid: a family member's
+            // order (phase 4) was paid from the wallet shared with them.
+            $paidFromCustomerId = (int) (CustomerDepositLedger::query()
+                ->where('order_id', $order->id)->where('type', 'usage')
+                ->orderByDesc('id')->value('customer_id') ?: $order->customer_id);
             $account = CustomerDepositAccount::lockForUpdate()
-                ->where('customer_id', $order->customer_id)
+                ->where('customer_id', $paidFromCustomerId)
                 ->first();
 
             if ($account === null) {
@@ -786,6 +800,7 @@ final class DepositLedgerService
             'shift_id' => $extra['shift_id'] ?? null,
             'method' => $extra['method'] ?? null,
             'actor_user_id' => $actor->id,
+            'spent_by_customer_id' => $extra['spent_by_customer_id'] ?? null,
             'notes' => $extra['notes'] ?? null,
             'reference' => $extra['reference'] ?? null,
         ]);

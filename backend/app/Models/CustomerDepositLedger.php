@@ -19,6 +19,7 @@ class CustomerDepositLedger extends Model
 
     protected $fillable = [
         'customer_id',
+        'spent_by_customer_id',
         'deposit_account_id',
         'type',
         'method',

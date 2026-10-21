@@ -147,6 +147,11 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     Route::delete('/orders/{id}/hold-wallet', [App\Http\Controllers\Api\CustomerWalletController::class, 'releaseHold'])->whereNumber('id')->middleware('throttle:20,1');
     // An online order on the credit account (phase 4, owner 2026-10-21).
     Route::post('/orders/{id}/pay-credit', [App\Http\Controllers\Api\CustomerCreditPaymentController::class, 'payOrder'])->whereNumber('id')->middleware('throttle:20,1');
+    // The family wallet (phase 4): who shares it, add by phone, take off, leave.
+    Route::get('/wallet/members', [App\Http\Controllers\Api\CustomerWalletMembersController::class, 'index']);
+    Route::post('/wallet/members', [App\Http\Controllers\Api\CustomerWalletMembersController::class, 'store'])->middleware('throttle:10,10');
+    Route::delete('/wallet/members/leave', [App\Http\Controllers\Api\CustomerWalletMembersController::class, 'leave'])->middleware('throttle:10,10');
+    Route::delete('/wallet/members/{memberId}', [App\Http\Controllers\Api\CustomerWalletMembersController::class, 'destroy'])->whereNumber('memberId')->middleware('throttle:10,10');
     // The credit account paid online as a whole (owner, 2026-10-21): the statement, Pay now, and how it went.
     Route::get('/credit/statement', [App\Http\Controllers\Api\CustomerCreditPaymentController::class, 'statement']);
     Route::post('/credit/pay', [App\Http\Controllers\Api\CustomerCreditPaymentController::class, 'start'])->middleware('throttle:10,10');

@@ -380,14 +380,17 @@ class CustomerController extends Controller
             return response()->json(['deposit' => null, 'transactions' => []]);
         }
 
+        // Their own wallet's rows, and what they paid from a wallet shared with them (phase 4).
         $rows = \App\Models\CustomerDepositLedger::query()
-            ->where('customer_id', $customer->id)
+            ->where(fn ($q) => $q->where('customer_id', $customer->id)->orWhere('spent_by_customer_id', $customer->id))
             ->orderByDesc('created_at')
             ->limit(50)
             ->get()
             ->map(fn (\App\Models\CustomerDepositLedger $row) => [
                 'id' => $row->id,
-                'label' => $service->customerFacingLedgerLabel($row->type),
+                'label' => $service->customerFacingLedgerLabel($row->type)
+                    . ((int) $row->customer_id !== (int) $customer->id ? ' (shared wallet)' : '')
+                    . ($row->spent_by_customer_id !== null && (int) $row->customer_id === (int) $customer->id ? ' · by ' . (string) (Customer::query()->whereKey($row->spent_by_customer_id)->value('name') ?? 'family') : ''),
                 'type' => $row->type,
                 'amount_mvr' => round(abs((int) $row->amount_laar) / 100, 2),
                 'direction' => $row->amount_laar >= 0 ? 'credit' : 'debit',

@@ -243,6 +243,24 @@ the ledger type list is widened for MySQL and PostgreSQL in
 from the wallet and online orders on account are in `docs/CREDIT_ACCOUNTS_PAGE.md` § Phase 4.
 Tests: `tests/Feature/Credit/CreditExtrasTest.php`.
 
+## 8f. The family wallet (2026-10-21, phase 4)
+
+| Where | What |
+|---|---|
+| Order app, Account → Wallet → Family wallet | Share the wallet with up to four people by phone (they need a checked account). Each is texted "Aisha shares their wallet with you". Remove one from the list; a member sees whose wallet they pay from and can leave. |
+| Order app checkout, the till | A member's own wallet is used first while it has money; empty, the shared wallet pays, worded "Pay from Aisha's wallet (MVR x)" and "Use Aisha's wallet … and pay the rest by card". The till's customer card says whose wallet the balance is. |
+| The owner | A text per payment: "MVR 30.00 paid from your wallet by Mariyam for #BG-…. Wallet balance: MVR 70.00." Their wallet activity shows "Order payment · by Mariyam". |
+| The member | The receipt, email and confirmation text say "from Aisha's wallet"; their wallet activity shows "Order payment (shared wallet)". |
+| Holds and refunds | A member's unpaid online order holds money on the shared wallet, so the owner cannot spend it twice; a refund goes back to the wallet that paid. |
+| Money in | Always lands in the wallet of the person adding it: a member's top-up is their own; only the owner's money is shared. |
+| Admin → Customer → Deposit | "Shared with Mariyam (•••0333): they pay from this wallet when their own is empty" on the owner's card; "Pays from Aisha's wallet when this one is empty" on the member's. |
+
+`wallet_members`, `App\Domains\Deposits\Support\WalletMembers`,
+`DepositEligibilityService::spendingAccount()`, `customer_deposit_ledger.spent_by_customer_id`
+(`2026_10_21_200000_wallet_members`), texts `customer_wallet_shared` and
+`customer_wallet_member_spend`. Tests: `tests/Feature/Deposits/SharedWalletTest.php`,
+`WalletMembersCard.test.tsx`.
+
 ## 9. Gap matrix (plan vs delivered)
 
 | Area | Status |

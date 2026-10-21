@@ -86,9 +86,13 @@ class CustomerWalletController extends Controller
             if ($due <= 0) {
                 return;
             }
-            $balance = (int) CustomerDepositAccount::query()->where('customer_id', $customer->id)->value('balance_laar');
+            // The family wallet (phase 4): their own while it has money, else the one shared with them.
+            ['account' => $account] = app(\App\Domains\Deposits\Services\DepositEligibilityService::class)->spendingAccount($customer);
+            $balance = $account !== null && $account->status === 'active'
+                ? (int) $account->balance_laar - \App\Domains\Deposits\Support\DepositHolds::heldLaar((int) $account->customer_id)
+                : 0;
             if ($balance < $due) {
-                abort(422, 'Your wallet has MVR ' . number_format($balance / 100, 2) . '; this order needs MVR ' . number_format($due / 100, 2) . '. Pay by card instead.');
+                abort(422, 'Your wallet has MVR ' . number_format(max(0, $balance) / 100, 2) . '; this order needs MVR ' . number_format($due / 100, 2) . '. Pay by card instead.');
             }
             $payment = Payment::create([
                 'order_id' => $locked->id,
@@ -106,7 +110,7 @@ class CustomerWalletController extends Controller
 
         return response()->json([
             'order' => ['id' => $fresh->id, 'status' => $fresh->status, 'payment_status' => $fresh->payment_status],
-            'balance_laar' => (int) CustomerDepositAccount::query()->where('customer_id', $customer->id)->value('balance_laar'),
+            'balance_laar' => (int) (app(\App\Domains\Deposits\Services\DepositEligibilityService::class)->spendingAccount($customer->fresh())['account']?->balance_laar ?? 0),
         ]);
     }
 
@@ -134,11 +138,12 @@ class CustomerWalletController extends Controller
             if ($due <= 0) {
                 abort(422, 'Nothing is due on this order.');
             }
-            $account = CustomerDepositAccount::query()->where('customer_id', $customer->id)->first();
+            // The family wallet (phase 4): their own while it has money, else the one shared with them.
+            ['account' => $account] = app(\App\Domains\Deposits\Services\DepositEligibilityService::class)->spendingAccount($customer);
             if ($account === null || $account->status !== 'active') {
                 abort(422, 'Your wallet cannot be used right now.');
             }
-            $available = max(0, (int) $account->balance_laar - \App\Domains\Deposits\Support\DepositHolds::heldLaar($customer->id));
+            $available = max(0, (int) $account->balance_laar - \App\Domains\Deposits\Support\DepositHolds::heldLaar((int) $account->customer_id));
             $available += $held;
             if ($available <= 0) {
                 abort(422, 'Your wallet is empty.');

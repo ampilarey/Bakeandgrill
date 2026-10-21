@@ -1215,6 +1215,27 @@ the ready hint and the tracking link in place of the online confirmation. A new 
 into the MySQL enum and the PostgreSQL check in a migration (as `bonus` did), `activityTotals`,
 `customerFacingLedgerLabel` and `depositActivity`. `CreditExtrasTest`.
 
+**The family wallet** (phase 4, last part): a customer shares their wallet with up to four others
+(`wallet_members`, `App\Domains\Deposits\Support\WalletMembers`: add by phone from the order
+app's Account → Wallet → Family wallet, `WalletMembersCard`, `GET` / `POST` / `DELETE
+/api/customer/wallet/members`, `DELETE …/members/leave`; a member cannot share theirs or join a
+second one, nor can a number nobody checked be added; the member is texted `customer_wallet_shared`
+once). **Who spends from which wallet is decided in one place**,
+`DepositEligibilityService::spendingAccount()`: the member's own wallet while it has money and is
+active, else the shared one; `depositSummary()` and `canUseDeposit()` with no account resolve
+through it, so the till's `pos-summary`, `GET /customer/deposit`, the checkout, `pay-wallet`,
+`hold-wallet` and the till's deposit tender (`PaymentAllocationService` → `recordUsage`) all
+follow without a branch of their own. A usage row written on the shared wallet carries
+`customer_deposit_ledger.spent_by_customer_id`; the owner is texted `customer_wallet_member_spend`
+per payment; the member's ledger lists it as "(shared wallet)", the owner's as "· by {name}". Holds
+count against the wallet they draw on (`DepositHolds::heldLaar($ownerId)` reads the owner's and the
+members' orders), and a refund goes back to the wallet that paid (`reverseUsageForOrderRefund`
+reads the usage row). Money in always lands in the wallet of the person adding it. The receipt,
+the PDF, the email and the confirmation text say "from Aisha's wallet" when it was not their own
+(`ReceiptAccountLines` `shared_from`, `DepositNotifier::walletNote(…, $sharedFrom)`). The summaries
+carry `shared_from` (whose wallet this balance is), `shares_wallet_of` and `shared_with`; the till
+and Admin show them on the customer's deposit section. `SharedWalletTest`.
+
 ## Poster print PDFs (PDF/X-4)
 
 Posters render through TCPDF via `App\Domains\Posters\Pdf\PdfX4Document`, not dompdf

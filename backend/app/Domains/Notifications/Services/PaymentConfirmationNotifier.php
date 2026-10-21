@@ -95,7 +95,7 @@ class PaymentConfirmationNotifier
         // the ledgers, which the settle wrote before this ran.
         $account = ReceiptAccountLines::for($order);
         $walletNote = $account['wallet'] !== null
-            ? DepositNotifier::walletNote((int) $account['wallet']['amount_laar'], (int) $account['wallet']['balance_laar'], $phone)
+            ? DepositNotifier::walletNote((int) $account['wallet']['amount_laar'], (int) $account['wallet']['balance_laar'], $phone, $account['wallet']['shared_from'] ?? null)
             : '';
 
         if ($isOnline && $account['credit'] !== null && CreditAccountNotifier::chargedTextOn()) {

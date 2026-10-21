@@ -398,16 +398,19 @@ export function useCheckout() {
   // on Account → Wallet: the box comes ticked.
   const [walletBalanceLaar, setWalletBalanceLaar] = useState(0);
   const [useWallet, setUseWallet] = useState(false);
+  // The family wallet (phase 4): whose wallet pays when it is not their own.
+  const [walletSharedFrom, setWalletSharedFrom] = useState<string | null>(null);
   const spendableLaar = (r: { deposit: { can_use: boolean; balance_mvr: number; available_mvr?: number } | null }) =>
     r.deposit && r.deposit.can_use ? Math.round(Number(r.deposit.available_mvr ?? r.deposit.balance_mvr) * 100) : 0;
   useEffect(() => {
-    if (!isAuthenticated) { setWalletBalanceLaar(0); return; }
+    if (!isAuthenticated) { setWalletBalanceLaar(0); setWalletSharedFrom(null); return; }
     let live = true;
     getCustomerDeposit()
       .then((r) => {
         if (!live) return;
         const laar = spendableLaar(r);
         setWalletBalanceLaar(laar);
+        setWalletSharedFrom(laar > 0 ? (r.deposit?.shared_from ?? null) : null);
         if (laar > 0 && r.deposit?.wallet_first) setUseWallet(true);
       })
       .catch(() => {});
@@ -1518,7 +1521,7 @@ export function useCheckout() {
         } catch (holdErr) {
           // The wallet changed since the page loaded: show the fresh figure, and
           // the next tap goes by it (or pays from the wallet when it now covers all).
-          getCustomerDeposit().then((r) => setWalletBalanceLaar(spendableLaar(r))).catch(() => {});
+          getCustomerDeposit().then((r) => { const laar = spendableLaar(r); setWalletBalanceLaar(laar); setWalletSharedFrom(laar > 0 ? (r.deposit?.shared_from ?? null) : null); }).catch(() => {});
           throw holdErr;
         }
       } else if (walletBalanceLaar > 0) {
@@ -1613,7 +1616,7 @@ export function useCheckout() {
     partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,
     gift, setGift,
-    walletBalanceLaar, useWallet, setUseWallet: chooseWallet, walletPartLaar,
+    walletBalanceLaar, useWallet, setUseWallet: chooseWallet, walletPartLaar, walletSharedFrom,
     creditAvailableLaar, creditTermsDays, useCredit, setUseCredit,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress, markAddressAsNew,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,

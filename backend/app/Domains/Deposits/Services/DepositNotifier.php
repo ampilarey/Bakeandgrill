@@ -36,6 +36,14 @@ final class DepositNotifier
 
     public const FALLBACK_RECEIVED = 'Bake & Grill: MVR {{amount}} added to your wallet ({{method}}). Wallet balance: MVR {{balance}}.';
 
+    public const TYPE_SHARED = 'customer_wallet_shared';
+
+    public const FALLBACK_SHARED = 'Bake & Grill: {{owner}} shares their wallet with you. When your own wallet is empty, you can pay from it at the counter and in the order app.';
+
+    public const TYPE_MEMBER_SPEND = 'customer_wallet_member_spend';
+
+    public const FALLBACK_MEMBER_SPEND = 'Bake & Grill: MVR {{amount}} paid from your wallet by {{member}} for #{{order_number}}. Wallet balance: MVR {{balance}}.';
+
     public const FALLBACK_PAID_OUT = 'Bake & Grill: MVR {{amount}} paid out from your wallet ({{method}}). Wallet balance: MVR {{balance}}.';
 
     public const FALLBACK_ON_HOLD = 'Bake & Grill: your wallet has been put on hold and cannot be used for now. Please contact us.';
@@ -70,6 +78,25 @@ final class DepositNotifier
         ], self::FALLBACK_RECEIVED, 'deposit:received:' . $ledgerId, $bonusNote . $receipt);
     }
 
+    /** The family wallet (phase 4): someone shared their wallet with this customer. */
+    public function shared(Customer $member, Customer $owner): void
+    {
+        $this->send($member, self::TYPE_SHARED, self::TYPE_SHARED, [
+            'owner' => (string) ($owner->name ?: 'A customer'),
+        ], self::FALLBACK_SHARED, sprintf('wallet:shared:%d:%d', $owner->id, $member->id));
+    }
+
+    /** The wallet's owner hears when someone they share it with pays from it. */
+    public function memberSpent(Customer $owner, int $amountLaar, Customer $member, \App\Models\Order $order, int $balanceAfterLaar, int $ledgerId): void
+    {
+        $this->send($owner, self::TYPE_MEMBER_SPEND, self::TYPE_MEMBER_SPEND, [
+            'amount' => self::mvr($amountLaar),
+            'member' => (string) ($member->name ?: $member->phone),
+            'order_number' => (string) ($order->order_number ?? $order->id),
+            'balance' => self::mvr($balanceAfterLaar),
+        ], self::FALLBACK_MEMBER_SPEND, 'deposit:member-spend:' . $ledgerId);
+    }
+
     public function paidOut(Customer $customer, int $amountLaar, string $method, int $balanceAfterLaar, int $ledgerId): void
     {
         $this->send($customer, self::TYPE_PAID_OUT, self::TYPE_PAID_OUT, [
@@ -101,13 +128,18 @@ final class DepositNotifier
      * wallet, in the customer's language. Appended by the sender when the
      * wording has no {{wallet_note}} of its own.
      */
-    public static function walletNote(int $amountLaar, int $balanceLaar, ?string $phone): string
+    /** @param string|null $sharedFrom The wallet owner's name when a family member paid from a wallet shared with them (phase 4). */
+    public static function walletNote(int $amountLaar, int $balanceLaar, ?string $phone, ?string $sharedFrom = null): string
     {
         if (CustomerSmsText::language((string) $phone) === 'dv') {
-            return sprintf(' ވޯލެޓުން MVR %s، ބާކީ MVR %s.', self::mvr($amountLaar), self::mvr($balanceLaar));
+            return $sharedFrom !== null
+                ? sprintf(' %s ގެ ވޯލެޓުން MVR %s، ބާކީ MVR %s.', $sharedFrom, self::mvr($amountLaar), self::mvr($balanceLaar))
+                : sprintf(' ވޯލެޓުން MVR %s، ބާކީ MVR %s.', self::mvr($amountLaar), self::mvr($balanceLaar));
         }
 
-        return sprintf(' MVR %s from your wallet, balance MVR %s.', self::mvr($amountLaar), self::mvr($balanceLaar));
+        return $sharedFrom !== null
+            ? sprintf(" MVR %s from %s's wallet, balance MVR %s.", self::mvr($amountLaar), $sharedFrom, self::mvr($balanceLaar))
+            : sprintf(' MVR %s from your wallet, balance MVR %s.', self::mvr($amountLaar), self::mvr($balanceLaar));
     }
 
     public static function methodWord(string $method): string

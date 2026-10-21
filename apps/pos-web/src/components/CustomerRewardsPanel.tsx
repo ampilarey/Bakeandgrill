@@ -180,6 +180,8 @@ export function CustomerRewardsPanel({
   const depositHeldMvr = (summary?.deposit?.held_laar ?? 0) / 100;
   const depositWalletFirst = Boolean(summary?.deposit?.wallet_first);
   const depositStatus = summary?.deposit?.status ?? 'active';
+  /** The family wallet (phase 4): whose wallet pays when it is not their own. */
+  const depositSharedFrom = summary?.deposit?.shared_from ?? null;
   const creditEnabled = summary?.credit?.enabled ?? false;
   const creditAvailableMvr = (summary?.credit?.available_laar ?? 0) / 100;
   const creditBalanceMvr = (summary?.credit?.balance_laar ?? 0) / 100;
@@ -428,7 +430,7 @@ export function CustomerRewardsPanel({
                 <Stat label="Lifetime orders" value={lifetimeOrders.toLocaleString()} />
                 <Stat label="Lifetime spent" value={`MVR ${lifetimeSpent.toFixed(2)}`} />
                 <Stat
-                  label={depositWalletFirst ? "Deposit balance · wallet first" : "Deposit balance"}
+                  label={depositSharedFrom ? `Deposit balance · ${depositSharedFrom}'s wallet` : depositWalletFirst ? "Deposit balance · wallet first" : "Deposit balance"}
                   value={
                     (depositStatus !== 'active'
                       ? `${depositStatus.toUpperCase()} · MVR ${depositBalanceMvr.toFixed(2)}`

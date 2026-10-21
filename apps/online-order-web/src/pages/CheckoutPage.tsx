@@ -224,7 +224,7 @@ export function CheckoutPage() {
     partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,
     gift, setGift,
-    walletBalanceLaar, useWallet, setUseWallet, walletPartLaar,
+    walletBalanceLaar, useWallet, setUseWallet, walletPartLaar, walletSharedFrom,
     creditAvailableLaar, creditTermsDays, useCredit, setUseCredit,
     savedAddresses, selectedAddressId, applySavedAddress, markAddressAsNew,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,
@@ -869,8 +869,11 @@ export function CheckoutPage() {
               data-testid="checkout-wallet-toggle"
             />
             {walletBalanceLaar >= amountDueLaar
-              ? t('wallet.pay_toggle').replace('{amount}', (walletBalanceLaar / 100).toFixed(2))
-              : t('wallet.pay_part_toggle')
+              ? t(walletSharedFrom ? 'wallet.pay_toggle_shared' : 'wallet.pay_toggle')
+                .replace('{name}', walletSharedFrom ?? '')
+                .replace('{amount}', (walletBalanceLaar / 100).toFixed(2))
+              : t(walletSharedFrom ? 'wallet.pay_part_toggle_shared' : 'wallet.pay_part_toggle')
+                .replace('{name}', walletSharedFrom ?? '')
                 .replace('{amount}', (walletBalanceLaar / 100).toFixed(2))
                 .replace('{rest}', ((amountDueLaar - walletBalanceLaar) / 100).toFixed(2))}
           </label>

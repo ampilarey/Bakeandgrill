@@ -326,6 +326,9 @@ final class SmsTypeRegistry
             self::def('customer_deposit_on_hold', 'Wallet on hold, or active again', 'transactional', true, false, 'customer_deposit_on_hold', 'sms_customer_deposit_on_hold_enabled', 'sms.transactional.manage', false, 'The customer whose wallet was frozen or reactivated', false),
             // Owner, 2026-10-21: staff send a link the customer pays by card to put money in their wallet.
             self::def('customer_wallet_topup_link', 'Wallet: top-up link', 'transactional', true, false, 'customer_wallet_topup_link', 'sms_customer_wallet_topup_link_enabled', 'sms.transactional.manage', false, 'The customer the link is sent to', true),
+            // Phase 4 (owner, 2026-10-21): the family wallet.
+            self::def('customer_wallet_shared', 'Wallet: shared with you', 'transactional', true, false, 'customer_wallet_shared', 'sms_customer_wallet_shared_enabled', 'sms.transactional.manage', false, 'The customer another customer shared their wallet with', false),
+            self::def('customer_wallet_member_spend', 'Wallet: a family member paid from it', 'transactional', true, false, 'customer_wallet_member_spend', 'sms_customer_wallet_member_spend_enabled', 'sms.transactional.manage', false, 'The wallet\'s owner, when someone they share it with pays from it', false),
 
             // Staff
             self::def('staff_low_stock_menu', 'Staff: menu item low stock', 'staff', true, false, null, 'staff_sms_low_stock_enabled', 'sms.transactional.manage', false, 'Owners & managers', false),

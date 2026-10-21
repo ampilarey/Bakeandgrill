@@ -31,12 +31,17 @@ final class DepositHolds
     /** A hold older than this is not a hold any more: the order is stale by then. */
     public const LOOKBACK_HOURS = 48;
 
-    /** What this customer's unpaid orders have on hold, so it is not spent twice. */
+    /**
+     * What this wallet's unpaid orders have on hold, so it is not spent
+     * twice: the owner's orders and, for a family wallet (phase 4), the
+     * orders of everyone they share it with.
+     */
     public static function heldLaar(int $customerId, ?int $excludePaymentId = null): int
     {
+        $customerIds = array_values(array_unique(array_merge([$customerId], WalletMembers::memberIdsOf($customerId))));
         $query = Payment::query()
             ->join('orders', 'orders.id', '=', 'payments.order_id')
-            ->where('orders.customer_id', $customerId)
+            ->whereIn('orders.customer_id', $customerIds)
             ->where('orders.status', 'payment_pending')
             ->where('payments.method', self::METHOD)
             ->where('payments.status', 'pending')

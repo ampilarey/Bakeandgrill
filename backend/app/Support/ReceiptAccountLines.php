@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Domains\Deposits\Support\WalletMembers;
 use App\Models\Customer;
 use App\Models\CustomerCreditLedger;
 use App\Models\CustomerDepositAccount;
@@ -24,7 +25,7 @@ final class ReceiptAccountLines
     /**
      * @return array{
      *   credit: ?array{amount_laar: int, invoice_number: ?string, due_date: ?\DateTimeInterface, invoice_balance_due_laar: int, invoice_paid: bool, balance_laar: int, available_laar: int, pay_url: ?string},
-     *   wallet: ?array{amount_laar: int, balance_laar: int}
+     *   wallet: ?array{amount_laar: int, balance_laar: int, shared_from: ?string}
      * }
      */
     public static function for(Order $order): array
@@ -85,13 +86,20 @@ final class ReceiptAccountLines
             return null;
         }
 
-        $account = $order->customer_id
-            ? CustomerDepositAccount::query()->where('customer_id', $order->customer_id)->first()
-            : null;
+        // The wallet that paid: a family member's order (phase 4) was paid
+        // from the wallet shared with them, whose owner is named.
+        $paidFromId = (int) $usage->last()->customer_id;
+        $account = CustomerDepositAccount::query()->where('customer_id', $paidFromId)->first();
+        $sharedFrom = null;
+        if ($order->customer_id && $paidFromId !== (int) $order->customer_id) {
+            $walletOwner = Customer::query()->find($paidFromId);
+            $sharedFrom = $walletOwner !== null ? WalletMembers::shortName($walletOwner) : 'family';
+        }
 
         return [
             'amount_laar' => (int) abs((int) $usage->sum('amount_laar')),
             'balance_laar' => max(0, (int) ($account?->balance_laar ?? $usage->last()->balance_after_laar)),
+            'shared_from' => $sharedFrom,
         ];
     }
 

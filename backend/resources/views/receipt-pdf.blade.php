@@ -136,7 +136,7 @@
 @endif
 @if ($account['wallet'] !== null)
     <div class="pdf-section-title">Wallet</div>
-    <div class="pdf-payments-row"><span>Paid from your wallet</span><span>MVR {{ number_format($account['wallet']['amount_laar'] / 100, 2) }}</span></div>
+    <div class="pdf-payments-row"><span>{{ $account['wallet']['shared_from'] ? "Paid from {$account['wallet']['shared_from']}'s wallet" : 'Paid from your wallet' }}</span><span>MVR {{ number_format($account['wallet']['amount_laar'] / 100, 2) }}</span></div>
     <div class="pdf-payments-row"><span>Wallet balance</span><span>MVR {{ number_format($account['wallet']['balance_laar'] / 100, 2) }}</span></div>
 @endif
 

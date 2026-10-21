@@ -281,7 +281,36 @@ export type CustomerDepositSummary = {
   available_mvr?: number;
   /** The customer's own choice: the wallet first at checkout. */
   wallet_first?: boolean;
+  /** The family wallet (phase 4): whose wallet this is when it is not their own. */
+  shared_from?: string | null;
+  /** Who shares their wallet with this customer, when someone does. */
+  shares_wallet_of?: string | null;
+  /** Who this customer shares their wallet with. */
+  shared_with?: Array<{ id: number; name: string; phone: string }>;
 };
+
+/** The family wallet (phase 4): who shares it, and whose wallet the customer may spend. */
+export type WalletMembersState = {
+  members: Array<{ id: number; name: string; phone: string }>;
+  max: number;
+  shares_wallet_of: { name: string; balance_mvr: number; active: boolean } | null;
+};
+
+export async function getWalletMembers(): Promise<WalletMembersState> {
+  return request('/customer/wallet/members');
+}
+
+export async function addWalletMember(phone: string): Promise<WalletMembersState & { message: string }> {
+  return request('/customer/wallet/members', { method: 'POST', body: JSON.stringify({ phone }) });
+}
+
+export async function removeWalletMember(memberId: number): Promise<WalletMembersState> {
+  return request(`/customer/wallet/members/${memberId}`, { method: 'DELETE' });
+}
+
+export async function leaveSharedWallet(): Promise<WalletMembersState> {
+  return request('/customer/wallet/members/leave', { method: 'DELETE' });
+}
 
 export type CustomerDepositTransaction = {
   id: number;
