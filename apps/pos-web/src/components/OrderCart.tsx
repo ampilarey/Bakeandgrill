@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { CartItem, RestaurantTable } from "../types";
-import { formatTableOption, tableIsInUse } from "../utils/tableLabels";
+import { formatTableOption, freeStands, isStand, realTables, tableIsInUse } from "../utils/tableLabels";
 import type { PaymentRow } from "../hooks/useCart";
 import { makeCartKey } from "../hooks/useCart";
 import type { PosCustomer, PosCustomerAddress } from "../api";
@@ -77,6 +77,8 @@ type Props = {
   tables: RestaurantTable[];
   selectedTableId: number | null;
   setSelectedTableId: (id: number | null) => void;
+  /** The till picked this number itself (number stands, owner 2026-10-22): said until the cashier confirms or changes it. */
+  tableAuto?: boolean;
   /** Refresh floor status after open/close/merge. */
   onRefreshTables?: () => void | Promise<void>;
   onOpenTable?: (id: number) => Promise<void>;
@@ -294,9 +296,13 @@ export function OrderCart(p: Props) {
     dockMode ? "pos-cart--dock" : "",
     sheetMode ? "pos-cart--sheet" : "",
   ].filter(Boolean).join(" ");
-  const selectedTableName = p.selectedTableId != null
-    ? (p.tables.find((t) => t.id === p.selectedTableId)?.name ?? null)
-    : null;
+  const selectedTable = p.selectedTableId != null ? (p.tables.find((t) => t.id === p.selectedTableId) ?? null) : null;
+  const selectedTableName = selectedTable?.name ?? null;
+  // Number stands (owner, 2026-10-22): the free ones, and this ticket's own.
+  const cartStands = (() => {
+    const free = freeStands(p.tables);
+    return selectedTable && isStand(selectedTable) && !free.some((t) => t.id === selectedTable.id) ? [selectedTable, ...free] : free;
+  })();
   const orderLabel = p.resumedOrderLabel ?? `#${p.resumedOrderId}`;
   // Unpaid active tickets open editable; Save appears when dirty.
   const editing = isResumed && !p.resumedIsPaid && !!p.isEditingActive;
@@ -929,22 +935,40 @@ export function OrderCart(p: Props) {
                   minHeight: 44, boxSizing: 'border-box',
                 }}
               >
-                <option value="">Select table</option>
-                {p.tables.map((t) => {
-                  const ours = p.resumedOrderId != null && t.current_order_id === p.resumedOrderId;
-                  const inUse = tableIsInUse(t);
-                  // Never keep another ticket's seat selectable via sticky selection.
-                  const blocked = inUse && !ours;
-                  return (
-                    <option key={t.id} value={t.id} disabled={blocked}>
-                      {t.name}
-                    </option>
-                  );
-                })}
+                <option value="">{cartStands.length > 0 ? "No table or number yet" : "Select table"}</option>
+                {realTables(p.tables).length > 0 && (
+                  <optgroup label="Tables">
+                    {realTables(p.tables).map((t) => {
+                      const ours = p.resumedOrderId != null && t.current_order_id === p.resumedOrderId;
+                      const inUse = tableIsInUse(t);
+                      // Never keep another ticket's seat selectable via sticky selection.
+                      const blocked = inUse && !ours;
+                      return (
+                        <option key={t.id} value={t.id} disabled={blocked}>
+                          {t.name}
+                        </option>
+                      );
+                    })}
+                  </optgroup>
+                )}
+                {cartStands.length > 0 && (
+                  <optgroup label="Numbers">
+                    {cartStands.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
               {p.selectedTableId == null && p.cartItems.length > 0 && (
                 <div data-testid="no-table-hint" style={{ marginTop: 4, fontSize: 11, fontWeight: 600, color: '#92400E' }}>
-                  No table yet. Pick one when they sit down.
+                  {cartStands.length > 0
+                    ? "A number is given at payment. Pick one, or a table, if they already know."
+                    : "No table yet. Pick one when they sit down."}
+                </div>
+              )}
+              {p.tableAuto && selectedTableName && (
+                <div data-testid="auto-table-note" style={{ marginTop: 4, fontSize: 11, fontWeight: 700, color: '#9A3412' }}>
+                  {selectedTableName} picked by the till. Tell the customer, or change it here.
                 </div>
               )}
             </div>
@@ -963,7 +987,7 @@ export function OrderCart(p: Props) {
 
         {/* Open / close / merge take the full width — they are a row of
             controls in their own right, not a field. */}
-        {dineIn && p.selectedTableId != null && (p.onOpenTable || p.onCloseTable || p.onMergeTables) && (
+        {dineIn && p.selectedTableId != null && !(selectedTable && isStand(selectedTable)) && (p.onOpenTable || p.onCloseTable || p.onMergeTables) && (
           <TableFloorActions
             tables={p.tables}
             selectedTableId={p.selectedTableId}

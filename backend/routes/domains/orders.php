@@ -171,6 +171,8 @@ if (routes_domain_section_is('orders', 'tables') && !routes_domain_loaded('order
     // Tables
     Route::get('/tables', [App\Http\Controllers\Api\TableController::class, 'index'])->middleware('permission:orders.view');
     Route::post('/tables', [App\Http\Controllers\Api\TableController::class, 'store'])->middleware('permission:orders.manage');
+    // Number stands for self-seating dine-in (owner, 2026-10-22): how many there are.
+    Route::put('/tables/stands', [App\Http\Controllers\Api\TableController::class, 'stands'])->middleware('permission:orders.manage');
     Route::patch('/tables/{id}', [App\Http\Controllers\Api\TableController::class, 'update'])->middleware('permission:orders.manage');
     Route::post('/tables/{id}/open', [App\Http\Controllers\Api\TableController::class, 'open'])
         ->middleware(['permission:orders.manage', 'device.active']);

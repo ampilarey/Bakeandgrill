@@ -119,7 +119,9 @@
                 "original_method": null,
                 "tender_corrected_at": null,
                 "tender_corrected_by": null,
-                "tender_correction_reason": null
+                "tender_correction_reason": null,
+                "wallet_topup_id": null,
+                "credit_payment_id": null
             }
         ]
     },

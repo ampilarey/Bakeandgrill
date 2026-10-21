@@ -332,6 +332,8 @@ export type CartItem = {
 export type RestaurantTable = {
   id: number;
   name: string;
+  /** "stand": a number stand for self-seating dine-in (owner, 2026-10-22), handed over at the counter. */
+  kind?: 'table' | 'stand';
   capacity: number;
   status: string;
   location?: string | null;

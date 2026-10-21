@@ -364,11 +364,23 @@ export function usePosApp() {
 
   /** The OrderTypeSheet's answer for a new ticket; the held tap runs once the type lands. */
   const typeGateChosen = typeGate.chosen;
-  const handleOrderTypeChosen = useCallback((type: PosOrderType, tableId: number | null) => {
+  /**
+   * The till picked the ticket's number itself (a free number stand, owner
+   * 2026-10-22): the cart says so, and Charge asks the cashier to keep or
+   * change it before the customer pays. Cleared by the cashier's own pick.
+   */
+  const [tableAuto, setTableAuto] = useState(false);
+  const handleOrderTypeChosen = useCallback((type: PosOrderType, tableId: number | null, auto = false) => {
     handleOrderTypeToggle(type);
     setSelectedTableId(type === "Dine-in" ? tableId : null);
+    setTableAuto(type === "Dine-in" && tableId != null && auto);
     typeGateChosen();
   }, [handleOrderTypeToggle, typeGateChosen]);
+  /** The cashier's own pick (the cart's box, the Save sheet, the Charge ask): never "picked by the till". */
+  const chooseTable = useCallback((id: number | null) => {
+    setSelectedTableId(id);
+    setTableAuto(false);
+  }, []);
   /** The table reminder at Charge: the OrderTypeSheet in table mode. */
   const [tableAsk, setTableAsk] = useState(false);
 
@@ -438,6 +450,7 @@ export function usePosApp() {
     // pre-fills "Table 1" (etc.) for every new order and Active Orders
     // all look like the same table.
     setSelectedTableId(null);
+    setTableAuto(false);
     // Failed settle must not pin Charge to a stale snapshot after Clear.
     clearPendingPaymentRef.current();
   }, [cart, permittedOrderTypes]);
@@ -692,6 +705,7 @@ export function usePosApp() {
     shiftId: shift.current?.id ?? null,
     orderType,
     selectedTableId,
+    seatName: (id: number) => tables.find((t) => t.id === id)?.name ?? null,
     deliveryDetails,
     setDeliveryDetails,
     cartItems:     cart.cartItems,
@@ -1455,7 +1469,7 @@ export function usePosApp() {
     openShiftBusy, openTicketsCount, openTicketsCritical, receiptsFocusOrderId, setReceiptsFocusOrderId,
     deviceBlockedMessage, onlineOrderWatcher,
     orderType, setOrderType, handleOrderTypeToggle, permittedOrderTypes, packagingPickerLines, handlePackagingReconcileConfirm,
-    typeGate, handleOrderTypeChosen, tableAsk, setTableAsk,
+    typeGate, handleOrderTypeChosen, tableAsk, setTableAsk, tableAuto, chooseTable,
     deliveryDetails, setDeliveryDetails, customerAddresses,
     selectedDeliveryAddressId, setSelectedDeliveryAddressId, tables, selectedTableId, setSelectedTableId, quickNotes,
     smsNotifications, discountControls, notePickerKey, setNotePickerKey, shift, canUseNonOrderFeatures,

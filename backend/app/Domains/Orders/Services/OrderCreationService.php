@@ -158,6 +158,13 @@ class OrderCreationService
             $tableId = !empty($payload['restaurant_table_id'])
                 ? (int) $payload['restaurant_table_id']
                 : null;
+            // A till dine-in ticket with no table gets the next free number
+            // stand, and a number taken meanwhile gives way to the next one
+            // (NumberStands, owner 2026-10-22). A customer's own order never
+            // takes a number: they are not at the counter.
+            if ($user !== null && (string) $payload['type'] === 'dine_in') {
+                $tableId = \App\Domains\Orders\Support\NumberStands::assign($tableId);
+            }
             if ($tableId !== null && RestaurantTable::findActiveOrder($tableId) !== null) {
                 abort(422, 'Table already has an open order.');
             }

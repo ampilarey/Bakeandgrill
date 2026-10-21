@@ -27,8 +27,26 @@ class RestaurantTable extends Model
     /** @deprecated Use SEAT_OWNING_STATUSES */
     public const ACTIVE_ORDER_STATUSES = self::SEAT_OWNING_STATUSES;
 
+    /** A real table on the floor. */
+    public const KIND_TABLE = 'table';
+
+    /**
+     * A number stand for self-seating dine-in (owner, 2026-10-22): no seat
+     * of its own, given to a counter order so the runner finds the customer.
+     * See App\Domains\Orders\Support\NumberStands.
+     */
+    public const KIND_STAND = 'stand';
+
+    /**
+     * A number stays with a counter-paid order while the food is made: a
+     * paid order holds its stand until it is served (completed) or this many
+     * minutes have passed, for a kitchen that does not bump orders.
+     */
+    public const PAID_HOLD_MINUTES = 90;
+
     protected $fillable = [
         'name',
+        'kind',
         'capacity',
         'status',
         'location',
@@ -92,14 +110,45 @@ class RestaurantTable extends Model
         return rtrim((string) config('app.url'), '/') . '/order/?table=' . $this->ensureQrToken();
     }
 
+    public function isStand(): bool
+    {
+        return (string) $this->kind === self::KIND_STAND;
+    }
+
     /**
+     * The orders holding this seat. A real table is held by an open check
+     * (SEAT_OWNING_STATUSES); a number stand also by a paid order until it is
+     * served, or PAID_HOLD_MINUTES after payment.
+     *
      * @return Builder<Order>
      */
     public static function seatOwningOrdersQuery(int $tableId): Builder
     {
-        return Order::query()
-            ->where('restaurant_table_id', $tableId)
-            ->whereIn('status', self::SEAT_OWNING_STATUSES);
+        $kind = (string) (static::query()->whereKey($tableId)->value('kind') ?? self::KIND_TABLE);
+
+        return self::holdingOrdersQuery($kind)->where('restaurant_table_id', $tableId);
+    }
+
+    /**
+     * The holding rule for one kind of seat, without a table filter, so one
+     * query can serve a whole list (TableController::index).
+     *
+     * @return Builder<Order>
+     */
+    public static function holdingOrdersQuery(string $kind): Builder
+    {
+        $query = Order::query();
+        if ($kind !== self::KIND_STAND) {
+            return $query->whereIn('status', self::SEAT_OWNING_STATUSES);
+        }
+
+        return $query->where(function (Builder $q) {
+            $q->whereIn('status', self::SEAT_OWNING_STATUSES)
+                ->orWhere(function (Builder $paid) {
+                    $paid->where('status', 'paid')
+                        ->where('paid_at', '>=', now()->subMinutes(self::PAID_HOLD_MINUTES));
+                });
+        });
     }
 
     public static function findActiveOrder(int $tableId): ?Order

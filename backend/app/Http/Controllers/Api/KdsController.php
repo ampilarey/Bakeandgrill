@@ -454,6 +454,10 @@ class KdsController extends Controller
             );
 
             if ($newStatus === 'completed') {
+                // Served: a number stand held through payment is free again.
+                if ($order->restaurant_table_id !== null) {
+                    \App\Models\RestaurantTable::syncOccupancy((int) $order->restaurant_table_id);
+                }
                 $orderForEvent = $order->fresh();
                 DB::afterCommit(function () use ($orderForEvent): void {
                     OrderCompleted::dispatch(OrderCompletedData::fromOrder($orderForEvent));

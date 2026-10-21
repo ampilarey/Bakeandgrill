@@ -137,6 +137,14 @@ with `/iclock/` let through (2026-10-19):
 Punches stored on the clock before the day it was allowed stay history and do not go on
 the time clock.
 
+## 7d. Number stands for customers who sit anywhere (2 minutes)
+
+Admin → Monitor → Tables → **Number stands**: type how many stands you have (say 20) and Save.
+From then on a dine-in ticket rung at the till with no table gets the lowest free number by
+itself; the cashier confirms it at Charge and hands over that stand. The number is held until
+the kitchen screen marks the order served, or for 90 minutes. Zero turns it off again. Tables
+you already have keep working as before.
+
 ## 8. Optional
 
 - **Printed cards on the Matica 210** (or any card printer): Promotions → Printed cards. Install the

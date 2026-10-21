@@ -6,7 +6,7 @@ import {
 } from '../components/SharedUI';
 import { TableQrModal, TableQrSheetModal } from '../components/TableQrModal';
 import {
-  fetchTables, createTable, updateTable,
+  fetchTables, createTable, updateTable, setNumberStands,
   type RestaurantTable,
 } from '../api';
 import { LayoutGrid, Map, QrCode } from 'lucide-react';
@@ -134,8 +134,27 @@ export default function TablesPage() {
     finally { setSaving(false); }
   };
 
-  const available = tables.filter(t => t.status === 'available').length;
-  const occupied  = tables.filter(t => t.status === 'occupied').length;
+  // Number stands for self-seating dine-in (owner, 2026-10-22): a count, set here.
+  const stands = tables.filter(t => t.kind === 'stand' && t.is_active);
+  const floorTables = tables.filter(t => t.kind !== 'stand');
+  const [standCount, setStandCount] = useState<string | null>(null);
+  const [standsSaving, setStandsSaving] = useState(false);
+  const [standsError, setStandsError] = useState('');
+  const standsValue = standCount ?? String(stands.length);
+  const saveStands = async () => {
+    const n = parseInt(standsValue, 10);
+    if (isNaN(n) || n < 0 || n > 99) { setStandsError('Enter a number from 0 to 99.'); return; }
+    setStandsSaving(true); setStandsError('');
+    try {
+      const res = await setNumberStands(n);
+      setTables(res.tables ?? []);
+      setStandCount(null);
+    } catch (e) { setStandsError((e as Error).message); }
+    finally { setStandsSaving(false); }
+  };
+
+  const available = floorTables.filter(t => t.status === 'available').length;
+  const occupied  = floorTables.filter(t => t.status === 'occupied').length;
 
   const zones = useMemo(() => {
     const map: Record<string, RestaurantTable[]> = {};
@@ -192,10 +211,39 @@ export default function TablesPage() {
       {error && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{error}</p>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard label="Total Tables" value={String(tables.length)} accent="var(--color-primary)" />
+        <StatCard label="Total Tables" value={String(floorTables.length)} accent="var(--color-primary)" />
         <StatCard label="Available" value={String(available)} accent="var(--color-success-strong)" />
         <StatCard label="Occupied" value={String(occupied)} accent="var(--color-warning)" />
+        <StatCard label="Number stands" value={`${stands.filter(t => t.status === 'occupied').length} of ${stands.length} in use`} accent="var(--color-tone-rust-text)" />
       </div>
+
+      <div style={S.card()} data-testid="number-stands-card">
+        <p style={{ margin: '0 0 4px', fontWeight: 800, fontSize: 14, color: 'var(--color-text)' }}>Number stands</p>
+        <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
+          For customers who sit wherever they like. A dine-in ticket rung at the till with no table gets the
+          lowest free number by itself, the cashier hands over that stand, and the kitchen slip, screen and
+          receipt carry it. The number is held until the order is served. Zero turns this off.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+            How many
+            <input
+              type="number"
+              min="0"
+              max="99"
+              value={standsValue}
+              onChange={e => { setStandCount(e.target.value); setStandsError(''); }}
+              style={inputFont({ ...S.input, width: 90 })}
+              data-testid="number-stands-count"
+            />
+          </label>
+          <Btn small onClick={() => void saveStands()} disabled={standsSaving || standCount === null} data-testid="number-stands-save">
+            {standsSaving ? 'Saving…' : 'Save'}
+          </Btn>
+          {standsError && <span style={{ fontSize: 12, color: 'var(--color-danger)' }}>{standsError}</span>}
+        </div>
+      </div>
+      <div style={{ height: 24 }} />
 
       {loading ? (
         <p style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</p>
@@ -207,15 +255,15 @@ export default function TablesPage() {
             <div key={t.id} style={S.card()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                 <div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text)' }}>T{t.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Cap: {t.capacity ?? '—'}{t.location ? ` · ${t.location}` : ''}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text)' }}>{t.kind === 'stand' ? t.name : `T${t.name}`}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t.kind === 'stand' ? 'Number stand' : `Cap: ${t.capacity ?? '—'}${t.location ? ` · ${t.location}` : ''}`}</div>
                 </div>
                 <Badge color={STATUS_COLOR[t.status] ?? 'gray'}>{t.status}</Badge>
               </div>
               <OrderPeek table={t} />
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                <Btn small variant="secondary" onClick={() => openModal(t)}>Edit</Btn>
-                <Btn small variant="secondary" onClick={() => setQrTable(t)}>QR</Btn>
+                {t.kind !== 'stand' && <Btn small variant="secondary" onClick={() => openModal(t)}>Edit</Btn>}
+                {t.kind !== 'stand' && <Btn small variant="secondary" onClick={() => setQrTable(t)}>QR</Btn>}
               </div>
             </div>
           ))}
@@ -291,7 +339,7 @@ export default function TablesPage() {
                           #{t.current_order_number}
                         </Link>
                       )}
-                      <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                      {t.kind !== 'stand' && <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
                         {([['Edit', () => openModal(t)], ['QR', () => setQrTable(t)]] as const).map(([label, act]) => (
                           <button
                             key={label}
@@ -302,7 +350,7 @@ export default function TablesPage() {
                             {label}
                           </button>
                         ))}
-                      </div>
+                      </div>}
                     </div>
                   );
                 })}
@@ -337,7 +385,7 @@ export default function TablesPage() {
       )}
 
       {qrTable && <TableQrModal table={qrTable} onClose={() => setQrTable(null)} />}
-      {qrSheet && <TableQrSheetModal tables={tables} onClose={() => setQrSheet(false)} />}
+      {qrSheet && <TableQrSheetModal tables={floorTables} onClose={() => setQrSheet(false)} />}
     </div>
 
     </PageShell>

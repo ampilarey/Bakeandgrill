@@ -144,6 +144,15 @@ class OrderItemController extends Controller
             } elseif (array_key_exists('restaurant_table_id', $validated) && $newType === 'dine_in') {
                 $meta['restaurant_table_id'] = $validated['restaurant_table_id'];
             }
+            // A dine-in ticket with no table gets a number stand, and a number
+            // taken meanwhile gives way to the next free one (NumberStands);
+            // the ticket's own number counts as free.
+            if (array_key_exists('restaurant_table_id', $meta) && $newType === 'dine_in') {
+                $meta['restaurant_table_id'] = \App\Domains\Orders\Support\NumberStands::assign(
+                    $meta['restaurant_table_id'] !== null ? (int) $meta['restaurant_table_id'] : null,
+                    (int) $order->id,
+                );
+            }
 
             if ($newType === 'delivery') {
                 foreach ([

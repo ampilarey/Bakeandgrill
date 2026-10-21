@@ -35,6 +35,9 @@
     <div class="pdf-meta-col">
         <div class="pdf-meta-label">Order details</div>
         <div class="pdf-meta-value"><strong>Type:</strong> {{ $typeLabel }}</div>
+        @if ($order->table)
+            <div class="pdf-meta-value"><strong>{{ $order->table->kind === 'stand' ? 'Your number:' : 'Table:' }}</strong> {{ $order->table->name }}</div>
+        @endif
         <div class="pdf-meta-value"><strong>Placed:</strong> {{ optional($order->created_at)->timezone($tz)->format('d M Y, g:i A') }}</div>
     </div>
     <div class="pdf-meta-col">

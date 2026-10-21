@@ -1080,6 +1080,34 @@ payload stays registry only). And `reconcilePackagingOnEligibleSwitch` gives a f
 with no packaging options its own fee on a switch to takeaway, as a fresh add does; it left
 with none, which the server took as sent.
 
+## Number stands: self-seating dine-in
+
+Owner, 2026-10-22 ("here people sit on their own … assign a virtual table … automatically
+assigned a random number"). A number stand is a `restaurant_tables` row of `kind = 'stand'`,
+named "No. 1" upward, made from Admin → Tables → Number stands (`PUT /api/tables/stands
+{count}`, `App\Domains\Orders\Support\NumberStands::ensureCount()`; zero turns them off; a stand
+has no QR card). **A till dine-in ticket with no table gets the lowest free number by itself**:
+the sheet's Dine-in tile takes it at once (`lowestFreeStand()` in `utils/tableLabels.ts`,
+`onChoose(type, id, auto: true)`), the cart says "No. 12 picked by the till" (`tableAuto` in
+`usePosApp`, cleared by the cashier's own pick through `chooseTable`), and Charge asks once
+before the customer pays (the sheet in table mode with `autoTableId`: "Keep No. 12", or a
+table or another number). The server decides last: `NumberStands::assign()` at
+`OrderCreationService::createFromPayload` (staff orders only, never a customer's) and on
+`PATCH /orders/{id}/items` gives a ticket with no table the lowest free number, and a number
+taken on another till meanwhile the next free one (the till says so through `seatName` /
+`noteSeatChange` in `useOrderCreation`); a real table in use is still refused. **A number is
+held through payment until the order is served**: `RestaurantTable::holdingOrdersQuery()`
+counts a stand's paid order for `PAID_HOLD_MINUTES` (90) or until it is completed on the
+kitchen screen or at the till (`syncOccupancy` after bump and collect), and
+`ReleaseTableOnOrderPaidListener` leaves a stand on its order; a real table still frees at
+payment as before. "Free number" is the floor `close` (it lets a paid, unserved order go).
+Nobody types a name for a dine-in ticket (`SaveTicketModal` names it from the customer and the
+seat; a takeaway keeps an optional name box for the call-out). The kitchen slip, the kitchen
+screen, the printed receipt (`PrintJobService::seatLine()`, `table` in both payloads) and the
+receipt page and PDF ("Your number") carry it. In-use table tiles are dark grey with the
+ticket's name, and the sheet re-reads the tables as it opens. `NumberStandsTest`,
+`OrderTypeSheet.test.tsx`, `SaveTicketModal.test.tsx`, `tableLabels.test.ts`.
+
 ## Credit account and wallet: what the customer is told
 
 Owner, 2026-10-21 (credit and deposit audit): a sale on credit said only "Receipt for #…", a

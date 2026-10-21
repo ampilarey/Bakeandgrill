@@ -233,6 +233,8 @@ export async function updateInventoryCategory(id: number, data: { name: string }
 export interface RestaurantTable {
   id: number;
   name: string;
+  /** "stand": a number stand for self-seating dine-in (owner, 2026-10-22), no seat and no QR card. */
+  kind?: 'table' | 'stand';
   capacity: number | null;
   location: string | null;
   status: 'available' | 'occupied' | 'reserved' | 'closed';
@@ -245,6 +247,11 @@ export interface RestaurantTable {
 
 export async function fetchTables(): Promise<{ tables: RestaurantTable[] }> {
   return req('/tables');
+}
+
+/** How many number stands the business has: "No. 1" to "No. N" are made, the rest retired. */
+export async function setNumberStands(count: number): Promise<{ tables: RestaurantTable[] }> {
+  return req('/tables/stands', { method: 'PUT', body: JSON.stringify({ count }) });
 }
 
 export async function createTable(data: { name: string; capacity?: number; location?: string }): Promise<{ table: RestaurantTable }> {

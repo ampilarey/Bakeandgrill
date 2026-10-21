@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Orders\DTOs\OrderCancelledData;
 use App\Domains\Orders\Events\OrderCancelled;
+use App\Domains\Orders\Support\NumberStands;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AddTableItemsRequest;
 use App\Http\Requests\CloseTableRequest;
@@ -35,6 +36,7 @@ class TableController extends Controller
     public function qr(string $id): JsonResponse
     {
         $table = RestaurantTable::query()->findOrFail((int) $id);
+        abort_if($table->isStand(), 422, 'A number stand has no QR card: it is handed over at the counter.');
 
         return response()->json([
             'table' => ['id' => $table->id, 'name' => $table->name, 'location' => $table->location],
@@ -52,6 +54,7 @@ class TableController extends Controller
     public function rotateQr(string $id): JsonResponse
     {
         $table = RestaurantTable::query()->findOrFail((int) $id);
+        abort_if($table->isStand(), 422, 'A number stand has no QR card: it is handed over at the counter.');
         $table->rotateQrToken();
 
         return response()->json([
@@ -107,16 +110,24 @@ class TableController extends Controller
         // ticket" errors before sending the request. We resolve the
         // active order id per-table in one cheap query so the response
         // stays a single round-trip.
-        $tableIds = $tables->pluck('id')->all();
+        // One query per kind: a real table is held by an open check, a number
+        // stand also by a paid order until it is served (NumberStands).
         $activeOrderMap = [];
-        if (!empty($tableIds)) {
-            $activeOrderMap = Order::select('id', 'restaurant_table_id', 'order_number', 'total', 'status', 'ticket_name')
-                ->whereIn('restaurant_table_id', $tableIds)
-                ->whereIn('status', RestaurantTable::SEAT_OWNING_STATUSES)
+        foreach ([RestaurantTable::KIND_TABLE, RestaurantTable::KIND_STAND] as $kind) {
+            $ids = $tables->filter(fn ($t) => ((string) $t->kind ?: RestaurantTable::KIND_TABLE) === $kind)->pluck('id')->all();
+            if ($ids === []) {
+                continue;
+            }
+            $rows = RestaurantTable::holdingOrdersQuery($kind)
+                ->select('id', 'restaurant_table_id', 'order_number', 'total', 'status', 'ticket_name')
+                ->whereIn('restaurant_table_id', $ids)
                 ->orderByDesc('id')
                 ->get()
                 ->groupBy('restaurant_table_id')
                 ->map(fn ($group) => $group->first());
+            foreach ($rows as $tableId => $row) {
+                $activeOrderMap[$tableId] = $row;
+            }
         }
 
         // Source of truth = seat-owning orders. Denormalized status is a cache.
@@ -161,6 +172,29 @@ class TableController extends Controller
         });
 
         return response()->json(['tables' => $payload]);
+    }
+
+    /**
+     * PUT /tables/stands {count}: how many number stands the business has
+     * (owner, 2026-10-22). Makes "No. 1" to "No. N" and retires the rest.
+     */
+    public function stands(Request $request)
+    {
+        $validated = $request->validate(['count' => ['required', 'integer', 'min:0', 'max:' . NumberStands::MAX]]);
+        $before = NumberStands::activeCount();
+        NumberStands::ensureCount((int) $validated['count']);
+
+        app(AuditLogService::class)->log(
+            'tables.stands_set',
+            'RestaurantTable',
+            0,
+            ['count' => $before],
+            ['count' => NumberStands::activeCount()],
+            [],
+            $request,
+        );
+
+        return $this->index($request);
     }
 
     public function store(StoreTableRequest $request)
@@ -308,9 +342,9 @@ class TableController extends Controller
         // Detach any in-flight tickets so the seat can reopen, but leave
         // those orders intact (still chargeable from Open Tickets).
         $detachedOrderIds = DB::transaction(function () use ($table) {
-            $ids = Order::query()
-                ->where('restaurant_table_id', $table->id)
-                ->whereIn('status', RestaurantTable::ACTIVE_ORDER_STATUSES)
+            // The holding rule of the seat's kind: a number stand's paid,
+            // not yet served order is let go here too ("Free number").
+            $ids = RestaurantTable::seatOwningOrdersQuery((int) $table->id)
                 ->pluck('id')
                 ->all();
 

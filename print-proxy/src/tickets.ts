@@ -177,6 +177,11 @@ export const buildReceiptTicket = (payload: PrintPayload): string => {
   lines.push('BAKE & GRILL\n');
   lines.push('RECEIPT\n');
   lines.push(`Order: ${s(payload.order.order_number)}\n`);
+  // The table, or the number stand a self-seating customer was given
+  // (owner, 2026-10-22), so the receipt says where the food goes.
+  if (payload.order.table) {
+    lines.push(`${BOLD_ON}Table: ${s(payload.order.table)}${BOLD_OFF}\n`);
+  }
   if (payload.order.created_at) {
     lines.push(`Time: ${new Date(payload.order.created_at).toLocaleTimeString()}\n`);
   }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, Field, Overlay } from "./OpenShiftModal";
 import type { PosCustomer } from "../api";
 import type { RestaurantTable } from "../types";
-import { tableIsInUse } from "../utils/tableLabels";
+import { freeStands, isStand, realTables, tableIsInUse } from "../utils/tableLabels";
 
 import type { PosOrderType } from "../orderTypes";
 
@@ -15,7 +15,8 @@ function composeTicketName(
 ): string {
   const parts: string[] = [];
   if (customer?.name) parts.push(customer.name);
-  if (table) parts.push(`Table ${table.name}`);
+  // A number stand is "No. 12" on its own; a table reads "Table T4".
+  if (table) parts.push(isStand(table) ? table.name : `Table ${table.name}`);
   if (parts.length === 0 && customer?.phone) parts.push(customer.phone);
   if (parts.length === 0 && defaultName) parts.push(defaultName);
   if (parts.length === 0) {
@@ -43,6 +44,8 @@ type Props = {
   /** Saved-name override — preserved from the existing single-arg
    *  callsite so we don't break the timestamp-fallback path. */
   defaultName?: string;
+  /** The till picked the ticket's number itself (number stands): said under the table box. */
+  tableAuto?: boolean;
   /**
    * Phone-call pickup workflow: when the cashier rings up a Pickup
    * ticket and saves, ask whether to fire it to the kitchen NOW
@@ -68,6 +71,10 @@ type Props = {
  * "Aisha · Table 4" so the cashier can find it again at a glance in
  * Open Tickets.
  *
+ * Nobody types a name for a dine-in ticket (owner, 2026-10-22): its name is
+ * made from the customer and the table or number, and the box is not shown.
+ * A takeaway, pickup or delivery keeps the box, optional, for the call-out.
+ *
  * Cashiers can also pick a table from inside this modal without
  * having to flip the cart back to the segmented control above. If
  * they pick a table while the order is set to Takeaway/Pickup we
@@ -82,6 +89,7 @@ export function SaveTicketModal({
   orderType,
   setOrderType,
   defaultName,
+  tableAuto = false,
   onConfirm,
   onCancel,
 }: Props) {
@@ -130,9 +138,15 @@ export function SaveTicketModal({
     });
   }, [attachedCustomer, defaultName, selectedTableId, setSelectedTableId, tables]);
 
+  const dineIn = orderType === "Dine-in";
+  const floor = realTables(tables);
+  const stands = freeStands(tables);
+  const selectedStand = currentTable && isStand(currentTable) ? currentTable : null;
+  const numbers = selectedStand && !stands.some((t) => t.id === selectedStand.id) ? [selectedStand, ...stands] : stands;
+
   const submit = async () => {
-    const n = name.trim();
-    if (!n) { setErr("Give the ticket a name so you can find it later."); return; }
+    // A dine-in ticket is named for the cashier; any other type may go unnamed.
+    const n = (dineIn ? suggestedName : name).trim() || suggestedName;
     setBusy(true);
     try { await onConfirm(n, note.trim() || undefined, fireToKitchen); }
     catch (e) { setErr((e as Error).message || "Could not save ticket."); }
@@ -198,15 +212,23 @@ export function SaveTicketModal({
                 border: "1px solid #CBD5E1", fontSize: 14, background: "#fff",
               }}
             >
-              <option value="">No table</option>
-              {tables.map((t) => {
-                const blocked = tableIsInUse(t);
-                return (
-                  <option key={t.id} value={t.id} disabled={blocked}>
-                    {t.name}
-                  </option>
-                );
-              })}
+              <option value="">{numbers.length > 0 ? "No table or number" : "No table"}</option>
+              {floor.length > 0 && (
+                <optgroup label="Tables">
+                  {floor.map((t) => (
+                    <option key={t.id} value={t.id} disabled={tableIsInUse(t)}>
+                      {t.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {numbers.length > 0 && (
+                <optgroup label="Numbers">
+                  {numbers.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </optgroup>
+              )}
             </select>
             {selectedTableId != null && orderType !== "Dine-in" && (
               <div style={{
@@ -217,26 +239,39 @@ export function SaveTicketModal({
             )}
             {selectedTableId == null && orderType === "Dine-in" && (
               <div data-testid="save-no-table" style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: "#92400E" }}>
-                Dine-in with no table yet. Pick one, or save without.
+                {numbers.length > 0
+                  ? "Dine-in with no number yet. One is given when it is saved or paid."
+                  : "Dine-in with no table yet. Pick one, or save without."}
+              </div>
+            )}
+            {tableAuto && selectedStand && orderType === "Dine-in" && (
+              <div data-testid="save-auto-table" style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: "#92400E" }}>
+                {selectedStand.name} was picked by the till. Tell the customer, or change it above.
               </div>
             )}
           </Field>
         )}
 
-        <Field label="Ticket name">
-          <input
-            autoFocus
-            value={name}
-            onChange={(e) => { setName(e.target.value); setErr(""); }}
-            onFocus={(e) => e.currentTarget.select()}
-            placeholder="e.g. Table 4, Aisha"
-            style={{
-              width: "100%", boxSizing: "border-box",
-              padding: "12px 14px", borderRadius: 10,
-              border: "1px solid #CBD5E1", fontSize: 16, background: "#fff",
-            }}
-          />
-        </Field>
+        {dineIn ? (
+          <div data-testid="save-ticket-name" style={{ fontSize: 13, color: "#475569", margin: "0 0 12px" }}>
+            Saved as <strong style={{ color: "#0F172A" }}>{suggestedName}</strong>
+          </div>
+        ) : (
+          <Field label="Name (optional)">
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => { setName(e.target.value); setErr(""); }}
+              onFocus={(e) => e.currentTarget.select()}
+              placeholder="For the call-out, e.g. Aisha"
+              style={{
+                width: "100%", boxSizing: "border-box",
+                padding: "12px 14px", borderRadius: 10,
+                border: "1px solid #CBD5E1", fontSize: 16, background: "#fff",
+              }}
+            />
+          </Field>
+        )}
         <Field label="Note (optional)">
           <input
             value={note}

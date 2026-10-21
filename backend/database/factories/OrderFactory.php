@@ -16,7 +16,9 @@ class OrderFactory extends Factory
 {
     protected $model = Order::class;
 
-    private static int $seq = 1;
+    // Starts well above the day's counter in OrderCreationService, so a factory
+    // order never shares a number with one the API made in the same test.
+    private static int $seq = 7001;
 
     public function definition(): array
     {

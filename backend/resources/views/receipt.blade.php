@@ -84,6 +84,10 @@
 
         <div class="doc-meta">
             <div class="doc-meta-row"><span>Order type</span><span>{{ $typeLabel }}</span></div>
+            @if ($order->table)
+                {{-- The table, or the number stand a self-seating customer was given (owner, 2026-10-22). --}}
+                <div class="doc-meta-row"><span>{{ $order->table->kind === 'stand' ? 'Your number' : 'Table' }}</span><span>{{ $order->table->name }}</span></div>
+            @endif
             <div class="doc-meta-row"><span>Status</span><span style="text-transform: capitalize">{{ $statusLabel }}</span></div>
             <div class="doc-meta-row"><span>Placed</span><span>{{ optional($order->created_at)->timezone($tz)->format('D, j M Y g:i A') }}</span></div>
             @if ($order->fulfil_date)

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { makeCartKey } from '../hooks/useCart';
 import { MenuGrid } from '../components/MenuGrid';
 import { OrderCart } from '../components/OrderCart';
@@ -146,7 +146,7 @@ export function PosShellLayout() {
     canCashInOut, isReachable, offlineQueueCount, offlinePendingCount,
     offlinePendingTotals, showOfflineSyncPanel, setShowOfflineSyncPanel, deviceBlockedMessage,
     orderType, setOrderType, handleOrderTypeToggle, permittedOrderTypes,
-    typeGate, handleOrderTypeChosen, tableAsk, setTableAsk,
+    typeGate, handleOrderTypeChosen, tableAsk, setTableAsk, tableAuto, chooseTable,
     packagingPickerLines, handlePackagingReconcileConfirm,
     deliveryDetails, setDeliveryDetails,
     customerAddresses, selectedDeliveryAddressId, setSelectedDeliveryAddressId, applyPosDeliveryAddress, tables,
@@ -165,6 +165,12 @@ export function PosShellLayout() {
     cartSide, setCartSide, isOnline,
     onlineOrderWatcher,
   } = app;
+
+  // The tables are read again the moment a sheet asks about them, so a seat
+  // taken on another till seconds ago is already grey (owner, 2026-10-22).
+  useEffect(() => {
+    if (typeGate.ask || tableAsk) void refreshTables();
+  }, [typeGate.ask, tableAsk, refreshTables]);
 
   // ── Scanning ────────────────────────────────────────────────────────────
   // Owner, 2026-09-02: a gun, the camera or the search box hand the till a
@@ -553,7 +559,8 @@ export function PosShellLayout() {
               onDeliveryManualEdit={() => setSelectedDeliveryAddressId("manual")}
               tables={tables}
               selectedTableId={selectedTableId}
-              setSelectedTableId={setSelectedTableId}
+              setSelectedTableId={chooseTable}
+              tableAuto={tableAuto}
               onRefreshTables={refreshTables}
               onOpenTable={(id) => openTable(id).then(() => undefined)}
               onCloseTable={(id) => closeTable(id).then(() => undefined)}
@@ -689,8 +696,10 @@ export function PosShellLayout() {
                 // A table stays optional on a dine-in ticket (some ring up at
                 // the counter before seating), but one with no table is asked
                 // once more here, "No table" a tap away (owner, 2026-10-21);
-                // the answer opens Charge straight away.
-                if (orderType === "Dine-in" && selectedTableId == null && tables.some((t) => !tableIsInUse(t))) {
+                // the answer opens Charge straight away. A number the till
+                // picked itself is confirmed here before the customer pays
+                // (owner, 2026-10-22: "has to confirm before payment").
+                if (orderType === "Dine-in" && (tableAuto || (selectedTableId == null && tables.some((t) => !tableIsInUse(t))))) {
                   setTableAsk(true);
                   return;
                 }
@@ -1168,7 +1177,8 @@ export function PosShellLayout() {
           attachedCustomer={cart.attachedCustomer}
           tables={tables}
           selectedTableId={selectedTableId}
-          setSelectedTableId={setSelectedTableId}
+          setSelectedTableId={chooseTable}
+          tableAuto={tableAuto}
           orderType={orderType}
           setOrderType={handleOrderTypeToggle}
           onConfirm={handleSaveTicketSubmit}
@@ -1314,8 +1324,9 @@ export function PosShellLayout() {
           types={permittedOrderTypes}
           tables={tables}
           ourOrderId={order.resumedOrderId}
+          autoTableId={tableAuto ? selectedTableId : null}
           onChoose={(_type, tableId) => {
-            setSelectedTableId(tableId);
+            chooseTable(tableId);
             setTableAsk(false);
             order.setStatusMessage("");
             setShowCharge(true);

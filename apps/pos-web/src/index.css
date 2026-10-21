@@ -3151,8 +3151,35 @@ html, body, #root {
   font-weight: 700;
   opacity: 0.8;
 }
-.pos-table-tile:disabled { border-color: #E2E8F0; background: #F8FAFC; color: #94A3B8; cursor: not-allowed; }
+/* Owner, 2026-10-22: "I did not see gray color for the occupied tables". A
+   seat in use is a dark grey block with its ticket's name, nothing like the
+   teal of a free one. */
+.pos-table-tile:disabled { border-color: #64748B; background: #CBD5E1; color: #1E293B; cursor: not-allowed; }
+.pos-table-tile:disabled .pos-table-tile__note { opacity: 1; color: #334155; }
 .pos-table-tile--ours { border-color: #B74B0C; background: #FFF7ED; color: #9A3412; }
+/* Number stands (self-seating dine-in): a cream tile, the number large; the
+   one the till picked wears the rust edge like "This ticket". */
+.pos-table-tile--stand { border-color: #E7C9A1; background: #FFF9F0; color: #7C3F0F; }
+.pos-table-tile--stand.pos-table-tile--ours { border-width: 3px; }
+.pos-type-sheet__group {
+  margin: 14px 0 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748B;
+}
+.pos-type-sheet__primary {
+  min-height: 48px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 10px;
+  background: #B74B0C;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
 .pos-type-sheet__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .pos-type-sheet__actions > button { flex: 1 1 140px; }
 .pos-type-sheet__secondary {

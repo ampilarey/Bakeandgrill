@@ -655,6 +655,10 @@ class OrderStatusController extends Controller
                 'status' => 'completed',
                 'completed_at' => now(),
             ]);
+            // Served: a number stand held through payment is free again.
+            if ($order->restaurant_table_id !== null) {
+                RestaurantTable::syncOccupancy((int) $order->restaurant_table_id);
+            }
 
             app(AuditLogService::class)->log(
                 'order.completed',

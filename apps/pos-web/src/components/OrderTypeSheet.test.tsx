@@ -14,6 +14,13 @@ const tables = [
   { id: 3, name: "T3", status: "reserved", current_order_id: null },
 ] as unknown as RestaurantTable[];
 
+// Number stands (owner, 2026-10-22): No. 1 is held, so No. 2 is the lowest free.
+const stands = [
+  { id: 10, name: "No. 1", kind: "stand", status: "occupied", current_order_id: 90, is_active: true },
+  { id: 11, name: "No. 2", kind: "stand", status: "available", current_order_id: null, is_active: true },
+  { id: 12, name: "No. 3", kind: "stand", status: "available", current_order_id: null, is_active: true },
+] as unknown as RestaurantTable[];
+
 const button = (name: string | RegExp) => screen.getByRole("button", { name }) as HTMLButtonElement;
 
 describe("OrderTypeSheet", () => {
@@ -45,8 +52,40 @@ describe("OrderTypeSheet", () => {
     fireEvent.click(button(/^Dine-in/));
     expect(onChoose).not.toHaveBeenCalled();
     expect(screen.getByRole("heading", { name: "Which table?" })).toBeTruthy();
-    expect(button("T2, Aisha").disabled).toBe(true);
+    expect(button("T2, In use · Aisha").disabled).toBe(true);
     expect(button("T3, Reserved").disabled).toBe(true);
+    fireEvent.click(button("T1"));
+    expect(onChoose).toHaveBeenCalledWith("Dine-in", 1);
+  });
+
+  it("with a free number, dine-in takes the lowest one at once as the till's own pick", () => {
+    const onChoose = vi.fn();
+    render(<OrderTypeSheet mode="type" types={["Dine-in", "Takeaway"]} tables={[...tables, ...stands]} onChoose={onChoose} onCancel={() => {}} />);
+    expect(button(/^Dine-in/).textContent).toContain("gets a number");
+    fireEvent.click(button(/^Dine-in/));
+    expect(onChoose).toHaveBeenCalledWith("Dine-in", 11, true);
+  });
+
+  it("with every number taken, dine-in goes on to the tables as before", () => {
+    const onChoose = vi.fn();
+    const allHeld = stands.map((s) => ({ ...s, status: "occupied", current_order_id: 90 })) as RestaurantTable[];
+    render(<OrderTypeSheet mode="type" types={["Dine-in", "Takeaway"]} tables={[...tables, ...allHeld]} onChoose={onChoose} onCancel={() => {}} />);
+    fireEvent.click(button(/^Dine-in/));
+    expect(onChoose).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "Which table?" })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Numbers" })).toBeNull();
+  });
+
+  it("before payment the till's pick is kept with one tap, or changed to a table or another number", () => {
+    const onChoose = vi.fn();
+    render(<OrderTypeSheet mode="table" types={["Dine-in", "Takeaway"]} tables={[...tables, ...stands]} autoTableId={11} onChoose={onChoose} onCancel={() => {}} />);
+    expect(screen.getByRole("heading", { name: "No. 2 was picked for them" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "No table" })).toBeNull();
+    expect(button("No. 2, Picked for them").className).toContain("pos-table-tile--ours");
+    fireEvent.click(button("Keep No. 2"));
+    expect(onChoose).toHaveBeenCalledWith("Dine-in", 11, false);
+    fireEvent.click(button("No. 3"));
+    expect(onChoose).toHaveBeenCalledWith("Dine-in", 12, false);
     fireEvent.click(button("T1"));
     expect(onChoose).toHaveBeenCalledWith("Dine-in", 1);
   });

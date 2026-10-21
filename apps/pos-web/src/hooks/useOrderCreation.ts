@@ -199,6 +199,8 @@ type Params = {
   /** Null while a new ticket has no type yet: it asks at its first item (2026-10-21). */
   orderType: OrderType | null;
   selectedTableId: number | null;
+  /** The name of a table or number stand, for the notice when the server gave the ticket another number. */
+  seatName?: (id: number) => string | null;
   deliveryDetails?: PosDeliveryDetails;
   setDeliveryDetails?: (d: PosDeliveryDetails) => void;
   cartItems: CartItem[];
@@ -702,13 +704,31 @@ export function useOrderCreation(params: Params) {
     };
   };
 
+  /**
+   * The server gave a dine-in ticket another number than the one the till
+   * picked (that one was taken on another till a moment ago, NumberStands):
+   * say so, since the cashier tells the customer their number.
+   */
+  const noteSeatChange = (order: { restaurant_table_id?: number | null }) => {
+    if (params.orderType !== "Dine-in" || order.restaurant_table_id === undefined) return;
+    const sent = params.selectedTableId ?? null;
+    const got = order.restaurant_table_id ?? null;
+    if (sent === got || got == null) return;
+    const name = params.seatName?.(got) ?? `table ${got}`;
+    const was = sent != null ? params.seatName?.(sent) : null;
+    setStatusMessage(was
+      ? `${was} was taken a moment ago, so this ticket is ${name}. Tell the customer.`
+      : `This ticket was given ${name}. Tell the customer.`);
+  };
+
   const submitCreatedOrder = async (
     payload: ReturnType<typeof buildPayload>,
-  ): Promise<{ order: { id: number; total: number; promo_discount_laar?: number } }> => {
-    if (params.orderType === "Delivery") {
-      return createDeliveryOrder(payload as Parameters<typeof createDeliveryOrder>[0]);
-    }
-    return createOrder(payload as Parameters<typeof createOrder>[0]);
+  ): Promise<{ order: { id: number; total: number; promo_discount_laar?: number; restaurant_table_id?: number | null } }> => {
+    const res = params.orderType === "Delivery"
+      ? await createDeliveryOrder(payload as Parameters<typeof createDeliveryOrder>[0])
+      : await createOrder(payload as Parameters<typeof createOrder>[0]);
+    noteSeatChange(res.order as { restaurant_table_id?: number | null });
+    return res;
   };
 
   /**

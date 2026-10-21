@@ -42,6 +42,12 @@
     "deposit": {
         "balance_mvr": 0,
         "status": "active",
-        "can_use": false
+        "can_use": false,
+        "held_mvr": 0,
+        "available_mvr": 0,
+        "wallet_first": false,
+        "shared_from": null,
+        "shares_wallet_of": null,
+        "shared_with": []
     }
 }

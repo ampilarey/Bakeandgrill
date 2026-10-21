@@ -419,8 +419,7 @@ class PrintJobService
                 // the top; where it goes; when it is wanted; what the
                 // customer wrote.
                 'heading' => $heading,
-                'table' => $order->ticket_name
-                    ?? ($order->restaurant_table_id ? \App\Models\RestaurantTable::whereKey($order->restaurant_table_id)->value('name') : null),
+                'table' => self::seatLine($order),
                 'pickup_at' => $order->pickup_slot_at
                     ? $order->pickup_slot_at->copy()->timezone(config('app.timezone', 'Indian/Maldives'))->format('H:i')
                     : null,
@@ -430,6 +429,28 @@ class PrintJobService
                 'items' => $lines,
             ],
         ];
+    }
+
+    /**
+     * Where the food goes, for the kitchen slip and the receipt: the table or
+     * the number stand (owner, 2026-10-22), with the ticket's name beside it
+     * on the slip when the cashier typed one. A ticket with neither prints
+     * nothing here.
+     */
+    public static function seatLine(Order $order, bool $withTicketName = true): ?string
+    {
+        $seat = $order->restaurant_table_id
+            ? (string) \App\Models\RestaurantTable::whereKey($order->restaurant_table_id)->value('name')
+            : '';
+        $name = trim((string) ($withTicketName ? $order->ticket_name : ''));
+        if ($seat === '' || $seat === null) {
+            return $name !== '' ? $name : null;
+        }
+        if ($name === '' || str_contains($name, $seat)) {
+            return $seat;
+        }
+
+        return $seat . ' · ' . $name;
     }
 
     private function buildReceiptPayload(Order $order, Printer $printer): array
@@ -471,6 +492,9 @@ class PrintJobService
                 'id' => $order->id,
                 'order_number' => $order->order_number,
                 'type' => $order->type,
+                // The table, or the number stand a self-seating customer was
+                // given (owner, 2026-10-22), so the receipt says where to sit.
+                'table' => self::seatLine($order, withTicketName: false),
                 'notes' => $order->notes,
                 'subtotal' => $order->subtotal,
                 'tax_amount' => $order->tax_amount,
