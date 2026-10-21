@@ -209,8 +209,17 @@ final class PosterPurposes
                 'headline' => 'Tell us how we did', 'headline_dv' => 'ކަންކަން ކިހިނެއްތޯ ބުނެދީ',
                 'subhead' => 'Scan and leave a note',
             ], true, '/complain/poster/sheet'),
+            // A poster drawn on one of the ready-made designs (PosterThemes): the
+            // design holds the words and pictures; a dish and an offer may be
+            // bound for the photo, the live price and the QR's target.
+            self::THEMED => self::row('From a template', 'Templates', self::THEMED, 'any', [
+                'headline' => '', 'headline_dv' => '',
+            ]),
         ];
     }
+
+    /** The purpose and layout of a poster drawn on a template (docs/POSTER_THEMES_HANDOFF.md). */
+    public const THEMED = 'themed';
 
     public static function get(string $key): ?array
     {

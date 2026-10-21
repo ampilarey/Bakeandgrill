@@ -33,6 +33,13 @@ final class PosterFonts
         'dv' => 'NotoSansThaana-Regular-composed.ttf',
         'dvb' => 'NotoSansThaana-Bold-composed.ttf',
         'sym' => 'LabelSymbols.ttf',
+        // The poster templates' faces (docs/POSTER_THEMES_HANDOFF.md § 5.6): Anton
+        // for headlines, Fraunces italic for eyebrows and flourishes. Latin subsets,
+        // the same files the admin preview loads; a full TTF is a file swap.
+        'anton' => 'Anton-400.ttf',
+        'fri5' => 'Fraunces-500-Italic.ttf',
+        'fri7' => 'Fraunces-700-Italic.ttf',
+        'fri9' => 'Fraunces-900-Italic.ttf',
     ];
 
     /** @var array<string, array{0: string, 1: string}> key → [TCPDF font name, description file] */

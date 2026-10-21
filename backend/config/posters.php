@@ -39,4 +39,8 @@ return [
     'logo_svg' => public_path('brand/logo-animated.svg'),
     'logo_svg_dark' => public_path('brand/logo-animated-dark.svg'),
 
+    // The ready-made designs (docs/POSTER_THEMES_HANDOFF.md): index.json and
+    // one folder per theme.
+    'themes_dir' => resource_path('poster-themes'),
+
 ];

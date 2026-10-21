@@ -17,7 +17,7 @@ class Poster extends Model
     public const STATES = ['draft', 'ready', 'up', 'down'];
 
     protected $fillable = [
-        'name', 'template_key', 'layout', 'mood', 'language', 'landscape',
+        'name', 'template_key', 'layout', 'theme', 'mood', 'language', 'landscape',
         'sizes', 'slots', 'bindings', 'state', 'take_down_on', 'place',
         'pinned', 'version', 'created_by',
     ];

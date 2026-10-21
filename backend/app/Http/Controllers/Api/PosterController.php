@@ -14,6 +14,7 @@ use App\Domains\Posters\PosterPieces;
 use App\Domains\Posters\PosterPreflight;
 use App\Domains\Posters\PosterPurposes;
 use App\Domains\Posters\PosterStaleness;
+use App\Domains\Posters\PosterThemes;
 use App\Http\Controllers\Controller;
 use App\Jobs\ExportPosterJob;
 use App\Models\Category;
@@ -26,6 +27,7 @@ use App\Models\RestaurantTable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
@@ -60,7 +62,61 @@ class PosterController extends Controller
             'materials' => collect(PosterPreflight::MATERIALS)->map(fn (array $m, string $key) => [
                 'key' => $key, 'label' => $m['label'], 'white' => $m['white'], 'mirror' => (bool) ($m['mirror'] ?? false),
             ])->values(),
+            'themes' => $this->themeCatalog(),
         ]);
+    }
+
+    /**
+     * One ready-made design with both variants (canvas, logo, QR, photo and
+     * text slots) and the links the editor draws it from.
+     */
+    public function theme(string $key): JsonResponse
+    {
+        $theme = PosterThemes::get($key);
+        if ($theme === null) {
+            abort(404, 'Unknown template.');
+        }
+        $variants = [];
+        foreach ($theme['variants'] as $name => $variant) {
+            $slots = [];
+            foreach ($variant['photo_slots'] as $slot) {
+                $slot['placeholder_url'] = $this->themeFileUrl($key, (string) $slot['placeholder_image']);
+                $slots[] = $slot;
+            }
+            $variant['photo_slots'] = $slots;
+            $variant['urls'] = [
+                'preview' => $this->themeFileUrl($key, (string) $variant['files']['preview']),
+                'backdrop' => $this->themeFileUrl($key, (string) $variant['files']['backdrop_svg']),
+            ];
+            unset($variant['print_files']);
+            $variants[$name] = $variant;
+        }
+        $theme['variants'] = $variants;
+        $theme['fonts'] = PosterThemes::FONTS;
+
+        return response()->json($theme);
+    }
+
+    /** A theme's preview, backdrop SVG or placeholder picture (PosterThemes::FILE_PATTERN). */
+    public function themeFile(string $key, string $file): BinaryFileResponse
+    {
+        $path = PosterThemes::file($key, $file);
+        if ($path === null) {
+            abort(404);
+        }
+
+        return response()->file($path, ['Cache-Control' => 'private, max-age=86400']);
+    }
+
+    /** A photo uploaded for posters, for the on-screen preview of a template's photo slot. */
+    public function photo(string $name): BinaryFileResponse
+    {
+        $path = PosterPhoto::uploadPath(PosterPhoto::UPLOAD_DIR . '/' . $name);
+        if ($path === null) {
+            abort(404);
+        }
+
+        return response()->file($path, ['Cache-Control' => 'private, max-age=3600']);
     }
 
     public function lookups(Request $request): JsonResponse
@@ -136,6 +192,18 @@ class PosterController extends Controller
     public function update(Request $request, Poster $poster): JsonResponse
     {
         $data = $this->validated($request, partial: true);
+        if ($poster->theme !== null) {
+            // A template poster stays one: its design is swapped, never dropped, and it stays portrait.
+            if (array_key_exists('theme', $data) && $data['theme'] === null) {
+                abort(422, 'A template poster keeps a template. Make a new poster for a classic layout.');
+            }
+            if (($data['landscape'] ?? false) === true) {
+                abort(422, 'Templates are portrait only.');
+            }
+            if (array_key_exists('template_key', $data) && $data['template_key'] !== PosterPurposes::THEMED) {
+                abort(422, 'A template poster keeps its template purpose.');
+            }
+        }
         $poster->fill($data)->save();
 
         return response()->json($this->summary($poster));
@@ -255,10 +323,21 @@ class PosterController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'template_key' => ['required', 'string'],
             'layout' => ['required', 'string'],
+            'theme' => ['nullable', 'string', 'max:64'],
             'mood' => ['nullable', 'string'],
             'language' => ['nullable', 'string'],
             'slots' => ['nullable', 'array'],
+            'slots.*' => [$this->slotRule()],
         ]);
+        if (isset($data['theme'])) {
+            if (!PosterThemes::has((string) $data['theme'])) {
+                abort(422, 'Unknown template.');
+            }
+            $data['template_key'] = PosterPurposes::THEMED;
+            $data['layout'] = PosterPurposes::THEMED;
+        } elseif (($data['template_key'] ?? '') === PosterPurposes::THEMED) {
+            abort(422, 'Pick a template.');
+        }
         $data['created_by'] = $request->user()?->id;
         $data['locked'] = false;
 
@@ -274,6 +353,7 @@ class PosterController extends Controller
             'name' => ['sometimes', 'string', 'max:120'],
             'locked' => ['sometimes', 'boolean'],
             'slots' => ['sometimes', 'array'],
+            'slots.*' => [$this->slotRule()],
         ]))->save();
 
         return response()->json($template);
@@ -312,6 +392,7 @@ class PosterController extends Controller
             'name' => $poster->name,
             'template_key' => $poster->template_key,
             'layout' => $poster->layout,
+            'theme' => $poster->theme,
             'mood' => $poster->mood,
             'language' => $poster->language,
             'landscape' => $poster->landscape,
@@ -363,6 +444,91 @@ class PosterController extends Controller
         ];
     }
 
+    /**
+     * The catalogue of ready-made designs for the picker: categories with
+     * counts, the style labels, the size → variant map and every theme with
+     * its two preview pictures.
+     *
+     * @return array<string, mixed>
+     */
+    private function themeCatalog(): array
+    {
+        return [
+            'categories' => PosterThemes::categories(),
+            'styles' => PosterThemes::styles(),
+            'sizes' => PosterThemes::SIZE_VARIANTS,
+            'themes' => array_map(fn (array $row): array => [
+                'id' => $row['id'],
+                'key' => $row['key'],
+                'title' => $row['title'],
+                'category' => $row['category'],
+                'style' => $row['style'],
+                'style_label' => $row['style_label'],
+                'has_photo' => $row['has_photo'],
+                'photo_slots' => $row['photo_slots'],
+                'text_slots' => $row['text_slots'],
+                'preview_url' => $this->themeFileUrl($row['key'], 'preview-large.jpg'),
+                'preview_small_url' => $this->themeFileUrl($row['key'], 'preview-small.jpg'),
+            ], PosterThemes::all()),
+        ];
+    }
+
+    private function themeFileUrl(string $key, string $file): string
+    {
+        return url('/api/posters/themes/' . $key . '/' . $file);
+    }
+
+    /**
+     * One entry of `slots`: a typed line (any classic slot, or a template's
+     * t1…; `false` is a line the owner blanked, since an empty string arrives
+     * as null and null means the design's own wording), or for a template's
+     * photo slot (p1…) null or the choice `{item_id, use}` / `{photo_path}`.
+     */
+    private function slotRule(): \Closure
+    {
+        return static function (string $attribute, mixed $value, \Closure $fail): void {
+            $key = (string) substr($attribute, (int) strrpos($attribute, '.') + 1);
+            if (preg_match('/^[a-z_][a-z0-9_]{0,31}$/', $key) !== 1) {
+                $fail('That slot name is not allowed.');
+
+                return;
+            }
+            if (preg_match('/^p[1-9]\d*$/', $key) === 1) {
+                if ($value === null) {
+                    return;
+                }
+                if (!is_array($value)) {
+                    $fail('A photo slot takes a photo choice.');
+
+                    return;
+                }
+                foreach ($value as $field => $v) {
+                    $ok = match ($field) {
+                        'item_id' => $v === null || (is_int($v) && $v > 0) || (is_string($v) && ctype_digit($v) && (int) $v > 0),
+                        'use' => $v === null || in_array($v, ['main', 'cutout'], true),
+                        'photo_path' => $v === null || (is_string($v) && strlen($v) <= 120),
+                        default => false,
+                    };
+                    if (!$ok) {
+                        $fail("The photo choice's \"{$field}\" is not allowed.");
+
+                        return;
+                    }
+                }
+
+                return;
+            }
+            if ($value !== null && $value !== false && !is_string($value)) {
+                $fail('A text slot takes words.');
+
+                return;
+            }
+            if (is_string($value) && mb_strlen($value) > 600) {
+                $fail('A text slot takes up to 600 characters.');
+            }
+        };
+    }
+
     /** @return array<string, mixed> */
     private function validated(Request $request, bool $partial = false): array
     {
@@ -371,18 +537,33 @@ class PosterController extends Controller
             'name' => [$partial ? 'sometimes' : 'nullable', 'string', 'max:160'],
             'template_key' => [$req, 'string'],
             'layout' => [$req, 'string'],
+            'theme' => ['nullable', 'string', 'max:64'],
             'mood' => ['nullable', 'string'],
             'language' => ['nullable', 'in:en,dv,both'],
             'landscape' => ['nullable', 'boolean'],
             'sizes' => [$partial ? 'sometimes' : 'nullable', 'array'],
             'sizes.*' => ['string'],
             'slots' => ['nullable', 'array'],
+            'slots.*' => [$this->slotRule()],
             'bindings' => ['nullable', 'array'],
             'state' => ['nullable', 'in:draft,ready,up,down'],
             'take_down_on' => ['nullable', 'date'],
             'place' => ['nullable', 'string'],
             'pinned' => ['nullable', 'boolean'],
         ]);
+        if (isset($data['theme'])) {
+            // A ready-made design: the theme decides the purpose and the layout (docs/POSTER_THEMES_HANDOFF.md § 5).
+            if (!PosterThemes::has((string) $data['theme'])) {
+                abort(422, 'Unknown template.');
+            }
+            if (($data['landscape'] ?? false) === true) {
+                abort(422, 'Templates are portrait only.');
+            }
+            $data['template_key'] = PosterPurposes::THEMED;
+            $data['layout'] = PosterPurposes::THEMED;
+        } elseif (($data['template_key'] ?? '') === PosterPurposes::THEMED && !$partial) {
+            abort(422, 'Pick a template.');
+        }
         if (!$partial || array_key_exists('template_key', $data)) {
             $key = (string) ($data['template_key'] ?? '');
             $purpose = PosterPurposes::get($key);

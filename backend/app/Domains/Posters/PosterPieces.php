@@ -23,9 +23,13 @@ final class PosterPieces
      */
     public static function build(array $poster, PaperSize $size, array $content): array
     {
+        $layout = (string) ($poster['layout'] ?? 'hero_photo');
+        if ($layout === PosterPurposes::THEMED || ($poster['theme'] ?? null) !== null) {
+            // A ready-made design is drawn from its theme, never from a layout (docs/POSTER_THEMES_HANDOFF.md).
+            return PosterThemePieces::build($poster, $size, $content);
+        }
         $mood = PosterMoods::get((string) ($poster['mood'] ?? 'dark'));
         $lang = (string) ($poster['language'] ?? 'both');
-        $layout = (string) ($poster['layout'] ?? 'hero_photo');
         $flags = ['overflow' => false, 'shrunk' => false, 'missing_dv' => false];
         [$sx, $sy, $sw, $sh] = $size->safeBox();
         $s = $size->trimWidth / 297.0;

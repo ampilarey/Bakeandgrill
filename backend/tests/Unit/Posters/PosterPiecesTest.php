@@ -24,7 +24,8 @@ class PosterPiecesTest extends TestCase
         foreach (PosterPurposes::all() as $key => $purpose) {
             // The complaint poster alone is drawn on its own page, so one engine draws it.
             $this->assertSame($key === 'how_we_did' ? '/complain/poster/sheet' : null, $purpose['external'], $key);
-            $this->assertContains($purpose['layout'], PosterPurposes::layouts(), $key);
+            // A template poster is drawn by its design (PosterThemes), not by one of the eight layouts.
+            $this->assertContains($purpose['layout'], $key === PosterPurposes::THEMED ? [PosterPurposes::THEMED] : PosterPurposes::layouts(), $key);
         }
     }
 

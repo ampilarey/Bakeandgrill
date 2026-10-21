@@ -30,6 +30,12 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:posters.make'])
         Route::post('/orders/{order}/state', [PosterShopController::class, 'advance']);
         Route::get('/exports/{export}', [PosterController::class, 'exportStatus']);
         Route::get('/exports/{export}/download', [PosterController::class, 'download']);
+        // The ready-made designs: one theme's slots, and its preview, backdrop and placeholder files
+        // (the admin's <img> tags carry the session cookie, so these stay behind the sign-in).
+        Route::get('/themes/{key}', [PosterController::class, 'theme'])->where('key', '[a-z0-9-]+');
+        Route::get('/themes/{key}/{file}', [PosterController::class, 'themeFile'])->where(['key' => '[a-z0-9-]+', 'file' => '[A-Za-z0-9._-]+']);
+        // A photo uploaded for posters, for the on-screen preview of a template's photo slot.
+        Route::get('/photo/{name}', [PosterController::class, 'photo'])->where('name', '[a-f0-9]{24}\.jpg');
         Route::post('/{poster}/orders', [PosterShopController::class, 'send']);
         Route::post('/{poster}/tv', [PosterEverywhereController::class, 'tv']);
         Route::post('/{poster}/social', [PosterEverywhereController::class, 'social']);
