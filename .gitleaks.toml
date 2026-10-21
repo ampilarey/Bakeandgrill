@@ -45,6 +45,16 @@ regexes = [
 ]
 
 [[allowlists]]
+id = "poster-theme-assets"
+description = "Poster template assets: theme keys such as \"bg042-…\" in index.json are design names, not credentials"
+# generic-api-key matched 68 "key": "bg0xx-…" lines of index.json on the merge of 2026-10-21.
+# On gitleaks 8.24 this entry alone does not suppress them in a commit scan; the legacy
+# [allowlist] path at the bottom does. Keep both until CI moves to a newer gitleaks.
+paths = [
+    '''(^|/)backend/resources/poster-themes/.*''',
+]
+
+[[allowlists]]
 id = "laravel-app-key"
 description = "Laravel APP_KEY placeholder in .env.example is empty by design"
 regexes = [
@@ -63,7 +73,8 @@ regexes = [
 # gitleaks 8.24 (CI) still honors legacy [allowlist] for path skips; [[allowlists]]
 # path-only entries were not suppressing curl-auth-header on historical commits.
 [allowlist]
-description = "TEST_AUTO_DEPLOY.md webhook curl examples use placeholders, not live credentials"
+description = "TEST_AUTO_DEPLOY.md webhook curl examples use placeholders, not live credentials; poster template assets hold design names, not keys"
 paths = [
     '''docs/TEST_AUTO_DEPLOY\.md''',
+    '''backend/resources/poster-themes/''',
 ]
