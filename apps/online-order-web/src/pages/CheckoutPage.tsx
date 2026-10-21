@@ -225,6 +225,7 @@ export function CheckoutPage() {
     delivery, setDelivery, notes, setNotes,
     gift, setGift,
     walletBalanceLaar, useWallet, setUseWallet, walletPartLaar,
+    creditAvailableLaar, creditTermsDays, useCredit, setUseCredit,
     savedAddresses, selectedAddressId, applySavedAddress, markAddressAsNew,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,
     promoCode, setPromoCode, promoApplied,
@@ -493,9 +494,11 @@ export function CheckoutPage() {
           ? 'Online payment unavailable'
           : (amountDueLaar <= 0 || zeroBalanceConflict)
             ? t('checkout.place_no_payment')
-            : useWallet && walletBalanceLaar >= amountDueLaar
-              ? t('checkout.pay_wallet').replace('{amount}', String(laarToMvr(amountDueLaar)))
-              : t('checkout.pay_bml').replace('{amount}', String(laarToMvr(amountDueLaar - walletPartLaar)));
+            : useCredit && creditAvailableLaar >= amountDueLaar
+              ? t('checkout.pay_credit').replace('{amount}', String(laarToMvr(amountDueLaar)))
+              : useWallet && walletBalanceLaar >= amountDueLaar
+                ? t('checkout.pay_wallet').replace('{amount}', String(laarToMvr(amountDueLaar)))
+                : t('checkout.pay_bml').replace('{amount}', String(laarToMvr(amountDueLaar - walletPartLaar)));
 
   // ── Section bodies (bare content — AccordionItem provides title/chrome) ──────
 
@@ -874,6 +877,27 @@ export function CheckoutPage() {
           {walletBalanceLaar < amountDueLaar && (
             <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }} data-testid="checkout-wallet-part-hint">{t('wallet.pay_part_hint')}</p>
           )}
+        </div>
+      )}
+      {creditAvailableLaar > 0 && amountDueLaar > 0 && (
+        <div data-testid="checkout-credit">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: creditAvailableLaar >= amountDueLaar ? 'pointer' : 'not-allowed', fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>
+            <input
+              type="checkbox"
+              checked={useCredit && creditAvailableLaar >= amountDueLaar}
+              disabled={creditAvailableLaar < amountDueLaar}
+              onChange={(e) => setUseCredit(e.target.checked)}
+              data-testid="checkout-credit-toggle"
+            />
+            {t('credit.checkout_toggle')
+              .replace('{amount}', (amountDueLaar / 100).toFixed(2))
+              .replace('{available}', (creditAvailableLaar / 100).toFixed(2))}
+          </label>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+            {creditAvailableLaar < amountDueLaar
+              ? t('credit.checkout_short')
+              : t('credit.checkout_hint').replace('{days}', String(creditTermsDays))}
+          </p>
         </div>
       )}
       {autoPromo && autoPromoDelta > 0 && (

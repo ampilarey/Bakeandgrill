@@ -24,7 +24,7 @@ vi.mock("../api", () => Object.fromEntries(
   Object.keys({
     listCustomers: 1, listCustomerSegments: 1, getCustomerDetail: 1, fetchCustomerSummary: 1,
     updateCustomerDetail: 1, updateCustomerFromPos: 1, changeCustomerPhone: 1, sendCustomerSms: 1,
-    recordCreditRepayment: 1, recordDepositTopUp: 1, sendDepositTopUpLink: 1, searchCustomers: 1, fetchRecentCustomers: 1, quickCreateCustomer: 1,
+    recordCreditRepayment: 1, recordDepositTopUp: 1, sendDepositTopUpLink: 1, transferDepositToCredit: 1, searchCustomers: 1, fetchRecentCustomers: 1, quickCreateCustomer: 1,
   }).map((k) => [k, (...args: unknown[]) => (api as Record<string, (...a: unknown[]) => unknown>)[k](...args)]),
 ));
 
@@ -150,9 +150,9 @@ describe("CustomersPanel — owner and manager", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Top-up link texted to +9607771234.");
   });
 
-  it("records a cash credit repayment, capped at what they owe", async () => {
+  it("records a cash credit repayment; more than they owe goes into the wallet only when ticked", async () => {
     const user = userEvent.setup();
-    api.recordCreditRepayment.mockResolvedValue({});
+    api.recordCreditRepayment.mockResolvedValue({ surplus_to_wallet_laar: 5000 });
     render(<CustomersPanel {...manager} onClose={vi.fn()} />);
 
     await waitFor(() => expect(screen.getByTestId("customer-row-7")).toBeTruthy());
@@ -162,13 +162,42 @@ describe("CustomersPanel — owner and manager", () => {
     const amount = within(form).getByLabelText("Amount (MVR)");
     await user.clear(amount);
     await user.type(amount, "200");
+    // Phase 4: over the balance, the extra may go into the wallet (the manager may receive deposits).
+    const surplus = within(form).getByTestId("customer-money-surplus");
+    expect(surplus).toHaveTextContent("Put the extra MVR 50.00 into their wallet");
+    await user.click(within(surplus).getByRole("checkbox"));
     await user.click(within(form).getByRole("button", { name: "Record" }));
     expect(within(form).getByText(/They owe MVR 150\.00/)).toBeTruthy();
+    expect(api.recordCreditRepayment).not.toHaveBeenCalled();
 
-    await user.clear(amount);
-    await user.type(amount, "100");
+    await user.click(within(surplus).getByRole("checkbox"));
     await user.click(within(form).getByRole("button", { name: "Record" }));
+    await waitFor(() => expect(api.recordCreditRepayment).toHaveBeenCalledWith(7, { amount_mvr: 200, method: "cash", reference: undefined, surplus_to_wallet: true }));
+    expect(await screen.findByRole("status")).toHaveTextContent("MVR 50.00 went into their wallet");
+
+    // Within the balance: no tick, no flag.
+    api.recordCreditRepayment.mockClear();
+    await user.click(await screen.findByRole("button", { name: "Record repayment" }));
+    const again = screen.getByTestId("customer-money-form");
+    const amount2 = within(again).getByLabelText("Amount (MVR)");
+    await user.clear(amount2);
+    await user.type(amount2, "100");
+    expect(within(again).queryByTestId("customer-money-surplus")).toBeNull();
+    await user.click(within(again).getByRole("button", { name: "Record" }));
     await waitFor(() => expect(api.recordCreditRepayment).toHaveBeenCalledWith(7, { amount_mvr: 100, method: "cash", reference: undefined }));
+  });
+
+  it("offers cash held by the owner to the owner only", async () => {
+    const user = userEvent.setup();
+    render(<CustomersPanel {...manager} isOwner onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("customer-row-7")).toBeTruthy());
+    await user.click(screen.getByTestId("customer-row-7"));
+    await user.click(await screen.findByRole("button", { name: "Record repayment" }));
+    const form = screen.getByTestId("customer-money-form");
+    await user.click(within(form).getByRole("button", { name: "Cash (owner, no till)" }));
+    expect(within(form).getByText(/away from any till/)).toBeTruthy();
+    await user.click(within(form).getByRole("button", { name: "Record" }));
+    await waitFor(() => expect(api.recordCreditRepayment).toHaveBeenCalledWith(7, { amount_mvr: 150, method: "owner_cash", reference: undefined }));
   });
 
   it("starts an order for the customer", async () => {

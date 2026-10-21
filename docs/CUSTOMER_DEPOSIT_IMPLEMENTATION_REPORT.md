@@ -228,6 +228,21 @@ How it is wired: a hold is a pending `customer_deposit` Payment on the order (`D
 `tests/Feature/Credit/CreditSpendTest.php`. The credit account's online payment, statement
 and alerts are in `docs/CREDIT_ACCOUNTS_PAGE.md` § Paid online as a whole.
 
+## 8e. A bonus on top-ups, and the rest of phase 4 (2026-10-21)
+
+| Where | What |
+|---|---|
+| Settings → Credit & wallet → Bonus on top-ups | Extra (%) and the top-up it starts from (MVR). 0% is off. |
+| Every top-up at or above the amount, by card from the app or a link, or at the counter | A second wallet row, type `bonus` (no cash movement), and the customer's "money added" text ends " Plus a MVR x bonus." The deposit activity report shows bonuses apart from money received. |
+| Order app, Account → Wallet → Add money | "Add MVR 500 or more and get 5% extra." and "+ MVR 25.00 bonus" under the amount picked. |
+| Money that only moves pots | No bonus: the extra from a credit repayment, a refund into the wallet, a gift card. |
+
+Wired in `WalletTopUpRules::bonusLaar()` and `DepositLedgerService::topUp()` (`bonusEligible`);
+the ledger type list is widened for MySQL and PostgreSQL in
+`2026_10_21_190000_wallet_bonus_settle_and_orders_on_account`. The repayment extras, settle
+from the wallet and online orders on account are in `docs/CREDIT_ACCOUNTS_PAGE.md` § Phase 4.
+Tests: `tests/Feature/Credit/CreditExtrasTest.php`.
+
 ## 9. Gap matrix (plan vs delivered)
 
 | Area | Status |

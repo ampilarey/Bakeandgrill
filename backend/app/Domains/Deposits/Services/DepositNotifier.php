@@ -51,15 +51,23 @@ final class DepositNotifier
      * Money added. A card top-up (owner, 2026-10-21) carries the link to its
      * own page as the receipt, appended when the wording has no {{receipt}}.
      */
-    public function received(Customer $customer, int $amountLaar, string $method, int $balanceAfterLaar, int $ledgerId, ?string $receiptUrl = null): void
+    public function received(Customer $customer, int $amountLaar, string $method, int $balanceAfterLaar, int $ledgerId, ?string $receiptUrl = null, int $bonusLaar = 0): void
     {
         $receipt = $receiptUrl !== null && $receiptUrl !== '' ? ' Receipt: ' . $receiptUrl : '';
+        // A bonus on the top-up (phase 4) rides inside the same text.
+        $bonusNote = '';
+        if ($bonusLaar > 0) {
+            $bonusNote = CustomerSmsText::language((string) $customer->phone) === 'dv'
+                ? sprintf(' އިތުރަށް MVR %s ބޯނަސް.', self::mvr($bonusLaar))
+                : ' Plus a MVR ' . self::mvr($bonusLaar) . ' bonus.';
+        }
         $this->send($customer, self::TYPE_RECEIVED, self::TYPE_RECEIVED, [
             'amount' => self::mvr($amountLaar),
             'method' => self::methodWord($method),
             'balance' => self::mvr($balanceAfterLaar),
             'receipt' => $receipt,
-        ], self::FALLBACK_RECEIVED, 'deposit:received:' . $ledgerId, $receipt);
+            'bonus_note' => $bonusNote,
+        ], self::FALLBACK_RECEIVED, 'deposit:received:' . $ledgerId, $bonusNote . $receipt);
     }
 
     public function paidOut(Customer $customer, int $amountLaar, string $method, int $balanceAfterLaar, int $ledgerId): void
@@ -126,8 +134,12 @@ final class DepositNotifier
         }
 
         $message = $this->builder->build($slug, $vars, $fallback, $phone);
-        if ($tail !== '' && !str_contains($message, trim($tail))) {
-            $message .= $tail;
+        // The tail may be two lines (a bonus note and a receipt): each is added only when missing.
+        foreach (preg_split('/(?<=\.)\s+(?=Receipt: )/', $tail) ?: [] as $piece) {
+            $piece = ' ' . trim($piece);
+            if (trim($piece) !== '' && !str_contains($message, trim($piece))) {
+                $message .= $piece;
+            }
         }
 
         try {

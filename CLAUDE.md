@@ -1181,6 +1181,40 @@ per month) what they owe, what is overdue and the statement link. **Overdue to t
 `CreditSpendTest`. A new way to spend the wallet online goes through `DepositHolds` or
 `payOrder`, never a ledger write of its own.
 
+## Wallet and credit extras (phase 4)
+
+Owner, 2026-10-21 (phase 4 of the deposit plan; the four till items saved on 2026-10-06 are
+built). **A repayment larger than the balance** repays the balance and puts the rest into the
+wallet in one step when the caller asks (`surplus_to_wallet` on `POST /credit/repayments`,
+`CreditLedgerService::recordRepayment(surplusToWallet:)` → `DepositLedgerService::topUp(…,
+bonusEligible: false, notify: false)`; one text, the repayment's, ending " MVR x extra is in your
+wallet."); without the flag it is refused as before. **Cash the owner holds away from the till**
+is the repayment method `owner_cash` (owner only, no shift, no `CashMovement`; the customer's text
+says "cash"). **Take repayment** sits on the till's customer card (`CustomerRewardsPanel`
+`canTakeRepayment`, the shared `MoneyForm` exported from `CustomersPanel.tsx`), and **Pay from
+deposit** on the till's Customers tab (`transferDepositToCredit`, `customers.deposit.transfer_credit`).
+**Settled from the wallet nightly**: `customers.credit_settle_from_wallet` (Admin → Customer →
+Credit, action `set_settle_from_wallet`; the order app's Account → Credit through `PATCH
+/customer/credit/preferences`), run by `credit:settle-from-wallet` at 23:40 through
+`DepositLedgerService::transferToCredit` (held money left alone), so the customer gets the usual
+"from your wallet" repayment text. **A bonus on top-ups**: `wallet_topup_bonus_percent` and
+`wallet_topup_bonus_min_mvr` (Settings → Credit & wallet, `WalletTopUpRules::bonusLaar()`); every
+`topUp()` at or above the minimum, by card or at the counter, writes a second ledger row of type
+`bonus` (method `bonus`, no cash movement, counted as received in the customer's totals and apart
+as `bonus` in `ReportsService::depositActivity`), and the "money added" text carries " Plus a MVR x
+bonus." (`{{bonus_note}}`). Money that only moves pots passes `bonusEligible: false` (the credit
+surplus; a refund and a gift card never go through `topUp()`). The app's Add money card says what
+an amount earns (`bonus_percent` on the rules). **Online orders on account**:
+`credit_online_orders_enabled` (default on, `CreditPolicy::onlineOrdersEnabled()`, also off while
+credit is closed); `GET /customer/credit` carries `online_orders`, checkout offers "Charge MVR x to
+my credit account" (never together with the wallet; `useCredit` in `useCheckout`), and `POST
+/api/customer/orders/{id}/pay-credit` (`CustomerCreditPaymentController::payOrder`) releases any
+wallet hold, asserts the limit, writes a paid `house_account` Payment, `recordCharge` (the invoice),
+then `completeZeroBalanceOnlineOrder`; `PaymentConfirmationNotifier` sends the charged text with
+the ready hint and the tracking link in place of the online confirmation. A new ledger type goes
+into the MySQL enum and the PostgreSQL check in a migration (as `bonus` did), `activityTotals`,
+`customerFacingLedgerLabel` and `depositActivity`. `CreditExtrasTest`.
+
 ## Poster print PDFs (PDF/X-4)
 
 Posters render through TCPDF via `App\Domains\Posters\Pdf\PdfX4Document`, not dompdf

@@ -161,12 +161,12 @@ class CreditAccountNotifier
      * method alone would mislead: 'online' (BML from the pay link) or
      * 'wallet' (moved from the customer's own deposit).
      */
-    public function repaymentReceived(Customer $customer, int $amountLaar, string $method, int $balanceAfterLaar, ?string $source, int $ledgerId): void
+    public function repaymentReceived(Customer $customer, int $amountLaar, string $method, int $balanceAfterLaar, ?string $source, int $ledgerId, string $tail = ''): void
     {
         $methodWord = match (true) {
             $source === 'wallet' => 'from your wallet',
             $source === 'online' => 'online by card',
-            $method === 'cash' => 'cash',
+            $method === 'cash', $method === 'owner_cash' => 'cash',
             $method === 'card' => 'card',
             $method === 'bank_transfer' => 'bank transfer',
             default => str_replace('_', ' ', $method),
@@ -191,13 +191,15 @@ class CreditAccountNotifier
             $vars,
             $settled ? self::FALLBACK_REPAYMENT_SETTLED : self::FALLBACK_REPAYMENT,
             'credit:repayment:' . $ledgerId,
+            $tail,
         );
     }
 
     /**
      * @param array<string, string> $vars
+     * @param string $tail A line added at the end (the extra that went into the wallet)
      */
-    private function send(Customer $customer, string $type, string $slug, array $vars, string $fallback, string $idempotencyKey): void
+    private function send(Customer $customer, string $type, string $slug, array $vars, string $fallback, string $idempotencyKey, string $tail = ''): void
     {
         $phone = trim((string) $customer->phone);
         if ($phone === '') {
@@ -207,7 +209,7 @@ class CreditAccountNotifier
         try {
             $this->sms->send(new SmsMessage(
                 to: $phone,
-                message: $this->builder->build($slug, $vars, $fallback, $phone),
+                message: $this->builder->build($slug, $vars, $fallback, $phone) . $tail,
                 type: $type,
                 customerId: $customer->id,
                 referenceType: 'customer',

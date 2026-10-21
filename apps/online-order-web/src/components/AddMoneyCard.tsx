@@ -98,6 +98,16 @@ export function AddMoneyCard({ refreshKey = 0 }: { refreshKey?: number }) {
               {t('wallet.used_today').replace('{used}', rules.used_today_mvr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })).replace('{cap}', rules.daily_cap_mvr.toLocaleString())}
             </p>
           )}
+          {(rules.bonus_percent ?? 0) > 0 && (
+            <p style={{ ...hint, color: 'var(--color-success)', fontWeight: 700 }} data-testid="wallet-bonus-line">
+              {((rules.bonus_min_mvr ?? 0) > 0
+                ? t('wallet.bonus_line').replace('{min}', (rules.bonus_min_mvr ?? 0).toLocaleString())
+                : t('wallet.bonus_any')).replace('{percent}', String(rules.bonus_percent))}
+              {valid && amount !== null && amount >= (rules.bonus_min_mvr ?? 0)
+                ? ' ' + t('wallet.bonus_for_amount').replace('{bonus}', (Math.floor(amount * (rules.bonus_percent ?? 0)) / 100).toFixed(2))
+                : ''}
+            </p>
+          )}
           <button
             type="button"
             onClick={() => void pay()}

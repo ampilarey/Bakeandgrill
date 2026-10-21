@@ -443,13 +443,24 @@ class CustomerController extends Controller
         }
 
         $validated = $request->validate([
-            'credit_reminder_sms' => ['required', 'boolean'],
+            'credit_reminder_sms' => ['required_without:credit_settle_from_wallet', 'boolean'],
+            // Phase 4 (owner, 2026-10-21): the account settled from the wallet every night.
+            'credit_settle_from_wallet' => ['required_without:credit_reminder_sms', 'boolean'],
         ]);
 
-        $updated = app(CustomerCreditService::class)->updateCustomerReminderPreference(
-            $customer,
-            (bool) $validated['credit_reminder_sms'],
-        );
+        $updated = $customer;
+        if (array_key_exists('credit_reminder_sms', $validated)) {
+            $updated = app(CustomerCreditService::class)->updateCustomerReminderPreference(
+                $updated,
+                (bool) $validated['credit_reminder_sms'],
+            );
+        }
+        if (array_key_exists('credit_settle_from_wallet', $validated)) {
+            $updated = app(CustomerCreditService::class)->updateCustomerSettleFromWallet(
+                $updated,
+                (bool) $validated['credit_settle_from_wallet'],
+            );
+        }
 
         return response()->json([
             'credit' => array_merge(

@@ -67,6 +67,10 @@ class SiteSettingsController extends Controller
         'wallet_topup_daily_cap_mvr',
         'wallet_balance_max_mvr',
         'wallet_topup_owner_alert_mvr',
+        // Phase 4: a bonus on top-ups, and online orders on the credit account.
+        'wallet_topup_bonus_percent',
+        'wallet_topup_bonus_min_mvr',
+        'credit_online_orders_enabled',
         // "When it sends" numbers on three rows of Admin → Notifications
         // (credit reminder repeats, the wholesale nudge and alert; they were
         // on Settings → Credit Accounts until the re-audit of 2026-10-10)

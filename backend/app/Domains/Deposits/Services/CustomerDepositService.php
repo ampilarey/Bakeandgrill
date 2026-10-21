@@ -36,6 +36,7 @@ final class CustomerDepositService
         // The customer's word is wallet (owner, 2026-10-21).
         return match ($type) {
             'top_up' => 'Money added',
+            'bonus' => 'Bonus added',
             'usage' => 'Order payment',
             'payout' => 'Paid back to you',
             'refund' => 'Refund added',

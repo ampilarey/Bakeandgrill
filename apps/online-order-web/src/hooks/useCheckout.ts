@@ -35,6 +35,8 @@ import {
   payOrderFromWallet,
   holdWalletForOrder,
   releaseWalletHold,
+  getCustomerCredit,
+  payOrderOnCredit,
   type CustomerAddress,
   type LoyaltyAccount,
 } from "../api";
@@ -411,6 +413,28 @@ export function useCheckout() {
       .catch(() => {});
     return () => { live = false; };
   }, [isAuthenticated]);
+  // The order on the credit account (phase 4, owner 2026-10-21): offered when
+  // the owner allows it and the account can take the order. Never both the
+  // wallet and the account: ticking one unticks the other.
+  const [creditAvailableLaar, setCreditAvailableLaar] = useState(0);
+  const [creditTermsDays, setCreditTermsDays] = useState(0);
+  const [useCredit, setUseCreditState] = useState(false);
+  useEffect(() => {
+    if (!isAuthenticated) { setCreditAvailableLaar(0); setUseCreditState(false); return; }
+    let live = true;
+    getCustomerCredit()
+      .then((r) => {
+        if (!live) return;
+        const c = r.credit;
+        const ok = Boolean(c && c.online_orders && c.status === 'active');
+        setCreditAvailableLaar(ok && c ? Math.round(Number(c.available_mvr) * 100) : 0);
+        setCreditTermsDays(c ? Number(c.payment_terms_days) : 0);
+      })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [isAuthenticated]);
+  const setUseCredit = (on: boolean) => { setUseCreditState(on); if (on) setUseWallet(false); };
+  const chooseWallet = (on: boolean) => { setUseWallet(on); if (on) setUseCreditState(false); };
   // "This is a gift" (iruali import plan, feature 10): delivery and pickup only, never at a table.
   const [gift, setGift] = useState<{ on: boolean; name: string; phone: string; message: string }>({ on: false, name: '', phone: '', message: '' });
 
@@ -1437,6 +1461,18 @@ export function useCheckout() {
       // Defer to server remaining balance (settled payments + gift tender).
       const dueLaar = dueLaarFromOrder(freshOrder);
 
+      // The order on the credit account (phase 4): charged, invoiced and sent to the kitchen at once.
+      if (useCredit && dueLaar > 0 && creditAvailableLaar >= dueLaar) {
+        await payOrderOnCredit(orderId);
+        loyaltyHeldForOrderId = null;
+        giftCardAttachedOrderId = null;
+        setPendingOrderId(null);
+        writeCheckoutAttempt(null);
+        navigate(`/orders/${orderId}`);
+        setIsPlacing(false);
+        return;
+      }
+
       // The wallet covers it all: the server takes it and completes the order (feature 12).
       if (useWallet && dueLaar > 0 && walletBalanceLaar >= dueLaar) {
         await payOrderFromWallet(orderId);
@@ -1577,7 +1613,8 @@ export function useCheckout() {
     partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,
     gift, setGift,
-    walletBalanceLaar, useWallet, setUseWallet, walletPartLaar,
+    walletBalanceLaar, useWallet, setUseWallet: chooseWallet, walletPartLaar,
+    creditAvailableLaar, creditTermsDays, useCredit, setUseCredit,
     savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress, markAddressAsNew,
     saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,

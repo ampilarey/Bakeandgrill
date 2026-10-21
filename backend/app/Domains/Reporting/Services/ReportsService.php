@@ -996,12 +996,17 @@ class ReportsService
             ->selectRaw('COALESCE(SUM(ABS(amount_laar)), 0) as t')->value('t');
         $transfersLaar = (int) (clone $base)->where('type', 'transfer_to_credit')
             ->selectRaw('COALESCE(SUM(ABS(amount_laar)), 0) as t')->value('t');
+        // Bonuses the business gave on top-ups (phase 4): liability without money in.
+        $bonusLaar = (int) (clone $base)->where('type', 'bonus')
+            ->selectRaw('COALESCE(SUM(ABS(amount_laar)), 0) as t')->value('t');
 
         return [
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
             'received_laar' => $receivedLaar,
             'received' => round($receivedLaar / 100, 2),
+            'bonus_laar' => $bonusLaar,
+            'bonus' => round($bonusLaar / 100, 2),
             'used_laar' => $usedLaar,
             'used' => round($usedLaar / 100, 2),
             'payouts_laar' => $payoutsLaar,

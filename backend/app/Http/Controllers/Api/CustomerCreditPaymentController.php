@@ -4,12 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Credit\Services\CreditEligibilityService;
 use App\Domains\Credit\Services\CreditPaymentService;
+use App\Domains\Credit\Services\CreditPolicy;
+use App\Domains\Credit\Services\CustomerCreditService;
+use App\Domains\Deposits\Support\DepositHolds;
+use App\Domains\Deposits\Support\WalletActor;
+use App\Domains\Payments\Services\PaymentService;
 use App\Http\Controllers\Controller;
 use App\Models\CreditPayment;
 use App\Models\Customer;
+use App\Models\Order;
+use App\Models\Payment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The credit account paid online from the order app (owner, 2026-10-21):
@@ -50,6 +59,59 @@ class CustomerCreditPaymentController extends Controller
             'credit_payment' => $this->presentPayment($result['credit_payment']),
             'payment_url' => $result['payment_url'],
         ], 201);
+    }
+
+    /**
+     * POST /api/customer/orders/{id}/pay-credit (phase 4, owner 2026-10-21):
+     * an online order charged to the customer's credit account, as a till
+     * sale on account is. The invoice is raised, the "charged" text goes
+     * with the order's confirmation, and the kitchen gets the order at once.
+     */
+    public function payOrder(
+        Request $request,
+        int $id,
+        PaymentService $payments,
+        CreditEligibilityService $eligibility,
+        CustomerCreditService $credit,
+    ): JsonResponse {
+        $customer = $this->customer($request);
+        $order = Order::query()->findOrFail($id);
+        abort_unless((int) $order->customer_id === (int) $customer->id, 403, 'Not your order.');
+        if (in_array($order->status, ['paid', 'completed', 'cancelled'], true) || $order->payment_status === 'paid' || $payments->getRemainingBalanceLaar($order) <= 0) {
+            abort(422, 'This order is already paid.');
+        }
+        if (!CreditPolicy::onlineOrdersEnabled()) {
+            abort(422, 'Orders on account are not available online right now. Pay by card.');
+        }
+
+        DB::transaction(function () use ($order, $customer, $payments, $eligibility, $credit, $request): void {
+            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            // A wallet hold from an earlier tap is not wanted: the account takes it all.
+            DepositHolds::release($locked);
+            $due = $payments->getRemainingBalanceLaar($locked);
+            if ($due <= 0) {
+                return;
+            }
+            $fresh = $customer->fresh();
+            $eligibility->assertCanCharge($fresh, $due);
+            $payment = Payment::create([
+                'order_id' => $locked->id,
+                'method' => 'house_account',
+                'amount' => round($due / 100, 2),
+                'amount_laar' => $due,
+                'status' => 'paid',
+                'processed_at' => now(),
+                'idempotency_key' => 'credit:order:' . $locked->id . ':' . $due,
+            ]);
+            $credit->recordCharge($fresh, $locked, $payment, WalletActor::system(), $request);
+        });
+
+        $fresh = $payments->completeZeroBalanceOnlineOrder($order->id, (int) $customer->id);
+
+        return response()->json([
+            'order' => ['id' => $fresh->id, 'status' => $fresh->status, 'payment_status' => $fresh->payment_status],
+            'credit' => $credit->customerFacingSummary($customer->fresh()),
+        ]);
     }
 
     /** GET /api/customer/credit/payments/{token}: asks the bank while it is pending. */

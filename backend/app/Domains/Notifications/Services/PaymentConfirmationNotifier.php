@@ -98,7 +98,19 @@ class PaymentConfirmationNotifier
             ? DepositNotifier::walletNote((int) $account['wallet']['amount_laar'], (int) $account['wallet']['balance_laar'], $phone)
             : '';
 
-        if ($isOnline) {
+        if ($isOnline && $account['credit'] !== null && CreditAccountNotifier::chargedTextOn()) {
+            // An online order on the credit account (phase 4, owner
+            // 2026-10-21): the charged text (amount, due date, what is owed,
+            // the invoice to view or pay), with the ready hint and the
+            // tracking link the customer needs because they are not in the
+            // room. One order, one text.
+            $url = $this->buildOrderStatusUrl($order);
+            $readyHint = (string) $order->type === OrderType::Delivery->value
+                ? "We'll text when we're on the way."
+                : "We'll text when it's ready.";
+            $message = $this->credit->chargedText($order, $account['credit'], $phone) . ' ' . $readyHint . ' ' . $url;
+            $typeKey = CreditAccountNotifier::TYPE_CHARGED;
+        } elseif ($isOnline) {
             // Online pickup / delivery: customer isn't in the room, so
             // surface (a) HOW the payment cleared (BML / cash on
             // pickup / etc) so they have something to reference if

@@ -235,6 +235,10 @@ export type CustomerCreditSummary = {
   payment_terms_days: number;
   reminder_sms_enabled: boolean;
   next_payment_due_date: string | null;
+  /** The account paid from the wallet every night (phase 4, 2026-10-21). */
+  settle_from_wallet?: boolean;
+  /** An online order may go on the account (the owner's switch, and the account can take it). */
+  online_orders?: boolean;
 };
 
 export type CustomerCreditInvoice = {
@@ -257,7 +261,7 @@ export async function getCustomerCredit(): Promise<{
 }
 
 export async function updateCustomerCreditPreferences(
-  data: { credit_reminder_sms: boolean },
+  data: { credit_reminder_sms?: boolean; credit_settle_from_wallet?: boolean },
 ): Promise<{
   credit: CustomerCreditSummary & { open_invoices: CustomerCreditInvoice[] };
 }> {
@@ -325,6 +329,11 @@ export async function holdWalletForOrder(orderId: number): Promise<{ held_laar: 
 /** The wallet was unticked before paying by card: a hold from an earlier tap goes. */
 export async function releaseWalletHold(orderId: number): Promise<{ released: number }> {
   return request(`/customer/orders/${orderId}/hold-wallet`, { method: 'DELETE' });
+}
+
+/** An online order on the credit account (phase 4, 2026-10-21): charged and sent to the kitchen at once. */
+export async function payOrderOnCredit(orderId: number): Promise<{ order: { id: number; status: string; payment_status: string }; credit: CustomerCreditSummary }> {
+  return request(`/customer/orders/${orderId}/pay-credit`, { method: 'POST' });
 }
 
 // ── The credit account paid online as a whole (owner, 2026-10-21) ────────────
@@ -399,6 +408,9 @@ export type WalletTopUpRules = {
   used_today_mvr: number;
   max_balance_mvr: number | null;
   balance_mvr: number;
+  /** A bonus on top-ups (phase 4): this many percent extra on top-ups of at least bonus_min_mvr; 0 is off. */
+  bonus_percent?: number;
+  bonus_min_mvr?: number;
 };
 
 export type WalletTopUp = {

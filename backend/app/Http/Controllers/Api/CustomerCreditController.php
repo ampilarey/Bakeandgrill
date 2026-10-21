@@ -49,7 +49,9 @@ class CustomerCreditController extends Controller
         abort_unless($actor !== null, 401);
 
         $validated = $request->validate([
-            'action' => ['required', 'in:approve,disable,update_limit,set_status,update_terms,set_reminder_sms'],
+            'action' => ['required', 'in:approve,disable,update_limit,set_status,update_terms,set_reminder_sms,set_settle_from_wallet'],
+            // Phase 4 (owner, 2026-10-21): the account settled from the wallet every night.
+            'credit_settle_from_wallet' => ['nullable', 'boolean'],
             'credit_limit_laar' => ['nullable', 'integer', 'min:0'],
             'credit_limit_mvr' => ['nullable', 'numeric', 'min:0'],
             'credit_notes' => ['nullable', 'string', 'max:2000'],
@@ -110,6 +112,12 @@ class CustomerCreditController extends Controller
                 $actor,
                 $request,
             ),
+            'set_settle_from_wallet' => $this->credit->setSettleFromWallet(
+                $customer,
+                (bool) ($validated['credit_settle_from_wallet'] ?? false),
+                $actor,
+                $request,
+            ),
         };
 
         return response()->json(['customer' => $this->formatCredit($updated)]);
@@ -161,16 +169,21 @@ class CustomerCreditController extends Controller
         $validated = $request->validate([
             'amount_laar' => ['nullable', 'integer', 'min:1'],
             'amount_mvr' => ['nullable', 'numeric', 'min:0.01'],
-            'method' => ['required', 'in:cash,card,bank_transfer'],
+            // owner_cash (phase 4): cash the owner holds away from the till; owner only.
+            'method' => ['required', 'in:cash,card,bank_transfer,owner_cash'],
             'reference' => ['nullable', 'string', 'max:200'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'invoice_ids' => ['nullable', 'array'],
             'invoice_ids.*' => ['integer', 'exists:invoices,id'],
+            // Phase 4: more than is owed goes into the wallet in the same step.
+            'surplus_to_wallet' => ['sometimes', 'boolean'],
         ]);
 
         $amountLaar = isset($validated['amount_laar'])
             ? (int) $validated['amount_laar']
             : (int) round(((float) $validated['amount_mvr']) * 100);
+        $surplusToWallet = (bool) ($validated['surplus_to_wallet'] ?? false);
+        $owedBefore = max(0, (int) $customer->credit_balance_laar);
 
         $ledger = $this->credit->recordRepayment(
             $customer,
@@ -181,6 +194,7 @@ class CustomerCreditController extends Controller
             $validated['reference'] ?? null,
             $validated['notes'] ?? null,
             $request,
+            surplusToWallet: $surplusToWallet,
         );
 
         $customer->refresh();
@@ -188,6 +202,7 @@ class CustomerCreditController extends Controller
         return response()->json([
             'ledger' => $this->formatLedgerRow($ledger),
             'credit' => $this->formatCredit($customer->load('creditApprovedBy:id,name')),
+            'surplus_to_wallet_laar' => $surplusToWallet ? max(0, $amountLaar - $owedBefore) : 0,
         ], 201);
     }
 

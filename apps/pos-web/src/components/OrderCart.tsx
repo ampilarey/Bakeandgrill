@@ -187,6 +187,10 @@ type Props = {
   canApplyDiscount?: boolean;
   canUseRewards?: boolean;
   canSendBill?: boolean;
+  /** Take a credit repayment from the customer card (phase 4, owner 2026-10-21). */
+  canTakeRepayment?: boolean;
+  isOwner?: boolean;
+  canReceiveDeposit?: boolean;
 
   /** Owner-curated chip list of kitchen notes (e.g. "No salt"). The
    *  cashier taps one or more per cart line. Fetched from the public
@@ -1234,6 +1238,9 @@ export function OrderCart(p: Props) {
                 canApplyGiftCard={p.canApplyDiscount !== false}
                 scanRequest={p.scanRequest ?? null}
                 onScanRequest={p.onOpenScanner}
+                canTakeRepayment={p.canTakeRepayment === true}
+                isOwner={p.isOwner === true}
+                canReceiveDeposit={p.canReceiveDeposit === true}
               />
             )}
           </DiscountsModal>

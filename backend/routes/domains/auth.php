@@ -145,6 +145,8 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     // Part of an order from the wallet, the rest by card (owner, 2026-10-21): a hold until the bank confirms.
     Route::post('/orders/{id}/hold-wallet', [App\Http\Controllers\Api\CustomerWalletController::class, 'holdForOrder'])->whereNumber('id')->middleware('throttle:20,1');
     Route::delete('/orders/{id}/hold-wallet', [App\Http\Controllers\Api\CustomerWalletController::class, 'releaseHold'])->whereNumber('id')->middleware('throttle:20,1');
+    // An online order on the credit account (phase 4, owner 2026-10-21).
+    Route::post('/orders/{id}/pay-credit', [App\Http\Controllers\Api\CustomerCreditPaymentController::class, 'payOrder'])->whereNumber('id')->middleware('throttle:20,1');
     // The credit account paid online as a whole (owner, 2026-10-21): the statement, Pay now, and how it went.
     Route::get('/credit/statement', [App\Http\Controllers\Api\CustomerCreditPaymentController::class, 'statement']);
     Route::post('/credit/pay', [App\Http\Controllers\Api\CustomerCreditPaymentController::class, 'start'])->middleware('throttle:10,10');

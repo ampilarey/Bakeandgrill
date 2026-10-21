@@ -84,6 +84,17 @@ final class CreditPolicy
         return self::mode() !== self::MODE_CLOSED;
     }
 
+    /** The setting behind "Charge to my credit account" at online checkout (phase 4, owner 2026-10-21). */
+    public const ONLINE_ORDERS = 'credit_online_orders_enabled';
+
+    /** A customer with an active account may place an online order on it. */
+    public static function onlineOrdersEnabled(): bool
+    {
+        $raw = strtolower(trim((string) SiteSetting::get(self::ONLINE_ORDERS, '1')));
+
+        return !in_array($raw, ['0', 'false', 'off', ''], true) && self::acceptsNewCharges();
+    }
+
     /** Why an action was refused, in words a cashier can act on. */
     public static function closedMessage(): string
     {

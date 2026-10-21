@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Deposits\Services;
 
 use App\Domains\Credit\Services\CustomerCreditService;
+use App\Domains\Deposits\Support\WalletTopUpRules;
 use App\Models\CashMovement;
 use App\Models\Customer;
 use App\Models\CustomerDepositAccount;
@@ -68,6 +69,8 @@ final class DepositLedgerService
         ?Request $request = null,
         ?string $receiptUrl = null,
         ?int $paymentId = null,
+        bool $bonusEligible = true,
+        bool $notify = true,
     ): CustomerDepositLedger {
         $allowedMethods = ['cash', 'card', 'bank_transfer', 'online', 'bml'];
         if (!in_array($method, $allowedMethods, true)) {
@@ -78,7 +81,7 @@ final class DepositLedgerService
             abort(422, 'Top-up amount must be greater than zero.');
         }
 
-        return DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $reference, $notes, $request, $receiptUrl, $paymentId) {
+        return DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $reference, $notes, $request, $receiptUrl, $paymentId, $bonusEligible, $notify) {
             $account = CustomerDepositAccount::lockForUpdate()
                 ->firstOrCreate(
                     ['customer_id' => $customer->id],
@@ -128,18 +131,35 @@ final class DepositLedgerService
                 'notes' => $notes ?? $reference,
             ]);
 
+            // A bonus on the top-up (phase 4, owner 2026-10-21): a row of its
+            // own, so the books show the money that came in apart from the
+            // money the business gave. Never on money that only moved pots.
+            $bonusLaar = $bonusEligible ? WalletTopUpRules::bonusLaar($amountLaar) : 0;
+            if ($bonusLaar > 0) {
+                $bonusBefore = $newBalance;
+                $newBalance += $bonusLaar;
+                $account->update(['balance_laar' => $newBalance, 'updated_by' => $actor->id]);
+                $this->writeLedger($account, 'bonus', $bonusLaar, $bonusBefore, $newBalance, $actor, [
+                    'method' => 'bonus',
+                    'reference' => 'TOPUP-' . $ledger->id,
+                    'notes' => sprintf('%s%% bonus on a top-up of MVR %s', rtrim(rtrim(number_format(WalletTopUpRules::bonusPercent(), 2, '.', ''), '0'), '.'), number_format($amountLaar / 100, 2)),
+                ]);
+            }
+
             $this->audit->log(
                 'customer.deposit.top_up',
                 'Customer',
                 $customer->id,
                 ['balance_laar' => $balanceBefore],
-                ['balance_laar' => $newBalance, 'amount_laar' => $amountLaar, 'method' => $method, 'payment_id' => $paymentId],
+                ['balance_laar' => $newBalance, 'amount_laar' => $amountLaar, 'method' => $method, 'payment_id' => $paymentId, 'bonus_laar' => $bonusLaar],
                 ['ledger_id' => $ledger->id],
                 $request,
             );
 
-            // Owner, 2026-10-21: every wallet movement is told.
-            DB::afterCommit(fn () => app(DepositNotifier::class)->received($customer, $amountLaar, $method, $newBalance, $ledger->id, $receiptUrl));
+            // Owner, 2026-10-21: every wallet movement is told (one text, the bonus inside it).
+            if ($notify) {
+                DB::afterCommit(fn () => app(DepositNotifier::class)->received($customer, $amountLaar, $method, $newBalance, $ledger->id, $receiptUrl, $bonusLaar));
+            }
 
             return $ledger;
         });
@@ -729,7 +749,7 @@ final class DepositLedgerService
     public function activityTotals(int $customerId): array
     {
         $received = (int) CustomerDepositLedger::where('customer_id', $customerId)
-            ->whereIn('type', ['top_up', 'adjustment_add', 'reversal', 'refund'])
+            ->whereIn('type', ['top_up', 'adjustment_add', 'reversal', 'refund', 'bonus'])
             ->selectRaw('COALESCE(SUM(ABS(amount_laar)), 0) as t')
             ->value('t');
 

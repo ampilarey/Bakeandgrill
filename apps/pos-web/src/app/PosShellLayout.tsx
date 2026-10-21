@@ -642,6 +642,9 @@ export function PosShellLayout() {
               canApplyDiscount={canApplyDiscount}
               canUseRewards={canUseRewards}
               canSendBill={canSendBill}
+              canTakeRepayment={customerPerms.canCreditRepay && isReachable}
+              isOwner={customerPerms.isOwner}
+              canReceiveDeposit={customerPerms.canDepositReceive}
               onCheckout={() => {
                 // Pre-flight checks BEFORE opening the charge overlay.
                 // Once the overlay is up (z-index 900) it covers the

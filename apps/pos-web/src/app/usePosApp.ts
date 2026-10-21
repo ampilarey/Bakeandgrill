@@ -100,8 +100,11 @@ export function usePosApp() {
     canCreate: hasPosPermission(staffPermissions, "customers.create"),
     canCreditRepay: hasPosPermission(staffPermissions, "customers.credit.repay"),
     canDepositReceive: hasPosPermission(staffPermissions, "customers.deposit.receive"),
+    // Phase 4 (owner, 2026-10-21): deposit onto credit from the Customers tab, and cash the owner keeps away from the till.
+    canDepositTransfer: hasPosPermission(staffPermissions, "customers.deposit.transfer_credit"),
+    isOwner: staffRole === "owner",
     canSendSms: hasPosPermission(staffPermissions, "sms.campaigns.send"),
-  }), [staffPermissions, canManageCustomers]);
+  }), [staffPermissions, canManageCustomers, staffRole]);
   const canViewCustomers = canSeeCustomersTab(staffPermissions);
   const canCashInOut = hasPosPermission(staffPermissions, "payments.cash_in_out");
   /** Fix a recorded tender. Owner-only by default; the owner grants it to a role or a person. */

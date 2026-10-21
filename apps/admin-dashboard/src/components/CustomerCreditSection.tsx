@@ -26,9 +26,12 @@ const STATUS_COLOR: Record<string, 'green' | 'orange' | 'red' | 'gray'> = {
 };
 
 export function CustomerCreditSection({ customerId }: Props) {
-  const { can } = useCurrentUserPermissions();
+  const { can, user } = useCurrentUserPermissions();
   const canManage = can('customers.credit.manage');
   const canRepay = can('customers.credit.repay');
+  // Phase 4 (owner, 2026-10-21): the owner may record cash held away from the till.
+  const isOwner = (user as { role?: string } | null)?.role === 'owner';
+  const canReceiveDeposit = can('customers.deposit.receive');
 
   const [credit, setCredit] = useState<CustomerCreditInfo | null>(null);
   const [ledger, setLedger] = useState<CustomerCreditLedgerRow[]>([]);
@@ -47,8 +50,10 @@ export function CustomerCreditSection({ customerId }: Props) {
   const [limitReason, setLimitReason] = useState('');
 
   const [repayAmount, setRepayAmount] = useState('');
-  const [repayMethod, setRepayMethod] = useState<'cash' | 'card' | 'bank_transfer'>('cash');
+  const [repayMethod, setRepayMethod] = useState<'cash' | 'card' | 'bank_transfer' | 'owner_cash'>('cash');
   const [repayReference, setRepayReference] = useState('');
+  // Phase 4: more than is owed goes into the wallet in the same step.
+  const [repaySurplusToWallet, setRepaySurplusToWallet] = useState(true);
   const [repayNotes, setRepayNotes] = useState('');
   const [selectedInvoices, setSelectedInvoices] = useState<number[]>([]);
   const [showRepay, setShowRepay] = useState(false);
@@ -141,6 +146,13 @@ export function CustomerCreditSection({ customerId }: Props) {
       setError('Enter a valid repayment amount');
       return;
     }
+    const over = credit ? Math.round((amount - credit.balance_mvr) * 100) / 100 : 0;
+    if (over > 0 && !(canReceiveDeposit && repaySurplusToWallet)) {
+      setError(canReceiveDeposit
+        ? `They owe MVR ${credit?.balance_mvr.toFixed(2)}; tick "put the extra into the wallet" or enter that or less.`
+        : `They owe MVR ${credit?.balance_mvr.toFixed(2)}; enter that or less.`);
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -150,6 +162,7 @@ export function CustomerCreditSection({ customerId }: Props) {
         reference: repayReference || undefined,
         notes: repayNotes || undefined,
         invoice_ids: selectedInvoices.length > 0 ? selectedInvoices : undefined,
+        ...(over > 0 ? { surplus_to_wallet: true } : {}),
       });
       setCredit(res.credit);
       setRepayAmount('');
@@ -425,6 +438,18 @@ export function CustomerCreditSection({ customerId }: Props) {
             </label>
           )}
 
+          {canManage && credit.enabled && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--color-text-secondary)' }} data-testid="credit-settle-from-wallet">
+              <input
+                type="checkbox"
+                checked={credit.settle_from_wallet === true}
+                onChange={(e) => void runAction({ action: 'set_settle_from_wallet', credit_settle_from_wallet: e.target.checked })}
+                disabled={saving}
+              />
+              Pay the balance from their wallet every night (what the wallet holds goes against what they owe; the customer is texted)
+            </label>
+          )}
+
           {openInvoices.length > 0 && (
             <div>
               <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Open invoices</p>
@@ -456,7 +481,19 @@ export function CustomerCreditSection({ customerId }: Props) {
                     <option value="cash">Cash</option>
                     <option value="card">Card</option>
                     <option value="bank_transfer">Transfer</option>
+                    {isOwner && <option value="owner_cash">Cash held by the owner (no till)</option>}
                   </select>
+                  {repayMethod === 'owner_cash' && (
+                    <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
+                      Cash you hold yourself, away from any till: no drawer is touched, and the repayments list shows it as cash held by the owner.
+                    </p>
+                  )}
+                  {canReceiveDeposit && Number.isFinite(parseFloat(repayAmount)) && parseFloat(repayAmount) > credit.balance_mvr + 0.004 && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }} data-testid="credit-repay-surplus">
+                      <input type="checkbox" checked={repaySurplusToWallet} onChange={(e) => setRepaySurplusToWallet(e.target.checked)} />
+                      Put the extra MVR {(parseFloat(repayAmount) - credit.balance_mvr).toFixed(2)} into their wallet
+                    </label>
+                  )}
                   <input style={inputFont(inputStyle)} value={repayReference} onChange={(e) => setRepayReference(e.target.value)} placeholder="Reference (optional)" />
                   <textarea style={inputFont({ ...inputStyle, height: 50, resize: 'vertical' })} value={repayNotes} onChange={(e) => setRepayNotes(e.target.value)} placeholder="Notes (optional)" />
                   {openInvoices.length > 0 && (

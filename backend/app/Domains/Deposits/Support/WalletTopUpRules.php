@@ -36,6 +36,11 @@ final class WalletTopUpRules
     /** A card top-up at or above this texts the owners (the "When it sends" of owner_deposit_large_topup). */
     public const OWNER_ALERT = 'wallet_topup_owner_alert_mvr';
 
+    /** A bonus on every top-up (phase 4): this many percent extra, on top-ups of at least BONUS_MIN. 0 is off. */
+    public const BONUS_PERCENT = 'wallet_topup_bonus_percent';
+
+    public const BONUS_MIN = 'wallet_topup_bonus_min_mvr';
+
     public const DEFAULTS = [
         self::ENABLED => '1',
         self::PRESETS => '100,200,500,1000',
@@ -44,6 +49,8 @@ final class WalletTopUpRules
         self::DAILY_CAP => '10000',
         self::MAX_BALANCE => '20000',
         self::OWNER_ALERT => '2000',
+        self::BONUS_PERCENT => '0',
+        self::BONUS_MIN => '0',
     ];
 
     /** Every key, for the settings write list and the admin screen. */
@@ -55,7 +62,39 @@ final class WalletTopUpRules
         self::DAILY_CAP,
         self::MAX_BALANCE,
         self::OWNER_ALERT,
+        self::BONUS_PERCENT,
+        self::BONUS_MIN,
     ];
+
+    /** The bonus percent the owner set, 0 to 100. */
+    public static function bonusPercent(): float
+    {
+        $raw = SiteSetting::get(self::BONUS_PERCENT, self::DEFAULTS[self::BONUS_PERCENT]);
+        $pct = is_numeric($raw) ? (float) $raw : 0.0;
+
+        return $pct > 0 && $pct <= 100 ? round($pct, 2) : 0.0;
+    }
+
+    /** Top-ups of at least this much earn the bonus; 0 means every top-up. */
+    public static function bonusMinLaar(): int
+    {
+        return max(0, self::laar(self::BONUS_MIN));
+    }
+
+    /**
+     * What a top-up of this size earns on top (phase 4, owner 2026-10-21):
+     * the owner's percent, rounded down to the laari, once the top-up reaches
+     * the minimum. Nothing when the percent is 0.
+     */
+    public static function bonusLaar(int $amountLaar): int
+    {
+        $pct = self::bonusPercent();
+        if ($pct <= 0 || $amountLaar <= 0 || $amountLaar < self::bonusMinLaar()) {
+            return 0;
+        }
+
+        return (int) floor($amountLaar * $pct / 100);
+    }
 
     /** Pending top-ups this young count against the daily cap, so a burst of starts cannot pass it. */
     private const PENDING_COUNTS_FOR_MINUTES = 30;
@@ -236,6 +275,9 @@ final class WalletTopUpRules
             'used_today_mvr' => round($today / 100, 2),
             'max_balance_mvr' => self::maxBalanceLaar() > 0 ? round(self::maxBalanceLaar() / 100, 2) : null,
             'balance_mvr' => round($balance / 100, 2),
+            // The bonus on a top-up (phase 4): the app says what an amount earns.
+            'bonus_percent' => self::bonusPercent(),
+            'bonus_min_mvr' => round(self::bonusMinLaar() / 100, 2),
         ];
     }
 

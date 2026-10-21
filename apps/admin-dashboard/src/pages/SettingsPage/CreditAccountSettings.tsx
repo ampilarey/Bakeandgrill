@@ -47,6 +47,9 @@ const WALLET_DEFAULTS = {
   max: '5000',
   dailyCap: '10000',
   maxBalance: '20000',
+  // Phase 4: a bonus on top-ups (0 is off), from this amount up.
+  bonusPercent: '0',
+  bonusMin: '0',
 };
 
 const FIELD: React.CSSProperties = {
@@ -93,6 +96,10 @@ export function CreditAccountSettings() {
   const [maxTopUp, setMaxTopUp] = useState(WALLET_DEFAULTS.max);
   const [dailyCap, setDailyCap] = useState(WALLET_DEFAULTS.dailyCap);
   const [maxBalance, setMaxBalance] = useState(WALLET_DEFAULTS.maxBalance);
+  // Phase 4 (owner, 2026-10-21): a bonus on top-ups, and online orders on the credit account.
+  const [bonusPercent, setBonusPercent] = useState(WALLET_DEFAULTS.bonusPercent);
+  const [bonusMin, setBonusMin] = useState(WALLET_DEFAULTS.bonusMin);
+  const [onlineOrders, setOnlineOrders] = useState(true);
   // The chasing numbers (wholesale audit, 2026-09-26) are "When it sends" on
   // their alerts in Notifications since the re-audit of 2026-10-10.
   const [loading, setLoading] = useState(true);
@@ -122,6 +129,9 @@ export function CreditAccountSettings() {
         setMaxTopUp(map.wallet_topup_max_mvr ?? WALLET_DEFAULTS.max);
         setDailyCap(map.wallet_topup_daily_cap_mvr ?? WALLET_DEFAULTS.dailyCap);
         setMaxBalance(map.wallet_balance_max_mvr ?? WALLET_DEFAULTS.maxBalance);
+        setBonusPercent(map.wallet_topup_bonus_percent ?? WALLET_DEFAULTS.bonusPercent);
+        setBonusMin(map.wallet_topup_bonus_min_mvr ?? WALLET_DEFAULTS.bonusMin);
+        setOnlineOrders(isOn(map.credit_online_orders_enabled, '1'));
         setLoaded(true);
       })
       .catch((e: Error) => setError(e.message))
@@ -160,6 +170,12 @@ export function CreditAccountSettings() {
       setError('The daily cap and the most a wallet may hold must be numbers, zero or more (0 means no limit).');
       return;
     }
+    const bonusNum = Number(bonusPercent);
+    const bonusMinNum = Number(bonusMin);
+    if (!Number.isFinite(bonusNum) || bonusNum < 0 || bonusNum > 100 || !Number.isFinite(bonusMinNum) || bonusMinNum < 0) {
+      setError('The bonus must be a percent between 0 and 100, and the amount it starts from a number, zero or more.');
+      return;
+    }
     setSaving(true);
     setError('');
     setSaved(false);
@@ -168,12 +184,15 @@ export function CreditAccountSettings() {
         credit_limit_max_mvr: String(limitNum),
         credit_payment_terms_default_days: String(termsNum),
         credit_accounts_mode: mode,
+        credit_online_orders_enabled: onlineOrders ? '1' : '0',
         wallet_topup_enabled: walletOn ? '1' : '0',
         wallet_topup_presets: presetList.join(','),
         wallet_topup_min_mvr: String(minNum),
         wallet_topup_max_mvr: String(maxNum),
         wallet_topup_daily_cap_mvr: String(capNum),
         wallet_balance_max_mvr: String(ceilingNum),
+        wallet_topup_bonus_percent: String(bonusNum),
+        wallet_topup_bonus_min_mvr: String(bonusMinNum),
       });
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2500);
@@ -266,6 +285,22 @@ export function CreditAccountSettings() {
             </div>
           </div>
 
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <span style={{ ...LABEL, marginBottom: 2 }}>Online orders on account</span>
+              <p style={{ ...HINT, margin: 0 }}>
+                A customer with an active credit account may put an online order on it at checkout, within their limit. The
+                invoice and the "charged" text go as for a till sale. Off, online orders are paid by card or wallet only.
+              </p>
+            </div>
+            <Switch
+              checked={onlineOrders}
+              onChange={setOnlineOrders}
+              aria-label="Online orders may go on the credit account"
+              data-testid="credit-online-orders"
+            />
+          </div>
+
           <div data-testid="credit-chasing-link">
             <span style={{ ...LABEL, marginBottom: 2 }}>Chasing</span>
             <p style={{ ...HINT, margin: 0 }}>
@@ -331,6 +366,25 @@ export function CreditAccountSettings() {
               <label style={LABEL} htmlFor="wallet-max-balance">Most a wallet may hold (MVR)</label>
               <input id="wallet-max-balance" data-testid="wallet-max-balance" value={maxBalance} onChange={(e) => setMaxBalance(e.target.value)} inputMode="decimal" style={inputFont(FIELD)} />
             </div>
+          </div>
+
+          <div data-testid="wallet-bonus">
+            <span style={LABEL}>Bonus on top-ups</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 12 }}>
+              <div>
+                <label style={LABEL} htmlFor="wallet-bonus-percent">Extra (%)</label>
+                <input id="wallet-bonus-percent" data-testid="wallet-bonus-percent" value={bonusPercent} onChange={(e) => setBonusPercent(e.target.value)} inputMode="decimal" style={inputFont(FIELD)} />
+              </div>
+              <div>
+                <label style={LABEL} htmlFor="wallet-bonus-min">On top-ups of at least (MVR)</label>
+                <input id="wallet-bonus-min" data-testid="wallet-bonus-min" value={bonusMin} onChange={(e) => setBonusMin(e.target.value)} inputMode="decimal" style={inputFont(FIELD)} />
+              </div>
+            </div>
+            <p style={HINT}>
+              0% is off. The bonus is a wallet row of its own on every top-up at or above the amount, by card from the app or
+              a link and at the counter alike, and the customer's text says so. Money that only moves pots (a refund, a gift
+              card, the extra from a credit repayment) earns none. The app tells customers what a top-up earns.
+            </p>
           </div>
           <p style={{ ...HINT, margin: 0 }}>
             0 means no limit. Only a customer whose number was checked with a code may add money; a wallet on hold takes none.

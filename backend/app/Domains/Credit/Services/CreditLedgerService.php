@@ -289,6 +289,47 @@ final class CreditLedgerService
         return $customer->fresh();
     }
 
+    /**
+     * Settle the account from the wallet every night (phase 4, owner
+     * 2026-10-21): staff set it on the account, with an audit row.
+     */
+    public function setSettleFromWallet(Customer $customer, bool $enabled, User $actor, ?Request $request = null): Customer
+    {
+        if (!$customer->credit_enabled) {
+            abort(422, 'Customer is not approved for credit.');
+        }
+
+        return DB::transaction(function () use ($customer, $enabled, $request) {
+            $locked = Customer::lockForUpdate()->findOrFail($customer->id);
+            $old = $this->eligibility->creditSummary($locked);
+            $locked->update(['credit_settle_from_wallet' => $enabled]);
+
+            $this->audit->log(
+                'customer.credit.settle_from_wallet_updated',
+                'Customer',
+                $locked->id,
+                $old,
+                $this->eligibility->creditSummary($locked->fresh()),
+                ['credit_settle_from_wallet' => $enabled],
+                $request,
+            );
+
+            return $locked->fresh();
+        });
+    }
+
+    /** The same switch, set by the customer in the order app. */
+    public function updateCustomerSettleFromWallet(Customer $customer, bool $enabled): Customer
+    {
+        if (!$customer->credit_enabled) {
+            abort(422, 'Credit account is not active.');
+        }
+
+        $customer->update(['credit_settle_from_wallet' => $enabled]);
+
+        return $customer->fresh();
+    }
+
     public function setStatus(
         Customer $customer,
         string $status,
@@ -573,25 +614,39 @@ final class CreditLedgerService
         ?Request $request = null,
         ?int $tradeAccountId = null,
         ?string $source = null,
+        bool $surplusToWallet = false,
     ): CustomerCreditLedger {
-        $allowedMethods = ['cash', 'card', 'bank_transfer'];
+        // owner_cash (phase 4, owner 2026-10-21): cash the owner took away
+        // from the till. No drawer, no cash movement; it shows in the
+        // repayments list as cash held by the owner.
+        $allowedMethods = ['cash', 'card', 'bank_transfer', 'owner_cash'];
         if (!in_array($method, $allowedMethods, true)) {
             abort(422, 'Invalid repayment method.');
+        }
+        if ($method === 'owner_cash' && $actor->role?->slug !== 'owner') {
+            abort(422, 'Only the owner can record cash held away from the till. Open a shift and take it as cash.');
         }
 
         if ($amountLaar <= 0) {
             abort(422, 'Repayment amount must be greater than zero.');
         }
 
-        return DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $invoiceIds, $reference, $notes, $request, $tradeAccountId, $source) {
+        return DB::transaction(function () use ($customer, $amountLaar, $method, $actor, $invoiceIds, $reference, $notes, $request, $tradeAccountId, $source, $surplusToWallet) {
             $locked = Customer::lockForUpdate()->findOrFail($customer->id);
             $balance = (int) $locked->credit_balance_laar;
 
+            // More than is owed (phase 4): the balance is repaid and the rest
+            // goes into the wallet in the same step, when the caller asked.
+            $toWallet = 0;
             if ($amountLaar > $balance) {
-                abort(422, sprintf(
-                    'Repayment exceeds outstanding balance (MVR %.2f).',
-                    max(0, $balance) / 100,
-                ));
+                if (!$surplusToWallet || $tradeAccountId !== null || $balance <= 0) {
+                    abort(422, sprintf(
+                        'Repayment exceeds outstanding balance (MVR %.2f).',
+                        max(0, $balance) / 100,
+                    ));
+                }
+                $toWallet = $amountLaar - $balance;
+                $amountLaar = $balance;
             }
 
             $shift = null;
@@ -652,11 +707,28 @@ final class CreditLedgerService
                 $request,
             );
 
+            // The extra into the wallet, quietly: the repayment text below says so.
+            $walletNote = '';
+            if ($toWallet > 0) {
+                app(\App\Domains\Deposits\Services\DepositLedgerService::class)->topUp(
+                    $locked->fresh(),
+                    $toWallet,
+                    $method === 'owner_cash' ? 'cash' : $method,
+                    $actor,
+                    $reference,
+                    'The extra from a credit repayment of MVR ' . number_format(($amountLaar + $toWallet) / 100, 2),
+                    $request,
+                    bonusEligible: false,
+                    notify: false,
+                );
+                $walletNote = ' MVR ' . number_format($toWallet / 100, 2, '.', ',') . ' extra is in your wallet.';
+            }
+
             // Owner, 2026-10-21: the customer hears that the money arrived and
             // what is left. A wholesale shop has texts of its own.
             if ($tradeAccountId === null) {
                 $fresh = $locked->fresh();
-                DB::afterCommit(fn () => $this->notifier->repaymentReceived($fresh, $amountLaar, $method, $newBalance, $source, $ledger->id));
+                DB::afterCommit(fn () => $this->notifier->repaymentReceived($fresh, $amountLaar, $method, $newBalance, $source, $ledger->id, $walletNote));
             }
 
             return $ledger;

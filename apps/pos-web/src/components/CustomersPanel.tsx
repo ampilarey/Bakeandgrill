@@ -12,6 +12,7 @@ import {
   searchCustomers,
   sendCustomerSms,
   sendDepositTopUpLink,
+  transferDepositToCredit,
   updateCustomerDetail,
   updateCustomerFromPos,
 } from "../api";
@@ -45,6 +46,10 @@ export type CustomersPanelPermissions = {
   canCreate: boolean;
   canCreditRepay: boolean;
   canDepositReceive: boolean;
+  /** Deposit money onto the credit balance from here (phase 4, owner 2026-10-21). */
+  canDepositTransfer?: boolean;
+  /** The owner may record cash held away from the till. */
+  isOwner?: boolean;
   canSendSms: boolean;
 };
 
@@ -295,7 +300,7 @@ function CustomerCard({ id, listRow, perms, onStartOrder, onSaved, onMoneyRecord
   const [summary, setSummary] = useState<PosCustomerSummary | null>(null);
   const [err, setErr] = useState("");
   const [notice, setNotice] = useState("");
-  const [mode, setMode] = useState<null | "edit" | "phone" | "sms" | "repay" | "topup" | "topuplink">(null);
+  const [mode, setMode] = useState<null | "edit" | "phone" | "sms" | "repay" | "transfer" | "topup" | "topuplink">(null);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -437,15 +442,42 @@ function CustomerCard({ id, listRow, perms, onStartOrder, onSaved, onMoneyRecord
           <Stat label="Owes" value={`MVR ${(credit.balance_laar / 100).toFixed(2)}`} strong={credit.balance_laar > 0} />
           <Stat label="Limit" value={`MVR ${(credit.limit_laar / 100).toFixed(2)}`} />
           <Stat label="Available" value={`MVR ${(credit.available_laar / 100).toFixed(2)}`} />
-          {perms.canCreditRepay && credit.balance_laar > 0 && mode !== "repay" && (
-            <button type="button" onClick={() => setMode("repay")} style={{ ...secondaryBtn, marginTop: 8 }}>Record repayment</button>
+          {credit.balance_laar > 0 && mode !== "repay" && mode !== "transfer" && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              {perms.canCreditRepay && (
+                <button type="button" onClick={() => setMode("repay")} style={secondaryBtn}>Record repayment</button>
+              )}
+              {/* Phase 4 (owner, 2026-10-21): deposit money onto the balance, here as in Admin. */}
+              {perms.canDepositTransfer && (deposit?.balance_laar ?? 0) > 0 && deposit?.status === "active" && (
+                <button type="button" onClick={() => setMode("transfer")} style={secondaryBtn} data-testid="customer-pay-from-deposit">Pay from deposit</button>
+              )}
+            </div>
           )}
           {mode === "repay" && (
             <MoneyForm
               title="Credit repayment"
               max={credit.balance_laar / 100}
+              allowOwnerCash={perms.isOwner === true}
+              surplusToWallet={perms.canDepositReceive}
               onCancel={() => setMode(null)}
-              onSave={async (p) => { await recordCreditRepayment(id, p); onMoneyRecorded(); done(`Repayment of MVR ${p.amount_mvr.toFixed(2)} recorded.`); }}
+              onSave={async (p) => {
+                const res = await recordCreditRepayment(id, p);
+                onMoneyRecorded();
+                const extra = (res?.surplus_to_wallet_laar ?? 0) / 100;
+                done(`Repayment of MVR ${Math.min(p.amount_mvr, credit.balance_laar / 100).toFixed(2)} recorded.${extra > 0 ? ` MVR ${extra.toFixed(2)} went into their wallet.` : ""}`);
+              }}
+            />
+          )}
+          {mode === "transfer" && deposit && (
+            <TransferForm
+              owed={credit.balance_laar / 100}
+              deposit={deposit.balance_laar / 100}
+              onCancel={() => setMode(null)}
+              onSave={async (amountMvr) => {
+                await transferDepositToCredit(id, { amount_mvr: amountMvr });
+                onMoneyRecorded();
+                done(`MVR ${amountMvr.toFixed(2)} moved from their deposit onto the credit balance.`);
+              }}
             />
           )}
         </Section>
@@ -454,7 +486,8 @@ function CustomerCard({ id, listRow, perms, onStartOrder, onSaved, onMoneyRecord
       {deposit && (deposit.has_account || perms.canDepositReceive) && (
         <Section title="Deposit">
           {deposit.has_account && <Stat label="Status" value={deposit.status} />}
-          <Stat label="Balance" value={`MVR ${(deposit.balance_laar / 100).toFixed(2)}`} />
+          <Stat label="Balance" value={`MVR ${(deposit.balance_laar / 100).toFixed(2)}${(deposit.held_laar ?? 0) > 0 ? ` (MVR ${((deposit.held_laar ?? 0) / 100).toFixed(2)} on hold)` : ""}`} />
+          {deposit.wallet_first && <Stat label="At checkout" value="Wallet first" />}
           {perms.canDepositReceive && deposit.status !== "frozen" && mode !== "topup" && mode !== "topuplink" && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
               <button type="button" onClick={() => setMode("topup")} style={secondaryBtn}>Add deposit</button>
@@ -578,43 +611,101 @@ function SmsForm({ to, onCancel, onSend }: { to: string; onCancel: () => void; o
   );
 }
 
-function MoneyForm({ title, max, onCancel, onSave }: {
+/**
+ * Money taken for a credit repayment or a deposit top-up. Phase 4 (owner,
+ * 2026-10-21): the owner may record cash held away from the till (no
+ * drawer), and a repayment larger than what is owed may put the extra into
+ * the wallet in the same step (surplusToWallet), which the sale screen's
+ * Take repayment uses too.
+ */
+export function MoneyForm({ title, max, allowOwnerCash = false, surplusToWallet = false, onCancel, onSave }: {
   title: string;
   max?: number;
+  allowOwnerCash?: boolean;
+  surplusToWallet?: boolean;
   onCancel: () => void;
-  onSave: (p: { amount_mvr: number; method: TillMoneyMethod; reference?: string }) => Promise<void>;
+  onSave: (p: { amount_mvr: number; method: TillMoneyMethod; reference?: string; surplus_to_wallet?: boolean }) => Promise<void>;
 }) {
   const [amount, setAmount] = useState(max != null ? max.toFixed(2) : "");
   const [method, setMethod] = useState<TillMoneyMethod>("cash");
   const [reference, setReference] = useState("");
+  const [extraToWallet, setExtraToWallet] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const typed = Number.parseFloat(amount);
+  const over = max != null && Number.isFinite(typed) && typed > max + 0.004 ? Math.round((typed - max) * 100) / 100 : 0;
+  const save = async () => {
+    const n = Number.parseFloat(amount);
+    if (!Number.isFinite(n) || n <= 0) { setErr("Enter an amount above zero."); return; }
+    if (over > 0 && !(surplusToWallet && extraToWallet)) {
+      setErr(surplusToWallet ? `They owe MVR ${max!.toFixed(2)}; tick "put the extra into their wallet" or enter that or less.` : `They owe MVR ${max!.toFixed(2)}; enter that or less.`);
+      return;
+    }
+    if (method !== "cash" && method !== "owner_cash" && reference.trim() === "") { setErr("Add the card slip or transfer reference."); return; }
+    setBusy(true); setErr("");
+    try {
+      await onSave({
+        amount_mvr: Math.round(n * 100) / 100,
+        method,
+        reference: reference.trim() || undefined,
+        ...(over > 0 ? { surplus_to_wallet: true } : {}),
+      });
+    }
+    catch (e) { setErr((e as Error).message || "Could not record it."); }
+    finally { setBusy(false); }
+  };
+  const methods: TillMoneyMethod[] = allowOwnerCash ? ["cash", "card", "bank_transfer", "owner_cash"] : ["cash", "card", "bank_transfer"];
+  const methodWord = (m: TillMoneyMethod) => m === "bank_transfer" ? "Transfer" : m === "card" ? "Card" : m === "owner_cash" ? "Cash (owner, no till)" : "Cash";
+  return (
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #E2E8F0", display: "grid", gap: 8 }} data-testid="customer-money-form">
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A" }}>{title}</div>
+      <label style={label}>Amount (MVR)<input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} style={field} /></label>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {methods.map((m) => (
+          <Chip key={m} on={method === m} onClick={() => setMethod(m)}>{methodWord(m)}</Chip>
+        ))}
+      </div>
+      {method === "cash" ? (
+        <div style={{ fontSize: 11, color: "#64748B" }}>Cash goes into your open shift's drawer.</div>
+      ) : method === "owner_cash" ? (
+        <div style={{ fontSize: 11, color: "#64748B" }}>Cash you hold yourself, away from any till. No drawer is touched; it shows in the repayments list as cash held by the owner.</div>
+      ) : (
+        <label style={label}>Reference<input value={reference} onChange={(e) => setReference(e.target.value)} style={field} placeholder={method === "card" ? "Card slip number" : "Transfer reference"} /></label>
+      )}
+      {surplusToWallet && over > 0 && (
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#0F172A" }} data-testid="customer-money-surplus">
+          <input type="checkbox" checked={extraToWallet} onChange={(e) => setExtraToWallet(e.target.checked)} />
+          Put the extra MVR {over.toFixed(2)} into their wallet
+        </label>
+      )}
+      {err && <div style={errorBox}>{err}</div>}
+      <FormButtons busy={busy} onCancel={onCancel} onSave={() => void save()} saveLabel="Record" />
+    </div>
+  );
+}
+
+/** Deposit money onto the credit balance (phase 4): the amount, capped by both pots. */
+function TransferForm({ owed, deposit, onCancel, onSave }: { owed: number; deposit: number; onCancel: () => void; onSave: (amountMvr: number) => Promise<void> }) {
+  const most = Math.min(owed, deposit);
+  const [amount, setAmount] = useState(most.toFixed(2));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const save = async () => {
     const n = Number.parseFloat(amount);
     if (!Number.isFinite(n) || n <= 0) { setErr("Enter an amount above zero."); return; }
-    if (max != null && n > max + 0.004) { setErr(`They owe MVR ${max.toFixed(2)}; enter that or less.`); return; }
-    if (method !== "cash" && reference.trim() === "") { setErr("Add the card slip or transfer reference."); return; }
+    if (n > most + 0.004) { setErr(`At most MVR ${most.toFixed(2)}: what they owe, or what the deposit holds.`); return; }
     setBusy(true); setErr("");
-    try { await onSave({ amount_mvr: Math.round(n * 100) / 100, method, reference: reference.trim() || undefined }); }
-    catch (e) { setErr((e as Error).message || "Could not record it."); }
+    try { await onSave(Math.round(n * 100) / 100); }
+    catch (e) { setErr((e as Error).message || "Could not move it."); }
     finally { setBusy(false); }
   };
   return (
-    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #E2E8F0", display: "grid", gap: 8 }} data-testid="customer-money-form">
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A" }}>{title}</div>
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #E2E8F0", display: "grid", gap: 8 }} data-testid="customer-transfer-form">
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A" }}>Pay the credit balance from the deposit</div>
+      <div style={{ fontSize: 11, color: "#64748B" }}>They owe MVR {owed.toFixed(2)}; the deposit holds MVR {deposit.toFixed(2)}. The customer is texted what is left.</div>
       <label style={label}>Amount (MVR)<input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} style={field} /></label>
-      <div style={{ display: "flex", gap: 6 }}>
-        {(["cash", "card", "bank_transfer"] as TillMoneyMethod[]).map((m) => (
-          <Chip key={m} on={method === m} onClick={() => setMethod(m)}>{m === "bank_transfer" ? "Transfer" : m === "card" ? "Card" : "Cash"}</Chip>
-        ))}
-      </div>
-      {method === "cash" ? (
-        <div style={{ fontSize: 11, color: "#64748B" }}>Cash goes into your open shift's drawer.</div>
-      ) : (
-        <label style={label}>Reference<input value={reference} onChange={(e) => setReference(e.target.value)} style={field} placeholder={method === "card" ? "Card slip number" : "Transfer reference"} /></label>
-      )}
       {err && <div style={errorBox}>{err}</div>}
-      <FormButtons busy={busy} onCancel={onCancel} onSave={() => void save()} saveLabel="Record" />
+      <FormButtons busy={busy} onCancel={onCancel} onSave={() => void save()} saveLabel="Move" />
     </div>
   );
 }

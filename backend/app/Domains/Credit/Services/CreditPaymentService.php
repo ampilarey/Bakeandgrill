@@ -217,6 +217,7 @@ final class CreditPaymentService
                 null,
                 null,
                 $payment->id,
+                bonusEligible: false,
             );
         }
 

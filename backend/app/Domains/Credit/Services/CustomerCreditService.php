@@ -145,6 +145,18 @@ class CustomerCreditService
         return $this->ledger->updateCustomerReminderPreference($customer, $enabled);
     }
 
+    /** Settle the account from the wallet every night (phase 4): set by staff. */
+    public function setSettleFromWallet(Customer $customer, bool $enabled, User $actor, ?Request $request = null): Customer
+    {
+        return $this->ledger->setSettleFromWallet($customer, $enabled, $actor, $request);
+    }
+
+    /** The same switch, set by the customer. */
+    public function updateCustomerSettleFromWallet(Customer $customer, bool $enabled): Customer
+    {
+        return $this->ledger->updateCustomerSettleFromWallet($customer, $enabled);
+    }
+
     public function setStatus(
         Customer $customer,
         string $status,
@@ -178,6 +190,7 @@ class CustomerCreditService
         ?Request $request = null,
         ?int $tradeAccountId = null,
         ?string $source = null,
+        bool $surplusToWallet = false,
     ): CustomerCreditLedger {
         return $this->ledger->recordRepayment(
             $customer,
@@ -190,6 +203,7 @@ class CustomerCreditService
             $request,
             $tradeAccountId,
             $source,
+            $surplusToWallet,
         );
     }
 

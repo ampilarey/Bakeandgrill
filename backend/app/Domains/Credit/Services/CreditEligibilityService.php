@@ -44,6 +44,10 @@ final class CreditEligibilityService
             'payment_terms_days' => (int) $summary['payment_terms_days'],
             'reminder_sms_enabled' => (bool) $summary['reminder_sms_enabled'],
             'next_payment_due_date' => $summary['next_payment_due_date'],
+            // Phase 4: the account settled from the wallet every night, and
+            // whether an online order may go on the account.
+            'settle_from_wallet' => (bool) $summary['settle_from_wallet'],
+            'online_orders' => CreditPolicy::onlineOrdersEnabled() && (bool) $summary['can_charge'],
         ];
     }
 
@@ -72,6 +76,7 @@ final class CreditEligibilityService
             'accepts_new_charges' => CreditPolicy::acceptsNewCharges(),
             'payment_terms_days' => (int) ($customer->credit_payment_terms_days ?? self::DEFAULT_PAYMENT_TERMS_DAYS),
             'reminder_sms_enabled' => (bool) ($customer->credit_reminder_sms ?? true),
+            'settle_from_wallet' => (bool) ($customer->credit_settle_from_wallet ?? false),
             'next_payment_due_date' => $nextDue,
         ];
     }

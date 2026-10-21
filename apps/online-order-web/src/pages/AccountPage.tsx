@@ -689,6 +689,31 @@ export function AccountPage() {
                     </p>
                   </SectionCard>
 
+                  <SectionCard title={t('credit.settle_title')}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={credit.settle_from_wallet === true}
+                        disabled={reminderSaving || !isAuthenticated}
+                        data-testid="credit-settle-toggle"
+                        onChange={(e) => {
+                          if (!isAuthenticated) return;
+                          const on = e.target.checked;
+                          setReminderSaving(true);
+                          setCreditError('');
+                          updateCustomerCreditPreferences({ credit_settle_from_wallet: on })
+                            .then((res) => setCredit(res.credit))
+                            .catch((err: Error) => setCreditError(err.message || t('account.err_credit_pref')))
+                            .finally(() => setReminderSaving(false));
+                        }}
+                      />
+                      {t('credit.settle_label')}
+                    </label>
+                    <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      {t('credit.settle_hint')}
+                    </p>
+                  </SectionCard>
+
                   <SectionCard title={t('account.credit_invoices')}>
                     {credit.open_invoices.length === 0 ? (
                       <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>{t('account.credit_invoices_empty')}</p>

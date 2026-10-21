@@ -196,6 +196,13 @@ Schedule::command('credit:send-statements')
     ->onFailure($alertOnFailure('credit:send-statements'))
     ->after($trackSuccess('credit:send-statements'));
 
+// Phase 4 (owner, 2026-10-21): customers who asked have their credit paid
+// from their wallet at the end of the day.
+Schedule::command('credit:settle-from-wallet')
+    ->dailyAt('23:40')
+    ->onFailure($alertOnFailure('credit:settle-from-wallet'))
+    ->after($trackSuccess('credit:settle-from-wallet'));
+
 // Wholesale chasing (audit, 2026-09-26): owners hear about money 30/60 days
 // late, shops are nudged to report sales, stale deliveries reach the owners,
 // billing cycles prompt an invoice, and every shop gets a monthly statement.

@@ -4,8 +4,10 @@ import {
   fetchCustomerSummary,
   previewLoyaltyRedeem,
   previewPromoForCart,
+  recordCreditRepayment,
 } from "../api";
 import type { PosCustomer, PosCustomerSummary } from "../api";
+import { MoneyForm } from "./CustomersPanel";
 import type { PromoPreviewLine } from "../api/loyalty";
 import { removeGiftCardFromOrder } from "../api/loyalty";
 import { previewGiftCardDiscount } from "../utils/giftCardPreview";
@@ -60,6 +62,15 @@ type Props = {
   scanRequest?: ScanRequest | null;
   /** Open the camera for one of the code fields. */
   onScanRequest?: (target: "promo" | "gift") => void;
+  /**
+   * Take a credit repayment right here (phase 4, owner 2026-10-21: the card
+   * used to send cashiers to Admin for it). customers.credit.repay.
+   */
+  canTakeRepayment?: boolean;
+  /** The owner may record cash held away from the till. */
+  isOwner?: boolean;
+  /** A repayment larger than what is owed may put the extra into the wallet. */
+  canReceiveDeposit?: boolean;
 };
 
 const COLOR = {
@@ -107,10 +118,17 @@ export function CustomerRewardsPanel({
   embedded = false,
   scanRequest = null,
   onScanRequest,
+  canTakeRepayment = false,
+  isOwner = false,
+  canReceiveDeposit = false,
 }: Props) {
   const [summary, setSummary] = useState<PosCustomerSummary | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState("");
+  // Bumped after a repayment taken here, so the figures refresh.
+  const [summaryTick, setSummaryTick] = useState(0);
+  const [repaying, setRepaying] = useState(false);
+  const [repayDone, setRepayDone] = useState("");
   // Collapsed by default — expand when the cashier needs rewards.
   const [expanded, setExpanded] = useState(false);
 
@@ -146,7 +164,7 @@ export function CustomerRewardsPanel({
       .catch((err: Error) => { if (!cancelled) setSummaryError(err.message); })
       .finally(() => { if (!cancelled) setLoadingSummary(false); });
     return () => { cancelled = true; };
-  }, [customer]);
+  }, [customer, summaryTick]);
 
   const lifetimeOrders = summary?.lifetime.orders_count ?? 0;
   const isVip = Boolean(summary?.is_vip ?? summary?.customer.is_vip);
@@ -428,9 +446,40 @@ export function CustomerRewardsPanel({
                     }
                   />
                 )}
-                {creditEnabled && creditBalanceMvr > 0 && (
+                {creditEnabled && creditBalanceMvr > 0 && canTakeRepayment && customer && !repaying && (
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <button
+                      type="button"
+                      onClick={() => { setRepaying(true); setRepayDone(""); }}
+                      data-testid="rewards-take-repayment"
+                      style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${COLOR.border}`, background: COLOR.card, color: COLOR.text, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Take repayment
+                    </button>
+                    {repayDone && <span style={{ marginLeft: 8, fontSize: 11, color: COLOR.success, fontWeight: 700 }}>{repayDone}</span>}
+                  </div>
+                )}
+                {creditEnabled && creditBalanceMvr > 0 && !canTakeRepayment && (
                   <div style={{ gridColumn: "1 / -1", fontSize: 11, color: COLOR.subtle, fontStyle: "italic" }}>
-                    Record a repayment on the Customers tab; the customer can also pay online from the order app.
+                    Repayments are taken on the Customers tab; the customer can also pay online from the order app.
+                  </div>
+                )}
+                {repaying && customer && (
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <MoneyForm
+                      title="Credit repayment"
+                      max={creditBalanceMvr}
+                      allowOwnerCash={isOwner}
+                      surplusToWallet={canReceiveDeposit}
+                      onCancel={() => setRepaying(false)}
+                      onSave={async (p) => {
+                        const res = await recordCreditRepayment(customer.id, p);
+                        const extra = (res?.surplus_to_wallet_laar ?? 0) / 100;
+                        setRepayDone(`MVR ${Math.min(p.amount_mvr, creditBalanceMvr).toFixed(2)} taken.${extra > 0 ? ` MVR ${extra.toFixed(2)} into their wallet.` : ""}`);
+                        setRepaying(false);
+                        setSummaryTick((n) => n + 1);
+                      }}
+                    />
                   </div>
                 )}
                 {lastPaidAt && (

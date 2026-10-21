@@ -53,6 +53,8 @@ export type CustomerCreditInfo = {
   approved_by_name?: string | null;
   payment_terms_days: number;
   reminder_sms_enabled: boolean;
+  /** The account paid from the wallet every night (phase 4, 2026-10-21). */
+  settle_from_wallet?: boolean;
   next_payment_due_date?: string | null;
   limit_mvr: number;
   balance_mvr: number;
@@ -100,12 +102,13 @@ export async function fetchCustomerCredit(customerId: number): Promise<{
 export async function updateCustomerCredit(
   customerId: number,
   data: {
-    action: 'approve' | 'disable' | 'update_limit' | 'set_status' | 'update_terms' | 'set_reminder_sms';
+    action: 'approve' | 'disable' | 'update_limit' | 'set_status' | 'update_terms' | 'set_reminder_sms' | 'set_settle_from_wallet';
     credit_limit_mvr?: number;
     credit_notes?: string;
     credit_status?: 'active' | 'on_hold' | 'blocked';
     credit_payment_terms_days?: number;
     credit_reminder_sms?: boolean;
+    credit_settle_from_wallet?: boolean;
     override_limit?: boolean;
     /** FIX 6: required for update_limit; also required when the new
      *  limit exceeds credit_limit_max_mvr on approve. */
@@ -119,12 +122,15 @@ export async function recordCustomerCreditRepayment(
   customerId: number,
   data: {
     amount_mvr: number;
-    method: 'cash' | 'card' | 'bank_transfer';
+    /** owner_cash: cash the owner holds away from the till, owner only (phase 4). */
+    method: 'cash' | 'card' | 'bank_transfer' | 'owner_cash';
     reference?: string;
     notes?: string;
     invoice_ids?: number[];
+    /** More than is owed goes into the wallet in the same step (phase 4). */
+    surplus_to_wallet?: boolean;
   },
-): Promise<{ credit: CustomerCreditInfo; ledger: CustomerCreditLedgerRow }> {
+): Promise<{ credit: CustomerCreditInfo; ledger: CustomerCreditLedgerRow; surplus_to_wallet_laar?: number }> {
   return req(`/admin/customers/${customerId}/credit/repayments`, { method: 'POST', body: JSON.stringify(data) });
 }
 

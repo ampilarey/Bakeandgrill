@@ -105,13 +105,22 @@ export async function sendCustomerSms(id: number, message: string): Promise<{ me
   return request(`/admin/customers/${id}/send-sms`, { method: "POST", body: JSON.stringify({ message }) });
 }
 
-export type TillMoneyMethod = "cash" | "card" | "bank_transfer";
+/** owner_cash: cash the owner took away from the till (owner only; phase 4, 2026-10-21). */
+export type TillMoneyMethod = "cash" | "card" | "bank_transfer" | "owner_cash";
 
 export async function recordCreditRepayment(
   id: number,
-  payload: { amount_mvr: number; method: TillMoneyMethod; reference?: string; notes?: string },
-): Promise<unknown> {
+  payload: { amount_mvr: number; method: TillMoneyMethod; reference?: string; notes?: string; surplus_to_wallet?: boolean },
+): Promise<{ surplus_to_wallet_laar?: number }> {
   return request(`/admin/customers/${id}/credit/repayments`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+/** Deposit money onto the credit balance (phase 4: the Customers tab, not only Admin). */
+export async function transferDepositToCredit(
+  id: number,
+  payload: { amount_mvr: number; notes?: string },
+): Promise<{ amount_laar: number; credit_balance_laar: number }> {
+  return request(`/admin/customers/${id}/deposit/transfer-to-credit`, { method: "POST", body: JSON.stringify(payload) });
 }
 
 export async function recordDepositTopUp(

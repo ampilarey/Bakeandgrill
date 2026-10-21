@@ -179,21 +179,26 @@ account as a whole had no page and nothing told the owner when credit went overd
 | Wording | migration `2026_10_21_170000_credit_payments_and_wallet_holds` (`customer_credit_statement`, `{{limit_note}}` on the charged text) |
 | Tests | `backend/tests/Feature/Credit/CreditSpendTest.php` |
 
-## Saved for later (2026-10-06)
+## Phase 4 (2026-10-21): the saved till items, settle from the wallet, orders on account
 
-Owner: "save for later, we have something to do with credit acc". Offered in the
-conversation and not built yet:
+The four items saved on 2026-10-06 ("save for later, we have something to do with credit acc")
+are built, with two more from the deposit plan.
 
-1. **Take repayment on the sale screen.** When a customer is attached to an order,
-   their card on the POS sale screen shows what they owe but says "Collect
-   repayments in Admin → Customers", which is out of date and sends cashiers the
-   wrong way. Put a Take repayment button there (same form as POS → Customers →
-   Record repayment) and drop the stale line (`apps/pos-web/src/components/CustomerRewardsPanel.tsx`).
-2. **Overpayment goes to deposit.** A repayment larger than the balance is refused
-   ("They owe MVR X; enter that or less"). Option: record the balance as the
-   repayment and put the rest into the customer's deposit in one step.
-3. **Cash received by the owner, away from the till.** Cash repayments need an open
-   shift (the drawer count depends on it). Option: an owner-only "cash held by
-   owner" method, recorded outside any drawer but visible in the repayments list.
-4. **Transfer to credit on the POS.** Moving deposit money onto a credit balance is
-   only in Admin (Customers → customer → Deposit → Transfer to credit).
+| Where | What |
+|---|---|
+| Till, sale screen, customer card | **Take repayment** (needs `customers.credit.repay`): the same form as the Customers tab, with the figures refreshed after. The stale "Collect repayments in Admin" line is gone. |
+| Till and Admin, repayment form | A repayment **larger than the balance**: tick "Put the extra MVR x into their wallet" and the balance is repaid and the rest lands in the wallet in one step (needs `customers.deposit.receive`); the customer's one text says both. Without the tick it is refused as before. |
+| Till and Admin, repayment form (owner only) | **Cash held by the owner (no till)**: a repayment method for cash the owner took away from the till. No shift, no drawer movement; the ledger and the repayments list show `owner_cash`; the customer's text says "cash". |
+| Till, Customers tab → Credit | **Pay from deposit** (needs `customers.deposit.transfer_credit`): deposit money onto the credit balance, as Admin's Transfer to credit. |
+| Admin → Customer → Credit; order app, Account → Credit Account | **Pay the balance from their wallet every night**: `credit:settle-from-wallet` at 23:40 moves what the wallet holds (less anything on hold) against what is owed, through the ordinary transfer, so the customer gets the "from your wallet" repayment text. |
+| Settings → Credit & wallet | **Online orders on account** (default on): a customer with an active account may put an online order on it at checkout, within their limit. |
+| Order app checkout | "Charge MVR x to my credit account (MVR y available)": the order is charged, invoiced and sent to the kitchen at once; the charged text goes with the ready hint and the tracking link. Never together with the wallet. |
+
+| Piece | File |
+|---|---|
+| Repayment extras | `CreditLedgerService::recordRepayment` (`surplusToWallet`, `owner_cash`), `CustomerCreditController::repay`, `CreditAccountNotifier::repaymentReceived` (`$tail`) |
+| Settle from the wallet | `customers.credit_settle_from_wallet`, `CreditLedgerService::setSettleFromWallet` / `updateCustomerSettleFromWallet`, `App\Console\Commands\SettleCreditFromWallet` |
+| Orders on account | `CreditPolicy::onlineOrdersEnabled()` (`credit_online_orders_enabled`), `CustomerCreditPaymentController::payOrder` (`POST /api/customer/orders/{id}/pay-credit`), `PaymentConfirmationNotifier` (online branch), order app `useCheckout` (`useCredit`) |
+| Till | `CustomerRewardsPanel` (`canTakeRepayment`), `CustomersPanel` (`MoneyForm` with `allowOwnerCash` / `surplusToWallet`, `TransferForm`), `customerAdmin.ts` |
+| Admin | `CustomerCreditSection` (settle switch, owner cash, surplus tick), `CreditAccountSettings` (online orders, bonus) |
+| Tests | `backend/tests/Feature/Credit/CreditExtrasTest.php` |
