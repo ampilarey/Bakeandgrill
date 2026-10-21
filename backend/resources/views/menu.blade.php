@@ -210,7 +210,7 @@ span.menu-rail-thumb {
    still whole, with the name beside it on the section's tint. --mh-full is
    the 7:3 height the script measures, so the fold animates from the real
    height; on a computer it is capped, so the banner never takes the screen. */
-.mh { --mh-strip: 88px; }
+.mh { --mh-strip: 88px; --mh-thumb: 52px; }
 .mh-banner {
     position: relative; border-radius: 14px; overflow: hidden;
     background: var(--amber-light);
@@ -232,15 +232,20 @@ span.menu-rail-thumb {
     opacity: 0.12; pointer-events: none;
 }
 .mh-img {
-    position: absolute; left: -6px; top: -6px; bottom: -6px; width: calc(100% + 12px);
+    position: absolute; left: -6px; top: -6px; width: calc(100% + 12px); height: calc(100% + 12px);
     background-size: cover; background-position: center;
     opacity: 0; transform: scale(1.06);
     transition: opacity 0.32s ease, transform 0.9s var(--mh-ease),
-        left 0.3s var(--mh-ease), top 0.3s var(--mh-ease), bottom 0.3s var(--mh-ease), width 0.3s var(--mh-ease);
+        left 0.3s var(--mh-ease), top 0.3s var(--mh-ease), width 0.3s var(--mh-ease), height 0.3s var(--mh-ease);
 }
 .mh-img.is-on { opacity: 1; transform: scale(1); }
-/* Pinned: the picture is a 7:3 thumbnail at the left, the strip's full height. */
-.mh.is-stuck .mh-img { left: 0; top: 0; bottom: 0; width: calc(var(--mh-strip) * 7 / 3); }
+/* Pinned: the picture is a small 7:3 thumbnail at the left, whole, the name
+   beside it; at the strip's full height it crowded the name off a phone. */
+.mh.is-stuck .mh-img {
+    left: 12px; top: calc(50% - var(--mh-thumb) / 2);
+    width: calc(var(--mh-thumb) * 7 / 3); height: var(--mh-thumb);
+    border-radius: 8px;
+}
 .mh-shade {
     position: absolute; inset: 0;
     background: linear-gradient(90deg, rgba(28,20,8,0.72) 0%, rgba(28,20,8,0.28) 60%, rgba(28,20,8,0.1) 100%);
@@ -253,7 +258,11 @@ span.menu-rail-thumb {
     padding: 0 6.75rem 0 1.1rem; color: #fff;
     transition: padding 0.3s var(--mh-ease);
 }
-.mh.is-stuck .mh-banner:not(.mh-banner--plain) .mh-copy { padding-left: calc(var(--mh-strip) * 7 / 3 + 0.75rem); }
+.mh.is-stuck .mh-banner:not(.mh-banner--plain) .mh-copy { padding-left: calc(22px + var(--mh-thumb) * 7 / 3); }
+/* The strip keeps the name and the buttons; the count waits for the full banner. */
+.mh.is-stuck .mh-count { display: none; }
+.mh.is-stuck .mh-title { flex: 0 1 auto; min-width: 0; }
+.mh.is-stuck .mh-title span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .mh-title { position: relative; height: 2rem; overflow: hidden; flex: none; transition: width 0.32s var(--mh-ease); }
 .mh-title span {
     display: block; white-space: nowrap;
@@ -434,7 +443,7 @@ html.js .mh-panel .menu-filters { background: transparent; padding: 0.7rem 0 0.7
 .menu-sec { padding-top: 0.25rem; }
 .menu-sec + .menu-sec { margin-top: 1.1rem; padding-top: 0.9rem; border-top: 6px solid color-mix(in srgb, var(--border) 45%, transparent); }
 
-.mh { --mh-strip: 60px; }
+.mh { --mh-strip: 60px; --mh-thumb: 36px; }
 .mh-banner { border-radius: 12px; }
 .mh-copy { padding: 0 5.6rem 0 0.9rem; gap: 0.45rem; }
 .mh-title { height: 1.6rem; }
@@ -447,7 +456,7 @@ html.js .mh-panel .menu-filters { background: transparent; padding: 0.7rem 0 0.7
 .mh-pill { height: 36px; margin-top: -18px; }
 .mh-all { height: 36px; padding: 0 0.6rem; }
 @media (min-width: 769px) {
-  .mh { --mh-strip: 88px; }
+  .mh { --mh-strip: 88px; --mh-thumb: 52px; }
   .mh-banner { border-radius: 14px; }
   .mh-copy { padding: 0 6.75rem 0 1.1rem; gap: 0.6rem; }
   .mh-title { height: 2rem; }
