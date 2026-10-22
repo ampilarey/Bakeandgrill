@@ -255,7 +255,7 @@ class TelegramOwnerExtras
     {
         $row = Order::query()
             ->whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->selectRaw('COUNT(*) as n')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')
             ->first();
@@ -273,7 +273,7 @@ class TelegramOwnerExtras
     {
         return Order::query()
             ->whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->selectRaw('DATE(created_at) as d')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')
             ->groupBy('d')
@@ -298,7 +298,7 @@ class TelegramOwnerExtras
             ->whereNull('orders.deleted_at')
             ->whereNull('order_items.deleted_at')
             ->whereBetween('orders.created_at', [$from, $to])
-            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale('orders.'))
             ->selectRaw('items.id as id, order_items.variant_id as variant_id, items.name as name, order_items.variant_name as variant_name, SUM(order_items.quantity) as qty')
             ->groupBy('items.id', 'items.name', 'order_items.variant_id', 'order_items.variant_name')
             ->orderByDesc('qty')
@@ -338,7 +338,7 @@ class TelegramOwnerExtras
         $to = now();
         $rows = Order::query()
             ->whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->whereNotNull('user_id')
             ->selectRaw('user_id, COUNT(*) as n')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')

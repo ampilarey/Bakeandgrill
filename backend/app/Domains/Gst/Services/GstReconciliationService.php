@@ -50,11 +50,10 @@ class GstReconciliationService
 
         // A sale refunded in full was still a sale, and its output tax was
         // posted when it was paid: check it like any other.
-        $saleStatuses = [...ReportMoneySql::SALE_STATUSES, 'refunded'];
 
         $paidOrders = Order::query()
             ->whereBetween('paid_at', [$start, $end])
-            ->whereIn('status', $saleStatuses)
+            ->where(ReportMoneySql::sale('', ['refunded']))
             ->get();
 
         foreach ($paidOrders as $order) {
@@ -199,7 +198,7 @@ class GstReconciliationService
 
         $orderSales = Order::query()
             ->whereBetween('paid_at', [$start, $end])
-            ->whereIn('status', $saleStatuses)
+            ->where(ReportMoneySql::sale('', ['refunded']))
             ->sum(DB::raw('COALESCE(subtotal_laar, ROUND(subtotal * 100))'));
 
         if ($ledgerSales > 0 && abs($ledgerSales - (int) $orderSales) > 100) {

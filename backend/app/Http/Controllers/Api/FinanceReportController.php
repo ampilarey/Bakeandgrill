@@ -40,12 +40,11 @@ class FinanceReportController extends Controller
          * while still subtracting their refunds took them off twice. A sale is
          * dated when it was paid, falling back to when it was placed.
          */
-        $saleStatuses = [...ReportMoneySql::SALE_STATUSES, 'refunded'];
         $saleDate = 'COALESCE(orders.paid_at, orders.created_at)';
         $revenue = Order::query()
             ->whereRaw("{$saleDate} >= ?", [$from])
             ->whereRaw("{$saleDate} <= ?", [$to])
-            ->whereIn('status', $saleStatuses)
+            ->where(ReportMoneySql::sale('', ['refunded']))
             ->selectRaw('COUNT(*) as orders')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TAX_LAAR) . ' as tax')
@@ -64,7 +63,7 @@ class FinanceReportController extends Controller
             ->join('orders', 'orders.id', '=', 'refunds.order_id')
             ->whereBetween('refunds.created_at', [$from, $to])
             ->whereIn('refunds.status', ['approved', 'processed', 'completed'])
-            ->whereIn('orders.status', $saleStatuses)
+            ->where(ReportMoneySql::sale('orders.', ['refunded']))
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::REFUND_AMOUNT_LAAR) . ' as total')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(
                 'ROUND(' . ReportMoneySql::REFUND_AMOUNT_LAAR . ' * ' . ReportMoneySql::ORDER_TAX_LAAR
@@ -217,7 +216,7 @@ class FinanceReportController extends Controller
 
         // Inflows: completed order revenue by day
         $inflows = Order::whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->selectRaw('DATE(created_at) as date')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as amount')
             ->groupBy('date')
@@ -308,7 +307,7 @@ class FinanceReportController extends Controller
         $to = Carbon::parse($date)->endOfDay();
 
         $orders = Order::whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES);
+            ->where(ReportMoneySql::sale());
         $orderCount = (clone $orders)->count();
         $revenue = (float) (clone $orders)
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')
@@ -374,7 +373,7 @@ class FinanceReportController extends Controller
 
         // Orders by type / channel
         $byType = Order::whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->selectRaw('orders.type as order_type, COUNT(*) as count')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaar) . ' as revenue')
             ->groupBy('type')
@@ -386,7 +385,7 @@ class FinanceReportController extends Controller
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->join('items', 'items.id', '=', 'order_items.item_id')
             ->whereBetween('orders.created_at', [$from, $to])
-            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale('orders.'))
             ->whereNull('order_items.deleted_at')
             ->selectRaw('items.id as item_id, order_items.variant_id, items.name, order_items.variant_name as variant_name, SUM(order_items.quantity) as qty, SUM(order_items.quantity * order_items.unit_price) as revenue')
             ->groupBy('items.id', 'items.name', 'order_items.variant_id', 'order_items.variant_name')

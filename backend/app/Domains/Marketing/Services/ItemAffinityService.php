@@ -122,7 +122,7 @@ final class ItemAffinityService
      * the moment the connection drops — which at a counter is exactly when
      * nobody has time to wait for it.
      *
-     * @param  list<int>  $itemIds  anchors to look up — usually the whole menu
+     * @param list<int> $itemIds anchors to look up — usually the whole menu
      * @return array<int, list<int>>
      */
     public function topPairsForItems(array $itemIds, int $perItem = 3): array
@@ -186,7 +186,7 @@ final class ItemAffinityService
         // job that auto-completes those — so the recommendations were built on
         // a different history than the revenue figures they sit beside.
         $orderIds = Order::query()
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->where('created_at', '>=', $since)
             ->pluck('id');
 
@@ -279,7 +279,7 @@ final class ItemAffinityService
     }
 
     /**
-     * @param  array{count: int, revenue: float}  $stat
+     * @param array{count: int, revenue: float} $stat
      * @return array<string, mixed>
      */
     private function pairRow(

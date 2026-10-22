@@ -62,7 +62,7 @@ class BreakEvenService
         // Retail revenue, GST-exclusive: what the customer paid, less the
         // output tax we remit, less refunds already given back.
         $retail = Order::whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TAX_LAAR) . ' as tax')
             ->first();

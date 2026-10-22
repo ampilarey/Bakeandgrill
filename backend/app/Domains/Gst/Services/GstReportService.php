@@ -353,7 +353,7 @@ class GstReportService
 
         return [
             'orders' => Order::whereBetween('created_at', [$start, $end])
-                ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+                ->where(ReportMoneySql::sale())
                 ->count(),
             'ledger_output' => TaxLedgerEntry::where('period_key', $period)
                 ->where('direction', LedgerDirection::Output->value)->count(),

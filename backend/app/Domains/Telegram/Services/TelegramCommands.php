@@ -312,7 +312,7 @@ class TelegramCommands
                 ->whereIn('status', ['paid', 'completed', 'confirmed'])
                 ->selectRaw('COALESCE(SUM(COALESCE(amount_laar, ROUND(amount * 100))), 0) / 100 as t')
                 ->value('t');
-            $orders = Order::query()->where('shift_id', $shift->id)->whereIn('status', ReportMoneySql::SALE_STATUSES)->count();
+            $orders = Order::query()->where('shift_id', $shift->id)->where(ReportMoneySql::sale())->count();
 
             $lines[] = '';
             $lines[] = '<b>' . T::e($shift->user?->name ?? 'Unknown') . '</b>' . ($shift->device?->name ? ' · ' . T::e($shift->device->name) : '');
@@ -910,7 +910,7 @@ class TelegramCommands
             ->join('orders', 'orders.id', '=', 'payments.order_id')
             ->whereNull('orders.deleted_at')
             ->whereBetween('orders.created_at', [$day->copy()->startOfDay(), $day->copy()->endOfDay()])
-            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale('orders.'))
             ->where('payments.amount', '>', 0)
             ->whereIn('payments.status', ['paid', 'completed', 'confirmed'])
             ->selectRaw('payments.method as method, COALESCE(SUM(COALESCE(payments.amount_laar, ROUND(payments.amount * 100))), 0) / 100 as total')

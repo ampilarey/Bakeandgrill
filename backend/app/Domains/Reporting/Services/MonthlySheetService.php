@@ -72,7 +72,7 @@ final class MonthlySheetService
 
         // ── Income: what the shop keeps ─────────────────────────────────
         $orders = Order::whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->selectRaw('COUNT(*) as n')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TAX_LAAR) . ' as tax')

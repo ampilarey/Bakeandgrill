@@ -37,6 +37,36 @@ final class ReportMoneySql
      */
     public const SALE_STATUSES = ['paid', 'completed', 'delivered', 'partially_refunded'];
 
+    /** Statuses that are never a sale, even with the money in. */
+    private const NEVER_A_SALE = ['cancelled', 'refunded', 'void', 'voided', 'failed', 'expired'];
+
+    /**
+     * The one test of "a sale that counts", as a where-closure:
+     * `->where(ReportMoneySql::sale())`, `sale('orders.')` on a join.
+     *
+     * A status in SALE_STATUSES, or an order fully paid (`payment_status`
+     * paid) that is not cancelled or refunded, whatever stage it is at.
+     * Owner, 2026-10-22: an order paid by its online link sat at Ready
+     * waiting to be picked up, and the day's report left it out; every
+     * online order paid and still being cooked, waiting or on the road was
+     * missing the same way until someone marked it done.
+     *
+     * @param string $prefix the orders table's alias with its dot: '', 'orders.', 'o.'
+     * @param list<string> $also further statuses that count here (GST counts 'refunded')
+     */
+    public static function sale(string $prefix = '', array $also = []): \Closure
+    {
+        $never = array_values(array_diff(self::NEVER_A_SALE, $also));
+
+        return static function ($q) use ($prefix, $also, $never): void {
+            $q->whereIn($prefix . 'status', [...self::SALE_STATUSES, ...$also])
+                ->orWhere(static function ($paid) use ($prefix, $never): void {
+                    $paid->where($prefix . 'payment_status', 'paid')
+                        ->whereNotIn($prefix . 'status', $never);
+                });
+        };
+    }
+
     public static function sumLaarAsMvr(string $expr): string
     {
         return 'ROUND(COALESCE(SUM(' . $expr . '), 0) / 100.0, 2)';

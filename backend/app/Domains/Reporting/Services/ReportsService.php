@@ -57,7 +57,7 @@ class ReportsService
         // never inflate sales totals, tax, discount, or category breakdowns.
         $orderBase = Order::query()
             ->whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->where(function ($q) {
                 $q->whereNull('type')->orWhere('type', '!=', 'gift_card');
             })
@@ -101,7 +101,7 @@ class ReportsService
             ->whereBetween('processed_at', [$from, $to])
             ->whereIn('status', self::PAYMENT_STATUSES)
             ->whereHas('order', function ($oq) use ($from, $to, $userId, $shiftId, $deviceId) {
-                $oq->whereIn('status', ReportMoneySql::SALE_STATUSES)
+                $oq->where(ReportMoneySql::sale())
                     ->whereBetween('created_at', [$from, $to])
                     ->where(function ($q) {
                         $q->whereNull('type')->orWhere('type', '!=', 'gift_card');
@@ -216,7 +216,7 @@ class ReportsService
         $row = Order::query()
             ->where('type', 'gift_card')
             ->whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when($shiftId, fn ($q) => $q->where('shift_id', $shiftId))
             ->when($deviceId, fn ($q) => $q->where('device_id', $deviceId))
@@ -240,7 +240,7 @@ class ReportsService
         // rankings), so drop them from every rollup here.
         $excludeGiftCard = fn ($q) => $q
             ->whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->where(function ($q2) {
                 $q2->whereNull('type')->orWhere('type', '!=', 'gift_card');
             });
@@ -287,7 +287,7 @@ class ReportsService
             ->select('orders.user_id', 'users.name', DB::raw('COUNT(*) as orders_count'))
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::ORDER_TOTAL_LAAR) . ' as total')
             ->whereBetween('orders.created_at', [$from, $to])
-            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale('orders.'))
             ->where(function ($q) {
                 $q->whereNull('orders.type')->orWhere('orders.type', '!=', 'gift_card');
             })
@@ -345,7 +345,7 @@ class ReportsService
 
         $agg = Order::where('user_id', $shift->user_id)
             ->whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->where(function ($q) {
                 $q->whereNull('type')->orWhere('type', '!=', 'gift_card');
             })
@@ -420,7 +420,7 @@ class ReportsService
     public function zReport(Carbon $from, Carbon $to): array
     {
         $agg = Order::whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->where(function ($q) {
                 $q->whereNull('type')->orWhere('type', '!=', 'gift_card');
             })
@@ -445,7 +445,7 @@ class ReportsService
         $payments = Payment::whereBetween('processed_at', [$from, $to])
             ->whereIn('status', self::PAYMENT_STATUSES)
             ->whereHas('order', fn ($q) => $q
-                ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+                ->where(ReportMoneySql::sale())
                 ->whereBetween('created_at', [$from, $to])
                 ->where(function ($q2) {
                     $q2->whereNull('type')->orWhere('type', '!=', 'gift_card');
@@ -461,7 +461,7 @@ class ReportsService
             ->whereIn('status', self::PAYMENT_STATUSES)
             ->whereNull('shift_id')
             ->whereHas('order', fn ($q) => $q
-                ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+                ->where(ReportMoneySql::sale())
                 ->whereBetween('created_at', [$from, $to])
                 ->where(function ($q2) {
                     $q2->whereNull('type')->orWhere('type', '!=', 'gift_card');
@@ -563,7 +563,7 @@ class ReportsService
 
         $rows = Order::query()
             ->where('type', 'delivery')
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->whereBetween('created_at', [$from, $to])
             ->whereNotNull('delivery_island')
             ->where('delivery_island', '!=', '')
@@ -607,7 +607,7 @@ class ReportsService
         $orders = Order::query()
             ->with('manualDiscountApprover:id,name')
             ->whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->get([
                 'id',
                 'order_number',
@@ -1167,7 +1167,7 @@ class ReportsService
 
         $rows = OrderItem::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale('orders.'))
             ->whereBetween('orders.created_at', [$from, $to])
             ->whereNotNull('order_items.item_id')
             ->whereNull('order_items.deleted_at')
@@ -1345,7 +1345,7 @@ class ReportsService
         $rows = DB::table('orders as o')
             ->join('customers as c', 'c.id', '=', 'o.customer_id')
             ->whereNotNull('o.customer_id')
-            ->whereIn('o.status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale('o.'))
             ->whereBetween('o.created_at', [$from, $to])
             ->selectRaw('c.id, c.name, c.phone, COUNT(o.id) as order_count')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr) . ' as total_spent')
@@ -1381,7 +1381,7 @@ class ReportsService
         $sales = Order::query()
             ->leftJoin('users', 'users.id', '=', 'orders.user_id')
             ->whereBetween('orders.created_at', [$from, $to])
-            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale('orders.'))
             ->selectRaw('orders.user_id, users.name, COUNT(*) as orders_count')
             ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr) . ' as total')
             ->selectRaw('ROUND(COALESCE(AVG(' . $totalLaarExpr . '), 0) / 100.0, 2) as avg_order')
@@ -1481,7 +1481,7 @@ class ReportsService
 
         $rows = DB::table('orders')
             ->whereBetween('created_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->selectRaw("{$hourExpr} as hour, COUNT(*) as count")
             ->selectRaw(ReportMoneySql::sumLaarAsMvr($totalLaarExpr) . ' as revenue')
             ->selectRaw('ROUND(COALESCE(AVG(' . $totalLaarExpr . '), 0) / 100.0, 2) as avg_total')
@@ -1520,7 +1520,7 @@ class ReportsService
             ->leftJoin('items as i', 'i.id', '=', 'oi.item_id')
             ->leftJoin('menu_groups as mg', 'mg.id', '=', 'i.menu_group_id')
             ->whereBetween('o.created_at', [$from, $to])
-            ->whereIn('o.status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale('o.'))
             ->selectRaw('i.menu_group_id, COALESCE(mg.name, \'Unassigned\') as station, COUNT(oi.id) as line_count, COALESCE(SUM(oi.quantity),0) as qty, COALESCE(SUM(oi.total_price),0) as revenue')
             ->groupBy('i.menu_group_id', 'mg.name')
             ->orderByDesc('revenue')

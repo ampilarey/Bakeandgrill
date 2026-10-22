@@ -36,7 +36,7 @@ class GstBackfillLedgerCommand extends Command
 
         Order::query()
             ->whereBetween('paid_at', [$from, $to])
-            ->whereIn('status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale())
             ->orderBy('id')
             ->chunkById(100, function ($orders) use ($poster, $dryRun, &$stats) {
                 foreach ($orders as $order) {

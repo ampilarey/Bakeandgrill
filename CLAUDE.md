@@ -850,6 +850,15 @@ Rows carry `variant_id` and a `key` unique per product. Removed (soft-deleted)
 order lines do not count. Waste logs have no variant, so waste stays per item.
 New sales reports follow the same rule.
 
+## A paid order is a sale at any stage
+
+Owner, 2026-10-22: a pickup paid by its online link sat at Ready, and the Telegram day report
+left it out until someone tapped Picked up. Every report asks one test,
+`ReportMoneySql::sale($prefix, $also)` (`->where(ReportMoneySql::sale('orders.'))`): a status in
+`SALE_STATUSES`, or `payment_status` paid and not cancelled, refunded, void, failed or expired,
+whatever kitchen or delivery stage the order is at. Never write `whereIn('status',
+SALE_STATUSES)` in a new report. `PaidOrderStillInKitchenCountsTest`.
+
 ## Best sellers: an item can opt out
 
 Owner, 2026-10-13: "Some items like water bottles are always in the best sellers

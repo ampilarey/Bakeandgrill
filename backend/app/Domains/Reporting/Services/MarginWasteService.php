@@ -46,7 +46,7 @@ class MarginWasteService
             ->selectRaw('order_items.item_id, order_items.variant_id, MAX(order_items.item_name) as item_name, MAX(order_items.variant_name) as variant_name, SUM(order_items.quantity) as units, SUM(order_items.total_price) as revenue')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->whereBetween('orders.created_at', [$from, $to])
-            ->whereIn('orders.status', ReportMoneySql::SALE_STATUSES)
+            ->where(ReportMoneySql::sale('orders.'))
             ->where(fn ($q) => $q->whereNull('orders.type')->orWhere('orders.type', '!=', 'gift_card'))
             ->whereNotNull('order_items.item_id')
             ->groupBy('order_items.item_id', 'order_items.variant_id')
