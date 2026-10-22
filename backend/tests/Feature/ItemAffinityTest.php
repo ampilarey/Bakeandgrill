@@ -39,13 +39,13 @@ class ItemAffinityTest extends TestCase
     }
 
     /** @param list<Item> $items */
-    private function order(string $status, array $items, ?string $createdAt = null): Order
+    private function order(string $status, array $items, ?string $createdAt = null, string $paymentStatus = 'paid'): Order
     {
         $order = Order::create([
             'order_number' => 'AFF-' . str()->random(8),
             'type' => 'dine_in',
             'status' => $status,
-            'payment_status' => 'paid',
+            'payment_status' => $paymentStatus,
             'subtotal' => 0,
             'total' => 0,
         ]);
@@ -105,21 +105,23 @@ class ItemAffinityTest extends TestCase
         foreach (ReportMoneySql::SALE_STATUSES as $i => $status) {
             $this->order($status, [$a, $this->item("Sold {$i}")]);
         }
+        // Paid and still waiting to be collected is a sale too (owner, 2026-10-22).
+        $this->order('ready', [$a, $this->item('Paid, waiting partner')]);
         // Money never changed hands / came back — these must not teach the model.
         $this->order('cancelled', [$a, $this->item('Cancelled partner')]);
-        $this->order('pending', [$a, $this->item('Pending partner')]);
+        $this->order('pending', [$a, $this->item('Pending partner')], null, 'unpaid');
 
         app(ItemAffinityService::class)->recompute(90);
 
         $anchorRows = ItemPairStat::query()->where('item_id', $a->id)->get();
 
         $this->assertCount(
-            count(ReportMoneySql::SALE_STATUSES),
+            count(ReportMoneySql::SALE_STATUSES) + 1,
             $anchorRows,
-            'one partner per sale status, and none from cancelled or pending',
+            'one partner per sale status and the paid order waiting, none from cancelled or unpaid',
         );
         $this->assertSame(
-            count(ReportMoneySql::SALE_STATUSES),
+            count(ReportMoneySql::SALE_STATUSES) + 1,
             (int) $anchorRows->first()->total_orders,
             'the window size must exclude non-sales too, or support is wrong',
         );
