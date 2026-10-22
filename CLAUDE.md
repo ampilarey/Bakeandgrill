@@ -641,7 +641,9 @@ specials, offers, signage lists) and the till's square tiles crop a 4:3 photo by
 look; a cut-out is never cropped). The menu banner (`.mh` on both menus) is a cover photo above a
 title strip (owner, 2026-10-22: a strip that grew to the photo and folded back was "not smooth",
 and sections without a photo became tall boxes): at the top of the menu the first section's whole
-7:3 crop (`.mh-hero`, capped at 320 px) sits above the strip (`--mh-strip`), and the head pins
+7:3 crop (`.mh-hero`, capped at 320 px; drawn `contain` from `--mh-hero-img`, so a computer's
+wider box shows it whole in the middle with the same picture blurred either side, never cut) sits
+above the strip (`--mh-strip`), and the head pins
 `--mh-hero` (the photo and its gap, measured by the website script and by `MenuHead`) above the
 sticky line, so the photo scrolls away with the page while the strip stays and the head's height
 in the page never changes. Pinned (`is-stuck`, read from the zero-height `.mh-sentinel` just above

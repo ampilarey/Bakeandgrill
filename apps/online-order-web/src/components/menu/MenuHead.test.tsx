@@ -47,7 +47,8 @@ describe('MenuHead', () => {
     const banner = head.querySelector('.mh-banner') as HTMLElement;
 
     // The cover photo is the first section's, right above the strip.
-    expect(screen.getByTestId('menu-head-hero').getAttribute('style')).toContain('/media/food.jpg');
+    const hero = screen.getByTestId('menu-head-hero');
+    expect(hero.style.getPropertyValue('--mh-hero-img')).toContain('/media/food.jpg');
     expect(head.querySelector('.mh-hero + .mh-banner')).toBe(banner);
 
     // Its place in the page is below the sticky line: not pinned. The
@@ -66,7 +67,7 @@ describe('MenuHead', () => {
     act(() => ref.current?.goTo('sec-2', true));
     expect(banner).toHaveClass('mh-banner--plain');
     expect(banner.style.getPropertyValue('--mh-tint')).toBe('blue');
-    expect(screen.getByTestId('menu-head-hero').getAttribute('style')).toContain('/media/food.jpg');
+    expect(screen.getByTestId('menu-head-hero').style.getPropertyValue('--mh-hero-img')).toContain('/media/food.jpg');
     rect.mockRestore();
   });
 

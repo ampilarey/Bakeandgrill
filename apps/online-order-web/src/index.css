@@ -5783,17 +5783,31 @@ body:has(.float-cart-fab) .toast-stack {
    thumbnail (--mh-thumb) beside the name on the section's tint; a section
    without a photo is the strip and the tint alone, at the top as well. The
    website's menu.blade.php does the same. */
-.mh { --mh-strip: 76px; --mh-thumb: 44px; --mh-gap: 8px; }
+.mh { --mh-strip: 76px; --mh-thumb: 44px; --mh-gap: 8px; --mh-r: 14px; }
 .mh-hero {
+  position: relative; overflow: hidden;
   width: 100%; aspect-ratio: 7 / 3; max-height: 320px; margin-bottom: var(--mh-gap);
-  border-radius: 14px; background: var(--color-primary-light) center / cover no-repeat;
+  /* clip-path as well as the radius: WebKit lets a blurred child spill past rounded corners. */
+  border-radius: var(--mh-r); clip-path: inset(0 round var(--mh-r));
+  background: var(--color-primary-light);
   transition: opacity 0.25s ease;
 }
+/* The photo whole, never cut: it fills a phone's column exactly, and where
+   the 320px cap makes the box wider than 7:3 (a computer) it sits in the
+   middle with the same picture, blurred, either side, so the band still
+   reads as one photo. An older banner of another shape is shown whole too. */
+.mh-hero::before, .mh-hero::after { content: ""; position: absolute; }
+.mh-hero::before {
+  inset: -24px;
+  background: var(--mh-hero-img) center / cover no-repeat;
+  filter: blur(18px) brightness(0.85);
+}
+.mh-hero::after { inset: 0; background: var(--mh-hero-img) center / contain no-repeat; }
 /* Pinned, the photo is past the sticky line; on a computer its last rows
    would show under the bar, so it fades as it goes. */
 .mh.is-stuck .mh-hero { opacity: 0; }
 .mh-banner {
-  position: relative; height: var(--mh-strip); border-radius: 14px; overflow: hidden;
+  position: relative; height: var(--mh-strip); border-radius: var(--mh-r); overflow: hidden;
   background: var(--mh-tint, var(--color-primary-light));
 }
 /* The section's photo, a thumbnail at the strip's left once pinned; two
@@ -5978,8 +5992,7 @@ body:has(.float-cart-fab) .toast-stack {
 .mh-sheet-list button.is-active i { background: var(--color-primary); }
 /* Phone first: the menu head's phone sizes, its base sizes from 768px, its
    computer sizes from 769px (below). */
-.mh { --mh-strip: 60px; --mh-thumb: 36px; }
-.mh-banner, .mh-hero { border-radius: 12px; }
+.mh { --mh-strip: 60px; --mh-thumb: 36px; --mh-r: 12px; }
 .mh-copy { padding: 0 5.4rem 0 0.9rem; gap: 0.45rem; }
 .mh-title { height: 1.6rem; }
 .mh-title > span { font-size: 1.15rem; line-height: 1.6rem; }
@@ -5988,8 +6001,7 @@ body:has(.float-cart-fab) .toast-stack {
 .mh { --mh-bar-h: 52px; }
 .mh-bar { gap: 0.4rem; }
 @media (min-width: 768px) {
-  .mh { --mh-strip: 76px; --mh-thumb: 44px; }
-  .mh-banner, .mh-hero { border-radius: 14px; }
+  .mh { --mh-strip: 76px; --mh-thumb: 44px; --mh-r: 14px; }
   .mh-copy { padding: 0 6.5rem 0 1rem; gap: 0.6rem; }
   .mh-title { height: 1.9rem; }
   .mh-title > span { font-size: 1.35rem; line-height: 1.9rem; }

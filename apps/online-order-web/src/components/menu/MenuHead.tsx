@@ -437,7 +437,7 @@ export const MenuHead = forwardRef<MenuHeadHandle, Props>(function MenuHead(
       {heroImage && (
         <div
           className="mh-hero"
-          style={{ backgroundImage: `url("${heroImage.replace(/"/g, '%22')}")` }}
+          style={{ '--mh-hero-img': `url("${heroImage.replace(/"/g, '%22')}")` } as CSSProperties}
           aria-hidden="true"
           data-testid="menu-head-hero"
         />

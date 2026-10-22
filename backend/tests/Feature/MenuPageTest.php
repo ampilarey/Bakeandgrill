@@ -878,7 +878,7 @@ class MenuPageTest extends TestCase
         // that grew to the photo and folded back was "not smooth"). The
         // sentinel just above the head tells the script when it is pinned.
         $this->assertStringContainsString('<div class="mh-sentinel" data-mh-sentinel aria-hidden="true"></div>', $html);
-        $this->assertStringContainsString("<div class=\"mh-hero\" style=\"background-image: url('https://cdn.example.com/hedhika-banner.jpg')\" aria-hidden=\"true\"></div>", $html);
+        $this->assertStringContainsString("<div class=\"mh-hero\" style=\"--mh-hero-img: url('https://cdn.example.com/hedhika-banner.jpg')\" aria-hidden=\"true\"></div>", $html);
         $this->assertMatchesRegularExpression('#<div class="mh-banner" style="--mh-tint: linear-gradient[^"]*">#', $html);
         $this->assertStringNotContainsString('mh-shade', $html);
     }

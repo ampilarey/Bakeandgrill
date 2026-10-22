@@ -216,17 +216,31 @@ span.menu-rail-thumb {
    thumbnail (--mh-thumb) beside the name on the section's tint; a section
    without a photo is the strip and the tint alone, at the top as well. The
    order app's MenuHead does the same. */
-.mh { --mh-strip: 88px; --mh-thumb: 52px; --mh-gap: 8px; }
+.mh { --mh-strip: 88px; --mh-thumb: 52px; --mh-gap: 8px; --mh-r: 14px; }
 .mh-hero {
+    position: relative; overflow: hidden;
     width: 100%; aspect-ratio: 7 / 3; max-height: 320px; margin-bottom: var(--mh-gap);
-    border-radius: 14px; background: var(--amber-light) center / cover no-repeat;
+    /* clip-path as well as the radius: WebKit lets a blurred child spill past rounded corners. */
+    border-radius: var(--mh-r); clip-path: inset(0 round var(--mh-r));
+    background: var(--amber-light);
     transition: opacity 0.25s ease;
 }
+/* The photo whole, never cut: it fills a phone's column exactly, and where
+   the 320px cap makes the box wider than 7:3 (a computer) it sits in the
+   middle with the same picture, blurred, either side, so the band still
+   reads as one photo. An older banner of another shape is shown whole too. */
+.mh-hero::before, .mh-hero::after { content: ""; position: absolute; }
+.mh-hero::before {
+    inset: -24px;
+    background: var(--mh-hero-img) center / cover no-repeat;
+    filter: blur(18px) brightness(0.85);
+}
+.mh-hero::after { inset: 0; background: var(--mh-hero-img) center / contain no-repeat; }
 /* Pinned, the photo is past the sticky line; on a computer its last rows
    would show between the site header and the strip, so it fades as it goes. */
 .mh.is-stuck .mh-hero { opacity: 0; }
 .mh-banner {
-    position: relative; height: var(--mh-strip); border-radius: 14px; overflow: hidden;
+    position: relative; height: var(--mh-strip); border-radius: var(--mh-r); overflow: hidden;
     background: var(--mh-tint, var(--amber-light));
 }
 .mh-banner::before {
@@ -436,8 +450,7 @@ html.js .mh-panel .menu-filters { background: transparent; padding: 0.7rem 0 0.7
 .menu-sec { padding-top: 0.25rem; }
 .menu-sec + .menu-sec { margin-top: 1.1rem; padding-top: 0.9rem; border-top: 6px solid color-mix(in srgb, var(--border) 45%, transparent); }
 
-.mh { --mh-strip: 60px; --mh-thumb: 36px; }
-.mh-banner, .mh-hero { border-radius: 12px; }
+.mh { --mh-strip: 60px; --mh-thumb: 36px; --mh-r: 12px; }
 .mh-copy { padding: 0 5.6rem 0 0.9rem; gap: 0.45rem; }
 .mh-title { height: 1.6rem; }
 .mh-title span { font-size: 1.15rem; line-height: 1.6rem; }
@@ -449,8 +462,7 @@ html.js .mh-panel .menu-filters { background: transparent; padding: 0.7rem 0 0.7
 .mh-pill { height: 36px; margin-top: -18px; }
 .mh-all { height: 36px; padding: 0 0.6rem; }
 @media (min-width: 769px) {
-  .mh { --mh-strip: 88px; --mh-thumb: 52px; }
-  .mh-banner, .mh-hero { border-radius: 14px; }
+  .mh { --mh-strip: 88px; --mh-thumb: 52px; --mh-r: 14px; }
   .mh-copy { padding: 0 6.75rem 0 1.1rem; gap: 0.6rem; }
   .mh-title { height: 2rem; }
   .mh-title span { font-size: 1.5rem; line-height: 2rem; }
@@ -1311,7 +1323,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
         <div class="mh{{ $firstSec['subs'] !== [] ? ' has-row mh--room' : '' }}" data-mh data-testid="menu-head">
             {{-- The first section's photo, whole, above the strip; it scrolls away with the page. --}}
             @if($firstSec['image'])
-            <div class="mh-hero" style="background-image: url('{{ $firstSec['image'] }}')" aria-hidden="true"></div>
+            <div class="mh-hero" style="--mh-hero-img: url('{{ $firstSec['image'] }}')" aria-hidden="true"></div>
             @endif
             <div class="mh-banner{{ $firstSec['image'] ? '' : ' mh-banner--plain' }}" style="--mh-tint: {{ $firstSec['tint'] }}">
                 <div class="mh-img is-on" @if($firstSec['image']) style="background-image: url('{{ $firstSec['image'] }}')" @endif></div>
@@ -1958,6 +1970,9 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
     // and the strip stays (see .mh-hero).
     function heroBlock() { return hero ? hero.offsetHeight + (parseFloat(getComputedStyle(head).getPropertyValue('--mh-gap')) || 0) : 0; }
     function measure() { head.style.setProperty('--mh-hero', Math.round(heroBlock()) + 'px'); }
+    // The column can change width without the window doing so (a scrollbar
+    // arriving, the rail settling), and the photo's height follows it.
+    if (hero && window.ResizeObserver) new ResizeObserver(measure).observe(hero);
     // What the pinned head takes of the screen: the strip and its gap, not the photo.
     function pinnedH() { return head.offsetHeight - heroBlock(); }
     // The line just under the pinned banner: whatever crosses it is "in view".
