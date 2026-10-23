@@ -496,6 +496,50 @@ describe('Create Manual Purchase Order card', () => {
     expect(payload.items[0]).not.toHaveProperty('brand');
   });
 
+  it('says it was paid in full by default, and sends part payments with their amount', async () => {
+    // Owner, 2026-10-23: a shop paid at the counter showed as owed once received.
+    localStorage.removeItem('purchases.manual_paid');
+    await openCard();
+    await nameShop('Fahi Store');
+    fireEvent.click(screen.getByText('pick-flour'));
+    fireEvent.change(screen.getByLabelText('Quantity for item 1'), { target: { value: '4' } });
+    fireEvent.change(screen.getByLabelText('Unit cost for item 1'), { target: { value: '10' } });
+    expect(screen.getByTestId('manual-po-paid-full')).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(screen.getByTestId('manual-po-paid-part'));
+    fireEvent.click(screen.getByTestId('manual-po-paid-method-transfer'));
+    fireEvent.change(screen.getByTestId('manual-po-paid-amount'), { target: { value: '50' } });
+    fireEvent.click(screen.getByRole('button', { name: /Create PO/i }));
+    expect(await screen.findByText(/more than the order total of MVR 40.00/)).toBeInTheDocument();
+    expect(createPurchase).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByTestId('manual-po-paid-amount'), { target: { value: '15' } });
+    fireEvent.click(screen.getByRole('button', { name: /Create PO/i }));
+    await waitFor(() => expect(createPurchase).toHaveBeenCalled());
+    expect(createPurchase.mock.calls[0][0]).toMatchObject({ paid: 'part', paid_amount: 15, paid_method: 'transfer' });
+    // The next manual PO on this device opens on the same choice.
+    expect(JSON.parse(localStorage.getItem('purchases.manual_paid') ?? '{}')).toEqual({ paid: 'part', method: 'transfer' });
+    localStorage.removeItem('purchases.manual_paid');
+  });
+
+  it('sends not paid yet without a method', async () => {
+    localStorage.removeItem('purchases.manual_paid');
+    await openCard();
+    await nameShop('Fahi Store');
+    fireEvent.click(screen.getByText('pick-flour'));
+    await screen.findByLabelText('Brand for item 1');
+    fireEvent.change(screen.getByLabelText('Quantity for item 1'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('Unit cost for item 1'), { target: { value: '10' } });
+    fireEvent.click(screen.getByTestId('manual-po-paid-none'));
+    expect(screen.queryByTestId('manual-po-paid-method-cash')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Create PO/i }));
+    await waitFor(() => expect(createPurchase).toHaveBeenCalled());
+    const payload = createPurchase.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.paid).toBe('none');
+    expect(payload).not.toHaveProperty('paid_method');
+    localStorage.removeItem('purchases.manual_paid');
+  });
+
   it('clears the brand and its suggestions when the item changes', async () => {
     getPurchaseUnits.mockResolvedValue({ base_unit: 'kg', purchase_units: [], brands: ['Brand A'] });
     await openCard();

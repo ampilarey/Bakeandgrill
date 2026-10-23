@@ -234,6 +234,31 @@ export function frequentTileNote(fi: SupplierFrequentItem): string {
   return [qty ? `last ${qty} ${what}` : null, price, fi.last_brand].filter(Boolean).join(' · ');
 }
 
+/**
+ * Whether a manual PO was paid when it was bought (owner, 2026-10-23: a
+ * shop paid at the counter showed as owed once the goods were received).
+ * Most manual POs are paid on the spot, so the last choice is kept for the
+ * next one on this device.
+ */
+type ManualPaid = 'full' | 'part' | 'none';
+type ManualPaidMethod = 'cash' | 'transfer' | 'other';
+const MANUAL_PAID_KEY = 'purchases.manual_paid';
+
+function lastManualPaid(): { paid: ManualPaid; method: ManualPaidMethod } {
+  try {
+    const saved = JSON.parse(localStorage.getItem(MANUAL_PAID_KEY) ?? 'null') as { paid?: string; method?: string } | null;
+    const paid = (['full', 'part', 'none'] as const).find((p) => p === saved?.paid) ?? 'full';
+    const method = (['cash', 'transfer', 'other'] as const).find((m) => m === saved?.method) ?? 'cash';
+    return { paid, method };
+  } catch {
+    return { paid: 'full', method: 'cash' };
+  }
+}
+
+function rememberManualPaid(paid: ManualPaid, method: ManualPaidMethod): void {
+  try { localStorage.setItem(MANUAL_PAID_KEY, JSON.stringify({ paid, method })); } catch { /* private window */ }
+}
+
 /** The boxes on the manual order, all one shape. */
 const manualBoxStyle: React.CSSProperties = {
   width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)',
@@ -434,6 +459,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     purchase_date: today(),
     notes: '',
     lines: [blankManualLine()] as ManualPoLine[],
+    paid: lastManualPaid().paid as ManualPaid,
+    paid_method: lastManualPaid().method as ManualPaidMethod,
+    paid_amount: '',
   });
   const [manualPoSaving, setManualPoSaving] = useState(false);
   const [manualPoError, setManualPoError] = useState('');
@@ -567,6 +595,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       purchase_date: today(),
       notes: '',
       lines: [blankManualLine()],
+      paid: lastManualPaid().paid,
+      paid_method: lastManualPaid().method,
+      paid_amount: '',
     });
     setOpenLine(0);
     setFrequent(null);
@@ -729,6 +760,16 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       );
       return;
     }
+    const { paid, paid_method: paidMethod } = manualPoForm;
+    const partAmount = parseFloat(manualPoForm.paid_amount);
+    if (paid === 'part' && (isNaN(partAmount) || partAmount <= 0)) {
+      setManualPoError('Say how much you paid, or choose Paid in full or Not paid yet.');
+      return;
+    }
+    if (paid === 'part' && partAmount > manualPoTotal + 0.005) {
+      setManualPoError(`That is more than the order total of ${mvr(manualPoTotal)}. Choose Paid in full instead.`);
+      return;
+    }
     setManualPoSaving(true); setManualPoError('');
     try {
       await createPurchase({
@@ -738,7 +779,11 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
         purchase_date: manualPoForm.purchase_date,
         notes: manualPoForm.notes || undefined,
         items: lines,
+        paid,
+        ...(paid !== 'none' ? { paid_method: paidMethod } : {}),
+        ...(paid === 'part' ? { paid_amount: Math.round(partAmount * 100) / 100 } : {}),
       });
+      rememberManualPaid(paid, paidMethod);
       showToast('Purchase order created.');
       setShowManualPo(false);
       void load();
@@ -2187,6 +2232,47 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           <label htmlFor="manual-po-notes" style={lineLabelStyle}>Notes (optional)</label>
           <textarea id="manual-po-notes" rows={1} value={manualPoForm.notes} onChange={(e) => setManualPoForm((f) => ({ ...f, notes: e.target.value }))}
             style={inputFont({ ...manualBoxStyle, resize: 'vertical', marginBottom: 12 })} />
+          {/* Paid at the counter? Without this every manual PO read "you
+              owe" the shop once received, even one paid on the spot. */}
+          <div data-testid="manual-po-paid" style={{ marginBottom: 12 }}>
+            <span style={lineLabelStyle}>Did you pay?</span>
+            <div role="group" aria-label="Did you pay?" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {([['full', 'Paid in full'], ['part', 'Paid part'], ['none', 'Not paid yet']] as const).map(([value, label]) => (
+                <Btn key={value} small variant={manualPoForm.paid === value ? 'primary' : 'secondary'} aria-pressed={manualPoForm.paid === value}
+                  data-testid={`manual-po-paid-${value}`}
+                  onClick={() => setManualPoForm((f) => ({ ...f, paid: value }))}>
+                  {label}
+                </Btn>
+              ))}
+            </div>
+            {manualPoForm.paid !== 'none' && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8, alignItems: 'center' }}>
+                {manualPoForm.paid === 'part' && (
+                  <input type="number" min="0.01" step="0.01" inputMode="decimal" aria-label="Amount paid"
+                    data-testid="manual-po-paid-amount" placeholder="Amount paid"
+                    value={manualPoForm.paid_amount}
+                    onChange={(e) => setManualPoForm((f) => ({ ...f, paid_amount: e.target.value }))}
+                    style={inputFont({ ...manualBoxStyle, width: 'min(100%, 160px)' })} />
+                )}
+                <div role="group" aria-label="Paid by" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {([['cash', 'Cash'], ['transfer', 'Transfer'], ['other', 'Other']] as const).map(([value, label]) => (
+                    <Btn key={value} small variant={manualPoForm.paid_method === value ? 'primary' : 'secondary'} aria-pressed={manualPoForm.paid_method === value}
+                      data-testid={`manual-po-paid-method-${value}`}
+                      onClick={() => setManualPoForm((f) => ({ ...f, paid_method: value }))}>
+                      {label}
+                    </Btn>
+                  ))}
+                </div>
+              </div>
+            )}
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
+              {manualPoForm.paid === 'none'
+                ? 'It shows as owed to the shop until you record a payment on their page.'
+                : manualPoForm.paid === 'part'
+                  ? 'The rest shows as owed to the shop.'
+                  : 'Nothing will show as owed to the shop.'}
+            </p>
+          </div>
           {/* The total lives in the footer, which stays on screen however
               long the order is: the number to check against the receipt in
               your hand, before you save rather than after. Incomplete lines

@@ -92,7 +92,10 @@ class PurchaseController extends Controller
         $validated = $validator->normalizePurchase($validated);
         $validator->assertClaimable($validated, 'purchase');
         unset($validated['lines_with_gst']);
+        $paid = array_intersect_key($validated, array_flip(['paid', 'paid_amount', 'paid_method']));
+        unset($validated['paid'], $validated['paid_amount'], $validated['paid_method']);
         $purchase = $this->createFromPayload($validated, $request);
+        $purchase = $this->recordPaidAtPurchase($purchase, $paid);
 
         app(AuditLogService::class)->log(
             'purchase.created',
@@ -468,6 +471,36 @@ class PurchaseController extends Controller
         // Fifty taken in a row means something is badly out of step; a unique
         // suffix is better than throwing away the purchase being entered.
         return "PO-{$date}-" . strtoupper(Str::random(6));
+    }
+
+    /**
+     * What was paid at the counter, kept on the order from the start, so a
+     * shop paid on the spot is never shown as owed (owner, 2026-10-23). A draft
+     * keeps it too: owed counts only once the order is ordered or received,
+     * and by then the payment is already there. Never more than the total.
+     *
+     * @param array{paid?: string|null, paid_amount?: float|string|null, paid_method?: string|null} $paid
+     */
+    private function recordPaidAtPurchase(Purchase $purchase, array $paid): Purchase
+    {
+        $how = $paid['paid'] ?? 'none';
+        $total = round((float) $purchase->total, 2);
+        if ($how === 'none' || $how === null || $total <= 0) {
+            return $purchase;
+        }
+
+        $amount = $how === 'full' ? $total : min($total, round((float) ($paid['paid_amount'] ?? 0), 2));
+        if ($amount <= 0) {
+            return $purchase;
+        }
+
+        $purchase->forceFill([
+            'paid_amount' => $amount,
+            'paid_at' => $purchase->purchase_date ?? now()->toDateString(),
+            'payment_method' => $paid['paid_method'] ?? 'cash',
+        ])->save();
+
+        return $purchase->fresh(['supplier', 'items.inventoryItem', 'receipts']);
     }
 
     private function createFromPayload(array $validated, Request $request): Purchase

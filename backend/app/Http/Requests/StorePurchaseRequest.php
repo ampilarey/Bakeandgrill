@@ -62,6 +62,12 @@ class StorePurchaseRequest extends FormRequest
             // Free text: brands come and go, and a register of them would be
             // one more list to maintain for no gain.
             'items.*.brand' => 'nullable|string|max:120',
+            // Paid at the counter when it was bought (owner, 2026-10-23: a
+            // manual PO received said "you owe" a shop already paid). Omitted
+            // or "none" leaves it owed, as before.
+            'paid' => 'nullable|in:none,full,part',
+            'paid_amount' => 'nullable|required_if:paid,part|numeric|min:0.01',
+            'paid_method' => 'nullable|in:' . implode(',', \App\Http\Controllers\Api\PurchasePaymentController::METHODS),
         ];
     }
 }

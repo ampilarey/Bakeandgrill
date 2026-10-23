@@ -990,6 +990,13 @@ export async function createPurchase(data: {
      */
     brand?: string;
   }[];
+  /**
+   * Paid when it was bought: in full, part (`paid_amount`) or not yet.
+   * Omitted is not yet, so the order shows as owed until a payment is recorded.
+   */
+  paid?: 'full' | 'part' | 'none';
+  paid_amount?: number;
+  paid_method?: 'cash' | 'transfer' | 'other';
 }): Promise<{ purchase: Purchase }> {
   return req('/purchases', { method: 'POST', body: JSON.stringify(data) });
 }
