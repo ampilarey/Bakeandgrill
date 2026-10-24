@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, X, RefreshCw } from 'lucide-react';
-import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type ShelfLifeSuggestions, type IngredientsSource, type LabelArrangement, type LabelBadge, type LabelProduct, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type WrapCatalogue } from '../../api';
+import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type ShelfLifeSuggestions, type IngredientsSource, type LabelArrangement, type LabelBadge, type LabelDesign, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type StickerLang, type WrapCatalogue } from '../../api';
+import { LabelSizePicker } from './LabelSizePicker';
+import { DEFAULT_CHOICE, rememberedSize, requestFor, sizeName, sizeOf, type SizeChoice } from './labelSize';
 import { SheetPreview } from './SheetPreview';
 import { WrapParts } from './WrapParts';
 import { SpotOverlay } from './SpotOverlay';
@@ -13,7 +15,7 @@ import { SaveAsTemplate, StartFromRow } from './StartFrom';
 import { applyToItem, templateFromItem } from './labelTemplates';
 import { ArrangeBar } from './ArrangeBar';
 import { BadgePicker } from './BadgePicker';
-import { clearDesign, hasOverrides, layoutPayload, nudgeSpot } from './labelLayout';
+import { clearDesign, hasOverrides, isMovable, layoutPayload, nudgeSpot } from './labelLayout';
 import { MediaPicker } from '../MediaPicker';
 import { Button } from '../ui';
 import { NewTypeButton } from './TypesAndBrands';
@@ -47,11 +49,23 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   const [spots, setSpots] = useState<LabelSpot[]>([]);
   const [quick, setQuick] = useState<LabelSpotKey | null>(null);
   const [quickSaving, setQuickSaving] = useState(false);
-  // The drag designer (round 8): the preview is the full sticker, so its parts move on the full design; each move is saved at once.
+  // The drag designer (round 8): parts move on the design the preview drew; each move is saved at once.
   const [arrange, setArrange] = useState(false);
   // The media picker opened from a tap's sheet saves the picture as soon as it is picked.
   const [pickerSaves, setPickerSaves] = useState(false);
-  const [lang, setLang] = useState<'en' | 'dv'>('en');
+  const [lang, setLang] = useState<StickerLang>('en');
+  // The preview is drawn at the size Print labels last printed (owner, 2026-10-24: "its not showing the correct
+  // preview"): it was always the 105 × 148.5 mm sticker, whatever roll the item prints on. The size is the
+  // preview's own; changing it here prints nothing and saves nothing.
+  const [presets, setPresets] = useState<LabelPreset[]>([]);
+  const [limits, setLimits] = useState<LabelLimits | null>(null);
+  const [rolls, setRolls] = useState<LabelRoll[]>([]);
+  const [choice, setChoice] = useState<SizeChoice>(() => rememberedSize() ?? DEFAULT_CHOICE);
+  const [rounded, setRounded] = useState(false);
+  const [layoutsLoaded, setLayoutsLoaded] = useState(false);
+  // What the preview drew: its size and design, so the frame and the touch zones follow the page shown.
+  const [drawn, setDrawn] = useState<{ w: number; h: number; design: LabelDesign | null; label: string } | null>(null);
+  const previewSeq = useRef(0);
   const [types, setTypes] = useState<LabelType[]>([]);
   const canManageTypes = useCurrentUserPermissions().can('labels.manage');
   // The wrap-around label's parts and marks, as the server lists them (2026-10-12).
@@ -61,23 +75,37 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   useEffect(() => { fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === product?.label_type_id))).catch(() => setTypes([])); }, [product?.label_type_id]);
   // Round 15: a shelf life to suggest for the item's storage.
   const [shelfLife, setShelfLife] = useState<ShelfLifeSuggestions | null>(null);
-  useEffect(() => { fetchLabelLayouts().then((r) => { setCatalogue(r.wrap ?? null); setBadges(r.badges ?? []); setShelfLife(r.shelf_life ?? null); }).catch(() => setCatalogue(null)); }, []);
+  useEffect(() => {
+    fetchLabelLayouts().then((r) => {
+      setCatalogue(r.wrap ?? null); setBadges(r.badges ?? []); setShelfLife(r.shelf_life ?? null);
+      setPresets(r.presets ?? []); setLimits(r.limits ?? null); setRolls(r.rolls ?? []);
+    }).catch(() => setCatalogue(null)).finally(() => setLayoutsLoaded(true));
+  }, []);
 
   useEffect(() => {
     fetchLabelItem(itemId).then((r) => { setProduct(r.data); setDraft(toDraft(r.data)); }).catch(() => setMessage('Could not load the label settings.'));
   }, [itemId]);
 
-  const refreshPreview = async (l: 'en' | 'dv' = lang) => {
+  // Without the sizes (none loaded), the full A6 sticker, as before.
+  const sized = !layoutsLoaded ? null : presets.length > 0 ? requestFor(choice, presets) : { layout: 'single-105x148', w: null, h: null };
+  const refreshPreview = async () => {
+    if (!sized) return;
+    const seq = ++previewSeq.current;
     try {
-      const r = await stickerLinks({ items: [{ id: itemId, copies: 1 }], layout: 'single-105x148', lang: l, preview: true });
+      const r = await stickerLinks({ items: [{ id: itemId, copies: 1 }], layout: sized.layout, w: sized.w, h: sized.h, rounded: choice.shape === 'rect' && rounded, lang, preview: true });
+      if (seq !== previewSeq.current) return;
       setPreview(r.one_url ?? r.url);
       setSpots(r.summary?.design === 'wrap' ? [] : (r.summary?.spots ?? []));
+      setDrawn(r.summary ? { w: r.summary.w ?? 0, h: r.summary.h ?? 0, design: r.summary.design ?? null, label: r.summary.label } : null);
     } catch {
+      if (seq !== previewSeq.current) return;
       setPreview(null);
       setSpots([]);
+      setDrawn(null);
     }
   };
-  useEffect(() => { void refreshPreview(); }, [itemId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const previewKey = JSON.stringify([itemId, sized, rounded, lang]);
+  useEffect(() => { void refreshPreview(); }, [previewKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!draft || !product) return <p className="text-sm text-[var(--color-text-muted)] p-4">{message ?? 'Loading…'}</p>;
 
@@ -130,6 +158,13 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
     if (keys.length === 0) { setQuick(null); return; }
     void saveSome(pickKeys(itemPayload(draft), keys), keys);
   };
+
+  // The frame takes the shape of the page the preview drew, so a reply for the last size never shows squashed in the next one's frame.
+  const picked = presets.length > 0 ? sizeOf(choice, presets) : { w: 105, h: 148.5 };
+  const frame = drawn?.w && drawn.h ? drawn : picked;
+  const movable = drawn && isMovable(drawn.design) && spots.length > 0 ? drawn.design : null;
+  const moving = arrange && movable !== null;
+  const dirty = JSON.stringify(itemPayload(draft)) !== JSON.stringify(itemPayload(toDraft(product)));
 
   const recipeLine = product.ingredients.recipe_en;
   const usesRecipe = draft.label_ingredients_source !== 'manual' && recipeLine !== '';
@@ -319,25 +354,37 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-[var(--color-text-secondary)]">Preview (saved settings)</span>
           <div className="flex gap-1">
-            {(['en', 'dv'] as const).map((l) => (
-              <button key={l} type="button" onClick={() => { setLang(l); void refreshPreview(l); }} className={['px-3 h-9 min-w-[44px] rounded-md text-xs font-semibold border', lang === l ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-white border-[var(--color-border)]'].join(' ')}>{l === 'en' ? 'EN' : 'ދިވެހި'}</button>
+            {(['en', 'dv', 'both'] as const).map((l) => (
+              <button key={l} type="button" aria-pressed={lang === l} onClick={() => setLang(l)} className={['px-2 h-8 min-w-[36px] rounded-md text-xs font-semibold border', lang === l ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)] border-[var(--color-primary)]' : 'bg-[var(--color-surface)] border-[var(--color-border)]'].join(' ')}>{l === 'en' ? 'EN' : l === 'dv' ? 'ދިވެހި' : 'Both'}</button>
             ))}
-            <button type="button" onClick={() => void refreshPreview()} className="w-9 h-9 inline-flex items-center justify-center rounded-md border border-[var(--color-border)]" aria-label="Refresh preview"><RefreshCw size={14} /></button>
+            <button type="button" onClick={() => void refreshPreview()} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-[var(--color-border)]" aria-label="Refresh preview"><RefreshCw size={14} /></button>
           </div>
         </div>
+        {dirty && <p className="text-xs text-[var(--color-warning-strong)] mb-2" data-testid="item-label-unsaved">You have changes not saved yet. Save to see them in the preview.</p>}
         {preview ? (
           <>
-            <SheetPreview url={preview} ratio={105 / 148.5} title="Sticker preview"
-              overlay={spots.length > 0 ? <SpotOverlay spots={spots} w={105} h={148.5} onPick={setQuick} mode={arrange ? 'move' : 'tap'} onMove={(key, dx, dy) => saveLayout(nudgeSpot(draft.label_layout, 'full', key, { dx, dy }))} onScale={(key, f) => saveLayout(nudgeSpot(draft.label_layout, 'full', key, { s: f }))} /> : null} />
-            {spots.length > 0 && !arrange && <p className="text-xs text-[var(--color-text-muted)] mt-2" data-testid="item-label-tap-hint">Tap a part of the label to change it; the change is saved straight away.</p>}
-            {spots.length > 0 && (
+            <div className={choice.shape === 'circle' ? 'max-w-[240px] mx-auto' : undefined}>
+              <SheetPreview url={preview} ratio={frame.w / frame.h} round={choice.shape === 'circle'} title="Sticker preview"
+                overlay={spots.length > 0 ? <SpotOverlay spots={spots} w={frame.w} h={frame.h} onPick={setQuick} mode={moving ? 'move' : 'tap'} onMove={(key, dx, dy) => movable && saveLayout(nudgeSpot(draft.label_layout, movable, key, { dx, dy }))} onScale={(key, f) => movable && saveLayout(nudgeSpot(draft.label_layout, movable, key, { s: f }))} /> : null} />
+            </div>
+            <p className="text-xs text-[var(--color-text-muted)] mt-2" data-testid="item-label-preview-size">{drawn?.label || sizeName(choice.shape, frame.w, frame.h)}: the size Print labels last printed. Change it below to see another.</p>
+            {spots.length > 0 && !moving && <p className="text-xs text-[var(--color-text-muted)] mt-1" data-testid="item-label-tap-hint">Tap a part of the label to change it; the change is saved straight away.</p>}
+            {movable && (
               <div className="mt-2">
-                <ArrangeBar on={arrange} onToggle={setArrange} canReset={hasOverrides(draft.label_layout, 'full')} onReset={() => saveLayout(clearDesign(draft.label_layout, 'full'))} />
+                <ArrangeBar on={moving} onToggle={setArrange} canReset={hasOverrides(draft.label_layout, movable)} onReset={() => saveLayout(clearDesign(draft.label_layout, movable))} />
               </div>
             )}
           </>
         ) : (
           <p className="text-xs text-[var(--color-text-muted)]">The preview needs the Print labels permission.</p>
+        )}
+        {presets.length > 0 && (
+          <details className="mt-3 rounded-xl border border-[var(--color-border)] p-3" data-testid="item-label-preview-size-picker">
+            <summary className="text-sm font-semibold text-[var(--color-text)] cursor-pointer">Preview size</summary>
+            <div className="mt-3 space-y-3">
+              <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} rolls={rolls} />
+            </div>
+          </details>
         )}
       </div>
 

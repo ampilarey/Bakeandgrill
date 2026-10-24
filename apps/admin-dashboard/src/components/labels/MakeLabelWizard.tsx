@@ -310,7 +310,8 @@ export function MakeLabelWizard({ canManage = false }: {
   const previewKey = JSON.stringify([step >= 3 ? request(1, true) : null, presets.length, redraw]);
   useEffect(() => {
     if (step < 3 || !picked || presets.length === 0) { setPreview(null); setChecked(null); setPreviewBusy(false); return; }
-    if (sizeIssue) { setPreviewError(sizeIssue); setPreviewBusy(false); return; }
+    // A size refused, or a redraw that failed, takes the old picture down: it showed the last size as if it were this one.
+    if (sizeIssue) { ++previewSeq.current; setPreview(null); setMocks({}); setSpotBox(null); setPreviewError(sizeIssue); setPreviewBusy(false); return; }
     const seq = ++previewSeq.current;
     setPreviewBusy(true);
     const timer = setTimeout(async () => {
@@ -327,6 +328,8 @@ export function MakeLabelWizard({ canManage = false }: {
         setChecked(r.summary ?? null);
       } catch (e) {
         if (seq !== previewSeq.current) return;
+        setPreview(null);
+        setMocks({});
         setPreviewError(e instanceof Error ? e.message : 'Could not draw the preview.');
       } finally {
         if (seq === previewSeq.current) setPreviewBusy(false);
@@ -605,7 +608,7 @@ export function MakeLabelWizard({ canManage = false }: {
                 </div>
               ) : (
               <div className={round ? 'max-w-[360px] mx-auto' : design === 'wrap' ? 'w-full' : 'max-w-[420px] mx-auto'}>
-                <SheetPreview url={preview} ratio={stickerW / stickerH} busy={previewBusy} round={round} title="The label" empty={previewError ?? 'Drawing…'}
+                <SheetPreview url={preview} ratio={(spotBox?.w ?? stickerW) / (spotBox?.h ?? stickerH)} busy={previewBusy} round={round} title="The label" empty={previewError ?? 'Drawing…'}
                   overlay={spots.length > 0 ? <SpotOverlay spots={spots} w={spotBox?.w ?? stickerW} h={spotBox?.h ?? stickerH} onPick={openQuick} mode={moving ? 'move' : 'tap'} onMove={(key, dx, dy) => { if (movable) saveLayout(nudgeSpot(productLayout, movable, key, { dx, dy })); }} onScale={(key, f) => { if (movable) saveLayout(nudgeSpot(productLayout, movable, key, { s: f })); }} /> : null} />
               </div>
               )}

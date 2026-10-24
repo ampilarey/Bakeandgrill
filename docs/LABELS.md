@@ -1189,3 +1189,20 @@ beneath.
   Lines are broken on the server so both renderers print the same lines.
 - **Thaana.** dompdf draws characters in stored order, so Dhivehi came out mirrored.
   `App\Support\ThaanaVisual::order()` gives it visual order for the PDF path only.
+
+## The previews match the print
+
+Checked 2026-10-24 (owner: "its not showing the correct preview"). The server draws the preview
+and the PDF from the same pieces; nine sizes rendered both ways (A4 4-up, 105 × 148.5 in both
+languages, 60 × 40, 50 × 30 Dhivehi, 40 × 60, round 50, 180 × 40 wrap, 100 × 50, 60 × 40 on A4)
+came out the same. What differed was on the screens, fixed then:
+
+- A menu item's **Label tab** always previewed the 105 × 148.5 mm sticker, whatever the item
+  prints on. It now draws at the size Print labels last printed (`rememberedSize()`), says which,
+  offers another under **Preview size** (for the preview only; nothing is saved or printed), has
+  EN, ދިވެހި and Both, and says when changes are not saved yet (it draws the saved settings).
+- **Print labels** and the **Make a label** wizard kept the last picture on screen when a new size
+  was refused or a redraw failed, so the old size showed as if it were the new one. The picture
+  now goes and the reason shows in its place.
+- Each sticker frame takes the shape of the sticker the preview drew (the summary's `w` and `h`),
+  so the last size's page is never squeezed into the next size's frame while it redraws.

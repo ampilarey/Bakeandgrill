@@ -125,6 +125,29 @@ describe('ItemLabelTab', () => {
     rect.mockRestore();
   });
 
+  // Owner, 2026-10-24: "its not showing the correct preview". The preview was always the 105 × 148.5 mm sticker; it is the size Print labels last printed.
+  it('previews at the size Print labels last printed, says when changes are not saved, and offers Both', async () => {
+    localStorage.setItem('labels.lastSize', JSON.stringify({ shape: 'rect', preset: 'r60x40', on: 'printer', w: 60, h: 40, roll: null }));
+    api.fetchLabelLayouts.mockResolvedValue({ data: [], wrap: null, limits: null, presets: [
+      { id: 'r105x148', shape: 'rect', w: 105, h: 148.5, name: '105 × 148.5 mm', cm: '', design: 'full', options: [{ on: 'sheet', layout: 'a4-4', label: '4 on A4', per_page: 4, landscape: false }] },
+      { id: 'r60x40', shape: 'rect', w: 60, h: 40, name: '60 × 40 mm', cm: '', design: 'small', options: [{ on: 'sheet', layout: 'a4-custom', label: 'A4', per_page: 21, landscape: false }, { on: 'printer', layout: 'single-custom', label: 'Label printer', per_page: 1, landscape: false }] },
+    ] });
+    api.stickerLinks.mockResolvedValue({ url: '/s', one_url: '/s?one=1', summary: { design: 'small', w: 60, h: 40, label: '60 × 40 mm, label printer', spots: [] } });
+    render(<ItemLabelTab itemId={7} />);
+    await waitFor(() => expect(api.stickerLinks).toHaveBeenCalled());
+    expect(api.stickerLinks.mock.calls[0][0]).toMatchObject({ layout: 'single-custom', w: 60, h: 40, lang: 'en', preview: true });
+    expect(await screen.findByTestId('item-label-preview-size')).toHaveTextContent('60 × 40 mm, label printer');
+    expect(screen.getByTestId('sheet-preview')).toHaveStyle({ aspectRatio: String(60 / 40) });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Both' }));
+    await waitFor(() => expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ lang: 'both' })));
+
+    expect(screen.queryByTestId('item-label-unsaved')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Typed ingredients (English)'), { target: { value: 'Flour, salt' } });
+    expect(screen.getByTestId('item-label-unsaved')).toHaveTextContent('Save to see them in the preview');
+    localStorage.removeItem('labels.lastSize');
+  });
+
   // Round 15: a serving size beside per 100, and the usual shelf life for the storage.
   it('saves a serving size for the nutrition panel and suggests a shelf life for the storage', async () => {
     api.fetchLabelLayouts.mockResolvedValue({ data: [], presets: [], wrap: null, shelf_life: { frozen: { days: 90, why: 'Frozen.' }, chilled: { days: 3, why: 'Chilled.' }, ambient: { days: 2, why: 'Ambient.' } } });

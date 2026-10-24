@@ -431,7 +431,8 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const previewRequestKey = JSON.stringify([request(previewKey), previewKey, presets.length, footersTick, checksTick]);
   useEffect(() => {
     if (items.length === 0 || presets.length === 0) { setPreview(null); setPreviewError(null); setPreviewBusy(false); return; }
-    if (sizeIssue) { setPreviewError(sizeIssue); setPreviewBusy(false); return; }
+    // A size refused, or a redraw that failed, takes the old picture down: it showed the last size as if it were this one.
+    if (sizeIssue) { ++previewSeq.current; setPreview(null); setPreviewError(sizeIssue); setPreviewBusy(false); return; }
     const seq = ++previewSeq.current;
     setPreviewBusy(true);
     const timer = setTimeout(async () => {
@@ -442,6 +443,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
         setPreviewError(null);
       } catch (e) {
         if (seq !== previewSeq.current) return;
+        setPreview(null);
         setPreviewError(e instanceof Error ? e.message : 'Could not draw the preview.');
       } finally {
         if (seq === previewSeq.current) setPreviewBusy(false);
@@ -463,7 +465,10 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const mockOffered = preview ? (Object.keys(preview.mocks) as MockSurface[]) : [];
   const mockPicked: MockSurface | null = mockSurface && mockOffered.includes(mockSurface) ? mockSurface : (mockOffered[0] ?? null);
   // A mock-up scene is 4 : 3 (StickerMockup::frame).
-  const previewRatio = previewMode === 'one' ? stickerW / stickerH : previewMode === 'mock' ? 4 / 3 : page.w / page.h;
+  // The sticker frame takes the shape of the sticker the preview drew, so the last size's page is never squeezed into the next size's frame while it redraws.
+  const drawnW = preview?.summary.w || stickerW;
+  const drawnH = preview?.summary.h || stickerH;
+  const previewRatio = previewMode === 'one' ? drawnW / drawnH : previewMode === 'mock' ? 4 / 3 : page.w / page.h;
   const previewUrl = preview ? (previewMode === 'one' ? preview.one : previewMode === 'mock' ? (mockPicked ? preview.mocks[mockPicked] ?? null : preview.one) : preview.sheet) : null;
 
   const sendToPrinter = async () => {
