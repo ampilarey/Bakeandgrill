@@ -1466,6 +1466,23 @@ its Dhivehi draft, the order app's) say what is recorded. A new public page need
 step towards an order goes into `FUNNEL` and a friendly page name into `pageName()`. `SiteAnalyticsTest`,
 `VisitorsPage.test.tsx`.
 
+## The dashboard
+
+Owner, 2026-10-25 ("Can u enhance layout and all related to dash board"). Monitor → Dashboard
+(`DashboardPage.tsx`) reads top to bottom: Needs attention; **Today so far** (sales, orders,
+net profit, refunds and discounts, with the same day last week beside them, and a row of smaller
+figures); **Right now** (only on today: open orders from the till's own Active orders,
+`fetchOrders({ active_only: true })` and its `meta.total`, never a status list or the page size;
+online not started; ready to collect; deliveries out; shifts open from `GET /admin/pos/overview`,
+every till, never `/shifts/current`, which is the signed-in person's own; clocked in), the no-shift
+warning only when no till is open; **Worth a look**, cards only when they hold something (stock,
+price rises, owed to suppliers, waiting to print, texts that failed, owed on credit); open orders
+and what just changed; the day's sales by type, by payment method and best sellers; stock and
+buying; the till; All time (`SiteStatsSection`); and system health, open only when something is
+wrong. Words follow the till: `typeWord()`, `methodWord()`, `statusWord()` (in progress is
+Cooking). Sales count every paid order (§ A paid order is a sale at any stage), so never call them
+"completed". `DashboardPage.test.tsx`.
+
 ## Queue worker vs synchronous SMS
 
 The queue worker (`php artisan queue:work redis`) is only needed for async listeners

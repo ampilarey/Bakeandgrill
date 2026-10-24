@@ -23,7 +23,7 @@ export function SiteStatsSection() {
 
   return (
     <>
-      <SectionLabel>Site totals</SectionLabel>
+      <SectionLabel>All time</SectionLabel>
       <div
         className="stat-grid"
         data-responsive-grid

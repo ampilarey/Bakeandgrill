@@ -395,6 +395,7 @@ export async function getDailySummary(date: string): Promise<{
   date: string;
   revenue: number;
   refunds?: number;
+  discounts?: number;
   tax: number;
   orders: number;
   avg_order: number;

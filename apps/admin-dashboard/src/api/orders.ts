@@ -78,6 +78,8 @@ export async function fetchOrders(params?: {
    *  the customer hasn't paid for yet). Manager view for chasing
    *  outstanding balances at end of day. */
   unpaid_only?: boolean;
+  /** The till's own Active orders: work still to do (unpaid tickets, online orders until handed over). */
+  active_only?: boolean;
   user_id?: number;
   device_id?: number;
 }): Promise<OrdersResponse> {
@@ -89,6 +91,7 @@ export async function fetchOrders(params?: {
   if (params?.date)        qs.set('date', params.date);
   if (params?.search)      qs.set('search', params.search);
   if (params?.unpaid_only) qs.set('unpaid_only', '1');
+  if (params?.active_only) qs.set('active_only', '1');
   if (params?.user_id)     qs.set('user_id', String(params.user_id));
   if (params?.device_id)   qs.set('device_id', String(params.device_id));
   return req(`/orders?${qs}`);
