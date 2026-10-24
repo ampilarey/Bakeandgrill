@@ -980,8 +980,9 @@ class TelegramCommands
             'qr', 'qr_code', 'bml_qr' => 'QR',
             'bml', 'bml_gateway', 'bml_connect' => 'BML online',
             'stripe' => 'Card online',
-            'wallet' => 'Deposit',
-            'house_account' => 'House account',
+            // A customer's wallet and credit account, in the words the till and the receipts use (2026-10-24).
+            'wallet', 'customer_deposit' => 'Wallet',
+            'house_account' => 'Credit account',
             'transfer', 'bank_transfer' => 'Bank transfer',
             'gift_card' => 'Gift card',
             'credit' => 'Credit account',

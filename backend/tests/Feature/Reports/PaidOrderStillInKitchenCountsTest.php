@@ -70,4 +70,17 @@ class PaidOrderStillInKitchenCountsTest extends TestCase
         $this->assertStringContainsString('Online pickup: 1', $lines);
         $this->assertStringContainsString('BML online', $lines);
     }
+
+    public function test_wallet_and_credit_account_payments_are_named_as_the_till_names_them(): void
+    {
+        $wallet = $this->order('completed', 'paid', 40.00, 'takeaway');
+        $this->pay($wallet, 'customer_deposit', 40.00);
+        $credit = $this->order('completed', 'paid', 60.00, 'takeaway');
+        $this->pay($credit, 'house_account', 60.00);
+
+        $lines = implode("\n", app(TelegramCommands::class)->dayReportLines(Carbon::now()));
+        $this->assertStringContainsString('Wallet', $lines);
+        $this->assertStringContainsString('Credit account', $lines);
+        $this->assertStringNotContainsString('Customer deposit', $lines);
+    }
 }
