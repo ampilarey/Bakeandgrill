@@ -61,6 +61,13 @@ if (routes_domain_section_is_or_unset('reporting', 'reports', 'reports') && !rou
         Route::get('/reports/credit-exposure/csv', [ReportsController::class, 'creditExposureCsv'])->middleware('throttle:20,1');
         Route::get('/reports/usage-variance/csv', [ReportsController::class, 'usageVarianceCsv'])->middleware('throttle:20,1');
     });
+
+    // The visitor report's stored detail (owner, 2026-10-24: "When data is large add manual del or
+    // auto del settings in the admin"): keep it for ever by default; delete by hand or after a set time.
+    Route::middleware('permission:settings.update')->group(function () {
+        Route::put('/admin/site-analytics/retention', [App\Http\Controllers\Api\SiteStatsController::class, 'retention']);
+        Route::post('/admin/site-analytics/delete', [App\Http\Controllers\Api\SiteStatsController::class, 'deleteDetail'])->middleware('throttle:10,1');
+    });
 }
 
 if (routes_domain_section_is('reporting', 'analytics') && !routes_domain_loaded('reporting.analytics')) {

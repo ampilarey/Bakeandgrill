@@ -4,31 +4,32 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domains\Reporting\Support\VisitRetention;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 /**
- * Detailed page views older than N days go (2026-10-24). The visitor report
- * looks back 180 days at most; the daily totals in site_visits_daily, which
- * the dashboard reads, are kept for ever. Deleted in batches so a big table
- * never holds a long lock.
+ * Applies the owner's automatic delete for the visitor report's detail
+ * (Admin → Website visitors → Stored visit details; VisitRetention). Kept
+ * for ever by default, so most nights this does nothing. The daily totals
+ * the dashboard reads are never touched. --days overrides the setting.
  */
 class PruneVisitEvents extends Command
 {
-    protected $signature = 'visits:prune {--days=180}';
+    protected $signature = 'visits:prune {--days= : Delete detail older than this many days, whatever the setting says}';
 
-    protected $description = 'Delete detailed page views older than the retention window';
+    protected $description = 'Delete detailed page views older than the time set in Admin (kept for ever by default)';
 
     public function handle(): int
     {
-        $days = max(30, (int) $this->option('days'));
-        $before = now()->subDays($days);
-        $deleted = 0;
-        do {
-            $ids = DB::table('site_visit_events')->where('occurred_at', '<', $before)->orderBy('id')->limit(5000)->pluck('id');
-            $deleted += $ids->isEmpty() ? 0 : DB::table('site_visit_events')->whereIn('id', $ids)->delete();
-        } while ($ids->count() === 5000);
-        $this->info("Deleted {$deleted} page view" . ($deleted === 1 ? '' : 's') . " older than {$days} days.");
+        $days = $this->option('days') !== null ? max(30, (int) $this->option('days')) : VisitRetention::keepDays();
+        if ($days === 0) {
+            $this->info('Visit details are kept for ever; nothing deleted.');
+
+            return self::SUCCESS;
+        }
+        $before = now(config('app.timezone', 'Indian/Maldives'))->subDays($days)->toDateString();
+        $deleted = VisitRetention::deleteBefore($before);
+        $this->info("Deleted {$deleted} page view" . ($deleted === 1 ? '' : 's') . " from before {$before}.");
 
         return self::SUCCESS;
     }

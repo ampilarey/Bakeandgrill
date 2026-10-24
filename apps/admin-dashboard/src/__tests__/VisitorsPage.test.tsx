@@ -8,8 +8,10 @@ import type { SiteAnalytics } from '../api';
  * totals against the period before, the live count, the funnel, the lists in
  * plain words, the period and app pickers, and "Don't count this device".
  */
-const api = vi.hoisted(() => ({ fetchSiteAnalytics: vi.fn() }));
+const api = vi.hoisted(() => ({ fetchSiteAnalytics: vi.fn(), setVisitRetention: vi.fn(), deleteVisitDetail: vi.fn() }));
 vi.mock('../api', () => api);
+const perms = vi.hoisted(() => ({ settings: true }));
+vi.mock('../hooks/usePermissions', () => ({ useCurrentUserPermissions: () => ({ user: null, loading: false, can: (p: string) => p !== 'settings.update' || perms.settings }) }));
 
 import VisitorsPage, { duration, pageName } from '../pages/VisitorsPage';
 
@@ -34,6 +36,7 @@ const report = (): SiteAnalytics => ({
   apps: [{ name: 'order', visitors: 30, views: 90 }],
   screens: [{ name: 'Phone (under 768 px)', visitors: 35 }],
   funnel: [{ key: 'visit', label: 'Visited', sessions: 50 }, { key: 'menu', label: 'Looked at the menu', sessions: 30 }, { key: 'order_app', label: 'Opened the order app', sessions: 25 }, { key: 'checkout', label: 'Reached checkout', sessions: 10 }, { key: 'ordered', label: 'Placed an order', sessions: 6 }],
+  storage: { views: 1_250_000, oldest: '2026-03-01', approx_mb: 500.7, large: false, keep_days: 0, choices: [0, 90, 180, 365, 730] },
   recent: [{ at: '2026-10-24T15:00:00+05:00', surface: 'order', visit: 'a1b2', path: '/order/checkout', source: 'Facebook', device: 'mobile', browser: 'Facebook app', os: 'Android', country: 'MV', returning: true, duration_s: 64 }],
 });
 
@@ -41,7 +44,10 @@ describe('VisitorsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.removeItem('bg_no_track');
+    perms.settings = true;
     api.fetchSiteAnalytics.mockResolvedValue(report());
+    api.setVisitRetention.mockResolvedValue({ storage: { ...report().storage, keep_days: 365 } });
+    api.deleteVisitDetail.mockResolvedValue({ deleted: 4200, storage: report().storage });
   });
 
   it('shows the totals, the live count, the funnel and the lists in plain words', async () => {
@@ -85,6 +91,38 @@ describe('VisitorsPage', () => {
     api.fetchSiteAnalytics.mockResolvedValue({ ...report(), totals: { ...totals, views: 0 }, live: { visitors: 0, views: 0, pages: [] }, recent: [] });
     render(<MemoryRouter><VisitorsPage /></MemoryRouter>);
     expect(await screen.findByText(/No visits recorded yet/)).toBeInTheDocument();
+  });
+
+  // Owner, 2026-10-24: kept for ever; "when data is large add manual del or auto del settings in the admin".
+  it('shows how much is stored, sets an automatic delete and deletes before a date after asking', async () => {
+    render(<MemoryRouter><VisitorsPage /></MemoryRouter>);
+    const card = await screen.findByTestId('visitors-storage');
+    expect(within(card).getByTestId('visitors-storage-size')).toHaveTextContent('1,250,000 page views since 1 Mar 2026, about 500.7 MB. Kept for ever.');
+    expect(within(card).queryByTestId('visitors-storage-large')).toBeNull();
+
+    fireEvent.change(within(card).getByTestId('visitors-keep'), { target: { value: '365' } });
+    await waitFor(() => expect(api.setVisitRetention).toHaveBeenCalledWith(365));
+
+    expect(within(card).getByTestId('visitors-delete')).toBeDisabled();
+    fireEvent.change(card.querySelector('input[type="date"]')!, { target: { value: '2026-06-01' } });
+    fireEvent.click(within(card).getByTestId('visitors-delete'));
+    expect(api.deleteVisitDetail).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('Every page view before 1 June 2026 is deleted for good');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(api.deleteVisitDetail).toHaveBeenCalledWith('2026-06-01'));
+    expect(await screen.findByText('Deleted 4,200 page views from before 1 June 2026.')).toBeInTheDocument();
+  });
+
+  it('warns when the stored detail is large, and keeps the controls for those who can change settings', async () => {
+    perms.settings = false;
+    api.fetchSiteAnalytics.mockResolvedValue({ ...report(), storage: { ...report().storage, views: 3_000_000, approx_mb: 1201.6, large: true } });
+    render(<MemoryRouter><VisitorsPage /></MemoryRouter>);
+    const card = await screen.findByTestId('visitors-storage');
+    expect(within(card).getByTestId('visitors-storage-large')).toBeInTheDocument();
+    expect(within(card).getByTestId('visitors-storage-size')).toHaveTextContent('about 1.2 GB');
+    expect(within(card).queryByTestId('visitors-delete')).toBeNull();
+    expect(within(card).queryByTestId('visitors-keep')).toBeNull();
   });
 
   it('reads times and addresses plainly', () => {

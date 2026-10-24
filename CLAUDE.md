@@ -1455,7 +1455,13 @@ and a secret in an address (`/order/track/{token}`) is kept as `:token` (`VisitP
 the way to an order (`SiteAnalytics::FUNNEL`, by page reached), pages, entry and exit pages, sources,
 campaigns, devices, browsers, systems, countries, languages, screens and the latest views; "Don't
 count this device" there sets `localStorage['bg_no_track']`, which both beacons honour.
-`visits:prune` drops detail older than 180 days; the daily totals stay. The privacy pages (website,
+The detail is **kept for ever** (owner, 2026-10-24: "3. When data is large add manual del or auto
+del settings in the admin"): the page's Stored visit details card shows the rows, the oldest day and
+the size (`VisitRetention::storage()`, `large` past 2 million views), and with `settings.update` sets
+Delete automatically (`visits_detail_keep_days`: never, 3, 6, 12 or 24 months, `PUT
+/api/admin/site-analytics/retention`, applied nightly by `visits:prune`) or deletes everything before
+a date after a confirm (`POST /api/admin/site-analytics/delete`); both are audited, and the daily
+totals are never touched. The privacy pages (website,
 its Dhivehi draft, the order app's) say what is recorded. A new public page needs nothing; a new
 step towards an order goes into `FUNNEL` and a friendly page name into `pageName()`. `SiteAnalyticsTest`,
 `VisitorsPage.test.tsx`.

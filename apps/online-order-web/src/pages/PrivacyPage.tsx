@@ -54,7 +54,7 @@ export function PrivacyPage() {
           <li><strong>Email:</strong> Optional, for e-receipts and order updates.</li>
           <li><strong>Order History:</strong> To provide loyalty rewards and improve service.</li>
           <li><strong>Delivery Address:</strong> Only when you choose delivery — used solely to fulfil your order.</li>
-          <li><strong>Visits:</strong> the pages you open on our website and order app, the site or campaign that sent you, your type of device, browser, country, language and screen size, and how long you stay on each page. We keep no IP address and set no cookie for this: a random tag in your browser tab and a daily code that cannot be traced back to you let us count visits. These records are deleted after 180 days.</li>
+          <li><strong>Visits:</strong> the pages you open on our website and order app, the site or campaign that sent you, your type of device, browser, country, language and screen size, and how long you stay on each page. We keep no IP address and set no cookie for this: a random tag in your browser tab and a daily code that cannot be traced back to you let us count visits. We keep these records to understand how the site is used, and may delete older ones at any time.</li>
         </ul>
         <p>We do <strong>not</strong> collect, store, or process your payment card details. All card payments are handled exclusively by Bank of Maldives (BML) on their secure payment page.</p>
       </Section>

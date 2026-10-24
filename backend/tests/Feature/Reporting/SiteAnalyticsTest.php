@@ -115,13 +115,46 @@ class SiteAnalyticsTest extends TestCase
         $this->getJson('/api/admin/site-analytics')->assertForbidden();
     }
 
-    public function test_old_detail_is_pruned_and_the_daily_totals_stay(): void
+    // Owner, 2026-10-24: keep it all; "when data is large add manual del or auto del settings in the admin".
+    public function test_detail_is_kept_for_ever_until_a_time_is_set_and_the_daily_totals_always_stay(): void
     {
         $this->hit(['path' => '/']);
-        DB::table('site_visit_events')->update(['occurred_at' => now()->subDays(200)]);
+        DB::table('site_visit_events')->update(['occurred_at' => now()->subDays(400), 'day' => now()->subDays(400)->toDateString()]);
+
+        $this->artisan('visits:prune')->assertSuccessful();
+        $this->assertSame(1, DB::table('site_visit_events')->count(), 'kept for ever by default');
+
+        PermissionCatalogSync::sync();
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $this->putJson('/api/admin/site-analytics/retention', ['keep_days' => 45])->assertUnprocessable();
+        $this->putJson('/api/admin/site-analytics/retention', ['keep_days' => 365])->assertOk()->assertJsonPath('storage.keep_days', 365);
         $this->artisan('visits:prune')->assertSuccessful();
         $this->assertSame(0, DB::table('site_visit_events')->count());
         $this->assertSame(1, (int) DB::table('site_visits_daily')->sum('views'));
+    }
+
+    public function test_detail_before_a_date_is_deleted_by_hand_and_the_report_says_how_much_is_stored(): void
+    {
+        PermissionCatalogSync::sync();
+        $this->hit(['path' => '/', 'sid' => 'sessionOLD1'], self::IPHONE, 'web', 'MV', '10.0.0.1');
+        $this->hit(['path' => '/menu', 'sid' => 'sessionNEW1'], self::WINDOWS, 'web', 'MV', '10.0.0.2');
+        DB::table('site_visit_events')->where('session', 'sessionOLD1')->update(['day' => '2026-01-10']);
+
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $r = $this->getJson('/api/admin/site-analytics?days=7')->assertOk();
+        $this->assertSame(2, $r->json('storage.views'));
+        $this->assertSame('2026-01-10', $r->json('storage.oldest'));
+        $this->assertSame(0, $r->json('storage.keep_days'));
+        $this->assertFalse($r->json('storage.large'));
+
+        $this->postJson('/api/admin/site-analytics/delete', ['before' => '2026-02-01'])->assertOk()
+            ->assertJsonPath('deleted', 1)->assertJsonPath('storage.views', 1);
+        $this->assertSame(2, (int) DB::table('site_visits_daily')->sum('views'));
+
+        // Reading the report is not leave to delete it.
+        Sanctum::actingAs($this->makeKitchenStaff(), ['staff']);
+        $this->postJson('/api/admin/site-analytics/delete', ['before' => '2026-12-01'])->assertForbidden();
+        $this->putJson('/api/admin/site-analytics/retention', ['keep_days' => 90])->assertForbidden();
     }
 
     public function test_paths_user_agents_and_sources_are_read_plainly(): void

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Activity, Clock, Eye, MousePointerClick, Repeat, Undo2, Users, Layers } from 'lucide-react';
-import { fetchSiteAnalytics, type SiteAnalytics, type VisitCount, type VisitSurface, type VisitTotals } from '../api';
-import { Btn, Card, EmptyState, ErrorMsg, PageHeader, PageShell, Spinner, StatCard, Switch, TabScrollRow, TableCard, TD, TD_NOWRAP, TH } from '../components/SharedUI';
+import { Activity, Clock, Database, Eye, MousePointerClick, Repeat, Undo2, Users, Layers } from 'lucide-react';
+import { deleteVisitDetail, fetchSiteAnalytics, setVisitRetention, type SiteAnalytics, type VisitCount, type VisitStorage, type VisitSurface, type VisitTotals } from '../api';
+import { Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, InlineIcon, PageHeader, PageShell, Select, Spinner, StatCard, Switch, TabScrollRow, TableCard, TD, TD_NOWRAP, TH, useConfirmDialog } from '../components/SharedUI';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 /*
@@ -21,6 +22,9 @@ const PERIODS = [
   { days: 30, label: '30 days' },
   { days: 90, label: '90 days' },
   { days: 180, label: '180 days' },
+  { days: 365, label: '1 year' },
+  // Everything stored: kept for ever unless a time is set below.
+  { days: 3660, label: 'All' },
 ] as const;
 
 const SURFACES: { value: VisitSurface; label: string }[] = [
@@ -145,6 +149,8 @@ export default function VisitorsPage() {
       {error && <ErrorMsg message={error} />}
       {!data && !error && <Spinner />}
       {data && <Report data={data} />}
+
+      {data?.storage && <StorageCard storage={data.storage} onChanged={() => setTick((n) => n + 1)} />}
 
       <Card style={{ marginTop: 16 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
@@ -412,5 +418,93 @@ function RecentTable({ rows }: { rows: SiteAnalytics['recent'] }) {
         </tbody>
       </table>
     </TableCard>
+  );
+}
+
+const KEEP_NAMES: Record<number, string> = { 0: 'Never: keep everything', 90: 'After 3 months', 180: 'After 6 months', 365: 'After 1 year', 730: 'After 2 years' };
+
+const megabytes = (mb: number) => (mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toLocaleString('en-US')} MB`);
+
+/**
+ * How much visit detail is stored, and the owner's two ways to trim it
+ * (owner, 2026-10-24: "When data is large add manual del or auto del settings
+ * in the admin"): delete automatically after a set time (visits:prune, each
+ * night), or delete everything before a date now. Kept for ever by default.
+ * The daily totals on the Dashboard are never deleted. The controls need
+ * settings.update; anyone who can read the report sees the size.
+ */
+export function StorageCard({ storage, onChanged }: { storage: VisitStorage; onChanged: () => void }) {
+  const canChange = useCurrentUserPermissions().can('settings.update');
+  const [keep, setKeep] = useState(storage.keep_days);
+  const [before, setBefore] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const { state: dlg, ask, close } = useConfirmDialog();
+  useEffect(() => { setKeep(storage.keep_days); }, [storage.keep_days]);
+
+  const saveKeep = async (days: number) => {
+    setKeep(days); setBusy(true); setNote(null);
+    try {
+      await setVisitRetention(days);
+      setNote(days === 0 ? 'Visit details are kept for ever.' : `Details older than ${KEEP_NAMES[days].replace('After ', '').toLowerCase()} are deleted each night from now on.`);
+      onChanged();
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : 'Could not save.');
+      setKeep(storage.keep_days);
+    } finally { setBusy(false); }
+  };
+
+  const deleteNow = () => {
+    if (!before) return;
+    const when = new Date(`${before}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    ask({
+      title: 'Delete visit details?',
+      message: `Every page view before ${when} is deleted for good: pages, sources, devices and countries for those days. The daily visitor totals on the Dashboard stay.`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setBusy(true); setNote(null);
+        try {
+          const r = await deleteVisitDetail(before);
+          setNote(`Deleted ${r.deleted.toLocaleString('en-US')} page views from before ${when}.`);
+          setBefore('');
+          onChanged();
+        } catch (e) {
+          setNote(e instanceof Error ? e.message : 'Could not delete.');
+        } finally { setBusy(false); }
+      },
+    });
+  };
+
+  return (
+    <Card style={{ marginTop: 16, ...(storage.large ? { borderColor: 'color-mix(in srgb, var(--color-warning) 45%, transparent)' } : {}) }} data-testid="visitors-storage">
+      <h2 style={{ margin: '0 0 2px', fontSize: 15, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}><InlineIcon icon={Database} /> Stored visit details</h2>
+      <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--color-text-secondary)' }} data-testid="visitors-storage-size">
+        {storage.views.toLocaleString('en-US')} page views{storage.oldest ? ` since ${new Date(`${storage.oldest}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}, about {megabytes(storage.approx_mb)}. {storage.keep_days === 0 ? 'Kept for ever.' : `Deleted automatically ${KEEP_NAMES[storage.keep_days]?.toLowerCase() ?? `after ${storage.keep_days} days`}.`}
+      </p>
+      {storage.large && (
+        <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--color-warning-strong)' }} data-testid="visitors-storage-large">
+          This is getting large and makes the report slower. Delete older details below, or set them to go automatically.
+        </p>
+      )}
+      {canChange ? (
+        <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', alignItems: 'end' }}>
+          <Select label="Delete automatically" value={String(keep)} disabled={busy} data-testid="visitors-keep"
+            onChange={(v) => void saveKeep(Number(v))}
+            options={storage.choices.map((d) => ({ value: String(d), label: KEEP_NAMES[d] ?? `After ${d} days` }))} />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'end' }}>
+            <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+              <DateInput label="Delete everything before" value={before} onChange={setBefore} max={new Date().toISOString().slice(0, 10)} />
+            </div>
+            <Btn variant="danger-outline" disabled={!before || busy} onClick={deleteNow} data-testid="visitors-delete">Delete</Btn>
+          </div>
+        </div>
+      ) : (
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>Someone who can change settings can delete older details here.</p>
+      )}
+      {note && <p role="status" style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>{note}</p>}
+      <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>The daily visitor totals on the Dashboard are never deleted.</p>
+      <ConfirmDialog state={dlg} close={close} />
+    </Card>
   );
 }

@@ -64,7 +64,8 @@ class SiteStatsController extends Controller
     public function analytics(Request $request, \App\Domains\Reporting\Services\SiteAnalytics $analytics): JsonResponse
     {
         $data = $request->validate([
-            'days' => ['nullable', 'integer', 'min:1', 'max:180'],
+            // Kept for ever unless the owner sets a time, so a range may go back years.
+            'days' => ['nullable', 'integer', 'min:1', 'max:3660'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
             'surface' => ['nullable', Rule::in(['all', ...SiteVisitCounter::SURFACES])],
@@ -73,7 +74,31 @@ class SiteStatsController extends Controller
         $to = isset($data['to']) ? \Illuminate\Support\Carbon::parse($data['to'], $tz) : now($tz);
         $from = isset($data['from']) ? \Illuminate\Support\Carbon::parse($data['from'], $tz) : $to->copy()->subDays(((int) ($data['days'] ?? 7)) - 1);
 
-        return response()->json($analytics->report($from->toDateString(), $to->toDateString(), $data['surface'] ?? 'all'));
+        return response()->json($analytics->report($from->toDateString(), $to->toDateString(), $data['surface'] ?? 'all')
+            + ['storage' => \App\Domains\Reporting\Support\VisitRetention::storage()]);
+    }
+
+    /** PUT /admin/site-analytics/retention — settings.update. How long the detail is kept: 0 (for ever), 90, 180, 365 or 730 days. */
+    public function retention(Request $request, \App\Services\AuditLogService $audit): JsonResponse
+    {
+        $data = $request->validate(['keep_days' => ['required', 'integer', Rule::in(\App\Domains\Reporting\Support\VisitRetention::CHOICES)]]);
+        $before = \App\Domains\Reporting\Support\VisitRetention::keepDays();
+        \App\Domains\Reporting\Support\VisitRetention::setKeepDays((int) $data['keep_days']);
+        $audit->log('visits.retention_changed', 'SiteSetting', null, ['keep_days' => $before], ['keep_days' => (int) $data['keep_days']], [], $request);
+
+        return response()->json(['storage' => \App\Domains\Reporting\Support\VisitRetention::storage()]);
+    }
+
+    /** POST /admin/site-analytics/delete — settings.update. Deletes the detail of every day before `before`; the daily totals stay. */
+    public function deleteDetail(Request $request, \App\Services\AuditLogService $audit): JsonResponse
+    {
+        $tz = config('app.timezone', 'Indian/Maldives');
+        $data = $request->validate(['before' => ['required', 'date', 'before_or_equal:' . now($tz)->addDay()->toDateString()]]);
+        $day = \Illuminate\Support\Carbon::parse($data['before'], $tz)->toDateString();
+        $deleted = \App\Domains\Reporting\Support\VisitRetention::deleteBefore($day);
+        $audit->log('visits.detail_deleted', 'SiteSetting', null, [], ['before' => $day, 'deleted' => $deleted], [], $request);
+
+        return response()->json(['deleted' => $deleted, 'storage' => \App\Domains\Reporting\Support\VisitRetention::storage()]);
     }
 
     /**

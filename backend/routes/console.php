@@ -334,7 +334,7 @@ Schedule::command('social:prune-visits')
     ->onFailure($alertOnFailure('social:prune-visits'))
     ->after($trackSuccess('social:prune-visits'));
 
-// The visitor report's detailed page views are kept for 180 days (2026-10-24); the daily totals stay.
+// The visitor report's detail: kept for ever unless the owner sets a time in Admin → Website visitors (2026-10-24); the daily totals stay.
 Schedule::command('visits:prune')
     ->dailyAt('04:40')
     ->withoutOverlapping()

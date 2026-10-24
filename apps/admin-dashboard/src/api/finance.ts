@@ -2054,7 +2054,18 @@ export type SiteAnalytics = {
   screens: { name: string; visitors: number }[];
   funnel: { key: string; label: string; sessions: number }[];
   recent: { at: string; surface: 'web' | 'order'; visit: string; path: string; source: string | null; device: string; browser: string; os: string; country: string | null; returning: boolean; duration_s: number | null }[];
+  storage?: VisitStorage;
 };
+/** How much visit detail is stored and how long it is kept (0 days = for ever). */
+export type VisitStorage = { views: number; oldest: string | null; approx_mb: number; large: boolean; keep_days: number; choices: number[] };
+
+export async function setVisitRetention(keepDays: number): Promise<{ storage: VisitStorage }> {
+  return req('/admin/site-analytics/retention', { method: 'PUT', body: JSON.stringify({ keep_days: keepDays }) });
+}
+
+export async function deleteVisitDetail(before: string): Promise<{ deleted: number; storage: VisitStorage }> {
+  return req('/admin/site-analytics/delete', { method: 'POST', body: JSON.stringify({ before }) });
+}
 export type VisitSurface = 'all' | 'web' | 'order';
 
 export async function fetchSiteAnalytics(params: { days: number; surface: VisitSurface }): Promise<SiteAnalytics> {
