@@ -297,14 +297,15 @@ export async function exportSmsLogs(params?: SmsLogFilters): Promise<Blob> {
   return requestBlob(`/admin/sms/logs/export?${smsLogQuery(params)}`);
 }
 
-export async function fetchSmsLogStats(): Promise<{
+/** Texts by type and status: the last 30 days, or since midnight with `today` (the dashboard's SMS Today card). */
+export async function fetchSmsLogStats(opts: { today?: boolean } = {}): Promise<{
   total: number;
   sent: number;
   failed: number;
   by_type: Record<string, number>;
 }> {
   const res = await req<{ stats: Array<{ type: string; status: string; count: number }> }>(
-    '/admin/sms/logs/stats'
+    `/admin/sms/logs/stats${opts.today ? '?today=1' : ''}`
   );
   const stats = res.stats ?? [];
   const total = stats.reduce((s, r) => s + r.count, 0);

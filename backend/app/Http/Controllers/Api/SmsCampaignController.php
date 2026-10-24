@@ -201,9 +201,14 @@ class SmsCampaignController extends Controller
      * GET /api/admin/sms/logs/stats
      * Aggregate stats: total sent, failed, cost by type, last 30 days.
      */
-    public function logStats(): JsonResponse
+    public function logStats(Request $request): JsonResponse
     {
-        $stats = SmsLog::recent(30)
+        // ?today=1 is the dashboard's "SMS Today" card: since midnight, business time (2026-10-25: it read
+        // the last 30 days, so it showed 210 at 00:27). Without it, the last 30 days as before.
+        $query = $request->boolean('today')
+            ? SmsLog::query()->where('created_at', '>=', now(config('app.timezone', 'Indian/Maldives'))->startOfDay())
+            : SmsLog::recent(30);
+        $stats = $query
             ->selectRaw('type, status, COUNT(*) as count, SUM(cost_estimate_mvr) as total_cost_mvr, SUM(segments) as total_segments')
             ->groupBy('type', 'status')
             ->get();

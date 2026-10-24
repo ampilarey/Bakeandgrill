@@ -542,8 +542,8 @@ export function DashboardPage() {
   });
 
   const { data: smsStats = { sent: 0, failed: 0 } } = useQuery({
-    queryKey: ['dashboard', 'sms-stats'],
-    queryFn: fetchSmsLogStats,
+    queryKey: ['dashboard', 'sms-stats', 'today'],
+    queryFn: () => fetchSmsLogStats({ today: true }),
     enabled: canSms,
   });
   const { sent: smsSent, failed: smsFailed } = smsStats;
