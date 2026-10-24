@@ -24,7 +24,7 @@ describe('admin route audit', () => {
       'Customers', 'Events & Catering', 'Loyalty', 'Promotions', 'SMS campaigns', 'Social Hub', 'TV Signage', 'Posters',
       'Website Content', 'Order App Content', 'Media Library',
     ]);
-    expect(labelsOf('analyze')).toEqual(['Reports', 'Analytics', 'Forecasts', 'Finance']);
+    expect(labelsOf('analyze')).toEqual(['Reports', 'Analytics', 'Website visitors', 'Forecasts', 'Finance']);
     // Notifications audit, 2026-10-10: every text, email and Telegram alert in one place.
     expect(labelsOf('system')).toEqual(['Needs attention', 'Settings', 'Notifications', 'Telegram', 'Devices', 'System Health', 'Integrations']);
     expect(labelsOf('team')).toEqual(['Staff', 'Shifts & Cash', 'Time Clock', 'POS Activity', 'My Account']);
