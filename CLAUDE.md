@@ -1439,6 +1439,27 @@ and Cloudflare's Always Use HTTPS stay off, as neither can leave a path out
 (`docs/OWNER_CHECKLIST.md` § 7c). `ClockMachineTest`,
 `ClockMachinePanel.test.tsx`.
 
+## Website visitors
+
+Owner, 2026-10-24 ("Add maximum detail u can get"). Every website page (the beacon at the end of
+`layout.blade.php`) and every order app page (`PageViewTracker`, inside the router) sends
+`POST /api/visits/beacon` with the page, referrer, `utm_*` / `s`, screen width, language, a
+"been before" mark (`localStorage['bg_seen']`) and a tab tag (`sessionStorage['bg_sid']`), and a
+`type: leave` beacon with the seconds on screen. `SiteVisitCounter::record()` still bumps the daily
+totals (`site_visits_daily`, the Dashboard card) and keeps the view in `site_visit_events` with the
+device, browser and system (`UserAgentInfo`), the country (`CF-IPCountry`, so unknown off Cloudflare)
+and a visitor hash that changes daily; **no IP address, no user agent, no cookie, no query string**,
+and a secret in an address (`/order/track/{token}`) is kept as `:token` (`VisitPath::clean`). Admin
+→ Analyze → Website visitors (`VisitorsPage`, `reports.view`, `GET /api/admin/site-analytics`,
+`SiteAnalytics`) shows totals against the period before, live now, the daily trend, busiest hours,
+the way to an order (`SiteAnalytics::FUNNEL`, by page reached), pages, entry and exit pages, sources,
+campaigns, devices, browsers, systems, countries, languages, screens and the latest views; "Don't
+count this device" there sets `localStorage['bg_no_track']`, which both beacons honour.
+`visits:prune` drops detail older than 180 days; the daily totals stay. The privacy pages (website,
+its Dhivehi draft, the order app's) say what is recorded. A new public page needs nothing; a new
+step towards an order goes into `FUNNEL` and a friendly page name into `pageName()`. `SiteAnalyticsTest`,
+`VisitorsPage.test.tsx`.
+
 ## Queue worker vs synchronous SMS
 
 The queue worker (`php artisan queue:work redis`) is only needed for async listeners

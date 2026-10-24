@@ -100,6 +100,7 @@
             <li><strong>Email:</strong> Optional, for e-receipts and updates</li>
             <li><strong>Order History:</strong> To provide loyalty rewards and improve service</li>
             <li><strong>Location/Delivery Address:</strong> If delivery service is used</li>
+            <li><strong>Visits:</strong> the pages you open on our website and order app, the site or campaign that sent you, your type of device, browser, country, language and screen size, and how long you stay on each page. We keep no IP address and set no cookie for this: a random tag in your browser tab and a daily code that cannot be traced back to you let us count visits. These records are deleted after 180 days.</li>
         </ul>
 
         <h2>How We Use Your Information</h2>

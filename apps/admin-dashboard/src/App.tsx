@@ -31,6 +31,7 @@ const MenuPage                = lazyWithRetry(() => import('./pages/MenuPage').t
 const StaffPage               = lazyWithRetry(() => import('./pages/StaffPage').then((m) => ({ default: m.StaffPage })));
 const ReservationsPage        = lazyWithRetry(() => import('./pages/ReservationsPage'));
 const AnalyticsPage           = lazyWithRetry(() => import('./pages/AnalyticsPage'));
+const VisitorsPage            = lazyWithRetry(() => import('./pages/VisitorsPage'));
 const ModifiersPage           = lazyWithRetry(() => import('./pages/ModifiersPage').then((m) => ({ default: m.ModifiersPage })));
 const ForecastPage            = lazyWithRetry(() => import('./pages/ForecastPage').then((m) => ({ default: m.ForecastPage })));
 const PurchasingPage          = lazyWithRetry(() => import('./pages/PurchasingPage').then((m) => ({ default: m.PurchasingPage })));
@@ -342,6 +343,11 @@ export default function App() {
                 <Route path="analytics" element={
                   <PermissionGuard user={user} permission="customers.analytics">
                     <AnalyticsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="visitors" element={
+                  <PermissionGuard user={user} permission="reports.view">
+                    <VisitorsPage />
                   </PermissionGuard>
                 } />
                 {/* Finance — six pages became one hub; the old paths redirect to their tab. */}

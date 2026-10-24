@@ -2754,17 +2754,46 @@ window.bgFold = function (el, open, done) {
     else attachToggles();
 })();
 </script>
-{{-- Self-hosted visit counter: one anonymous beacon per page view.
-     Aggregates only — no cookies, no identifiers (see SiteVisitCounter). --}}
+{{-- Self-hosted visit counter: one beacon per page view, and one as the
+     visitor leaves with the time spent. No cookie and no IP kept: a random tag
+     for this tab (sessionStorage), a "been before" mark (localStorage) and the
+     page, referrer, campaign, screen and language (see SiteVisitCounter and
+     SiteAnalytics; owner, 2026-10-24: "Add maximum detail u can get").
+     A device marked "Don't count this device" in Admin sends nothing. --}}
 <script nonce="{{ csp_nonce() }}">
 (function () {
     try {
-        var payload = JSON.stringify({ surface: 'web' });
-        if (navigator.sendBeacon) {
-            navigator.sendBeacon('/api/visits/beacon', new Blob([payload], { type: 'application/json' }));
-        } else {
-            fetch('/api/visits/beacon', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(function () {});
+        var ls = window.localStorage, ss = window.sessionStorage;
+        try { if (ls.getItem('bg_no_track') === '1') return; } catch (e) {}
+        function tag() { return (Date.now().toString(36) + Math.random().toString(36).slice(2, 12)).slice(0, 20); }
+        var sid = null, today = new Date().toISOString().slice(0, 10), seen = null;
+        try { sid = ss.getItem('bg_sid'); if (!sid) { sid = tag(); ss.setItem('bg_sid', sid); } } catch (e) { sid = tag(); }
+        try { seen = ls.getItem('bg_seen'); ls.setItem('bg_seen', today); } catch (e) {}
+        var q = new URLSearchParams(location.search), pv = tag();
+        function send(body) {
+            var payload = JSON.stringify(body);
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon('/api/visits/beacon', new Blob([payload], { type: 'application/json' }));
+            } else {
+                fetch('/api/visits/beacon', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(function () {});
+            }
         }
+        send({
+            surface: 'web', type: 'view', path: location.pathname, ref: document.referrer || null, sid: sid, pv: pv,
+            screen: window.screen ? window.screen.width : null, lang: navigator.language || null,
+            returning: !!seen && seen < today,
+            utm_source: q.get('utm_source'), utm_medium: q.get('utm_medium'), utm_campaign: q.get('utm_campaign'), s: q.get('s')
+        });
+        // Time on the page: the seconds it was on screen, sent each time it is hidden (the last one counts).
+        var shown = document.visibilityState === 'visible' ? Date.now() : null, spent = 0;
+        function hide() {
+            if (shown !== null) { spent += Date.now() - shown; shown = null; }
+            send({ surface: 'web', type: 'leave', sid: sid, pv: pv, dur: Math.round(spent / 1000) });
+        }
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'hidden') hide(); else if (shown === null) shown = Date.now();
+        });
+        window.addEventListener('pagehide', function () { if (shown !== null) hide(); });
     } catch (e) { /* counting must never break the page */ }
 })();
 </script>

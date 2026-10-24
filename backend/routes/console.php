@@ -334,6 +334,13 @@ Schedule::command('social:prune-visits')
     ->onFailure($alertOnFailure('social:prune-visits'))
     ->after($trackSuccess('social:prune-visits'));
 
+// The visitor report's detailed page views are kept for 180 days (2026-10-24); the daily totals stay.
+Schedule::command('visits:prune')
+    ->dailyAt('04:40')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('visits:prune'))
+    ->after($trackSuccess('visits:prune'));
+
 // Social Hub: the week in one SMS, Monday morning (on by default; silent when empty)
 Schedule::command('social:weekly-digest')
     ->weeklyOn(1, '09:20')

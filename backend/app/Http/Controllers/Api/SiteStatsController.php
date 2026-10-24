@@ -25,15 +25,55 @@ class SiteStatsController extends Controller
     {
         $data = $request->validate([
             'surface' => ['required', Rule::in(SiteVisitCounter::SURFACES)],
+            // The detail (2026-10-24): every key optional, so an older page's bare beacon still counts.
+            'type' => ['nullable', Rule::in(['view', 'leave'])],
+            'path' => ['nullable', 'string', 'max:2000'],
+            'ref' => ['nullable', 'string', 'max:2000'],
+            'sid' => ['nullable', 'string', 'max:40'],
+            'pv' => ['nullable', 'string', 'max:40'],
+            'screen' => ['nullable', 'integer', 'min:0', 'max:20000'],
+            'lang' => ['nullable', 'string', 'max:20'],
+            'returning' => ['nullable', 'boolean'],
+            'utm_source' => ['nullable', 'string', 'max:200'],
+            'utm_medium' => ['nullable', 'string', 'max:200'],
+            'utm_campaign' => ['nullable', 'string', 'max:200'],
+            's' => ['nullable', 'string', 'max:20'],
+            'dur' => ['nullable', 'integer', 'min:0', 'max:86400'],
         ]);
+
+        if (($data['type'] ?? 'view') === 'leave') {
+            $visits->leave((string) ($data['pv'] ?? ''), (string) ($data['sid'] ?? ''), (int) ($data['dur'] ?? 0));
+
+            return response()->json(['ok' => true]);
+        }
 
         $visits->record(
             $data['surface'],
             (string) $request->ip(),
             (string) $request->userAgent(),
+            array_intersect_key($data, array_flip(['path', 'ref', 'sid', 'pv', 'screen', 'lang', 'returning', 'utm_source', 'utm_medium', 'utm_campaign', 's'])),
+            // Cloudflare names the visitor's country; without it the country is unknown.
+            $request->header('CF-IPCountry'),
+            $request->getHost(),
         );
 
         return response()->json(['ok' => true]);
+    }
+
+    /** GET /admin/site-analytics — reports.view. The visitor report: ?days=1|7|30|90|180 or from/to, surface=all|web|order. */
+    public function analytics(Request $request, \App\Domains\Reporting\Services\SiteAnalytics $analytics): JsonResponse
+    {
+        $data = $request->validate([
+            'days' => ['nullable', 'integer', 'min:1', 'max:180'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'surface' => ['nullable', Rule::in(['all', ...SiteVisitCounter::SURFACES])],
+        ]);
+        $tz = config('app.timezone', 'Indian/Maldives');
+        $to = isset($data['to']) ? \Illuminate\Support\Carbon::parse($data['to'], $tz) : now($tz);
+        $from = isset($data['from']) ? \Illuminate\Support\Carbon::parse($data['from'], $tz) : $to->copy()->subDays(((int) ($data['days'] ?? 7)) - 1);
+
+        return response()->json($analytics->report($from->toDateString(), $to->toDateString(), $data['surface'] ?? 'all'));
     }
 
     /**

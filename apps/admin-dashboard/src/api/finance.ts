@@ -2030,3 +2030,33 @@ export interface SiteStats {
 export async function fetchSiteStats(): Promise<SiteStats> {
   return req('/admin/site-stats');
 }
+
+/** The visitor report (2026-10-24): a range's totals, the previous range's, and every breakdown. */
+export type VisitTotals = {
+  views: number; visitors: number; sessions: number; pages_per_session: number;
+  avg_session_s: number; avg_view_s: number; bounce_rate: number; returning_rate: number;
+};
+export type VisitCount = { name: string | null; visitors: number; views: number };
+export type SiteAnalytics = {
+  range: { from: string; to: string; days: number; surface: VisitSurface };
+  totals: VisitTotals;
+  previous: VisitTotals;
+  live: { visitors: number; views: number; pages: { path: string; visitors: number }[] };
+  daily: { date: string; views: number; visitors: number; sessions: number }[];
+  /** Views by weekday (0 = Sunday) then hour, business time. */
+  hours: number[][];
+  pages: { path: string; views: number; visitors: number; avg_s: number }[];
+  entries: { path: string; sessions: number }[];
+  exits: { path: string; sessions: number }[];
+  sources: { name: string; hosts: string[]; sessions: number }[];
+  campaigns: { source: string | null; medium: string | null; campaign: string | null; sessions: number }[];
+  devices: VisitCount[]; browsers: VisitCount[]; systems: VisitCount[]; countries: VisitCount[]; languages: VisitCount[]; apps: VisitCount[];
+  screens: { name: string; visitors: number }[];
+  funnel: { key: string; label: string; sessions: number }[];
+  recent: { at: string; surface: 'web' | 'order'; visit: string; path: string; source: string | null; device: string; browser: string; os: string; country: string | null; returning: boolean; duration_s: number | null }[];
+};
+export type VisitSurface = 'all' | 'web' | 'order';
+
+export async function fetchSiteAnalytics(params: { days: number; surface: VisitSurface }): Promise<SiteAnalytics> {
+  return req(`/admin/site-analytics?days=${params.days}&surface=${params.surface}`);
+}

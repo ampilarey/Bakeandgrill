@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Globe, ShoppingBag, Users, Wallet } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { fetchSiteStats, type SiteStats } from '../api';
 import { SectionLabel, StatCard } from './SharedUI';
 
@@ -58,6 +59,10 @@ export function SiteStatsSection() {
           icon={Globe}
         />
       </div>
+      {/* The visitor report (2026-10-24): pages, sources, devices, countries, time spent. */}
+      <p style={{ margin: '-12px 0 20px', fontSize: 13 }}>
+        <Link to="/visitors" style={{ color: 'var(--color-primary)', fontWeight: 600 }} data-testid="site-stats-visitors-link">See every visitor detail: pages, sources, devices, countries</Link>
+      </p>
     </>
   );
 }

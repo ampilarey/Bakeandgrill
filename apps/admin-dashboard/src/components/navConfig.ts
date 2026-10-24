@@ -8,8 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, Utensils,
-  LayoutTemplate, Shield, UserCog, Images, Tv, Store, Tags, Send, Bell, Frame, Inbox,
-} from 'lucide-react';
+  LayoutTemplate, Shield, UserCog, Images, Tv, Store, Tags, Send, Bell, Frame, Inbox, Globe } from 'lucide-react';
 import type { StaffUser } from '../api';
 
 export { LogOut };
@@ -144,6 +143,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/reports',     icon: BarChart3,  label: 'Reports',       permission: 'reports.view',        description: 'Sales & daily summaries' },
       { to: '/analytics',        icon: BarChart2,  label: 'Analytics',       permission: 'customers.analytics', description: 'Advanced insights' },
+      // 2026-10-24: who visits the website and the order app (pages, sources, devices, countries, time spent).
+      { to: '/visitors',    icon: Globe,      label: 'Website visitors', permission: 'reports.view',     description: 'Pages, sources, devices, countries and time spent on the website and order app' },
       { to: '/forecasts',             icon: TrendingDown,  label: 'Forecasts',       permission: 'reports.financial',   description: 'Demand forecasting & restock alerts' },
       { to: '/finance',     icon: DollarSign, label: 'Finance',       permissions: ['reports.financial', 'finance.expenses', 'finance.invoices', 'finance.settlements', 'orders.refund'], description: 'Monthly sheet, P&L, break-even, expenses, invoices, settlements, GST & refunds' },
     ],

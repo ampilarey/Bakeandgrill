@@ -3,6 +3,7 @@ import React, { Suspense, lazy } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { PageViewTracker } from './components/PageViewTracker';
 import { SiteSettingsProvider } from './context/SiteSettingsContext';
 import { PageBlocksProvider } from './context/PageBlocksContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -136,6 +137,7 @@ if (isSignagePath(window.location.pathname)) {
             <ServiceStatusProvider>
             <BrowserRouter basename="/order">
               <ScrollToTop />
+              <PageViewTracker />
               <ServiceUnavailableModal />
               <Suspense fallback={<PageSkeleton />}>
                 <Routes>

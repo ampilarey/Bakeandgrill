@@ -51,6 +51,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/social', permission: 'social.view' },
   { to: '/reports', permission: 'reports.view' },
   { to: '/analytics', permission: 'customers.analytics' },
+  { to: '/visitors', permission: 'reports.view' },
   { to: '/forecasts', permission: 'reports.financial' },
   // Route audit, 2026-09-19: GST and Refunds are Finance tabs.
   { to: '/finance', permissions: ['reports.financial', 'finance.expenses', 'finance.invoices', 'finance.settlements', 'orders.refund'] },
