@@ -5779,11 +5779,13 @@ body:has(.float-cart-fab) .toast-stack {
    and it's not smooth"). The head's height in the page never changes: it
    pins --mh-hero (the photo and its gap, measured by MenuHead) above the
    sticky line, so the photo scrolls away with the page and the strip stays.
-   Pinned, the strip shows the section in view with its photo as a small 7:3
-   thumbnail (--mh-thumb) beside the name on the section's tint; a section
-   without a photo is the strip and the tint alone, at the top as well. The
+   Pinned, the strip shows the section in view with its photo filling the
+   strip behind the name, under a dark wash so the words read (owner,
+   2026-10-24: "Wouldn't it be great if the category pic fills the bar?");
+   a section without a photo is the strip and the tint alone, at the top as
+   well. The
    website's menu.blade.php does the same. */
-.mh { --mh-strip: 76px; --mh-thumb: 44px; --mh-gap: 8px; --mh-r: 14px; }
+.mh { --mh-strip: 76px; --mh-gap: 8px; --mh-r: 14px; }
 .mh-hero {
   position: relative; overflow: hidden;
   width: 100%; aspect-ratio: 7 / 3; max-height: 320px; margin-bottom: var(--mh-gap);
@@ -5810,11 +5812,11 @@ body:has(.float-cart-fab) .toast-stack {
   position: relative; height: var(--mh-strip); border-radius: var(--mh-r); overflow: hidden;
   background: var(--mh-tint, var(--color-primary-light));
 }
-/* The section's photo, a thumbnail at the strip's left once pinned; two
-   layers cross-fade from one section to the next. */
+/* The section's photo fills the strip once pinned, cut to its middle (a
+   7:3 banner in a far wider strip); two layers cross-fade from one
+   section to the next. */
 .mh-img {
-  position: absolute; left: 12px; top: calc(50% - var(--mh-thumb) / 2);
-  width: calc(var(--mh-thumb) * 7 / 3); height: var(--mh-thumb); border-radius: 8px;
+  position: absolute; inset: 0;
   background-size: cover; background-position: center;
   opacity: 0; transform: scale(1.06);
   transition: opacity 0.32s ease, transform 0.9s var(--mh-ease);
@@ -5826,7 +5828,12 @@ body:has(.float-cart-fab) .toast-stack {
   padding: 0 6.5rem 0 1rem; color: #fff; min-width: 0;
   transition: padding 0.3s var(--mh-ease);
 }
-.mh.is-stuck .mh-banner:not(.mh-banner--plain) .mh-copy { padding-left: calc(22px + var(--mh-thumb) * 7 / 3); }
+/* The wash over the photo, faded with it: darkest under the name and the
+   buttons, lighter between, so the picture still shows. */
+.mh-img::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(28, 20, 8, 0.68) 0%, rgba(28, 20, 8, 0.36) 55%, rgba(28, 20, 8, 0.55) 100%);
+}
 /* The strip keeps the name and the buttons; the count waits for the top of the menu. */
 .mh.is-stuck .mh-count { display: none; }
 .mh-title { position: relative; height: 1.9rem; overflow: hidden; flex: 0 1 auto; min-width: 0; }
@@ -5992,7 +5999,7 @@ body:has(.float-cart-fab) .toast-stack {
 .mh-sheet-list button.is-active i { background: var(--color-primary); }
 /* Phone first: the menu head's phone sizes, its base sizes from 768px, its
    computer sizes from 769px (below). */
-.mh { --mh-strip: 60px; --mh-thumb: 36px; --mh-r: 12px; }
+.mh { --mh-strip: 60px; --mh-r: 12px; }
 .mh-copy { padding: 0 5.4rem 0 0.9rem; gap: 0.45rem; }
 .mh-title { height: 1.6rem; }
 .mh-title > span { font-size: 1.15rem; line-height: 1.6rem; }
@@ -6001,7 +6008,7 @@ body:has(.float-cart-fab) .toast-stack {
 .mh { --mh-bar-h: 52px; }
 .mh-bar { gap: 0.4rem; }
 @media (min-width: 768px) {
-  .mh { --mh-strip: 76px; --mh-thumb: 44px; --mh-r: 14px; }
+  .mh { --mh-strip: 76px; --mh-r: 14px; }
   .mh-copy { padding: 0 6.5rem 0 1rem; gap: 0.6rem; }
   .mh-title { height: 1.9rem; }
   .mh-title > span { font-size: 1.35rem; line-height: 1.9rem; }
@@ -6011,7 +6018,7 @@ body:has(.float-cart-fab) .toast-stack {
   .mh-bar { gap: 0.5rem; }
 }
 @media (min-width: 769px) {
-  .mh { --mh-strip: 88px; --mh-thumb: 52px; }
+  .mh { --mh-strip: 88px; }
   .mh-title { height: 2rem; }
   .mh-title > span { font-size: 1.5rem; line-height: 2rem; }
   .mh-search, .mh .share-control-btn.mh-share-btn { width: 38px; height: 38px; }

@@ -649,9 +649,10 @@ middle with the blur either side) sits above the strip (`--mh-strip`), and the h
 sticky line, so the photo scrolls away with the page while the strip stays and the head's height
 in the page never changes. Pinned (`is-stuck`, read from the zero-height `.mh-sentinel` just above
 the head, since the head's own position is still gliding while the phone's header slides away),
-the strip shows the section in view with its photo as a small 7:3 thumbnail (`--mh-thumb`, 36 px
-on a phone) beside the name on the section's tint (`--mh-tint`; `.mh-banner--plain` without a
-photo) and hides the count; the hero fades while pinned, since on a computer its last rows would
+the strip shows the section in view with its photo filling the strip behind the name, cut to its
+middle under a dark wash (`.mh-img::after`; owner, 2026-10-24: "Wouldn't it be great if the category
+pic fills the bar?"), on the section's tint (`--mh-tint`; `.mh-banner--plain` without a photo) and
+hides the count; the hero fades while pinned, since on a computer its last rows would
 show between the header and the strip. A new frame for a stored picture uses its ratio, and a new
 email thumb carries width and height attributes in that ratio.
 

@@ -212,11 +212,12 @@ span.menu-rail-thumb {
    and it's not smooth"). The head's height in the page never changes: it
    pins --mh-hero (the photo and its gap, measured by the script) above the
    sticky line, so the photo scrolls away with the page and the strip stays.
-   Pinned, the strip shows the section in view with its photo as a small 7:3
-   thumbnail (--mh-thumb) beside the name on the section's tint; a section
-   without a photo is the strip and the tint alone, at the top as well. The
-   order app's MenuHead does the same. */
-.mh { --mh-strip: 88px; --mh-thumb: 52px; --mh-gap: 8px; --mh-r: 14px; }
+   Pinned, the strip shows the section in view with its photo filling the
+   strip behind the name, under a dark wash so the words read (owner,
+   2026-10-24: "Wouldn't it be great if the category pic fills the bar?");
+   a section without a photo is the strip and the tint alone, at the top as
+   well. The order app's MenuHead does the same. */
+.mh { --mh-strip: 88px; --mh-gap: 8px; --mh-r: 14px; }
 .mh-hero {
     position: relative; overflow: hidden;
     width: 100%; aspect-ratio: 7 / 3; max-height: 320px; margin-bottom: var(--mh-gap);
@@ -249,11 +250,11 @@ span.menu-rail-thumb {
     background: url('/brand/flame-pattern.svg') 0 0 / 120px 120px repeat;
     opacity: 0.12; pointer-events: none;
 }
-/* The section's photo, a thumbnail at the strip's left once pinned; two
-   layers cross-fade from one section to the next. */
+/* The section's photo fills the strip once pinned, cut to its middle (a
+   7:3 banner in a far wider strip); two layers cross-fade from one
+   section to the next. */
 .mh-img {
-    position: absolute; left: 12px; top: calc(50% - var(--mh-thumb) / 2);
-    width: calc(var(--mh-thumb) * 7 / 3); height: var(--mh-thumb); border-radius: 8px;
+    position: absolute; inset: 0;
     background-size: cover; background-position: center;
     opacity: 0; transform: scale(1.06);
     transition: opacity 0.32s ease, transform 0.9s var(--mh-ease);
@@ -265,7 +266,12 @@ span.menu-rail-thumb {
     padding: 0 6.75rem 0 1.1rem; color: #fff;
     transition: padding 0.3s var(--mh-ease);
 }
-.mh.is-stuck .mh-banner:not(.mh-banner--plain) .mh-copy { padding-left: calc(22px + var(--mh-thumb) * 7 / 3); }
+/* The wash over the photo, faded with it: darkest under the name and the
+   buttons, lighter between, so the picture still shows. */
+.mh-img::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(28, 20, 8, 0.68) 0%, rgba(28, 20, 8, 0.36) 55%, rgba(28, 20, 8, 0.55) 100%);
+}
 /* The strip keeps the name and the buttons; the count waits for the top of the menu. */
 .mh.is-stuck .mh-count { display: none; }
 .mh.is-stuck .mh-title { flex: 0 1 auto; min-width: 0; }
@@ -450,7 +456,7 @@ html.js .mh-panel .menu-filters { background: transparent; padding: 0.7rem 0 0.7
 .menu-sec { padding-top: 0.25rem; }
 .menu-sec + .menu-sec { margin-top: 1.1rem; padding-top: 0.9rem; border-top: 6px solid color-mix(in srgb, var(--border) 45%, transparent); }
 
-.mh { --mh-strip: 60px; --mh-thumb: 36px; --mh-r: 12px; }
+.mh { --mh-strip: 60px; --mh-r: 12px; }
 .mh-copy { padding: 0 5.6rem 0 0.9rem; gap: 0.45rem; }
 .mh-title { height: 1.6rem; }
 .mh-title span { font-size: 1.15rem; line-height: 1.6rem; }
@@ -462,7 +468,7 @@ html.js .mh-panel .menu-filters { background: transparent; padding: 0.7rem 0 0.7
 .mh-pill { height: 36px; margin-top: -18px; }
 .mh-all { height: 36px; padding: 0 0.6rem; }
 @media (min-width: 769px) {
-  .mh { --mh-strip: 88px; --mh-thumb: 52px; --mh-r: 14px; }
+  .mh { --mh-strip: 88px; --mh-r: 14px; }
   .mh-copy { padding: 0 6.75rem 0 1.1rem; gap: 0.6rem; }
   .mh-title { height: 2rem; }
   .mh-title span { font-size: 1.5rem; line-height: 2rem; }
