@@ -11,6 +11,14 @@ recommendations): price and barcode, net weight, allergens in bold, both languag
 one sticker, a draft previewed as it is typed, pinned saved labels, and stickers from
 the kitchen screen (§ For the shop till and after).
 
+## Seeing a preview bigger
+
+Owner, 2026-10-26: every label preview (Make a label, Print labels, a custom label, a menu
+item's Label tab, box labels) has a **View bigger** button in its top corner. It opens the same
+page full screen, as large as the screen allows at the label's own shape, and **Close**, Escape
+or a tap outside it puts it away (Escape closes only the full screen, not the editor under it).
+It is one place, `SheetPreview.tsx`, so a new preview gets it too. `SheetPreview.test.tsx`.
+
 ## Make a label: the way in
 
 Owner, 2026-10-13 ("Still its v confusing and not user friendly"): Labels now opens on

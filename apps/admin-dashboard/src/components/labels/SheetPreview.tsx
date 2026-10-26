@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Loader2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Loader2, Maximize2, X } from 'lucide-react';
 
 /*
  * A label as it will print, in a frame the shape of the page (owner,
@@ -32,6 +33,8 @@ export function SheetPreview({ url, ratio, busy = false, title = 'Preview', empt
   useEffect(() => { if (url === null) { shown.current = null; setLoaded(null); } }, [url]);
   const src = url ? `${window.location.origin}${url}` : null;
   const pending = Boolean(src) && loaded !== src;
+  // Owner, 2026-10-26: "add option to view preview in label bigger … full screen, and option to close".
+  const [full, setFull] = useState(false);
 
   return (
     <div className={`relative w-full ${className}`} style={{ aspectRatio: String(ratio) }} data-testid="sheet-preview">
@@ -55,6 +58,72 @@ export function SheetPreview({ url, ratio, busy = false, title = 'Preview', empt
           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 border border-[var(--color-border)] text-xs text-[var(--color-text-secondary)] shadow-sm"><Loader2 size={14} className="animate-spin" /> Updating</span>
         </div>
       )}
+      {src && (
+        <button
+          type="button"
+          onClick={() => setFull(true)}
+          aria-label="View bigger"
+          title="View bigger"
+          data-testid="sheet-preview-bigger"
+          className="absolute top-1.5 right-1.5 z-10 inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/90 border border-[var(--color-border)] text-[var(--color-text-secondary)] shadow-sm"
+        >
+          <Maximize2 size={15} />
+        </button>
+      )}
+      {full && src && <FullScreenPreview src={src} ratio={ratio} round={round} title={title} onClose={() => setFull(false)} />}
     </div>
+  );
+}
+
+/*
+ * The same page, as big as the screen allows at its own shape, over everything
+ * (a label editor is often a pop-up already). Close, a tap outside the page or
+ * Escape puts it away; Escape closes only this, not the pop-up underneath.
+ */
+function FullScreenPreview({ src, ratio, round, title, onClose }: { src: string; ratio: number; round: boolean; title: string; onClose: () => void }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [onClose]);
+
+  return createPortal(
+    <div // eslint-disable-line jsx-a11y/no-noninteractive-element-interactions -- a tap on the backdrop closes it; Close and Escape do the same
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${title}, full screen`}
+      data-testid="sheet-preview-full"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 'var(--z-dialog-over)' as unknown as number,
+        background: 'color-mix(in srgb, var(--color-backdrop) 92%, transparent)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '56px 16px 16px',
+      }}
+    >
+      <button
+        ref={closeRef}
+        type="button"
+        onClick={onClose}
+        aria-label="Close full screen"
+        data-testid="sheet-preview-full-close"
+        className="absolute top-3 right-3 inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-white text-[var(--color-text)] text-sm font-semibold shadow"
+      >
+        <X size={16} /> Close
+      </button>
+      <div
+        className={['overflow-hidden bg-white', round ? 'rounded-full' : 'rounded-lg'].join(' ')}
+        style={{ aspectRatio: String(ratio), width: `min(100%, calc((100dvh - 72px) * ${ratio}))` }}
+      >
+        <iframe title={`${title} (full screen)`} src={src} className="block w-full h-full border-0" />
+      </div>
+    </div>,
+    document.body,
   );
 }
