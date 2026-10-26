@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domains\Content\ContentDraftStore;
+use App\Domains\Menu\Support\BestSellerCards;
 use App\Models\Item;
 use App\Services\OpeningHoursService;
 use App\Services\SpecialPricingService;
@@ -39,7 +40,8 @@ class ContentWebsitePreviewController extends Controller
         $isOpen = $openingHours->isOpenNow();
         $todayHours = $openingHours->getTodayHours();
 
-        $bestSellers = Item::query()
+        $bestSellers = BestSellerCards::top(6);
+        $featuredItems = $bestSellers->isNotEmpty() ? $bestSellers : Item::query()
             ->where('is_active', true)
             ->where('is_available', true)
             ->where('hide_from_bestsellers', false)
@@ -47,7 +49,6 @@ class ContentWebsitePreviewController extends Controller
             ->with(['category', 'variants'])
             ->limit(6)
             ->get();
-        $featuredItems = $bestSellers;
         $todaysSpecials = collect(app(SpecialPricingService::class)->activeSpecialsForDisplay());
 
         $html = view('home', compact('isOpen', 'todayHours', 'featuredItems', 'bestSellers', 'todaysSpecials'))->render();

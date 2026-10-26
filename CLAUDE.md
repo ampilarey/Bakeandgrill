@@ -874,6 +874,11 @@ Bestsellers slide (`SignageResolver`). Sales reports and the Telegram best selle
 count it: a report is not a promotion. The flag is in the model's `$hidden` and listed
 by `ItemController` for staff only, so the public contract snapshots do not carry it.
 A new best-sellers or popular surface honours the flag too. `BestSellerOptOutTest`.
+The website home's Best Sellers rank each size as its own product (owner, 2026-10-26: "cant u
+show variants in best selers?"): `App\Domains\Menu\Support\BestSellerCards::top()` groups the
+last 30 days' sold lines by item and variant (`ReportMoneySql::sale`), one card per size named
+under the dish (`.product-size`) at that size's own price (`BestSellerCards::price()`), never
+"From"; a switched-off size is skipped. The content preview uses the same. `BestSellerVariantsTest`.
 
 ## Back in stock and coming soon
 

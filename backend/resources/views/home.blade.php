@@ -1189,6 +1189,12 @@
     color: var(--dark); line-height: 1.3;
     margin-bottom: 0.25rem;
 }
+.product-size {
+    display: inline-block; font-size: 0.75rem; font-weight: 700;
+    color: var(--amber); background: color-mix(in srgb, var(--amber) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--amber) 30%, transparent);
+    border-radius: 999px; padding: 0.15rem 0.6rem; margin-bottom: 0.4rem;
+}
 .product-desc {
     font-size: 0.8rem; color: var(--muted);
     line-height: 1.5; margin-bottom: 0.875rem;

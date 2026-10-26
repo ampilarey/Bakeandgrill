@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domains\Menu\Support\BestSellerCards;
 use App\Domains\Promotions\Services\OffersService;
 use App\Models\Item;
 use App\Services\OpeningHoursService;
@@ -24,21 +25,10 @@ class HomeController extends Controller
         $isOpen = $openingHours->isOpenNow();
         $todayHours = $openingHours->getTodayHours();
 
-        // Get best selling items (most ordered). An item the owner keeps out of
-        // the best sellers (water and other staples, 2026-10-13) never leads here.
-        $bestSellers = Item::where('is_active', true)
-            ->where('is_available', true)
-            ->where('hide_from_bestsellers', false)
-            ->with(['category', 'variants'])
-            ->withCount(['orderItems' => function ($q) {
-                $q->whereHas('order', function ($query) {
-                    $query->where('status', '!=', 'cancelled')
-                        ->where('created_at', '>=', now()->subDays(30));
-                });
-            }])
-            ->orderBy('order_items_count', 'desc')
-            ->limit(6)
-            ->get();
+        // Best sellers, one card per size (owner, 2026-10-26). An item the owner
+        // keeps out of the best sellers (water and other staples, 2026-10-13)
+        // never leads here.
+        $bestSellers = BestSellerCards::top(6);
 
         // Fallback to random items if no orders yet
         $featuredItems = $bestSellers->count() > 0 ? $bestSellers : Item::where('is_active', true)

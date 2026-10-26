@@ -26,6 +26,9 @@
             @foreach($featuredItems as $item)
                 @php
                     $isBestSeller = isset($item->order_items_count) && $item->order_items_count > 0;
+                    // A size is its own best seller (owner, 2026-10-26): named, at its own price.
+                    $size = $item->relationLoaded('bestVariant') ? $item->getRelation('bestVariant') : null;
+                    $sizeName = $size ? (app()->getLocale() === 'dv' && filled($size->name_dv) ? $size->name_dv : $size->name) : null;
                 @endphp
                 <div class="product-card">
                     <div class="product-img">
@@ -36,7 +39,7 @@
                                     ? asset($path)
                                     : ($item->image_url ?? '');
                             @endphp
-                            <img src="{{ $imgUrl }}" alt="{{ $item->name }}" loading="lazy"
+                            <img src="{{ $imgUrl }}" alt="{{ \App\Domains\Reporting\Support\ProductName::label($item->name, $size?->name) }}" loading="lazy"
                                  data-fallback-class="product-img-placeholder">
                         @else
                             <div class="product-img-placeholder"><img src="/brand/flame-mark.svg" alt="" width="64" height="60" loading="lazy"></div>
@@ -54,10 +57,13 @@
                             <div class="product-cat">{{ $item->category->name }}</div>
                         @endif
                         <div class="product-name">{{ $item->name }}</div>
+                        @if($sizeName)
+                            <div class="product-size">{{ $sizeName }}</div>
+                        @endif
                         @if($item->description ?? null)
                             <div class="product-desc">{{ Str::limit($item->description, 60) }}</div>
                         @endif
-                        @php($priceInfo = $item->displayPriceInfo())
+                        @php($priceInfo = \App\Domains\Menu\Support\BestSellerCards::price($item))
                         <div class="product-price-row">
                             {{-- An item with sizes keeps its money on the variants, so
                                  base_price is 0 and printing it read "MVR 0.00". --}}
