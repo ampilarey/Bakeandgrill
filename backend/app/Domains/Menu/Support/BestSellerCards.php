@@ -64,7 +64,7 @@ final class BestSellerCards
             if ($row->variant_id !== null) {
                 /** @var Variant|null $variant */
                 $variant = $item->variants->firstWhere('id', (int) $row->variant_id);
-                if ($variant === null || ! $variant->is_active) {
+                if ($variant === null || !$variant->is_active) {
                     continue;
                 }
             }
