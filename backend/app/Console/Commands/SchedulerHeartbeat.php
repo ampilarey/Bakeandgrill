@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Domains\System\Services\SchedulerRunTracker;
 use App\Domains\System\Services\SystemHealthService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Pings an optional external heartbeat URL (e.g. Healthchecks.io) so cron
@@ -47,6 +48,12 @@ class SchedulerHeartbeat extends Command
         if ($degraded !== []) {
             $reason = 'degraded: ' . implode(', ', $degraded);
             $this->error($reason);
+            // schedule:run sends this command's output nowhere, so the log is the
+            // only place that says what was wrong (owner, 2026-10-27: two failures
+            // in the log said only "exit code [1]").
+            Log::warning('Scheduler heartbeat: ' . $reason, in_array('queue', $degraded, true)
+                ? ['queue_worker_last_seen_at' => rescue(fn () => $health->checkQueueWorker()['worker_last_seen_at'] ?? null, null, false)]
+                : []);
 
             if (trim((string) config('system.healthcheck_url', '')) === '') {
                 $this->comment('HEALTHCHECK_URL not configured — no failure signal sent.');

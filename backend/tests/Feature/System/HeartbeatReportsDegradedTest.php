@@ -73,6 +73,20 @@ class HeartbeatReportsDegradedTest extends TestCase
         Http::assertSent(fn ($request) => str_contains((string) $request->body(), 'redis'));
     }
 
+    public function test_the_log_says_what_was_wrong(): void
+    {
+        // Owner, 2026-10-27: laravel.log said only "scheduler:heartbeat failed
+        // with exit code [1]"; the command's own output goes nowhere.
+        \Illuminate\Support\Facades\Log::spy();
+        $this->fakeDependencies(['queue']);
+
+        $this->artisan('scheduler:heartbeat')->assertFailed();
+
+        \Illuminate\Support\Facades\Log::shouldHaveReceived('warning')
+            ->withArgs(fn ($message) => $message === 'Scheduler heartbeat: degraded: queue')
+            ->once();
+    }
+
     public function test_a_healthy_system_pings_normally(): void
     {
         // The ordinary minute. If this regresses into a failure ping, the
