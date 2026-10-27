@@ -212,15 +212,21 @@ class SystemHealthService
         if (!Schema::hasTable('error_events')) {
             return ['total' => 0, 'rows' => []];
         }
-        $query = ErrorEvent::query()->where('last_seen_at', '>=', $since);
+        $total = (int) ErrorEvent::query()->where('last_seen_at', '>=', $since)->sum('count');
+        // The list reaches back to the start of yesterday: the morning report
+        // names yesterday's errors and sends people here to read them.
+        $listFrom = now(config('app.timezone'))->subDay()->startOfDay();
+        $query = ErrorEvent::query()->where('last_seen_at', '>=', min($listFrom, \Illuminate\Support\Carbon::instance($since)));
 
         return [
-            'total' => (int) (clone $query)->sum('count'),
-            'rows' => $query->orderByDesc('count')->limit(10)->get()->map(fn (ErrorEvent $e) => [
+            'total' => $total,
+            'rows' => $query->orderByDesc('last_seen_at')->limit(10)->get()->map(fn (ErrorEvent $e) => [
                 'id' => $e->id,
                 'exception' => class_basename($e->exception),
                 'message' => mb_strimwidth((string) $e->message, 0, 200, '…'),
-                'where' => $e->file . ':' . $e->line,
+                'where' => ($task = \App\Domains\System\ErrorTracker::scheduledTask((string) $e->message)) !== null
+                    ? 'Scheduled task ' . $task['command'] . ' (exit code ' . $task['exit'] . ')'
+                    : $e->file . ':' . $e->line,
                 'count' => $e->count,
                 'payment' => $e->payment,
                 'last_seen_at' => $e->last_seen_at?->toIso8601String(),

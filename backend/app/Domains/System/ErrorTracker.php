@@ -95,7 +95,39 @@ final class ErrorTracker
 
     public static function fingerprint(Throwable $e): string
     {
-        return sha1($e::class . '|' . self::relative($e->getFile()) . '|' . $e->getLine());
+        // Every failed scheduled task is thrown from the same line of
+        // schedule:run, so the task itself is what tells one kind from another.
+        $task = self::scheduledTask($e->getMessage());
+
+        return sha1($e::class . '|' . self::relative($e->getFile()) . '|' . $e->getLine() . ($task ? '|' . $task['command'] : ''));
+    }
+
+    /**
+     * The task named by schedule:run's "Scheduled command [...] failed with exit
+     * code [N]." (owner, 2026-10-27: the daily report said only
+     * "Exception (ScheduleRunCommand.php:207)", which names no task).
+     *
+     * @return array{command: string, exit: int}|null
+     */
+    public static function scheduledTask(string $message): ?array
+    {
+        if (!preg_match('/^Scheduled command \[(.*)\] failed with exit code \[(-?\d+)\]/s', $message, $m)) {
+            return null;
+        }
+        $command = preg_match("/artisan'?\s+'?([\w:.-]+)/", $m[1], $a) ? $a[1] : trim(preg_replace('/\s*>.*$/s', '', $m[1]) ?? $m[1]);
+
+        return ['command' => mb_substr($command, 0, 120), 'exit' => (int) $m[2]];
+    }
+
+    /** How a row is named to a person: the scheduled task when it is one, else the class and place. */
+    public static function describe(string $exception, string $message, string $file, int $line): string
+    {
+        $task = self::scheduledTask($message);
+        if ($task !== null) {
+            return 'scheduled task ' . $task['command'] . ' stopped with exit code ' . $task['exit'];
+        }
+
+        return class_basename($exception) . ' (' . basename($file) . ':' . $line . ')';
     }
 
     public static function isPaymentRelated(Throwable $e): bool

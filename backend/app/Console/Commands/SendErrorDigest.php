@@ -86,7 +86,7 @@ class SendErrorDigest extends Command
         $kinds = count($events);
         $payment = count(array_filter($events, fn (ErrorEvent $e) => $e->payment));
         $top = array_map(
-            fn (ErrorEvent $e) => $e->count . '× ' . class_basename($e->exception) . ' (' . basename((string) $e->file) . ':' . $e->line . ')',
+            fn (ErrorEvent $e) => $e->count . '× ' . ErrorTracker::describe((string) $e->exception, (string) $e->message, (string) $e->file, (int) $e->line),
             array_slice($events, 0, 3),
         );
 

@@ -459,7 +459,7 @@ export function SystemHealthPage() {
 
           {(data.recent_errors?.length ?? 0) > 0 && (
             <>
-              <SectionLabel>Errors in the last 24 hours</SectionLabel>
+              <SectionLabel>Errors since yesterday</SectionLabel>
               <Card>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }} data-testid="health-recent-errors">
                   {data.recent_errors!.map((e) => (

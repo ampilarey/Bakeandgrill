@@ -127,4 +127,24 @@ class ErrorTrackerTest extends TestCase
 
         $this->assertSame(0, SmsLog::query()->where('type', ErrorTracker::DIGEST_TYPE)->count());
     }
+
+    // Owner, 2026-10-27: the report said "1× Exception (ScheduleRunCommand.php:207)", naming no task.
+    public function test_a_failed_scheduled_task_is_named_and_kept_apart_from_other_tasks(): void
+    {
+        $prune = new \Exception("Scheduled command ['/usr/local/bin/php' 'artisan' visits:prune > '/dev/null' 2>&1] failed with exit code [1].");
+        $digest = new \Exception("Scheduled command ['/usr/local/bin/php' 'artisan' errors:digest > '/dev/null' 2>&1] failed with exit code [137].");
+
+        $this->assertSame(['command' => 'visits:prune', 'exit' => 1], ErrorTracker::scheduledTask($prune->getMessage()));
+        $this->assertNull(ErrorTracker::scheduledTask('Something else broke'));
+        $this->assertNotSame(ErrorTracker::fingerprint($prune), ErrorTracker::fingerprint($digest));
+
+        $this->assertSame(
+            'scheduled task errors:digest stopped with exit code 137',
+            ErrorTracker::describe(\Exception::class, $digest->getMessage(), 'vendor/laravel/framework/src/Illuminate/Console/Scheduling/ScheduleRunCommand.php', 207),
+        );
+        $this->assertSame('RuntimeException (Foo.php:9)', ErrorTracker::describe(RuntimeException::class, 'boom', 'app/Foo.php', 9));
+
+        $event = new ErrorEvent(['exception' => \Exception::class, 'message' => $prune->getMessage(), 'file' => 'vendor/x/ScheduleRunCommand.php', 'line' => 207, 'count' => 1, 'payment' => false]);
+        $this->assertStringContainsString('1× scheduled task visits:prune stopped with exit code 1', \App\Console\Commands\SendErrorDigest::message([$event], \Illuminate\Support\Carbon::parse('2026-10-26')));
+    }
 }
