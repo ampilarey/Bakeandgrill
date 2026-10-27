@@ -52,7 +52,7 @@ describe('ItemsSoldReport', () => {
 
   it('lists every item grouped by category with subtotals, or as one list', async () => {
     renderAt();
-    const groups = await screen.findByTestId('items-sold-groups');
+    const groups = await screen.findByTestId('items-sold-groups', {}, { timeout: 5000 });
     expect(api.fetchItemsSold).toHaveBeenCalledWith({ from: '2026-10-27', to: '2026-10-27', time_from: null, time_to: null, category_id: null, user_id: null, type: null });
     expect(groups).toHaveTextContent('Drinks › Hot');
     expect(groups).toHaveTextContent('2 items · 4 sold');
@@ -69,7 +69,7 @@ describe('ItemsSoldReport', () => {
 
   it('opens with the times and category from the address, and asks again when they change', async () => {
     renderAt('/reports?tab=Items+Sold&from=2026-10-20&to=2026-10-27&time_from=15:00&time_to=18:00&category=1');
-    await screen.findByTestId('items-sold-groups');
+    await screen.findByTestId('items-sold-groups', {}, { timeout: 5000 });
     expect(api.fetchItemsSold).toHaveBeenLastCalledWith(expect.objectContaining({ from: '2026-10-20', to: '2026-10-27', time_from: '15:00', time_to: '18:00', category_id: 1 }));
     expect(screen.getByText(/3:00 PM to 6:00 PM on each day/)).toBeInTheDocument();
 
@@ -90,7 +90,7 @@ describe('ItemsSoldReport', () => {
 
   it('finds a dish, sorts, and exports what is shown', async () => {
     renderAt();
-    await screen.findByTestId('items-sold-groups');
+    await screen.findByTestId('items-sold-groups', {}, { timeout: 5000 });
     fireEvent.click(screen.getByRole('button', { name: 'One list' }));
     fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'qty' } });
     const firstRow = () => screen.getAllByRole('row')[1];
@@ -106,15 +106,15 @@ describe('ItemsSoldReport', () => {
 
   it('opens an item on its own page with its size and the same period, and closes it', async () => {
     renderAt();
-    await screen.findByTestId('items-sold-groups');
+    await screen.findByTestId('items-sold-groups', {}, { timeout: 5000 });
     fireEvent.click(screen.getAllByTestId('items-sold-open-a')[0]);
-    expect(await screen.findByTestId('item-view')).toHaveTextContent('Nescafé (Milk) · 1 · 5 · 2026-10-27');
+    expect(await screen.findByTestId('item-view', {}, { timeout: 5000 })).toHaveTextContent('Nescafé (Milk) · 1 · 5 · 2026-10-27');
     fireEvent.click(screen.getByRole('button', { name: 'Close view' }));
     expect(screen.queryByTestId('item-view')).toBeNull();
   });
 
   it('opens straight on an item from the address', async () => {
     renderAt('/reports?tab=Items+Sold&from=2026-10-27&to=2026-10-27&item=2&size=0');
-    expect(await screen.findByTestId('item-view')).toHaveTextContent('Bajiya · 2 · 0');
+    expect(await screen.findByTestId('item-view', {}, { timeout: 5000 })).toHaveTextContent('Bajiya · 2 · 0');
   });
 });

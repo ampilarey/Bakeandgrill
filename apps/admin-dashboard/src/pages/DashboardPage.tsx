@@ -45,7 +45,11 @@ import { inputFont } from '../utils/cssVars';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function fmt(val: unknown) { return 'MVR ' + parseFloat(String(val ?? 0)).toFixed(2); }
+function fmt(val: unknown) {
+  const n = parseFloat(String(val ?? 0));
+  // A no-break space keeps "MVR" with its number when a line wraps.
+  return 'MVR\u00a0' + (Number.isFinite(n) ? n : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 function elapsed(iso: string): string {
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -298,6 +302,16 @@ export function DashboardPage() {
   const isFirstLoadRef = useRef(true);
 
   const viewingToday = summaryDate === today();
+  // Left open past midnight on today, the page moves on to the new day by
+  // itself (owner, 2026-10-28: at 00:15 it still showed yesterday and offered
+  // Back to today). A day picked by hand stays put.
+  const followToday = useRef(true);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (followToday.current && summaryDate !== today()) setSummaryDate(today());
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [summaryDate]);
 
   const {
     data: summary = null,
@@ -601,13 +615,13 @@ export function DashboardPage() {
               aria-label="Day to show"
               value={summaryDate}
               max={today()}
-              onChange={(e) => e.target.value && setSummaryDate(e.target.value)}
+              onChange={(e) => { if (!e.target.value) return; followToday.current = e.target.value === today(); setSummaryDate(e.target.value); }}
               style={inputFont({ padding: '6px 10px', borderRadius: 10, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', background: 'var(--color-bg)', color: 'var(--color-text)', cursor: 'pointer' })}
             />
             {!viewingToday && (
               <button
                 type="button"
-                onClick={() => setSummaryDate(today())}
+                onClick={() => { followToday.current = true; setSummaryDate(today()); }}
                 style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-tone-rust-text)', background: 'var(--color-tone-rust-bg)', border: '1px solid var(--color-tone-rust-border)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Back to today
@@ -630,7 +644,7 @@ export function DashboardPage() {
             <>
               <div className="stat-grid" data-responsive-grid style={{ display: 'grid', '--cols': 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14, marginBottom: 12 }}>
                 <StatCard label="Sales" value={fmt(summary.revenue)} icon={DollarSign} accent="var(--color-primary)"
-                  sub={lastWeek ? `${lastWeekWord}: ${fmt(lastWeek.revenue)}` : undefined}
+                  sub={lastWeek ? `${fmt(lastWeek.revenue)} on ${lastWeekWord}` : undefined}
                   trend={!viewingToday ? versus(summary.revenue, lastWeek?.revenue) : undefined} />
                 <StatCard label="Orders" value={String(summary.orders)} icon={ShoppingBag} accent="var(--color-primary)"
                   sub={`Average ${fmt(summary.avg_order)}`}

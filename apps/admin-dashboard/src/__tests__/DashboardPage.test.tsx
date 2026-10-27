@@ -79,10 +79,10 @@ describe('DashboardPage', () => {
   it("puts today's sales first, beside the same day last week", async () => {
     renderPage();
     const todayBox = await screen.findByTestId('dash-today');
-    await waitFor(() => expect(within(todayBox).getByText('MVR 4820.50')).toBeInTheDocument());
+    await waitFor(() => expect(within(todayBox).getByText('MVR 4,820.50')).toBeInTheDocument());
     expect(todayBox).toHaveTextContent('Every paid order counts, whatever stage it is at.');
     expect(todayBox).not.toHaveTextContent(/completed/i);
-    await waitFor(() => expect(todayBox).toHaveTextContent(/MVR 4300\.00/));
+    await waitFor(() => expect(todayBox).toHaveTextContent(/MVR 4,300\.00/));
     expect(within(screen.getByTestId('dash-today-more')).getByText('14')).toBeInTheDocument();
     expect(api.getDailySummary).toHaveBeenCalledTimes(2);
   });
@@ -124,7 +124,7 @@ describe('DashboardPage', () => {
     renderPage();
     const alerts = await screen.findByTestId('dash-alerts');
     await waitFor(() => expect(alerts).toHaveTextContent('Owed to suppliers'));
-    expect(alerts).toHaveTextContent('MVR 19426.73');
+    expect(alerts).toHaveTextContent('MVR 19,426.73');
     expect(alerts).toHaveTextContent('Texts that failed');
   });
 
@@ -148,5 +148,22 @@ describe('DashboardPage', () => {
     expect(statusWord('in_progress')).toBe('Cooking');
     expect(versus(110, 100)).toEqual({ value: '+10% on last week', positive: true });
     expect(versus(100, 0)).toBeUndefined();
+  });
+
+  // Owner, 2026-10-28: left open past midnight it still showed yesterday.
+  it('moves on to the new day at midnight when it was showing today', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-10-27T23:59:40'));
+    try {
+      renderPage();
+      await screen.findByTestId('dash-today');
+      expect(api.getDailySummary).toHaveBeenCalledWith('2026-10-27');
+      vi.setSystemTime(new Date('2026-10-28T00:00:20'));
+      await vi.advanceTimersByTimeAsync(31_000);
+      await waitFor(() => expect(api.getDailySummary).toHaveBeenCalledWith('2026-10-28'));
+      expect(screen.queryByRole('button', { name: 'Back to today' })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

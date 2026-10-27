@@ -687,10 +687,15 @@ export function StatCard({
         )}
       </div>
       {/* Value row */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
+      {/* The trend badge sits beside the figure when there is room and drops
+          under it when there is not (owner, 2026-10-28: on a phone the badge
+          ran out of the card and pushed the figure onto two lines). */}
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 8, rowGap: 6, minWidth: 0 }}>
         {/* A long figure ("MVR 12,450.00") broke after "MVR" in a phone's
-            two-up grid; it steps down with the screen instead. */}
-        <p style={{ fontSize: value.length > 9 ? 'clamp(16px, 4.6vw, 22px)' : 22, fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.1 }}>{value}</p>
+            two-up grid; it steps down with the screen instead and never breaks. */}
+        {/* One piece of text, smaller as it gets longer; it can only break at
+            the space after "MVR", never inside the number, and never loses digits. */}
+        <p style={{ fontSize: value.length > 11 ? 'clamp(15px, 4.1vw, 22px)' : value.length > 9 ? 'clamp(16px, 4.6vw, 22px)' : 22, fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.15, minWidth: 0, overflowWrap: 'normal', wordBreak: 'keep-all' }}>{value}</p>
         {trend && (
           <span style={{
             fontSize: 11,
@@ -701,6 +706,9 @@ export function StatCard({
             borderRadius: 9999,
             padding: '2px 7px',
             whiteSpace: 'nowrap',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}>
             {trend.value}
           </span>
