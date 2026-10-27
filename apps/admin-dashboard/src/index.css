@@ -7207,3 +7207,7 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
   .si-draw, .si-fade, .si-pop, .si-grow, .si-bar, .si-cell { animation: none; opacity: 1; transform: none; stroke-dashoffset: 0; }
   .si-tile, .si-tile:hover { transition: none; transform: none; }
 }
+
+/* Reports → Items Sold: a compact list on a phone, the table from a tablet up. */
+table.is-table.is-table { display: none; }
+@media (min-width: 768px) { .is-list { display: none; } table.is-table.is-table { display: table; } }

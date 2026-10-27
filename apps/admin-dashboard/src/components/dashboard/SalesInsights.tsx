@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { BarChart3, ChevronLeft, ChevronRight, Download, LineChart } from 'lucide-react';
 import { fetchSalesTrend, type SalesTrend, type TrendGroup } from '../../api';
 import { Btn, Card, DateInput, ErrorMsg, SectionLabel, Select, Spinner, TabScrollRow, TD, TD_NOWRAP, TH, TableCard } from '../SharedUI';
@@ -255,6 +256,15 @@ export function SalesInsights() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  // The same period, hours, staff and type on Reports → Items Sold.
+  const itemsSoldLink = (() => {
+    const qs = new URLSearchParams({ tab: 'Items Sold', from: range.from, to: range.to });
+    const hh = (h: number) => String(h).padStart(2, '0');
+    if (part.from !== null && part.to !== null) { qs.set('time_from', `${hh(part.from)}:00`); qs.set('time_to', `${hh(part.to)}:59`); }
+    if (staff) qs.set('staff', staff);
+    if (type) qs.set('type', type);
+    return `/reports?${qs.toString()}`;
+  })();
   // Newest first; a long period skips the empty hours and days.
   const tableRows = data ? [...data.series].reverse().filter((p) => p.orders > 0 || p.refunds > 0 || data.series.length <= 31) : [];
   const m = metricOf(metric);
@@ -359,6 +369,9 @@ export function SalesInsights() {
             <Card style={{ minWidth: 0 }}>
               <p style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700 }}>Best sellers</p>
               <Bars key={playKey} testId="si-top-items" rows={data.top_items.map((t) => ({ key: t.key, label: t.name, sub: `${count(t.qty)} sold`, value: t.sales }))} />
+              <Link to={itemsSoldLink} data-testid="si-every-item" style={{ display: 'inline-block', marginTop: 12, fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>
+                Every item sold, by category →
+              </Link>
             </Card>
           </div>
 

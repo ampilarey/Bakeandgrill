@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { ItemsSoldReport } from './ItemsSoldReport';
 import { Card, ResponsiveTable, StatCard } from '../../components/SharedUI';
 import { paymentMethodLabel } from '../../lib/paymentMethods';
 import {
@@ -131,6 +132,8 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
       )}
 
       {/* ── Breakdown ── */}
+      {tab === 'Items Sold' && <ItemsSoldReport />}
+
       {!loading && tab === 'Breakdown' && breakdown && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
 

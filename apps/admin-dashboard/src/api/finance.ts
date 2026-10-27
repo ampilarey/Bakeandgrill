@@ -2110,3 +2110,30 @@ export async function fetchSalesTrend(q: SalesTrendQuery): Promise<SalesTrend> {
   }
   return req(`/reports/sales-trend?${qs.toString()}`);
 }
+
+// ── Items sold (2026-10-27): every item in a period, between two times, in a category ──
+export type ItemsSoldRow = {
+  key: string; item_id: number | null; name: string; category_id: number | null; category: string;
+  qty: number; sales: number; avg_price: number; orders: number; share: number;
+};
+export type ItemsSoldReport = {
+  range: { from: string; to: string; time_from: string | null; time_to: string | null };
+  totals: { items: number; qty: number; sales: number; orders: number };
+  items: ItemsSoldRow[];
+  categories: { category: string; category_id: number | null; items: number; qty: number; sales: number; share: number }[];
+  category_choices: { id: number; name: string }[];
+  staff_choices: { id: number; name: string }[];
+};
+export type ItemsSoldQuery = {
+  from: string; to: string; time_from?: string | null; time_to?: string | null;
+  category_id?: number | null; user_id?: number | null; type?: string | null;
+};
+
+export async function fetchItemsSold(q: ItemsSoldQuery): Promise<ItemsSoldReport> {
+  const qs = new URLSearchParams({ from: q.from, to: q.to });
+  if (q.time_from && q.time_to) { qs.set('time_from', q.time_from); qs.set('time_to', q.time_to); }
+  if (q.category_id) qs.set('category_id', String(q.category_id));
+  if (q.user_id) qs.set('user_id', String(q.user_id));
+  if (q.type) qs.set('type', q.type);
+  return req(`/reports/items-sold?${qs.toString()}`);
+}

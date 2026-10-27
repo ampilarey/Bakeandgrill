@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SalesTrend } from '../../api';
 
@@ -32,7 +33,7 @@ const trend = (over: Partial<SalesTrend> = {}): SalesTrend => ({
 });
 
 function renderIt() {
-  return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><SalesInsights /></QueryClientProvider>);
+  return render(<MemoryRouter><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><SalesInsights /></QueryClientProvider></MemoryRouter>);
 }
 
 describe('SalesInsights', () => {
@@ -111,6 +112,10 @@ describe('SalesInsights', () => {
     expect(within(screen.getByTestId('si-by-payment')).getByText('Wallet')).toBeInTheDocument();
     expect(within(screen.getByTestId('si-by-staff')).getByText('Online (no staff)')).toBeInTheDocument();
     expect(within(screen.getByTestId('si-top-items')).getByText('Nescafé (Milk)')).toBeInTheDocument();
+    // Every item, on Reports → Items Sold, for the same period.
+    const link = screen.getByTestId('si-every-item').getAttribute('href') ?? '';
+    expect(link).toContain('tab=Items+Sold');
+    expect(link).toContain(`from=${presetRange('today').from}`);
   });
 
   it('keeps the table short until asked, and exports it', async () => {

@@ -80,7 +80,7 @@ export const REPORT_SECTIONS = [
   {
     id: 'sales',
     label: 'Sales',
-    tabs: ['Summary', 'Breakdown', 'Hourly Sales', 'Station Performance', 'Cashier Performance', 'Product Margins', 'Margin & Waste'],
+    tabs: ['Summary', 'Items Sold', 'Breakdown', 'Hourly Sales', 'Station Performance', 'Cashier Performance', 'Product Margins', 'Margin & Waste'],
   },
   {
     id: 'finance',

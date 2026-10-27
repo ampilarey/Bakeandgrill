@@ -348,6 +348,31 @@ class ReportsController extends Controller
         return response()->json($this->reports->customerLtvTop($from, $to, $limit));
     }
 
+    /** Every item sold in a period, optionally between two times of day and in one category (2026-10-27). */
+    public function itemsSold(Request $request, \App\Domains\Reporting\Services\ItemsSold $report)
+    {
+        $data = $request->validate([
+            'time_from' => ['nullable', 'date_format:H:i', 'required_with:time_to'],
+            'time_to' => ['nullable', 'date_format:H:i', 'required_with:time_from'],
+            'category_id' => 'nullable|integer|exists:categories,id',
+            'user_id' => 'nullable|integer|min:1',
+            'type' => 'nullable|string|max:40',
+        ]);
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($report->report(
+            \Carbon\CarbonImmutable::instance($from),
+            \Carbon\CarbonImmutable::instance($to),
+            [
+                'time_from' => $data['time_from'] ?? null,
+                'time_to' => $data['time_to'] ?? null,
+                'category_id' => isset($data['category_id']) ? (int) $data['category_id'] : null,
+                'user_id' => isset($data['user_id']) ? (int) $data['user_id'] : null,
+                'type' => $data['type'] ?? null,
+            ],
+        ));
+    }
+
     /** The dashboard's Sales section: a period beside the one before it (2026-10-27). */
     public function salesTrend(Request $request, \App\Domains\Reporting\Services\SalesTrend $trend)
     {

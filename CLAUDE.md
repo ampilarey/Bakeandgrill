@@ -1497,7 +1497,15 @@ hour grid, order type, payment, staff and best sellers (each size apart), and th
 in the browser). Net is sales less refunds and GST; refunds count on the day approved; gift card sales
 are left out. Read at hour grain in one query and rolled up in PHP. Animations are CSS (`.si-*` in
 `index.css`) and stop under reduced motion. The day's breakdown shows only to someone without
-`reports.view`. `SalesTrendTest`, `SalesInsights.test.tsx`.
+`reports.view`. `SalesTrendTest`, `SalesInsights.test.tsx`. **Items Sold** (owner, 2026-10-27: "all the items sold by a
+specific date and specific time of period, with or without category"): Reports → Sales → Items Sold
+(`pages/ReportsPage/ItemsSoldReport.tsx`, `GET /api/reports/items-sold`, `App\Domains\Reporting\Services\ItemsSold`,
+`reports.view`): dates, then the same hours on each day (`time_from` / `time_to`, HH:MM, a range past
+midnight takes both sides), a category with its sub-categories, staff and order type; every item, each
+size apart, grouped by category with subtotals or one list, search, sort, Export. The picks live in the
+address (`from`, `to`, `time_from`, `time_to`, `category`, `staff`, `type`), so the dashboard's Best
+sellers links there with the same period. A phone gets a compact list (`.is-list`), a tablet up the
+table. `ItemsSoldTest`, `ItemsSoldReport.test.tsx`.
 
 ## Queue worker vs synchronous SMS
 
