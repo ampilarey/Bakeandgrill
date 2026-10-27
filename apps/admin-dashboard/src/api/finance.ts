@@ -2113,7 +2113,7 @@ export async function fetchSalesTrend(q: SalesTrendQuery): Promise<SalesTrend> {
 
 // ── Items sold (2026-10-27): every item in a period, between two times, in a category ──
 export type ItemsSoldRow = {
-  key: string; item_id: number | null; name: string; category_id: number | null; category: string;
+  key: string; item_id: number | null; variant_id: number | null; name: string; category_id: number | null; category: string;
   qty: number; sales: number; avg_price: number; orders: number; share: number;
 };
 export type ItemsSoldReport = {
@@ -2136,4 +2136,33 @@ export async function fetchItemsSold(q: ItemsSoldQuery): Promise<ItemsSoldReport
   if (q.user_id) qs.set('user_id', String(q.user_id));
   if (q.type) qs.set('type', q.type);
   return req(`/reports/items-sold?${qs.toString()}`);
+}
+
+// ── One item's sales (2026-10-27): when it sells, over time, by size, type and staff ──
+export type ItemSalesCell = { qty: number; sales: number; orders: number };
+export type ItemSalesSplit = { key: string; label: string; qty: number; sales: number; orders: number };
+export type ItemSalesFigures = { qty: number; sales: number; orders: number; avg_price: number; per_day: number; per_order: number };
+export type ItemSalesReport = {
+  item: { id: number; name: string; category: string | null; sizes: { id: number; name: string; price: number; active: boolean }[] };
+  range: { from: string; to: string; days: number; group: TrendGroup };
+  previous: { from: string; to: string };
+  totals: ItemSalesFigures;
+  previous_totals: ItemSalesFigures;
+  series: TrendPoint[];
+  previous_series: TrendPoint[];
+  by_hour: ItemSalesCell[];
+  by_weekday: ItemSalesCell[];
+  heatmap: ItemSalesCell[][];
+  by_size: ItemSalesSplit[];
+  by_type: ItemSalesSplit[];
+  by_staff: ItemSalesSplit[];
+};
+
+export async function fetchItemSales(itemId: number, q: Omit<ItemsSoldQuery, 'category_id'> & { group: TrendGroup; variant_id?: number | null }): Promise<ItemSalesReport> {
+  const qs = new URLSearchParams({ from: q.from, to: q.to, group: q.group });
+  if (q.variant_id != null) qs.set('variant_id', String(q.variant_id));
+  if (q.time_from && q.time_to) { qs.set('time_from', q.time_from); qs.set('time_to', q.time_to); }
+  if (q.user_id) qs.set('user_id', String(q.user_id));
+  if (q.type) qs.set('type', q.type);
+  return req(`/reports/items-sold/${itemId}?${qs.toString()}`);
 }

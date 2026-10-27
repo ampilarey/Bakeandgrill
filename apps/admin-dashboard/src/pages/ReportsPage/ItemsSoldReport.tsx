@@ -7,6 +7,7 @@ import { Btn, Card, DateInput, ErrorMsg, Select, Spinner, StatCard, TabScrollRow
 import { downloadCSV } from '../../utils/csvExport';
 import { inputFont } from '../../utils/cssVars';
 import { iso, presetRange, type PresetKey } from '../../components/dashboard/salesInsightsMath';
+import { ItemSalesView } from './ItemSalesView';
 
 /*
  * Reports → Sales → Items Sold (owner, 2026-10-27: "how can i see all the items
@@ -64,13 +65,13 @@ function ShareBar({ value }: { value: number }) {
 }
 
 /** A phone's row: name and counts on the left, the money on the right, the share beneath. */
-function ItemsList({ rows, showCategory }: { rows: ItemsSoldRow[]; showCategory: boolean }) {
+function ItemsList({ rows, showCategory, onOpen }: { rows: ItemsSoldRow[]; showCategory: boolean; onOpen: (r: ItemsSoldRow) => void }) {
   return (
     <div className="is-list" data-testid="items-sold-list">
       {rows.map((r) => (
         <div key={r.key} style={{ padding: '10px 4px', borderBottom: '1px solid var(--color-border-light)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-            <span style={{ minWidth: 0, fontSize: 14, fontWeight: 600, overflowWrap: 'anywhere' }}>{r.name}</span>
+            <ItemName row={r} onOpen={onOpen} style={{ fontSize: 14, fontWeight: 600 }} />
             <strong style={{ whiteSpace: 'nowrap', fontSize: 14 }}>{money(r.sales)}</strong>
           </div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '2px 0 6px' }}>
@@ -83,10 +84,22 @@ function ItemsList({ rows, showCategory }: { rows: ItemsSoldRow[]; showCategory:
   );
 }
 
-function ItemsTable({ rows, showCategory }: { rows: ItemsSoldRow[]; showCategory: boolean }) {
+/** The item's name; one still on the menu opens its own page of charts. */
+function ItemName({ row, onOpen, style }: { row: ItemsSoldRow; onOpen: (r: ItemsSoldRow) => void; style?: React.CSSProperties }) {
+  if (row.item_id === null) return <span style={{ minWidth: 0, overflowWrap: 'anywhere', ...style }}>{row.name}</span>;
+  return (
+    <button type="button" onClick={() => onOpen(row)} data-testid={`items-sold-open-${row.key}`}
+      title="See when it sells"
+      style={{ minWidth: 0, overflowWrap: 'anywhere', textAlign: 'left', padding: 0, border: 0, background: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--color-primary)', textDecoration: 'underline', textUnderlineOffset: 3, textDecorationColor: 'var(--color-tone-rust-border)', ...style }}>
+      {row.name}
+    </button>
+  );
+}
+
+function ItemsTable({ rows, showCategory, onOpen }: { rows: ItemsSoldRow[]; showCategory: boolean; onOpen: (r: ItemsSoldRow) => void }) {
   return (
     <>
-    <ItemsList rows={rows} showCategory={showCategory} />
+    <ItemsList rows={rows} showCategory={showCategory} onOpen={onOpen} />
     <table className="is-table" data-table-scroll="keep" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
       {/* The same widths in every group, so the columns line up down the page. */}
       <colgroup>
@@ -110,7 +123,7 @@ function ItemsTable({ rows, showCategory }: { rows: ItemsSoldRow[]; showCategory
       <tbody>
         {rows.map((r) => (
           <tr key={r.key}>
-            <td style={TD}>{r.name}<div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r.orders} order{r.orders === 1 ? '' : 's'}</div></td>
+            <td style={TD}><ItemName row={r} onOpen={onOpen} /><div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r.orders} order{r.orders === 1 ? '' : 's'}</div></td>
             {showCategory && <td style={{ ...TD, color: 'var(--color-text-secondary)' }}>{r.category}</td>}
             <td style={{ ...TD_NOWRAP, textAlign: 'right', fontWeight: 600 }}>{qty(r.qty)}</td>
             <td style={{ ...TD_NOWRAP, textAlign: 'right' }}>{money(r.avg_price)}</td>
@@ -181,6 +194,13 @@ export function ItemsSoldReport() {
       Sales: r.sales.toFixed(2), 'Share %': r.share.toFixed(1), Orders: r.orders,
     })));
   };
+
+  // The item opened in its own page, kept in the address too (item, size).
+  const openId = Number(params.get('item') ?? '') || null;
+  const openSize = params.get('size');
+  const openRow = data?.items.find((r) => r.item_id === openId && String(r.variant_id ?? 0) === (openSize ?? ''))
+    ?? data?.items.find((r) => r.item_id === openId);
+  const openItem = (r: ItemsSoldRow) => set({ item: String(r.item_id), size: String(r.variant_id ?? 0) });
 
   const pickedPreset = QUICK_DAYS.find((p) => { const r = presetRange(p.key); return r.from === from && r.to === to; })?.key;
   const categoryName = (data?.category_choices ?? []).find((c) => String(c.id) === category)?.name;
@@ -267,7 +287,7 @@ export function ItemsSoldReport() {
                 {search ? 'No dish matches that.' : 'Nothing was sold in this period.'}
               </p>
             ) : view === 'list' ? (
-              <ItemsTable rows={rows} showCategory />
+              <ItemsTable rows={rows} showCategory onOpen={openItem} />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="items-sold-groups">
                 {groups.map(([name, list]) => {
@@ -288,7 +308,7 @@ export function ItemsSoldReport() {
                           <ShareBar value={share} />
                         </span>
                       </button>
-                      {open && <div style={{ padding: '0 8px 6px' }}><ItemsTable rows={list} showCategory={false} /></div>}
+                      {open && <div style={{ padding: '0 8px 6px' }}><ItemsTable rows={list} showCategory={false} onOpen={openItem} /></div>}
                     </div>
                   );
                 })}
@@ -296,6 +316,17 @@ export function ItemsSoldReport() {
             )}
           </TableCard>
         </div>
+      )}
+
+      {openId !== null && (
+        <ItemSalesView
+          key={`${openId}-${openSize}`}
+          itemId={openId}
+          variantId={openSize === null || openSize === '' ? null : Number(openSize)}
+          title={openRow?.name ?? 'Item'}
+          initial={{ from, to, time_from: timed ? tf : null, time_to: timed ? tt : null, user_id: staff ? Number(staff) : null, type: type || null }}
+          onClose={() => set({ item: null, size: null })}
+        />
       )}
     </div>
   );

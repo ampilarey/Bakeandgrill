@@ -8,10 +8,15 @@ import type { ItemsSoldReport as Report } from '../../api';
  * Owner, 2026-10-27: "how can i see all the items sold by a specific date and
  * specific time of preiod, with or without cattegory".
  */
-const api = vi.hoisted(() => ({ fetchItemsSold: vi.fn() }));
+const api = vi.hoisted(() => ({ fetchItemsSold: vi.fn(), fetchItemSales: vi.fn() }));
 vi.mock('../../api', () => api);
 const csv = vi.hoisted(() => ({ downloadCSV: vi.fn() }));
 vi.mock('../../utils/csvExport', () => csv);
+vi.mock('./ItemSalesView', () => ({
+  ItemSalesView: (p: { itemId: number; variantId: number | null; title: string; initial: { from: string }; onClose: () => void }) => (
+    <div data-testid="item-view">{p.title} · {p.itemId} · {String(p.variantId)} · {p.initial.from}<button type="button" onClick={p.onClose}>Close view</button></div>
+  ),
+}));
 
 import { ItemsSoldReport } from './ItemsSoldReport';
 
@@ -19,9 +24,9 @@ const report = (): Report => ({
   range: { from: '2026-10-27', to: '2026-10-27', time_from: null, time_to: null },
   totals: { items: 3, qty: 14, sales: 140, orders: 6 },
   items: [
-    { key: 'a', item_id: 1, name: 'Nescafé (Milk)', category_id: 2, category: 'Drinks › Hot', qty: 3, sales: 45, avg_price: 15, orders: 2, share: 32.1 },
-    { key: 'b', item_id: 2, name: 'Bajiya', category_id: 3, category: 'Snacks', qty: 10, sales: 50, avg_price: 5, orders: 3, share: 35.7 },
-    { key: 'c', item_id: 3, name: 'Black Tea', category_id: 2, category: 'Drinks › Hot', qty: 1, sales: 45, avg_price: 45, orders: 1, share: 32.1 },
+    { key: 'a', item_id: 1, variant_id: 5, name: 'Nescafé (Milk)', category_id: 2, category: 'Drinks › Hot', qty: 3, sales: 45, avg_price: 15, orders: 2, share: 32.1 },
+    { key: 'b', item_id: 2, variant_id: null, name: 'Bajiya', category_id: 3, category: 'Snacks', qty: 10, sales: 50, avg_price: 5, orders: 3, share: 35.7 },
+    { key: 'c', item_id: 3, variant_id: null, name: 'Black Tea', category_id: 2, category: 'Drinks › Hot', qty: 1, sales: 45, avg_price: 45, orders: 1, share: 32.1 },
   ],
   categories: [
     { category: 'Drinks › Hot', category_id: 2, items: 2, qty: 4, sales: 90, share: 64.3 },
@@ -97,5 +102,19 @@ describe('ItemsSoldReport', () => {
     expect(csv.downloadCSV).toHaveBeenCalledWith('items-sold-2026-10-27-to-2026-10-27', [
       expect.objectContaining({ Item: 'Black Tea', Category: 'Drinks › Hot', Sold: 1, Sales: '45.00' }),
     ]);
+  });
+
+  it('opens an item on its own page with its size and the same period, and closes it', async () => {
+    renderAt();
+    await screen.findByTestId('items-sold-groups');
+    fireEvent.click(screen.getAllByTestId('items-sold-open-a')[0]);
+    expect(await screen.findByTestId('item-view')).toHaveTextContent('Nescafé (Milk) · 1 · 5 · 2026-10-27');
+    fireEvent.click(screen.getByRole('button', { name: 'Close view' }));
+    expect(screen.queryByTestId('item-view')).toBeNull();
+  });
+
+  it('opens straight on an item from the address', async () => {
+    renderAt('/reports?tab=Items+Sold&from=2026-10-27&to=2026-10-27&item=2&size=0');
+    expect(await screen.findByTestId('item-view')).toHaveTextContent('Bajiya · 2 · 0');
   });
 });

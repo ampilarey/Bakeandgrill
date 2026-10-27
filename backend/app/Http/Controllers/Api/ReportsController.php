@@ -348,6 +348,36 @@ class ReportsController extends Controller
         return response()->json($this->reports->customerLtvTop($from, $to, $limit));
     }
 
+    /** One item's sales by hour, weekday and over time, with its sizes, order types and staff (2026-10-27). */
+    public function itemSales(Request $request, int $item, \App\Domains\Reporting\Services\ItemSales $report)
+    {
+        $data = $request->validate([
+            'group' => 'nullable|in:' . implode(',', \App\Domains\Reporting\Services\ItemSales::GROUPS),
+            // A size's id, 0 for the lines sold with no size, or nothing for every size.
+            'variant_id' => 'nullable|integer|min:0',
+            'time_from' => ['nullable', 'date_format:H:i', 'required_with:time_to'],
+            'time_to' => ['nullable', 'date_format:H:i', 'required_with:time_from'],
+            'user_id' => 'nullable|integer|min:1',
+            'type' => 'nullable|string|max:40',
+        ]);
+        [$from, $to] = $this->parseRange($request);
+        $model = \App\Models\Item::query()->with('category')->findOrFail($item);
+
+        return response()->json($report->report(
+            $model,
+            \Carbon\CarbonImmutable::instance($from),
+            \Carbon\CarbonImmutable::instance($to),
+            $data['group'] ?? 'day',
+            [
+                'variant_id' => isset($data['variant_id']) ? (int) $data['variant_id'] : null,
+                'time_from' => $data['time_from'] ?? null,
+                'time_to' => $data['time_to'] ?? null,
+                'user_id' => isset($data['user_id']) ? (int) $data['user_id'] : null,
+                'type' => $data['type'] ?? null,
+            ],
+        ));
+    }
+
     /** Every item sold in a period, optionally between two times of day and in one category (2026-10-27). */
     public function itemsSold(Request $request, \App\Domains\Reporting\Services\ItemsSold $report)
     {

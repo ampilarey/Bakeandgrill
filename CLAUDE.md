@@ -1505,7 +1505,13 @@ midnight takes both sides), a category with its sub-categories, staff and order 
 size apart, grouped by category with subtotals or one list, search, sort, Export. The picks live in the
 address (`from`, `to`, `time_from`, `time_to`, `category`, `staff`, `type`), so the dashboard's Best
 sellers links there with the same period. A phone gets a compact list (`.is-list`), a tablet up the
-table. `ItemsSoldTest`, `ItemsSoldReport.test.tsx`.
+table. `ItemsSoldTest`, `ItemsSoldReport.test.tsx`. A tap on an item's name opens its own page (owner, 2026-10-27: "When i
+select an item, which time this item is bought in a graph and different forms and different times, dates,
+months"; `ItemSalesView.tsx`, `GET /api/reports/items-sold/{item}`, `ItemSales`, `item` and `size` in the
+address): sold, sales, orders and a day on average against the period before; over time by hour, day,
+week or month (the dashboard's `TrendChart`); by hour of the day and by day of the week (`ColumnChart`);
+the weekday × hour grid (`HeatGrid`, both in `components/charts/`); and by size, order type and staff;
+every size or one, count or money, its own period chips. `ItemSalesTest`, `ItemSalesView.test.tsx`.
 
 ## Queue worker vs synchronous SMS
 

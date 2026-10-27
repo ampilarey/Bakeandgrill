@@ -74,6 +74,7 @@ final class ItemsSold
             return [
                 'key' => ProductName::key($r->item_id, $r->variant_id, $r->variant_name),
                 'item_id' => $r->item_id !== null ? (int) $r->item_id : null,
+                'variant_id' => $r->variant_id !== null ? (int) $r->variant_id : null,
                 'name' => ProductName::label((string) $r->name, $r->variant_name),
                 'category_id' => $r->category_id !== null ? (int) $r->category_id : null,
                 'category' => $category ?? 'No category',
