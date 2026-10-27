@@ -290,8 +290,8 @@ backend/routes/domains/orders.php:95:orders.refund
 backend/routes/domains/payments.php:24:customers.credit.repay
 backend/routes/domains/posters.php:10:posters.make
 backend/routes/domains/reporting.php:22:reports.view
-backend/routes/domains/reporting.php:67:settings.update
-backend/routes/domains/reporting.php:77:customers.analytics
+backend/routes/domains/reporting.php:68:settings.update
+backend/routes/domains/reporting.php:78:customers.analytics
 backend/routes/domains/reservations.php:31:reservations.manage
 backend/routes/domains/signage.php:17:signage.manage
 backend/routes/domains/social.php:33:social.view

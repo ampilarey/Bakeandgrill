@@ -2072,3 +2072,41 @@ export type VisitSurface = 'all' | 'web' | 'order';
 export async function fetchSiteAnalytics(params: { days: number; surface: VisitSurface }): Promise<SiteAnalytics> {
   return req(`/admin/site-analytics?days=${params.days}&surface=${params.surface}`);
 }
+
+// ── Dashboard sales section (2026-10-27): a period beside the one before it ──
+export type TrendGroup = 'hour' | 'day' | 'week' | 'month';
+export type TrendFigures = {
+  sales: number; refunds: number; discounts: number; tax: number; net: number;
+  orders: number; avg_order: number; items: number;
+};
+export type TrendPoint = TrendFigures & { key: string; from: string; to: string };
+export type SalesTrend = {
+  range: { from: string; to: string; days: number; group: TrendGroup };
+  previous: { from: string; to: string };
+  totals: TrendFigures;
+  previous_totals: TrendFigures;
+  series: TrendPoint[];
+  previous_series: TrendPoint[];
+  /** [weekday 0 = Monday][hour 0–23] */
+  heatmap: { sales: number; orders: number }[][];
+  by_type: { type: string; orders: number; sales: number }[];
+  by_payment: { method: string; orders: number; amount: number }[];
+  by_staff: { user_id: number | null; name: string; orders: number; sales: number }[];
+  top_items: { key: string; name: string; qty: number; sales: number }[];
+  staff: { id: number; name: string }[];
+};
+export type SalesTrendQuery = {
+  from: string; to: string; group: TrendGroup;
+  user_id?: number | null; type?: string | null; hour_from?: number | null; hour_to?: number | null;
+};
+
+export async function fetchSalesTrend(q: SalesTrendQuery): Promise<SalesTrend> {
+  const qs = new URLSearchParams({ from: q.from, to: q.to, group: q.group });
+  if (q.user_id) qs.set('user_id', String(q.user_id));
+  if (q.type) qs.set('type', q.type);
+  if (q.hour_from != null && q.hour_to != null) {
+    qs.set('hour_from', String(q.hour_from));
+    qs.set('hour_to', String(q.hour_to));
+  }
+  return req(`/reports/sales-trend?${qs.toString()}`);
+}

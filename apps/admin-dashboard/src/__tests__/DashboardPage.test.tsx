@@ -29,7 +29,9 @@ const api = vi.hoisted(() => ({
   fetchPayables: vi.fn(), getCreditExposureReport: vi.fn(), fetchSiteStats: vi.fn(),
 }));
 vi.mock('../api', () => api);
-vi.mock('../hooks/usePermissions', () => ({ useCurrentUserPermissions: () => ({ user: null, loading: false, can: () => true }) }));
+const perms = vi.hoisted(() => ({ reports: true }));
+vi.mock('../hooks/usePermissions', () => ({ useCurrentUserPermissions: () => ({ user: null, loading: false, can: (p: string) => p !== 'reports.view' || perms.reports }) }));
+vi.mock('../components/dashboard/SalesInsights', () => ({ SalesInsights: () => <section data-testid="dash-sales" /> }));
 vi.mock('../hooks/useInbox', () => ({ useInbox: () => ({ rows: [], loaded: true }) }));
 vi.mock('../components/SiteStatsSection', () => ({ SiteStatsSection: () => null }));
 vi.mock('../utils/audio', () => ({ playChime: vi.fn() }));
@@ -53,6 +55,7 @@ const overview = (shifts: { id: number; user_name: string; device_name: string; 
 describe('DashboardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    perms.reports = true;
     api.getDailySummary.mockImplementation(async (date: string) => day(date));
     api.fetchSalesSummary.mockResolvedValue({ service_charge_total: 210, delivery_fee_total: 75, payments: { cash: 1800, customer_deposit: 120, house_account: 300 } });
     api.getCreditExposureReport.mockResolvedValue({ total_balance: 0, customers_count: 0 });
@@ -125,7 +128,15 @@ describe('DashboardPage', () => {
     expect(alerts).toHaveTextContent('Texts that failed');
   });
 
+  it('shows Sales over time to anyone who may read reports, in place of the day in detail', async () => {
+    renderPage();
+    expect(await screen.findByTestId('dash-sales')).toBeInTheDocument();
+    await screen.findByTestId('dash-today');
+    expect(screen.queryByTestId('dash-breakdown')).toBeNull();
+  });
+
   it('names payment methods, order types and statuses as the till does', async () => {
+    perms.reports = false;
     renderPage();
     const breakdown = await screen.findByTestId('dash-breakdown');
     await waitFor(() => expect(breakdown).toHaveTextContent('Wallet'));

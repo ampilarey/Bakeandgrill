@@ -348,6 +348,31 @@ class ReportsController extends Controller
         return response()->json($this->reports->customerLtvTop($from, $to, $limit));
     }
 
+    /** The dashboard's Sales section: a period beside the one before it (2026-10-27). */
+    public function salesTrend(Request $request, \App\Domains\Reporting\Services\SalesTrend $trend)
+    {
+        $data = $request->validate([
+            'group' => 'nullable|in:' . implode(',', \App\Domains\Reporting\Services\SalesTrend::GROUPS),
+            'user_id' => 'nullable|integer|min:1',
+            'type' => 'nullable|string|max:40',
+            'hour_from' => 'nullable|integer|min:0|max:23|required_with:hour_to',
+            'hour_to' => 'nullable|integer|min:0|max:23|required_with:hour_from',
+        ]);
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($trend->report(
+            \Carbon\CarbonImmutable::instance($from),
+            \Carbon\CarbonImmutable::instance($to),
+            $data['group'] ?? 'day',
+            [
+                'user_id' => isset($data['user_id']) ? (int) $data['user_id'] : null,
+                'type' => $data['type'] ?? null,
+                'hour_from' => isset($data['hour_from']) ? (int) $data['hour_from'] : null,
+                'hour_to' => isset($data['hour_to']) ? (int) $data['hour_to'] : null,
+            ],
+        ));
+    }
+
     public function hourlySales(Request $request)
     {
         [$from, $to] = $this->parseRange($request);

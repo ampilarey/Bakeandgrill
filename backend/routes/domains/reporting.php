@@ -51,6 +51,7 @@ if (routes_domain_section_is_or_unset('reporting', 'reports', 'reports') && !rou
         // S4: recipe-theoretical usage against what the counts had to correct.
         Route::get('/reports/usage-variance', [ReportsController::class, 'usageVariance']);
         Route::get('/reports/hourly-sales', [ReportsController::class, 'hourlySales']);
+        Route::get('/reports/sales-trend', [ReportsController::class, 'salesTrend']);
         Route::get('/reports/station-performance', [ReportsController::class, 'stationPerformance']);
         Route::get('/reports/sales-summary/csv', [ReportsController::class, 'salesSummaryCsv'])->middleware('throttle:20,1');
         Route::get('/reports/sales-breakdown/csv', [ReportsController::class, 'salesBreakdownCsv'])->middleware('throttle:20,1');

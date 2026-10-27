@@ -1486,7 +1486,18 @@ and what just changed; the day's sales by type, by payment method and best selle
 buying; the till; All time (`SiteStatsSection`); and system health, open only when something is
 wrong. Words follow the till: `typeWord()`, `methodWord()`, `statusWord()` (in progress is
 Cooking). Sales count every paid order (§ A paid order is a sale at any stage), so never call them
-"completed". `DashboardPage.test.tsx`.
+"completed". `DashboardPage.test.tsx`. **Sales over time** (owner, 2026-10-27, after Loyverse's sales
+summary: "more advanced graphics and features and animations"; `components/dashboard/SalesInsights.tsx`,
+`reports.view`, `GET /api/reports/sales-trend`, `App\Domains\Reporting\Services\SalesTrend`) sits after
+Worth a look: one row of filters (presets, ‹ › that step by the period's length or by a calendar month,
+two dates, time of day, staff, order type) scopes eight tiles against the period just before of the same
+length (count-up, sparkline, tap to chart it), the picked figure by hour (up to 7 days), day, week or
+month as an area or columns with the period before as a grey line, crosshair and keyboard, a weekday ×
+hour grid, order type, payment, staff and best sellers (each size apart), and the table with Export (CSV
+in the browser). Net is sales less refunds and GST; refunds count on the day approved; gift card sales
+are left out. Read at hour grain in one query and rolled up in PHP. Animations are CSS (`.si-*` in
+`index.css`) and stop under reduced motion. The day's breakdown shows only to someone without
+`reports.view`. `SalesTrendTest`, `SalesInsights.test.tsx`.
 
 ## Queue worker vs synchronous SMS
 

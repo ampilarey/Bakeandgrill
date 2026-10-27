@@ -35,6 +35,7 @@ import {
   Card, ErrorMsg, PageHeader, PageShell, SectionLabel, Spinner, StatCard, TD, TD_NOWRAP, TH, TableCard,
 } from '../components/SharedUI';
 import { SiteStatsSection } from '../components/SiteStatsSection';
+import { SalesInsights } from '../components/dashboard/SalesInsights';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { monthStart, today } from '../utils/dateHelpers';
@@ -280,6 +281,7 @@ export function DashboardPage() {
   const showPosOverview = can('reports.view');
   const showMaintenance = can('website.manage');
   const canFinancialSummary = can('reports.financial');
+  const canReports = can('reports.view');
   const canOrders = can('orders.view');
   const canInventory = can('inventory.view');
   const canViewShifts = can('shifts.view_all_history');
@@ -727,7 +729,10 @@ export function DashboardPage() {
         </section>
       )}
 
-      {/* ── 4. Orders on the go + what changed ── */}
+      {/* ── 4. Sales over time: any period, against the one before (2026-10-27) ── */}
+      {canReports && <SalesInsights />}
+
+      {/* ── 5. Orders on the go + what changed ── */}
       {canOrders && viewingToday && (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 20, marginBottom: 24 }}>
         <div style={{ minWidth: 0 }}>
@@ -797,8 +802,8 @@ export function DashboardPage() {
       </div>
       )}
 
-      {/* ── 5. Where the day's money came from ── */}
-      {summary && ((summary.by_type ?? []).length > 0 || (summary.top_items ?? []).length > 0 || Object.keys(salesSummary?.payments ?? {}).length > 0) && (
+      {/* ── 6. Where the day's money came from: Sales over time covers it for anyone who may read reports ── */}
+      {!canReports && summary && ((summary.by_type ?? []).length > 0 || (summary.top_items ?? []).length > 0 || Object.keys(salesSummary?.payments ?? {}).length > 0) && (
         <section data-testid="dash-breakdown" style={{ marginBottom: 24 }}>
           <SectionLabel>{viewingToday ? "Today's sales in detail" : `Sales on ${dayWord} in detail`}</SectionLabel>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 16 }}>
