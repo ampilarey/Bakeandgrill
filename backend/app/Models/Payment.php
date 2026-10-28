@@ -45,6 +45,9 @@ class Payment extends Model
         'checked_at',
     ];
 
+    /** The QR and card check is Admin's (PaymentChecks); the till's payment replies stay as they were. */
+    protected $hidden = ['check_status', 'checked_amount_laar', 'check_reference', 'check_note', 'checked_by', 'checked_at'];
+
     protected $casts = [
         'order_id' => 'integer',
         'invoice_id' => 'integer',
