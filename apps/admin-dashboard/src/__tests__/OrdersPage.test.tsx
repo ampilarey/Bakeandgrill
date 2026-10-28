@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { OrdersPage } from '../pages/OrdersPage';
 import { renderWithRouter } from './testUtils';
+import { fetchOrders } from '../api';
 
 const { heldOrder } = vi.hoisted(() => ({
   heldOrder: {
@@ -76,5 +77,19 @@ describe('OrdersPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /^Resume$/i })).toBeTruthy();
     });
+  });
+
+  it('shows how each order was paid', async () => {
+    vi.mocked(fetchOrders).mockResolvedValueOnce({
+      data: [
+        { id: 7, order_number: 'ORD-7', status: 'paid', type: 'takeaway', total: 155, created_at: new Date().toISOString(),
+          payments: [{ id: 1, method: 'card', status: 'paid' }, { id: 2, method: 'cash', status: 'paid' }, { id: 3, method: 'qr', status: 'failed' }] },
+        heldOrder,
+      ],
+      meta: { last_page: 1 },
+    } as never);
+    renderWithRouter(<OrdersPage />);
+    expect(await screen.findByTestId('order-paid-by-7')).toHaveTextContent('Card + Cash');
+    expect(screen.getByTestId('order-paid-by-42')).toHaveTextContent('—');
   });
 });

@@ -12,7 +12,7 @@ import {
   type Order, type DeliveryDriver,
   correctOrderTender, CORRECTABLE_TENDERS,
 } from '../api';
-import { ADMIN_ORDER_PAYMENT_METHODS } from '../lib/paymentMethods';
+import { ADMIN_ORDER_PAYMENT_METHODS, paymentMethodLabel } from '../lib/paymentMethods';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { OrderMessagesPanel } from '../components/OrderMessagesPanel';
@@ -887,6 +887,14 @@ type SortDir = 'asc' | 'desc';
  * this view in two, and a signal that shows on one and not the other is worse
  * than no signal at all.
  */
+/** How the order was paid, from its paid tenders: "Cash", "Card + Cash"; '—' while unpaid. */
+function paidByLabel(o: Order): string {
+  const methods = (o.payments ?? [])
+    .filter((p) => ['paid', 'completed', 'confirmed'].includes(String(p.status ?? '')))
+    .map((p) => paymentMethodLabel(p.method));
+  return methods.length ? [...new Set(methods)].join(' + ') : '—';
+}
+
 function OrderFlags({ o }: { o: Order }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
@@ -1104,7 +1112,7 @@ export function OrdersPage() {
         subtitle="All customer and POS orders"
         action={
           <div style={{ display: 'flex', gap: 8 }}>
-            <Btn variant="secondary" onClick={() => downloadCSV('orders', orders.map((o) => ({ 'Order #': o.order_number, Type: o.type, Status: o.status, Customer: o.customer?.name ?? '', Total: `MVR ${Number(o.total ?? 0).toFixed(2)}`, Time: o.created_at })))}>Export CSV</Btn>
+            <Btn variant="secondary" onClick={() => downloadCSV('orders', orders.map((o) => ({ 'Order #': o.order_number, Type: o.type, Status: o.status, Customer: o.customer?.name ?? '', Payment: paidByLabel(o), Total: `MVR ${Number(o.total ?? 0).toFixed(2)}`, Time: o.created_at })))}>Export CSV</Btn>
             <Btn onClick={load} variant="secondary"><InlineIcon icon={RefreshCw} />Refresh</Btn>
           </div>
         }
@@ -1197,6 +1205,7 @@ export function OrdersPage() {
               badge={<Badge label={o.status} color={statColor(o.status)} />}
               fields={[
                 { label: 'Total', value: <strong style={{ color: 'var(--color-primary)' }}>MVR {parseFloat(String(o.total ?? 0)).toFixed(2)}</strong> },
+                { label: 'Payment', value: paidByLabel(o) },
                 { label: 'Customer', value: o.customer?.name ?? o.customer_name ?? o.table_number ?? '—' },
                 { label: 'Cashier', value: o.user?.name ?? '—' },
                 o.device?.name ? { label: 'Station', value: o.device.name } : null,
@@ -1235,6 +1244,7 @@ export function OrdersPage() {
                 >Order # <SortArrow col="order_number" /></th>
                 <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Type</th>
                 <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Payment</th>
                 <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Customer</th>
                 <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Cashier</th>
                 <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Station</th>
@@ -1266,6 +1276,9 @@ export function OrdersPage() {
                       <Badge label={o.status} color={statColor(o.status)} />
                       <OrderFlags o={o} />
                     </div>
+                  </td>
+                  <td data-testid={`order-paid-by-${o.id}`} style={{ padding: '12px 16px', color: 'var(--color-text-secondary)', fontSize: 13, whiteSpace: 'nowrap' }}>
+                    {paidByLabel(o)}
                   </td>
                   <td style={{ padding: '12px 16px', color: 'var(--color-text-secondary)' }}>
                     {o.customer?.name ?? o.customer_name ?? o.table_number ?? '—'}
