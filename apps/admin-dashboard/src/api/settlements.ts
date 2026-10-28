@@ -308,3 +308,79 @@ export async function updateSettlementSettings(
 ): Promise<SettlementSettings> {
   return req('/settlements/settings', { method: 'PATCH', body: JSON.stringify(payload) });
 }
+
+// ── Check payments (owner, 2026-10-28) ──────────────────────────────────────
+// Each QR and card payment ticked against MPOS or the card slip: the customer
+// types a QR amount themselves and the cashier keys the card machine by hand.
+
+export type PaymentCheckState = 'unchecked' | 'matched' | 'different' | 'checked' | 'all';
+export type PaymentCheckSort = 'newest' | 'oldest' | 'amount_desc' | 'amount_asc';
+
+export type PaymentCheck = {
+  status: 'matched' | 'different';
+  seen_laar: number;
+  /** What MPOS or the slip showed less what the till recorded: below 0 the customer paid less. */
+  diff_laar: number;
+  reference: string | null;
+  note: string | null;
+  by: string | null;
+  at: string | null;
+};
+
+export type PaymentCheckRow = {
+  id: number;
+  at: string;
+  method: 'qr' | 'card';
+  amount_laar: number;
+  reference: string | null;
+  order: { id: number; order_number: string; type: string } | null;
+  cashier: string | null;
+  station: string | null;
+  check: PaymentCheck | null;
+};
+
+type Tally = { count: number; laar: number };
+
+export type PaymentChecksView = {
+  range: { from: string; to: string; start_date: string | null };
+  summary: {
+    unchecked: Tally;
+    matched: Tally;
+    different: Tally & { diff_laar: number };
+    qr: Tally & { unchecked: number };
+    card: Tally & { unchecked: number };
+  };
+  payments: PaymentCheckRow[];
+  meta: { page: number; last_page: number; total: number; per_page: number };
+  choices: { staff: Array<{ id: number; name: string }>; stations: Array<{ id: number; name: string }> };
+};
+
+export type PaymentCheckFilters = {
+  from: string; to: string; state?: PaymentCheckState; method?: 'qr' | 'card' | '';
+  user_id?: number | null; device_id?: number | null; min?: string; max?: string; q?: string;
+  sort?: PaymentCheckSort; page?: number; per_page?: number;
+};
+
+export async function fetchPaymentChecks(f: PaymentCheckFilters): Promise<PaymentChecksView> {
+  const p = new URLSearchParams();
+  Object.entries(f).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') p.set(k, String(v)); });
+  return req(`/settlements/payment-checks?${p.toString()}`);
+}
+
+export async function markPaymentCheck(
+  id: number, body: { result: 'matched' | 'different'; seen?: number; reference?: string; note?: string },
+): Promise<{ payment: { id: number; check: PaymentCheck | null } }> {
+  return req(`/settlements/payment-checks/${id}`, { method: 'POST', body: JSON.stringify(body) });
+}
+
+export async function undoPaymentCheck(id: number): Promise<{ payment: { id: number; check: PaymentCheck | null } }> {
+  return req(`/settlements/payment-checks/${id}`, { method: 'DELETE' });
+}
+
+export async function markPaymentChecksMatched(ids: number[]): Promise<{ marked: number }> {
+  return req('/settlements/payment-checks/bulk', { method: 'POST', body: JSON.stringify({ ids }) });
+}
+
+export async function setPaymentCheckStart(startDate: string): Promise<{ start_date: string | null }> {
+  return req('/settlements/payment-checks/start', { method: 'PUT', body: JSON.stringify({ start_date: startDate }) });
+}

@@ -1048,6 +1048,23 @@ Built from the stored order on every open, so old orders show it too. The GST on
 follows its switch on Settings → Ordering → **Fees & slots** (`packaging_fee_taxable` and kin,
 `OrderFeeTaxCalculator`; linked from Finance → GST settings), not the items' tax codes.
 
+## QR and card payments are checked by hand
+
+Owner, 2026-10-28: a QR customer types the bill amount themselves and the cashier keys the card
+machine by hand, and the cashier cannot see MPOS. So Finance → Bank settlements opens on **Check
+payments** (`PaymentChecksTab.tsx`, `?view=checks`): each paid QR and card payment
+(`App\Domains\Finance\Support\PaymentChecks::METHODS`) is ticked Matches, or Different with the
+amount MPOS or the slip showed, an optional reference and note (`payments.check_status`,
+`checked_amount_laar`, `check_reference`, `check_note`, `checked_by`, `checked_at`; audited).
+A check never changes the payment: a short one is collected or fixed on the order (tender
+correction, refund). Filters: state, QR or card, cashier, station, amount range, order number or
+reference, sort; many can be marked matching at once (Different always needs its own amount).
+Payments before `payment_check_start_date` (set to the day it shipped, changed under More filters)
+are not listed. Needs attention counts those not checked from before today (`payment_checks`, red
+after 3 days). Routes under `/settlements/payment-checks`, `finance.settlements`. Cash is checked
+by the shift's blind count and Settlements → Cash; transfers by the bank statement on the
+Transfers tab. `PaymentChecksTest`, `PaymentChecksTab.test.tsx`.
+
 ## A discount on every sale in a period
 
 Owner, 2026-10-16. An automatic promotion (Promotions → "Automatic (all customers, no

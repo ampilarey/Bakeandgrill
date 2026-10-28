@@ -61,6 +61,12 @@ Route::middleware(['auth:sanctum', 'permission:finance.settlements'])->prefix('s
     Route::post('/lines/{id}/restore', [App\Http\Controllers\Api\SettlementController::class, 'restoreLine'])->whereNumber('id');
     Route::put('/cash/{date}', [App\Http\Controllers\Api\SettlementController::class, 'saveCashHandover']);
     Route::delete('/cash/{date}', [App\Http\Controllers\Api\SettlementController::class, 'deleteCashHandover']);
+    // Each QR and card payment ticked against MPOS or the card slip (owner, 2026-10-28).
+    Route::get('/payment-checks', [App\Http\Controllers\Api\PaymentCheckController::class, 'index']);
+    Route::post('/payment-checks/bulk', [App\Http\Controllers\Api\PaymentCheckController::class, 'bulk']);
+    Route::put('/payment-checks/start', [App\Http\Controllers\Api\PaymentCheckController::class, 'updateStart']);
+    Route::post('/payment-checks/{id}', [App\Http\Controllers\Api\PaymentCheckController::class, 'mark'])->whereNumber('id');
+    Route::delete('/payment-checks/{id}', [App\Http\Controllers\Api\PaymentCheckController::class, 'undo'])->whereNumber('id');
     Route::get('/settings', [App\Http\Controllers\Api\SettlementController::class, 'settings']);
     Route::patch('/settings', [App\Http\Controllers\Api\SettlementController::class, 'updateSettings']);
 });

@@ -86,7 +86,7 @@ const uncountedDay = {
 };
 
 function renderPage() {
-  return render(<MemoryRouter><SettlementsPage /></MemoryRouter>);
+  return render(<MemoryRouter initialEntries={['/finance/settlements?view=card_qr']}><SettlementsPage /></MemoryRouter>);
 }
 
 describe('Bank settlements', () => {

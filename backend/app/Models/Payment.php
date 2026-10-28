@@ -37,6 +37,12 @@ class Payment extends Model
         'reference_number',
         'gateway_response',
         'processed_at',
+        'check_status',
+        'checked_amount_laar',
+        'check_reference',
+        'check_note',
+        'checked_by',
+        'checked_at',
     ];
 
     protected $casts = [
@@ -56,6 +62,9 @@ class Payment extends Model
         'processed_at' => 'datetime',
         'tender_corrected_at' => 'datetime',
         'tender_corrected_by' => 'integer',
+        'checked_amount_laar' => 'integer',
+        'checked_by' => 'integer',
+        'checked_at' => 'datetime',
     ];
 
     public function order(): BelongsTo

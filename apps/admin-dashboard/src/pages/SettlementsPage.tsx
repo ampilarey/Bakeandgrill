@@ -17,6 +17,9 @@
  *               counted less the float that stayed in the drawer.
  *   Statements  the uploaded files, with a dry run first so the owner sees
  *               what was understood before anything is stored.
+ *
+ * Check payments (owner, 2026-10-28) comes first: each QR and card payment
+ * ticked against MPOS or the card slip the day after (PaymentChecksTab).
  */
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -33,10 +36,13 @@ import {
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { daysAgo, today } from '../utils/dateHelpers';
+import { useSearchParams } from 'react-router-dom';
+import { PaymentChecksTab } from '../components/settlements/PaymentChecksTab';
 
-type TabId = 'card_qr' | 'transfers' | 'cash' | 'statements';
+type TabId = 'checks' | 'card_qr' | 'transfers' | 'cash' | 'statements';
 
 const TABS: Array<{ id: TabId; label: string }> = [
+  { id: 'checks', label: 'Check payments' },
   { id: 'card_qr', label: 'Card & QR' },
   { id: 'transfers', label: 'Transfers' },
   { id: 'cash', label: 'Cash' },
@@ -83,7 +89,13 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
 export function SettlementsPage() {
   usePageTitle('Bank Settlements');
   const isMobile = useIsMobile();
-  const [tab, setTab] = useState<TabId>('card_qr');
+  const [params, setParams] = useSearchParams();
+  const fromUrl = TABS.find((t) => t.id === params.get('view'))?.id;
+  const [tab, setTabState] = useState<TabId>(fromUrl ?? 'checks');
+  const setTab = (id: TabId) => {
+    setTabState(id);
+    setParams((p) => { const n = new URLSearchParams(p); n.set('view', id); return n; }, { replace: true });
+  };
   const [from, setFrom] = useState(daysAgo(30));
   const [to, setTo] = useState(today());
   const [error, setError] = useState('');
@@ -116,6 +128,7 @@ export function SettlementsPage() {
         </div>
       )}
 
+      {tab === 'checks' && <PaymentChecksTab from={from} to={to} onError={setError} />}
       {tab === 'card_qr' && <CardQrTab from={from} to={to} isMobile={isMobile} onError={setError} />}
       {tab === 'transfers' && <TransfersTab from={from} to={to} isMobile={isMobile} onError={setError} />}
       {tab === 'cash' && <CashTab from={from} to={to} isMobile={isMobile} onError={setError} />}

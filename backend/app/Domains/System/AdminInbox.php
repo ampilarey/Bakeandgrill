@@ -60,6 +60,12 @@ final class AdminInbox
                 'label' => 'Bank lines to match', 'link' => '/finance/settlements', 'permission' => 'finance.settlements',
                 'count' => fn () => BankStatementLine::query()->where('match_status', BankStatementLine::MATCH_UNMATCHED)->count(),
             ],
+            'payment_checks' => [
+                'label' => 'QR and card payments to check against MPOS or the slip', 'link' => '/finance/settlements?view=checks', 'permission' => 'finance.settlements',
+                'count' => fn () => \App\Domains\Finance\Support\PaymentChecks::waitingQuery()->count(),
+                'level' => fn (int $n) => \App\Domains\Finance\Support\PaymentChecks::waitingQuery()
+                    ->whereRaw('COALESCE(payments.processed_at, payments.created_at) < ?', [now()->subDays(3)])->exists() ? 'danger' : 'warn',
+            ],
             'reviews' => [
                 'label' => 'Reviews waiting for moderation', 'link' => '/customers/reviews', 'permission' => 'customers.manage',
                 'count' => fn () => Review::query()->where('status', 'pending')->count(),
