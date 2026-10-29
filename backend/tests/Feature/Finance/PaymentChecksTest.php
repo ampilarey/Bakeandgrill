@@ -178,6 +178,28 @@ class PaymentChecksTest extends TestCase
         $this->assertArrayNotHasKey('payment_checks', $rows->all(), 'the open one is ticked now, the others the statement checked');
     }
 
+    public function test_today_lists_this_morning_and_the_method_boxes_ignore_the_method_filter(): void
+    {
+        // Owner, 2026-10-29: "when i select today its not showing". With QR picked, today's
+        // card payments were hidden and the Card box read 0.00 too.
+        [$start] = BusinessDay::bounds($this->day(0));
+        $early = $this->payment('card', 25);
+        $early->forceFill(['processed_at' => $start->copy()->addHours(8)->addMinutes(12)])->save();
+        $this->payment('card', 15);
+        $this->payment('qr', 40, 1);
+
+        $today = ['from' => $this->day(0), 'to' => $this->day(0)];
+        $this->getJson('/api/settlements/payment-checks?' . http_build_query($today))->assertOk()
+            ->assertJsonCount(2, 'payments')->assertJsonPath('summary.card.count', 2)->assertJsonPath('methods', null);
+
+        $this->getJson('/api/settlements/payment-checks?' . http_build_query($today + ['method' => 'qr']))->assertOk()
+            ->assertJsonCount(0, 'payments')
+            ->assertJsonPath('summary.unchecked.count', 0)
+            ->assertJsonPath('methods.card.count', 2)
+            ->assertJsonPath('methods.card.unchecked', 2)
+            ->assertJsonPath('methods.qr.count', 0);
+    }
+
     public function test_needs_the_settlements_permission(): void
     {
         Sanctum::actingAs($this->makeStaff('cashier'), ['staff']);

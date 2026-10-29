@@ -98,6 +98,9 @@ final class PaymentChecks
         return [
             'range' => ['from' => $f['from'], 'to' => $f['to'], 'start_date' => self::startDate()],
             'summary' => $this->summary($base),
+            // The QR / Card / Transfer boxes are the method filter, so they are counted without it
+            // (owner, 2026-10-29: with QR picked, Card read 0.00 and today's card payments looked gone).
+            'methods' => ($f['method'] ?? null) ? $this->methodsOf($this->base(['method' => null] + $f)) : null,
             'payments' => collect($page->items())->map(fn (Payment $p) => $this->row($p, $checkers->all()))->values()->all(),
             'meta' => ['page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'total' => $page->total(), 'per_page' => $perPage],
             'choices' => $this->choices($f),
@@ -272,6 +275,14 @@ final class PaymentChecks
             'card' => $method('card'),
             'transfer' => $method('transfer'),
         ];
+    }
+
+    /** @return array{qr: array, card: array, transfer: array} */
+    private function methodsOf(Builder $base): array
+    {
+        $all = $this->summary($base);
+
+        return ['qr' => $all['qr'], 'card' => $all['card'], 'transfer' => $all['transfer']];
     }
 
     /** @param array<int, string> $checkers */

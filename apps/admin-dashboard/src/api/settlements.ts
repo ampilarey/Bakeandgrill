@@ -353,6 +353,8 @@ export type PaymentChecksView = {
     card: Tally & { unchecked: number };
     transfer: Tally & { unchecked: number };
   };
+  /** Set while a method is picked: the three boxes counted without that filter. */
+  methods?: { qr: Tally & { unchecked: number }; card: Tally & { unchecked: number }; transfer: Tally & { unchecked: number } } | null;
   payments: PaymentCheckRow[];
   meta: { page: number; last_page: number; total: number; per_page: number };
   choices: { staff: Array<{ id: number; name: string }>; stations: Array<{ id: number; name: string }> };

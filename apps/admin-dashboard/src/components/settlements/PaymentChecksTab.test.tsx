@@ -14,7 +14,7 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock('../../api', () => api);
 
-import { PaymentChecksTab, diffWords } from './PaymentChecksTab';
+import { PaymentChecksTab, diffWords, emptyWords } from './PaymentChecksTab';
 
 const view = (over: Partial<PaymentChecksView> = {}): PaymentChecksView => ({
   range: { from: '2026-10-27', to: '2026-10-28', start_date: '2026-10-28' },
@@ -175,6 +175,52 @@ describe('PaymentChecksTab', () => {
     expect(screen.getByTestId('payment-checks-filters')).toHaveTextContent('Filters · 1');
     fireEvent.click(screen.getByRole('button', { name: 'Remove Ariya' }));
     await waitFor(() => expect(api.fetchPaymentChecks).toHaveBeenLastCalledWith(expect.objectContaining({ user_id: null })));
+  });
+
+  it('with QR picked and no QR payments, keeps the other boxes counted and names what is hidden', async () => {
+    // Owner, 2026-10-29: "when i select today its not showing". QR was picked; today's payments were cards.
+    const empty = view({ payments: [], summary: { ...view().summary, unchecked: { count: 0, laar: 0 } } });
+    api.fetchPaymentChecks.mockImplementation(async (f: { method?: string }) => (f.method === 'qr'
+      ? { ...empty, methods: { qr: { count: 0, laar: 0, unchecked: 0 }, card: { count: 2, laar: 4000, unchecked: 2 }, transfer: { count: 0, laar: 0, unchecked: 0 } } }
+      : view()));
+    renderTab();
+    await screen.findByTestId('payment-check-1', {}, { timeout: 5000 });
+    fireEvent.click(screen.getByRole('tab', { name: 'QR' }));
+    expect(await screen.findByText(/No QR payments to check in these days\. 2 card still to check\./)).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Card' })).toHaveTextContent('40.00');
+    expect(screen.getByTestId('payment-checks-method-note')).toHaveTextContent('Showing QR only.');
+    fireEvent.click(screen.getByTestId('payment-checks-show-all'));
+    await waitFor(() => expect(api.fetchPaymentChecks).toHaveBeenLastCalledWith(expect.objectContaining({ method: '' })));
+    expect(await screen.findByTestId('payment-check-1')).toBeInTheDocument();
+  });
+
+  it('keeps the other picks when one payment is ticked', async () => {
+    renderTab();
+    await screen.findByTestId('payment-check-1', {}, { timeout: 5000 });
+    fireEvent.click(screen.getByLabelText('Pick payment 2'));
+    api.fetchPaymentChecks.mockResolvedValueOnce(view({ payments: [{ ...view().payments[0], check: { status: 'matched', seen_laar: 15500, diff_laar: 0, reference: null, note: null, by: 'Owner', at: null, source: 'hand' } }, view().payments[1]] }));
+    fireEvent.click(screen.getByTestId('payment-check-match-1'));
+    await waitFor(() => expect(api.markPaymentCheck).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByTestId('payment-checks-bulk')).toHaveTextContent('Mark 1 as matching'));
+  });
+
+  it('draws only the newest reply when the dates change quickly', async () => {
+    let releaseOld: (v: PaymentChecksView) => void = () => {};
+    api.fetchPaymentChecks
+      .mockImplementationOnce(() => new Promise<PaymentChecksView>((r) => { releaseOld = r; }))
+      .mockImplementationOnce(async () => view());
+    const { rerender } = renderTab();
+    rerender(<MemoryRouter><PaymentChecksTab from="2026-10-28" to="2026-10-28" onRange={onRange} onError={vi.fn()} /></MemoryRouter>);
+    await screen.findByTestId('payment-check-1', {}, { timeout: 5000 });
+    releaseOld(view({ payments: [] }));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.getByTestId('payment-check-1')).toBeInTheDocument();
+  });
+
+  it('words an empty list', () => {
+    expect(emptyWords('unchecked', '', null)).toBe('Nothing to check in these days. Good job.');
+    expect(emptyWords('unchecked', 'card', { qr: { count: 1, laar: 1, unchecked: 1 }, card: { count: 0, laar: 0, unchecked: 0 }, transfer: { count: 3, laar: 1, unchecked: 3 } }))
+      .toBe('No Card payments to check in these days. 1 QR and 3 transfer still to check.');
   });
 
   it('words a difference', () => {

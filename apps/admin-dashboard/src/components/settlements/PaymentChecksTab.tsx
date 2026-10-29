@@ -8,7 +8,7 @@
  * fixed on the order. Cash is checked by the shift count, transfers on the
  * Transfers tab.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, Check, Search, SlidersHorizontal, Undo2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -96,33 +96,46 @@ export function PaymentChecksTab({ from, to, onRange, onError }: {
 
   // Typed boxes ask once the typing stops.
   useEffect(() => {
-    const t = setTimeout(() => { setMin(typed.min); setMax(typed.max); setQ(typed.q); setPage(1); }, 350);
+    const t = setTimeout(() => { setMin(typed.min); setMax(typed.max); setQ(typed.q); }, 350);
     return () => clearTimeout(t);
   }, [typed]);
 
+  // Any change of filter starts again at page 1, in the same render, so the old page is never asked for.
+  const filterKey = [from, to, state, method, userId, deviceId, sort, min, max, q].join('|');
+  const [seenKey, setSeenKey] = useState(filterKey);
+  if (seenKey !== filterKey) { setSeenKey(filterKey); setPage(1); }
+
+  // Only the newest reply is drawn: quick taps on the date chips could land an older one last.
+  const latest = useRef(0);
+
   const load = useCallback(async () => {
+    const ask = ++latest.current;
     setLoading(true);
     try {
       const v = await fetchPaymentChecks({
         from, to, state, method, user_id: userId ? Number(userId) : null, device_id: deviceId ? Number(deviceId) : null,
         min, max, q, sort, page, per_page: 100,
       });
+      if (ask !== latest.current) return;
       setView(v);
       setStartDraft((d) => d || v.range.start_date || '');
-      setPicked(new Set());
+      // Keep the picks that are still on the list and still to check (ticking one used to clear the rest).
+      const stillOpen = new Set(v.payments.filter((r) => !r.check).map((r) => r.id));
+      setPicked((p) => new Set([...p].filter((id) => stillOpen.has(id))));
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'Could not load the payments.');
+      if (ask === latest.current) onError(e instanceof Error ? e.message : 'Could not load the payments.');
     } finally {
-      setLoading(false);
+      if (ask === latest.current) setLoading(false);
     }
   }, [from, to, state, method, userId, deviceId, min, max, q, sort, page, onError]);
 
   useEffect(() => { void load(); }, [load]);
-  useEffect(() => { setPage(1); }, [from, to, state, method, userId, deviceId, sort]);
 
   const rows = useMemo(() => view?.payments ?? [], [view]);
   const open = rows.filter((r) => !r.check);
   const s = view?.summary;
+  // The boxes are the method filter, so the server counts them without it.
+  const boxes = view?.methods ?? s;
   const days = useMemo(() => {
     const out: Array<{ day: string; rows: PaymentCheckRow[] }> = [];
     rows.forEach((r) => {
@@ -210,7 +223,9 @@ export function PaymentChecksTab({ from, to, onRange, onError }: {
         <div style={card} data-testid="payment-checks-summary">
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 10, rowGap: 2 }}>
             <strong style={{ fontSize: 24, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{mvr(s.unchecked.laar)}</strong>
-            <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>to check · {s.unchecked.count} payment{s.unchecked.count === 1 ? '' : 's'}</span>
+            <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
+              {method ? `${METHOD_WORD[method]} ` : ''}to check · {s.unchecked.count} payment{s.unchecked.count === 1 ? '' : 's'}
+            </span>
           </div>
           {s.different.count > 0 && (
             <button type="button" onClick={() => setState('different')} style={{
@@ -231,12 +246,18 @@ export function PaymentChecksTab({ from, to, onRange, onError }: {
                   background: on ? 'var(--color-tone-rust-bg)' : 'var(--color-bg)',
                 }}>
                   <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: on ? 'var(--color-tone-rust-text)' : 'var(--color-text-secondary)' }}>{METHOD_WORD[m]}</span>
-                  <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={mvr(s[m].laar)}>{mvr(s[m].laar).replace('MVR\u00a0', '')}</span>
-                  <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>{s[m].unchecked} to check</span>
+                  <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={mvr(boxes![m].laar)}>{mvr(boxes![m].laar).replace('MVR\u00a0', '')}</span>
+                  <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>{boxes![m].unchecked} to check</span>
                 </button>
               );
             })}
           </div>
+          {method && (
+            <div data-testid="payment-checks-method-note" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8, fontSize: 13, color: 'var(--color-tone-rust-text)' }}>
+              <span>Showing {METHOD_WORD[method]} only.</span>
+              <button type="button" onClick={() => setMethod('')} style={{ ...chip(false), minHeight: 28 }}>Show all</button>
+            </div>
+          )}
         </div>
       )}
 
@@ -271,7 +292,14 @@ export function PaymentChecksTab({ from, to, onRange, onError }: {
       <div className="pc-main">
       {/* The list, one column, day by day. */}
       {loading && !view ? <TableSkeleton rows={5} cols={2} /> : rows.length === 0 ? (
-        <EmptyState message={state === 'unchecked' ? 'Nothing to check in these days. Good job.' : 'No payments match.'} />
+        <EmptyState>
+          <div>{emptyWords(state, method, view?.methods ?? null)}</div>
+          {(method || state !== 'unchecked' || extra.length > 0 || typed.q) && (
+            <Btn small variant="secondary" data-testid="payment-checks-show-all" onClick={() => {
+              setMethod(''); setState('unchecked'); setUserId(''); setDeviceId(''); setSort('newest'); setTyped({ min: '', max: '', q: '' });
+            }} style={{ marginTop: 12 }}>Show everything to check</Btn>
+          )}
+        </EmptyState>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, opacity: loading ? 0.6 : 1 }}>
           {open.length > 1 && (
@@ -385,6 +413,17 @@ export function PaymentChecksTab({ from, to, onRange, onError }: {
       )}
     </div>
   );
+}
+
+/** What an empty list means, naming what a picked method is hiding. */
+export function emptyWords(state: PaymentCheckState, method: Method, others: PaymentChecksView['methods'] | null): string {
+  if (method && others) {
+    const waiting = (['qr', 'card', 'transfer'] as const).filter((m) => m !== method && others[m].unchecked > 0)
+      .map((m) => `${others[m].unchecked} ${METHOD_WORD[m].toLowerCase().replace('qr', 'QR')}`);
+    const none = `No ${METHOD_WORD[method]} payments ${state === 'unchecked' ? 'to check' : 'here'} in these days.`;
+    return waiting.length ? `${none} ${waiting.join(' and ')} still to check.` : none;
+  }
+  return state === 'unchecked' ? 'Nothing to check in these days. Good job.' : 'No payments match.';
 }
 
 const SORT_WORD: Record<PaymentCheckSort, string> = {
