@@ -123,14 +123,14 @@ export function SettlementsPage() {
         ))}
       </div>
 
-      {tab !== 'statements' && (
+      {tab !== 'statements' && tab !== 'checks' && (
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
           <DateInput label="From" value={from} onChange={setFrom} max={to} />
           <DateInput label="To" value={to} onChange={setTo} max={today()} />
         </div>
       )}
 
-      {tab === 'checks' && <PaymentChecksTab from={from} to={to} onError={setError} />}
+      {tab === 'checks' && <PaymentChecksTab from={from} to={to} onRange={(f, t) => { setFrom(f); setTo(t); }} onError={setError} />}
       {tab === 'card_qr' && <CardQrTab from={from} to={to} isMobile={isMobile} onError={setError} />}
       {tab === 'transfers' && <TransfersTab from={from} to={to} isMobile={isMobile} onError={setError} />}
       {tab === 'cash' && <CashTab from={from} to={to} isMobile={isMobile} onError={setError} />}

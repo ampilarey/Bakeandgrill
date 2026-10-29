@@ -1067,7 +1067,7 @@ by the shift's blind count and Settlements → Cash. Transfers are on the list t
 the Transfers tab counts as checked by the statement, read live (`PaymentChecks::STATE`, a hand
 check first, then the matched `bank_statement_lines` row, so Matches or Different follows the
 line's amount), shows "Bank statement" with a link to the Transfers tab instead of Undo, and
-refuses a hand tick, so no payment is ticked twice. `PaymentChecksTest`, `PaymentChecksTab.test.tsx`.
+refuses a hand tick, so no payment is ticked twice. The tab is one column, phone first (owner, 2026-10-29: "now its a mess"): date presets with Pick dates behind them (the page's own From / To row is hidden on this tab), one summary whose QR / Card / Transfer boxes are the method filter, the state chips, a search box and the rest under Filters (shown as chips that clear with a tap), and the list day by day with each day's count and total and a tick for the whole day; picked payments get one bar along the bottom. `PaymentChecksTest`, `PaymentChecksTab.test.tsx`.
 
 ## A discount on every sale in a period
 

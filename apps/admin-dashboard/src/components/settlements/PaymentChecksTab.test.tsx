@@ -32,7 +32,8 @@ const view = (over: Partial<PaymentChecksView> = {}): PaymentChecksView => ({
   ...over,
 });
 
-const renderTab = () => render(<MemoryRouter><PaymentChecksTab from="2026-10-27" to="2026-10-28" onError={vi.fn()} /></MemoryRouter>);
+const onRange = vi.fn();
+const renderTab = () => render(<MemoryRouter><PaymentChecksTab from="2026-10-27" to="2026-10-28" onRange={onRange} onError={vi.fn()} /></MemoryRouter>);
 
 describe('PaymentChecksTab', () => {
   beforeEach(() => {
@@ -87,6 +88,7 @@ describe('PaymentChecksTab', () => {
     await waitFor(() => expect(api.fetchPaymentChecks).toHaveBeenLastCalledWith(expect.objectContaining({ state: 'different' })));
     fireEvent.click(screen.getByRole('tab', { name: 'QR' }));
     await waitFor(() => expect(api.fetchPaymentChecks).toHaveBeenLastCalledWith(expect.objectContaining({ method: 'qr' })));
+    fireEvent.click(screen.getByTestId('payment-checks-filters'));
     fireEvent.change(screen.getByLabelText('Cashier'), { target: { value: '9' } });
     await waitFor(() => expect(api.fetchPaymentChecks).toHaveBeenLastCalledWith(expect.objectContaining({ user_id: 9 })));
     fireEvent.change(screen.getByLabelText('Station'), { target: { value: '3' } });
@@ -144,6 +146,35 @@ describe('PaymentChecksTab', () => {
     renderTab();
     await screen.findByTestId('payment-check-1', {}, { timeout: 5000 });
     expect(screen.queryByTestId('payment-checks-start-note')).toBeNull();
+  });
+
+  it('picks dates by preset, and shows two date boxes only for Pick dates', async () => {
+    renderTab();
+    await screen.findByTestId('payment-check-1', {}, { timeout: 5000 });
+    expect(screen.queryByLabelText('From')).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'Yesterday' }));
+    expect(onRange).toHaveBeenCalledWith(expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+    fireEvent.click(screen.getByTestId('payment-checks-custom'));
+    expect(screen.getByText('From')).toBeInTheDocument();
+  });
+
+  it('lists the payments day by day with each day\'s total, one column', async () => {
+    renderTab();
+    const day = await screen.findByTestId('payment-checks-day-2026-10-28', {}, { timeout: 5000 });
+    expect(day).toHaveTextContent(/2 · MVR\s195\.00/);
+    fireEvent.click(within(day).getByLabelText(/^Pick (Mon|Tue|Wed|Thu|Fri|Sat|Sun)/));
+    expect(screen.getByTestId('payment-checks-bulk')).toHaveTextContent('Mark 2 as matching');
+  });
+
+  it('shows the cashier and amount filters as chips that clear with a tap', async () => {
+    renderTab();
+    await screen.findByTestId('payment-check-1', {}, { timeout: 5000 });
+    fireEvent.click(screen.getByTestId('payment-checks-filters'));
+    fireEvent.change(screen.getByLabelText('Cashier'), { target: { value: '9' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.getByTestId('payment-checks-filters')).toHaveTextContent('Filters · 1');
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Ariya' }));
+    await waitFor(() => expect(api.fetchPaymentChecks).toHaveBeenLastCalledWith(expect.objectContaining({ user_id: null })));
   });
 
   it('words a difference', () => {
