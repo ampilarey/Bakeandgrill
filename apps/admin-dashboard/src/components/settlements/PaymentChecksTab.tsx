@@ -165,7 +165,10 @@ export function PaymentChecksTab({ from, to, onRange, onError }: {
   ];
 
   return (
-    <div data-testid="payment-checks" style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 860 }}>
+    <div data-testid="payment-checks" className="pc-layout">
+      {/* Owner, 2026-10-29: "too much empty space" on a computer. From 1100 px the dates, summary and
+          filters stand in a column of their own on the left, pinned while the list scrolls. */}
+      <div className="pc-side">
       {/* Dates: presets first, two date boxes only when asked for. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <TabScrollRow fit style={{ gap: 6 }} role="tablist" aria-label="Dates">
@@ -263,6 +266,9 @@ export function PaymentChecksTab({ from, to, onRange, onError }: {
         </div>
       )}
 
+      </div>
+
+      <div className="pc-main">
       {/* The list, one column, day by day. */}
       {loading && !view ? <TableSkeleton rows={5} cols={2} /> : rows.length === 0 ? (
         <EmptyState message={state === 'unchecked' ? 'Nothing to check in these days. Good job.' : 'No payments match.'} />
@@ -327,6 +333,8 @@ export function PaymentChecksTab({ from, to, onRange, onError }: {
           </Btn>
         </div>
       )}
+
+      </div>
 
       {filtersOpen && (
         <Modal title="Filters" onClose={() => setFiltersOpen(false)}>
