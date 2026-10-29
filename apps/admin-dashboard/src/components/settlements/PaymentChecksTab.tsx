@@ -115,6 +115,22 @@ export function PaymentChecksTab({ from, to, onError }: { from: string; to: stri
         Tick each QR payment against MPOS, each card payment against the card slip and each transfer against the bank app. A transfer the bank statement matched on the Transfers tab is checked already. Cash is checked when the shift is counted.
       </p>
 
+      {/* Owner, 2026-10-29: "not showing anything". The start date cut the range off without saying so. */}
+      {view?.range.start_date && view.range.start_date > from && (
+        <div data-testid="payment-checks-start-note" role="note" style={{
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 12, padding: '10px 12px', borderRadius: 12,
+          background: 'var(--color-tone-rust-bg)', border: '1px solid var(--color-tone-rust-border)', color: 'var(--color-tone-rust-text)', fontSize: 13,
+        }}>
+          <span style={{ flex: '1 1 220px' }}>
+            Checking started on {new Date(`${view.range.start_date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}, so payments before that day are not listed.
+          </span>
+          <Btn small variant="secondary" disabled={busy === -1} data-testid="payment-checks-start-from"
+            onClick={() => void act(-1, async () => { await setPaymentCheckStart(from); setStartDraft(from); })}>
+            Also check from {new Date(`${from}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+          </Btn>
+        </div>
+      )}
+
       {s && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 10, marginBottom: 14 }}>
           <StatCard label="Not checked" value={mvr(s.unchecked.laar)} sub={`${s.unchecked.count} payment${s.unchecked.count === 1 ? '' : 's'}`} accent="var(--color-warning)" />

@@ -130,6 +130,22 @@ describe('PaymentChecksTab', () => {
     expect(screen.getByText(/Amount the bank app shows/)).toBeInTheDocument();
   });
 
+  it('says when the start date hides earlier days, and moves it back in one tap', async () => {
+    api.fetchPaymentChecks.mockResolvedValue(view({ payments: [], range: { from: '2026-10-27', to: '2026-10-28', start_date: '2026-10-29' } }));
+    api.setPaymentCheckStart.mockResolvedValue({ start_date: '2026-10-27' });
+    renderTab();
+    expect(await screen.findByTestId('payment-checks-start-note', {}, { timeout: 5000 })).toHaveTextContent(/before that day are not listed/);
+    fireEvent.click(screen.getByTestId('payment-checks-start-from'));
+    await waitFor(() => expect(api.setPaymentCheckStart).toHaveBeenCalledWith('2026-10-27'));
+  });
+
+  it('says nothing about the start date when it is inside the range', async () => {
+    api.fetchPaymentChecks.mockResolvedValue(view({ range: { from: '2026-10-27', to: '2026-10-28', start_date: '2026-10-01' } }));
+    renderTab();
+    await screen.findByTestId('payment-check-1', {}, { timeout: 5000 });
+    expect(screen.queryByTestId('payment-checks-start-note')).toBeNull();
+  });
+
   it('words a difference', () => {
     expect(diffWords(-500)).toBe('Paid MVR 5.00 less');
     expect(diffWords(250)).toBe('Paid MVR 2.50 more');
