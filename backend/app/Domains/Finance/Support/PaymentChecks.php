@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Finance\Support;
 
+use App\Models\BankStatementLine;
 use App\Models\Device;
 use App\Models\Payment;
 use App\Models\SiteSetting;
@@ -11,6 +12,7 @@ use App\Models\User;
 use App\Support\BusinessDay;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /**
@@ -25,8 +27,16 @@ use InvalidArgumentException;
  */
 final class PaymentChecks
 {
-    /** The tenders a person keys in by hand: the customer on QR, the cashier on the card machine. */
-    public const METHODS = ['qr', 'card', 'card_pos'];
+    /**
+     * The tenders a person keys in by hand: the customer on QR and on a
+     * transfer, the cashier on the card machine. A transfer the bank statement
+     * matched (Transfers tab) counts as checked by the statement (owner,
+     * 2026-10-29), so the same payment is never ticked twice.
+     */
+    public const METHODS = ['qr', 'card', 'card_pos', 'bank_transfer'];
+
+    /** The method filter's three choices. */
+    public const METHOD_GROUPS = ['qr' => ['qr'], 'card' => ['card', 'card_pos'], 'transfer' => ['bank_transfer']];
 
     public const MATCHED = 'matched';
 
@@ -39,6 +49,18 @@ final class PaymentChecks
     private const AMOUNT = 'COALESCE(payments.amount_laar, ROUND(payments.amount * 100))';
 
     private const AT = 'COALESCE(payments.processed_at, payments.created_at)';
+
+    /** What the bank statement line matched to this payment says came in, if any. */
+    private const STATEMENT = '(SELECT MAX(bsl.amount_laar) FROM bank_statement_lines bsl WHERE bsl.matched_payment_id = payments.id)';
+
+    /** A hand check first, else the statement, else not checked. */
+    private const STATE = 'CASE WHEN payments.check_status IS NOT NULL THEN payments.check_status'
+        . ' WHEN ' . self::STATEMENT . " IS NULL THEN 'unchecked'"
+        . ' WHEN ' . self::STATEMENT . ' = ' . self::AMOUNT . " THEN 'matched' ELSE 'different' END";
+
+    private const SEEN = 'COALESCE(payments.checked_amount_laar, ' . self::STATEMENT . ')';
+
+    private const GROUP = "CASE WHEN payments.method = 'qr' THEN 'qr' WHEN payments.method = 'bank_transfer' THEN 'transfer' ELSE 'card' END";
 
     /** Payments before this day were never checked and are not asked about. */
     public static function startDate(): ?string
@@ -69,7 +91,7 @@ final class PaymentChecks
 
         $perPage = min(200, max(10, (int) ($f['per_page'] ?? 50)));
         $page = $rows->with(['order:id,order_number,type,user_id,device_id', 'order.user:id,name', 'order.device:id,name', 'collectedBy:id,name'])
-            ->paginate($perPage, ['payments.*'], 'page', max(1, (int) ($f['page'] ?? 1)));
+            ->paginate($perPage, ['payments.*', DB::raw(self::STATEMENT . ' as statement_laar')], 'page', max(1, (int) ($f['page'] ?? 1)));
 
         $checkers = User::whereIn('id', collect($page->items())->pluck('checked_by')->filter()->unique())->pluck('name', 'id');
 
@@ -86,14 +108,17 @@ final class PaymentChecks
     public function mark(Payment $payment, string $result, ?float $seen, ?string $reference, ?string $note, int $userId): Payment
     {
         if (!self::isCheckable($payment)) {
-            throw new InvalidArgumentException('Only paid QR and card payments are checked here.');
+            throw new InvalidArgumentException('Only paid QR, card and transfer payments are checked here.');
+        }
+        if (BankStatementLine::where('matched_payment_id', $payment->id)->exists()) {
+            throw new InvalidArgumentException('The bank statement already matched this transfer. Change it on the Transfers tab.');
         }
         $amount = self::amountLaar($payment);
         if ($result === self::MATCHED) {
             $seenLaar = $amount;
         } elseif ($result === self::DIFFERENT) {
             if ($seen === null) {
-                throw new InvalidArgumentException('Type the amount MPOS or the card slip shows.');
+                throw new InvalidArgumentException('Type the amount MPOS, the card slip or the bank shows.');
             }
             $seenLaar = (int) round($seen * 100);
             if ($seenLaar === $amount) {
@@ -134,7 +159,7 @@ final class PaymentChecks
     public function markManyMatched(array $ids, int $userId): int
     {
         $n = 0;
-        Payment::whereIn('id', $ids)->whereNull('check_status')->get()->each(function (Payment $p) use ($userId, &$n) {
+        Payment::whereIn('id', $ids)->whereNull('check_status')->whereRaw(self::STATEMENT . ' IS NULL')->get()->each(function (Payment $p) use ($userId, &$n) {
             if (self::isCheckable($p)) {
                 $this->mark($p, self::MATCHED, null, null, null, $userId);
                 $n++;
@@ -148,7 +173,7 @@ final class PaymentChecks
     public static function waitingQuery(): Builder
     {
         [$todayStart] = BusinessDay::bounds(BusinessDay::todayYmd());
-        $q = self::checkable()->whereNull('payments.check_status')->whereRaw(self::AT . ' < ?', [$todayStart]);
+        $q = self::checkable()->whereRaw(self::STATE . " = 'unchecked'")->whereRaw(self::AT . ' < ?', [$todayStart]);
         if ($start = self::startDate()) {
             $q->whereRaw(self::AT . ' >= ?', [BusinessDay::bounds($start)[0]]);
         }
@@ -190,10 +215,8 @@ final class PaymentChecks
             ->leftJoin('orders', 'orders.id', '=', 'payments.order_id')
             ->whereRaw(self::AT . ' between ? and ?', [$fromAt, $toAt]);
 
-        if (($f['method'] ?? null) === 'qr') {
-            $q->where('payments.method', 'qr');
-        } elseif (($f['method'] ?? null) === 'card') {
-            $q->whereIn('payments.method', ['card', 'card_pos']);
+        if ($group = self::METHOD_GROUPS[$f['method'] ?? ''] ?? null) {
+            $q->whereIn('payments.method', $group);
         }
         if ($uid = $f['user_id'] ?? null) {
             $q->where(fn ($w) => $w->where('payments.collected_by_user_id', $uid)
@@ -220,9 +243,8 @@ final class PaymentChecks
     private function withState(Builder $q, string $state): Builder
     {
         return match ($state) {
-            'unchecked' => $q->whereNull('payments.check_status'),
-            self::MATCHED, self::DIFFERENT => $q->where('payments.check_status', $state),
-            'checked' => $q->whereNotNull('payments.check_status'),
+            'unchecked', self::MATCHED, self::DIFFERENT => $q->whereRaw(self::STATE . ' = ?', [$state]),
+            'checked' => $q->whereRaw(self::STATE . " <> 'unchecked'"),
             default => $q,
         };
     }
@@ -230,16 +252,14 @@ final class PaymentChecks
     /** @return array<string, mixed> */
     private function summary(Builder $base): array
     {
-        $byState = (clone $base)
-            ->selectRaw("COALESCE(payments.check_status, 'unchecked') as state, COUNT(*) as n, SUM(" . self::AMOUNT . ') as laar')
-            ->selectRaw('SUM(COALESCE(payments.checked_amount_laar, 0) - CASE WHEN payments.check_status IS NULL THEN 0 ELSE ' . self::AMOUNT . ' END) as diff')
-            ->groupByRaw("COALESCE(payments.check_status, 'unchecked')")
-            ->get()->keyBy('state');
-        $byMethod = (clone $base)
-            ->selectRaw("CASE WHEN payments.method = 'qr' THEN 'qr' ELSE 'card' END as m, COUNT(*) as n, SUM(" . self::AMOUNT . ') as laar')
-            ->selectRaw('SUM(CASE WHEN payments.check_status IS NULL THEN 1 ELSE 0 END) as unchecked')
-            ->groupByRaw("CASE WHEN payments.method = 'qr' THEN 'qr' ELSE 'card' END")
-            ->get()->keyBy('m');
+        $rows = (clone $base)->toBase()
+            ->selectRaw(self::STATE . ' as state, ' . self::GROUP . ' as m, ' . self::AMOUNT . ' as amt, ' . self::SEEN . ' as seen');
+        $t = fn () => DB::query()->fromSub($rows, 't');
+
+        $byState = $t()->selectRaw("state, COUNT(*) as n, SUM(amt) as laar, SUM(CASE WHEN state = 'unchecked' THEN 0 ELSE seen - amt END) as diff")
+            ->groupBy('state')->get()->keyBy('state');
+        $byMethod = $t()->selectRaw("m, COUNT(*) as n, SUM(amt) as laar, SUM(CASE WHEN state = 'unchecked' THEN 1 ELSE 0 END) as unchecked")
+            ->groupBy('m')->get()->keyBy('m');
 
         $state = fn (string $k) => ['count' => (int) ($byState[$k]->n ?? 0), 'laar' => (int) ($byState[$k]->laar ?? 0)];
         $method = fn (string $k) => ['count' => (int) ($byMethod[$k]->n ?? 0), 'laar' => (int) ($byMethod[$k]->laar ?? 0), 'unchecked' => (int) ($byMethod[$k]->unchecked ?? 0)];
@@ -250,6 +270,7 @@ final class PaymentChecks
             'different' => $state(self::DIFFERENT) + ['diff_laar' => (int) ($byState[self::DIFFERENT]->diff ?? 0)],
             'qr' => $method('qr'),
             'card' => $method('card'),
+            'transfer' => $method('transfer'),
         ];
     }
 
@@ -262,13 +283,26 @@ final class PaymentChecks
         return [
             'id' => $p->id,
             'at' => $at->toIso8601String(),
-            'method' => $p->method === 'qr' ? 'qr' : 'card',
+            'method' => $p->method === 'qr' ? 'qr' : ($p->method === 'bank_transfer' ? 'transfer' : 'card'),
             'amount_laar' => $amount,
             'reference' => $p->reference_number,
             'order' => $p->order ? ['id' => $p->order->id, 'order_number' => $p->order->order_number, 'type' => $p->order->type] : null,
             'cashier' => $p->collectedBy?->name ?? $p->order?->user?->name,
             'station' => $p->order?->device?->name,
-            'check' => $p->check_status === null ? null : [
+            'check' => $this->checkOf($p, $amount, $checkers),
+        ];
+    }
+
+    /**
+     * A hand check, else the bank statement's match (undone on the Transfers
+     * tab, so it has no Undo here), else none.
+     *
+     * @param array<int, string> $checkers
+     */
+    private function checkOf(Payment $p, int $amount, array $checkers): ?array
+    {
+        if ($p->check_status !== null) {
+            return [
                 'status' => $p->check_status,
                 'seen_laar' => $p->checked_amount_laar,
                 'diff_laar' => (int) $p->checked_amount_laar - $amount,
@@ -276,7 +310,24 @@ final class PaymentChecks
                 'note' => $p->check_note,
                 'by' => $checkers[$p->checked_by] ?? null,
                 'at' => $p->checked_at?->toIso8601String(),
-            ],
+                'source' => 'hand',
+            ];
+        }
+        $statement = $p->getAttribute('statement_laar');
+        if ($statement === null) {
+            return null;
+        }
+        $line = BankStatementLine::where('matched_payment_id', $p->id)->first(['txn_date', 'reference']);
+
+        return [
+            'status' => (int) $statement === $amount ? self::MATCHED : self::DIFFERENT,
+            'seen_laar' => (int) $statement,
+            'diff_laar' => (int) $statement - $amount,
+            'reference' => $line?->reference,
+            'note' => null,
+            'by' => 'Bank statement',
+            'at' => $line?->txn_date ? Carbon::parse($line->txn_date)->toIso8601String() : null,
+            'source' => 'statement',
         ];
     }
 

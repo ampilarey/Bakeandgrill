@@ -61,16 +61,18 @@ class PaymentChecksTest extends TestCase
         $qr = $this->payment('qr', 155);
         $card = $this->payment('card_pos', 40);
         $this->payment('cash', 25);
-        $this->payment('bank_transfer', 60);
+        $transfer = $this->payment('bank_transfer', 60);
         $this->payment('qr', 99, 0, [], 'failed');
         $this->payment('qr', 70, 20); // before the start date
 
         $res = $this->list()->assertOk();
-        $this->assertEqualsCanonicalizing([$qr->id, $card->id], array_column($res->json('payments'), 'id'));
-        $res->assertJsonPath('summary.unchecked.count', 2)
-            ->assertJsonPath('summary.unchecked.laar', 19500)
+        $this->assertEqualsCanonicalizing([$qr->id, $card->id, $transfer->id], array_column($res->json('payments'), 'id'));
+        $res->assertJsonPath('summary.unchecked.count', 3)
+            ->assertJsonPath('summary.unchecked.laar', 25500)
             ->assertJsonPath('summary.qr.laar', 15500)
-            ->assertJsonPath('summary.card.laar', 4000);
+            ->assertJsonPath('summary.card.laar', 4000)
+            ->assertJsonPath('summary.transfer.laar', 6000);
+        $this->list(['method' => 'transfer'])->assertJsonCount(1, 'payments')->assertJsonPath('payments.0.method', 'transfer');
     }
 
     public function test_matches_and_different_record_what_was_seen_without_changing_the_payment(): void
@@ -135,6 +137,45 @@ class PaymentChecksTest extends TestCase
         $rows = collect($this->getJson('/api/admin/inbox')->assertOk()->json('rows'))->keyBy('key');
         $this->assertSame(1, $rows['payment_checks']['count']);
         $this->assertSame('/finance/settlements?view=checks', $rows['payment_checks']['link']);
+    }
+
+    private function statementLine(Payment $p, float $amount, string $ref = 'FT123'): \App\Models\BankStatementLine
+    {
+        $import = \App\Models\BankStatementImport::firstOrCreate(['account' => 'transfer', 'filename' => 'test.csv'], ['imported_by' => $this->owner->id]);
+
+        return \App\Models\BankStatementLine::create([
+            'import_id' => $import->id, 'account' => 'transfer', 'txn_date' => $this->day(0), 'reference' => $ref,
+            'amount_laar' => (int) round($amount * 100), 'fingerprint' => hash('sha256', uniqid('', true)),
+            'matched_payment_id' => $p->id, 'match_status' => 'manual',
+        ]);
+    }
+
+    public function test_a_transfer_the_bank_statement_matched_counts_as_checked(): void
+    {
+        $same = $this->payment('bank_transfer', 60, 1);
+        $short = $this->payment('bank_transfer', 100, 1);
+        $open = $this->payment('bank_transfer', 25, 1);
+        $this->statementLine($same, 60);
+        $this->statementLine($short, 95, 'FT999');
+
+        $this->list()->assertJsonCount(1, 'payments')->assertJsonPath('payments.0.id', $open->id)
+            ->assertJsonPath('summary.unchecked.count', 1)
+            ->assertJsonPath('summary.matched.count', 1)
+            ->assertJsonPath('summary.different.count', 1)
+            ->assertJsonPath('summary.different.diff_laar', -500)
+            ->assertJsonPath('summary.transfer.unchecked', 1);
+        $this->list(['state' => 'different'])->assertJsonPath('payments.0.id', $short->id)
+            ->assertJsonPath('payments.0.check.by', 'Bank statement')
+            ->assertJsonPath('payments.0.check.source', 'statement')
+            ->assertJsonPath('payments.0.check.reference', 'FT999')
+            ->assertJsonPath('payments.0.check.seen_laar', 9500);
+
+        // Never ticked twice: the statement's match is changed on the Transfers tab.
+        $this->postJson("/api/settlements/payment-checks/{$same->id}", ['result' => 'matched'])->assertStatus(422);
+        $this->postJson('/api/settlements/payment-checks/bulk', ['ids' => [$same->id, $open->id]])->assertJsonPath('marked', 1);
+
+        $rows = collect($this->getJson('/api/admin/inbox')->json('rows'))->keyBy('key');
+        $this->assertArrayNotHasKey('payment_checks', $rows->all(), 'the open one is ticked now, the others the statement checked');
     }
 
     public function test_needs_the_settlements_permission(): void

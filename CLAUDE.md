@@ -1052,9 +1052,9 @@ follows its switch on Settings → Ordering → **Fees & slots** (`packaging_fee
 
 Owner, 2026-10-28: a QR customer types the bill amount themselves and the cashier keys the card
 machine by hand, and the cashier cannot see MPOS. So Finance → Bank settlements opens on **Check
-payments** (`PaymentChecksTab.tsx`, `?view=checks`): each paid QR and card payment
+payments** (`PaymentChecksTab.tsx`, `?view=checks`): each paid QR, card and transfer payment
 (`App\Domains\Finance\Support\PaymentChecks::METHODS`) is ticked Matches, or Different with the
-amount MPOS or the slip showed, an optional reference and note (`payments.check_status`,
+amount MPOS, the slip or the bank app showed, an optional reference and note (`payments.check_status`,
 `checked_amount_laar`, `check_reference`, `check_note`, `checked_by`, `checked_at`; audited).
 A check never changes the payment: a short one is collected or fixed on the order (tender
 correction, refund). Filters: state, QR or card, cashier, station, amount range, order number or
@@ -1062,8 +1062,12 @@ reference, sort; many can be marked matching at once (Different always needs its
 Payments before `payment_check_start_date` (set to the day it shipped, changed under More filters)
 are not listed. Needs attention counts those not checked from before today (`payment_checks`, red
 after 3 days). Routes under `/settlements/payment-checks`, `finance.settlements`. Cash is checked
-by the shift's blind count and Settlements → Cash; transfers by the bank statement on the
-Transfers tab. `PaymentChecksTest`, `PaymentChecksTab.test.tsx`.
+by the shift's blind count and Settlements → Cash. Transfers are on the list too (owner,
+2026-10-29: ticked against the bank app the same day): a transfer the bank statement matched on
+the Transfers tab counts as checked by the statement, read live (`PaymentChecks::STATE`, a hand
+check first, then the matched `bank_statement_lines` row, so Matches or Different follows the
+line's amount), shows "Bank statement" with a link to the Transfers tab instead of Undo, and
+refuses a hand tick, so no payment is ticked twice. `PaymentChecksTest`, `PaymentChecksTab.test.tsx`.
 
 ## A discount on every sale in a period
 

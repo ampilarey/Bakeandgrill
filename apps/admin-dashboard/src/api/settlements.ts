@@ -325,12 +325,14 @@ export type PaymentCheck = {
   note: string | null;
   by: string | null;
   at: string | null;
+  /** 'statement': the bank statement matched this transfer (Transfers tab); no Undo here. */
+  source?: 'hand' | 'statement';
 };
 
 export type PaymentCheckRow = {
   id: number;
   at: string;
-  method: 'qr' | 'card';
+  method: 'qr' | 'card' | 'transfer';
   amount_laar: number;
   reference: string | null;
   order: { id: number; order_number: string; type: string } | null;
@@ -349,6 +351,7 @@ export type PaymentChecksView = {
     different: Tally & { diff_laar: number };
     qr: Tally & { unchecked: number };
     card: Tally & { unchecked: number };
+    transfer: Tally & { unchecked: number };
   };
   payments: PaymentCheckRow[];
   meta: { page: number; last_page: number; total: number; per_page: number };
@@ -356,7 +359,7 @@ export type PaymentChecksView = {
 };
 
 export type PaymentCheckFilters = {
-  from: string; to: string; state?: PaymentCheckState; method?: 'qr' | 'card' | '';
+  from: string; to: string; state?: PaymentCheckState; method?: 'qr' | 'card' | 'transfer' | '';
   user_id?: number | null; device_id?: number | null; min?: string; max?: string; q?: string;
   sort?: PaymentCheckSort; page?: number; per_page?: number;
 };

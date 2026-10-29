@@ -32,7 +32,7 @@ class PaymentCheckController extends Controller
         $f = $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
-            'method' => ['nullable', Rule::in(['qr', 'card'])],
+            'method' => ['nullable', Rule::in(array_keys(PaymentChecks::METHOD_GROUPS))],
             'state' => ['nullable', Rule::in(PaymentChecks::STATES)],
             'user_id' => ['nullable', 'integer'],
             'device_id' => ['nullable', 'integer'],

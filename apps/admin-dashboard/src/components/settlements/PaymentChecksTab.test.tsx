@@ -21,6 +21,7 @@ const view = (over: Partial<PaymentChecksView> = {}): PaymentChecksView => ({
   summary: {
     unchecked: { count: 2, laar: 19500 }, matched: { count: 1, laar: 1000 }, different: { count: 0, laar: 0, diff_laar: 0 },
     qr: { count: 2, laar: 16500, unchecked: 1 }, card: { count: 1, laar: 4000, unchecked: 1 },
+    transfer: { count: 1, laar: 6000, unchecked: 0 },
   },
   payments: [
     { id: 1, at: '2026-10-28T09:41:00+05:00', method: 'qr', amount_laar: 15500, reference: null, order: { id: 67, order_number: 'BG-0067', type: 'takeaway' }, cashier: 'Ariya', station: 'POS 1', check: null },
@@ -105,6 +106,28 @@ describe('PaymentChecksTab', () => {
     expect(card).toHaveTextContent('Owner');
     fireEvent.click(within(card).getByRole('button', { name: /Undo/ }));
     await waitFor(() => expect(api.undoPaymentCheck).toHaveBeenCalledWith(2));
+  });
+
+  it('shows a transfer the bank statement matched, with no Undo but a way to the Transfers tab', async () => {
+    api.fetchPaymentChecks.mockResolvedValue(view({ payments: [
+      { id: 3, at: '2026-10-28T11:00:00+05:00', method: 'transfer', amount_laar: 6000, reference: null, order: { id: 70, order_number: 'BG-0070', type: 'takeaway' }, cashier: 'Ariya', station: 'POS 1',
+        check: { status: 'matched', seen_laar: 6000, diff_laar: 0, reference: 'FT123', note: null, by: 'Bank statement', at: '2026-10-28T00:00:00+05:00', source: 'statement' } },
+    ] }));
+    renderTab();
+    const card = await screen.findByTestId('payment-check-3', {}, { timeout: 5000 });
+    expect(card).toHaveTextContent('Transfer');
+    expect(card).toHaveTextContent('Bank statement');
+    expect(within(card).queryByRole('button', { name: /Undo/ })).toBeNull();
+    expect(within(card).getByRole('link', { name: 'On the Transfers tab' })).toHaveAttribute('href', '/finance/settlements?view=transfers');
+    fireEvent.click(screen.getByRole('tab', { name: 'Transfer' }));
+    await waitFor(() => expect(api.fetchPaymentChecks).toHaveBeenLastCalledWith(expect.objectContaining({ method: 'transfer' })));
+  });
+
+  it('asks for the bank app amount on a transfer', async () => {
+    api.fetchPaymentChecks.mockResolvedValue(view({ payments: [{ ...view().payments[0], id: 4, method: 'transfer' }] }));
+    renderTab();
+    fireEvent.click(await screen.findByTestId('payment-check-different-4', {}, { timeout: 5000 }));
+    expect(screen.getByText(/Amount the bank app shows/)).toBeInTheDocument();
   });
 
   it('words a difference', () => {

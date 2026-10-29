@@ -92,6 +92,8 @@ export function SettlementsPage() {
   const [params, setParams] = useSearchParams();
   const fromUrl = TABS.find((t) => t.id === params.get('view'))?.id;
   const [tab, setTabState] = useState<TabId>(fromUrl ?? 'checks');
+  // A link inside the page (Check payments → On the Transfers tab) moves the tab too.
+  useEffect(() => { if (fromUrl) setTabState(fromUrl); }, [fromUrl]);
   const setTab = (id: TabId) => {
     setTabState(id);
     setParams((p) => { const n = new URLSearchParams(p); n.set('view', id); return n; }, { replace: true });

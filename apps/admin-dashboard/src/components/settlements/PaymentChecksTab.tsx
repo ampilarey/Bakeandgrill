@@ -3,7 +3,8 @@
  * (owner, 2026-10-28). A QR customer types the bill amount themselves and the
  * cashier keys the card machine by hand, and the cashier cannot see MPOS, so
  * the owner compares here: Matches, or Different with the amount MPOS or the
- * slip shows. A check never changes the payment; a short one is chased and
+ * slip shows; a transfer against the bank app (owner, 2026-10-29), or the
+ * bank statement once it matched it on the Transfers tab. A check never changes the payment; a short one is chased and
  * fixed on the order. Cash is checked by the shift count, transfers on the
  * Transfers tab.
  */
@@ -33,6 +34,8 @@ const chip = (on: boolean): React.CSSProperties => ({
   color: on ? 'var(--color-tone-rust-text)' : 'var(--color-text-secondary)',
 });
 
+const METHOD_WORD: Record<PaymentCheckRow['method'], string> = { qr: 'QR', card: 'Card', transfer: 'Transfer' };
+
 const label: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' };
 
 /** "Paid MVR 5.00 less" / "more", from what was seen less what the till recorded. */
@@ -43,7 +46,7 @@ export function diffWords(diffLaar: number): string {
 
 export function PaymentChecksTab({ from, to, onError }: { from: string; to: string; onError: (m: string) => void }) {
   const [state, setState] = useState<PaymentCheckState>('unchecked');
-  const [method, setMethod] = useState<'' | 'qr' | 'card'>('');
+  const [method, setMethod] = useState<'' | 'qr' | 'card' | 'transfer'>('');
   const [userId, setUserId] = useState('');
   const [deviceId, setDeviceId] = useState('');
   const [min, setMin] = useState('');
@@ -109,7 +112,7 @@ export function PaymentChecksTab({ from, to, onError }: { from: string; to: stri
   return (
     <div data-testid="payment-checks">
       <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
-        Tick each QR payment against MPOS and each card payment against the card slip. Cash is checked when the shift is counted; transfers on the Transfers tab.
+        Tick each QR payment against MPOS, each card payment against the card slip and each transfer against the bank app. A transfer the bank statement matched on the Transfers tab is checked already. Cash is checked when the shift is counted.
       </p>
 
       {s && (
@@ -118,6 +121,7 @@ export function PaymentChecksTab({ from, to, onError }: { from: string; to: stri
           <StatCard label="Different" value={s.different.count ? diffWords(s.different.diff_laar).replace('Paid ', '') : '—'} sub={`${s.different.count} payment${s.different.count === 1 ? '' : 's'}`} accent="var(--color-danger)" />
           <StatCard label="QR" value={mvr(s.qr.laar)} sub={`${s.qr.count} · ${s.qr.unchecked} to check`} />
           <StatCard label="Card" value={mvr(s.card.laar)} sub={`${s.card.count} · ${s.card.unchecked} to check`} />
+          <StatCard label="Transfer" value={mvr(s.transfer.laar)} sub={`${s.transfer.count} · ${s.transfer.unchecked} to check`} />
         </div>
       )}
 
@@ -128,7 +132,7 @@ export function PaymentChecksTab({ from, to, onError }: { from: string; to: stri
           ))}
         </TabScrollRow>
         <TabScrollRow fit style={{ gap: 6 }} role="tablist" aria-label="Paid by">
-          {([['', 'QR and card'], ['qr', 'QR'], ['card', 'Card']] as const).map(([id, text]) => (
+          {([['', 'All'], ['qr', 'QR'], ['card', 'Card'], ['transfer', 'Transfer']] as const).map(([id, text]) => (
             <button key={id || 'both'} type="button" role="tab" aria-selected={method === id} style={chip(method === id)} onClick={() => setMethod(id)}>{text}</button>
           ))}
         </TabScrollRow>
@@ -239,7 +243,7 @@ function PaymentCard({ r, busy, picked, onPick, onMatch, onDifferent, onUndo }: 
         <div style={{ flex: '1 1 auto', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <strong style={{ fontSize: 20, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{mvr(r.amount_laar)}</strong>
-            <Badge color={r.method === 'qr' ? 'rust' : 'brown'}>{r.method === 'qr' ? 'QR' : 'Card'}</Badge>
+            <Badge color={r.method === 'qr' ? 'rust' : r.method === 'transfer' ? 'gold' : 'brown'}>{METHOD_WORD[r.method]}</Badge>
           </div>
           <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 2 }}>
             {when(r.at)}
@@ -258,7 +262,9 @@ function PaymentCard({ r, busy, picked, onPick, onMatch, onDifferent, onUndo }: 
           <span style={{ fontSize: 12, color: 'var(--color-text-muted)', flex: '1 1 140px' }}>
             {[c.by, c.at ? when(c.at) : null].filter(Boolean).join(' · ')}{c.reference ? ` · Ref ${c.reference}` : ''}{c.note ? ` · ${c.note}` : ''}
           </span>
-          <Btn small variant="ghost" disabled={busy} onClick={onUndo}><InlineIcon icon={Undo2} />Undo</Btn>
+          {c.source === 'statement'
+            ? <Link to="/finance/settlements?view=transfers" style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-primary)' }}>On the Transfers tab</Link>
+            : <Btn small variant="ghost" disabled={busy} onClick={onUndo}><InlineIcon icon={Undo2} />Undo</Btn>}
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -281,7 +287,7 @@ function DifferentModal({ row, onClose, onSave }: {
   const [saving, setSaving] = useState(false);
   const seenLaar = seen.trim() === '' ? null : Math.round(Number(seen) * 100);
   const diff = seenLaar === null || Number.isNaN(seenLaar) ? null : seenLaar - row.amount_laar;
-  const where = row.method === 'qr' ? 'MPOS' : 'the card slip';
+  const where = row.method === 'qr' ? 'MPOS' : row.method === 'transfer' ? 'the bank app' : 'the card slip';
 
   const save = async () => {
     if (diff === null) { setErr(`Type the amount ${where} shows.`); return; }
@@ -299,7 +305,7 @@ function DifferentModal({ row, onClose, onSave }: {
   return (
     <Modal title="Different amount" onClose={onClose}>
       <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--color-text-secondary)' }}>
-        The till recorded <strong style={{ color: 'var(--color-text)' }}>{mvr(row.amount_laar)}</strong> by {row.method === 'qr' ? 'QR' : 'card'}
+        The till recorded <strong style={{ color: 'var(--color-text)' }}>{mvr(row.amount_laar)}</strong> by {METHOD_WORD[row.method].toLowerCase().replace('qr', 'QR')}
         {row.order ? ` for #${row.order.order_number}` : ''}.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -313,7 +319,7 @@ function DifferentModal({ row, onClose, onSave }: {
           </div>
         )}
         <label style={label}>Reference (optional)
-          <input value={reference} maxLength={40} placeholder={row.method === 'qr' ? 'Last digits of the transfer' : 'Approval code on the slip'}
+          <input value={reference} maxLength={40} placeholder={row.method === 'card' ? 'Approval code on the slip' : 'Last digits of the transfer'}
             onChange={(e) => setReference(e.target.value)} style={inputFont(field)} />
         </label>
         <label style={label}>Note (optional)
