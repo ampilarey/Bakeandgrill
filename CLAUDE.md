@@ -1534,6 +1534,17 @@ week or month (the dashboard's `TrendChart`); by hour of the day and by day of t
 the weekday × hour grid (`HeatGrid`, both in `components/charts/`); and by size, order type and staff;
 every size or one, count or money, its own period chips. `ItemSalesTest`, `ItemSalesView.test.tsx`.
 
+## Live order streams: the cursor is in the app's timezone
+
+Owner, 2026-10-29: Admin → Orders "flicks, content appears and dissapears quickly". The
+`/stream/orders` and `/stream/kds` cursor (`timestamp_ms.id`, `OrderStreamProvider::parseCursor`)
+was read back as UTC while `updated_at` is stored in Maldives time, so every one-second poll
+matched the last five hours of orders again, the page reloaded every second, the server fell
+behind and each timed-out reload emptied the list. The cursor is turned to `config('app.timezone')`
+before it is compared (`OrderStreamCursorTest`). The Orders page reloads once per burst of events
+(800 ms) and keeps its list when a refresh fails. A new stream cursor is compared in the app's
+timezone too.
+
 ## Queue worker vs synchronous SMS
 
 The queue worker (`php artisan queue:work redis`) is only needed for async listeners

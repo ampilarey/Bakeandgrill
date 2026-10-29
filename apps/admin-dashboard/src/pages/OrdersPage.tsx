@@ -1083,7 +1083,9 @@ export function OrdersPage() {
       // tells the user what went wrong (network, 401, 500) instead of
       // a deceptive "No orders match your filters." empty state.
       setError(`Failed to load orders: ${(e as Error).message}`);
-      setOrders([]);
+      // Keep what is on screen: a refresh that fails (busy server, a dropped connection) must not
+      // empty the list for a moment (owner, 2026-10-29: "content appears and dissapears quickly").
+      setOrders((prev) => prev);
     } finally {
       setLoading(false);
     }
@@ -1091,8 +1093,13 @@ export function OrdersPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  // SSE: reload the current page whenever an order event arrives
-  const handleSseEvent = useCallback(() => { void load(); }, [load]);
+  // SSE: reload the current page when order events arrive, once per burst, not once per event.
+  const sseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSseEvent = useCallback(() => {
+    if (sseTimer.current) clearTimeout(sseTimer.current);
+    sseTimer.current = setTimeout(() => { sseTimer.current = null; void load(); }, 800);
+  }, [load]);
+  useEffect(() => () => { if (sseTimer.current) clearTimeout(sseTimer.current); }, []);
   const { connected: sseConnected } = useSse('/stream/orders', { onEvent: handleSseEvent });
 
   // Fallback polling — activates only when SSE drops (network degraded)

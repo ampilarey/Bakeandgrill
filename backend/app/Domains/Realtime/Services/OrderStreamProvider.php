@@ -63,7 +63,7 @@ class OrderStreamProvider
         // ISO8601 format from ?since= param
         if (str_contains($cursor, 'T') || str_contains($cursor, '-')) {
             try {
-                return [Carbon::parse($cursor), 0];
+                return [Carbon::parse($cursor)->setTimezone(config('app.timezone')), 0];
             } catch (\Throwable) {
             }
         }
@@ -71,7 +71,10 @@ class OrderStreamProvider
         // Internal cursor format: "timestamp_ms.id"
         $parts = explode('.', $cursor, 2);
         if (count($parts) === 2 && is_numeric($parts[0])) {
-            $ts = Carbon::createFromTimestampMs((int) $parts[0]);
+            // In the app's timezone, as updated_at is stored. A bare createFromTimestampMs() is UTC,
+            // five hours behind Maldives time, so every poll matched the last five hours of orders
+            // again and Admin → Orders reloaded every second (owner, 2026-10-29: "this page flicks").
+            $ts = Carbon::createFromTimestampMs((int) $parts[0])->setTimezone(config('app.timezone'));
 
             return [$ts, (int) $parts[1]];
         }

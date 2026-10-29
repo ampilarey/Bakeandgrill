@@ -92,4 +92,14 @@ describe('OrdersPage', () => {
     expect(await screen.findByTestId('order-paid-by-7')).toHaveTextContent('Card + Cash');
     expect(screen.getByTestId('order-paid-by-42')).toHaveTextContent('—');
   });
+
+  it('keeps the list on screen when a refresh fails', async () => {
+    // Owner, 2026-10-29: the list blinked between the orders and "The server took too long to answer".
+    renderWithRouter(<OrdersPage />);
+    await screen.findByText('#ORD-42');
+    vi.mocked(fetchOrders).mockRejectedValueOnce(new Error('The server took too long to answer.'));
+    fireEvent.click(screen.getByRole('button', { name: /Refresh/i }));
+    expect(await screen.findByText(/took too long/)).toBeInTheDocument();
+    expect(screen.getByText('#ORD-42')).toBeInTheDocument();
+  });
 });
