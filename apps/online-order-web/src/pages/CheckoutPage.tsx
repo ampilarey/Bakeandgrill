@@ -1300,7 +1300,7 @@ export function CheckoutPage() {
       </div>
       {/* Bank of Maldives' merchant website rules: the transaction currency and the merchant outlet
           country stand at the point of payment, not only in the Terms (owner, 2026-10-30). */}
-      <p data-testid="checkout-currency-country" style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', margin: '0 0 0.625rem', lineHeight: 1.5 }}>
+      <p data-testid="checkout-currency-country" style={{ fontSize: '0.78rem', color: 'var(--color-text)', margin: '0 0 0.625rem', lineHeight: 1.5 }}>
         {t('checkout.txn_currency_label')} <strong>{t('checkout.txn_currency_value')}</strong>
         {' · '}
         {t('checkout.outlet_country_label')} <strong>{t('checkout.outlet_country_value')}</strong>
