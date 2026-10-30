@@ -1298,6 +1298,13 @@ export function CheckoutPage() {
         <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('checkout.we_accept')}</span>
         <img src="/card-brands.png" alt={t('checkout.card_brands_alt')} style={{ height: '53px', objectFit: 'contain' }} />
       </div>
+      {/* Bank of Maldives' merchant website rules: the transaction currency and the merchant outlet
+          country stand at the point of payment, not only in the Terms (owner, 2026-10-30). */}
+      <p data-testid="checkout-currency-country" style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', margin: '0 0 0.625rem', lineHeight: 1.5 }}>
+        {t('checkout.txn_currency_label')} <strong>{t('checkout.txn_currency_value')}</strong>
+        {' · '}
+        {t('checkout.outlet_country_label')} <strong>{t('checkout.outlet_country_value')}</strong>
+      </p>
       <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.625rem', lineHeight: 1.5 }}>
         {paymentCompliance}
       </p>
@@ -1316,6 +1323,9 @@ export function CheckoutPage() {
           </a>
         ))}
       </div>
+      <p data-testid="checkout-keep-records" style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '0.25rem 0 0', lineHeight: 1.5 }}>
+        {t('checkout.keep_records')}
+      </p>
       <p style={{ ...S.secureNote, textAlign: 'left', marginTop: '0.5rem' }}>
         <Lock size={13} aria-hidden style={{ verticalAlign: '-0.15em' }} /> Payment processed securely by Bank of Maldives. We do not store your card details.
       </p>
