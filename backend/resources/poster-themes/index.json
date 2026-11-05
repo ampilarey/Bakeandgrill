@@ -107,7 +107,7 @@
   "TV4K": "tv",
   "TVP": "tvp"
  },
- "count": 149,
+ "count": 175,
  "themes": [
   {
    "id": "BG-001",
@@ -185,6 +185,28 @@
    "photo_slots": 0,
    "text_slots": 10,
    "path": "01-Discounts-and-Sales/bg007-weekend-mega-sale"
+  },
+  {
+   "id": "BG-111",
+   "key": "bg111-payday-sale-tag",
+   "title": "Payday Sale Tag",
+   "category": "disc",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 9,
+   "path": "01-Discounts-and-Sales/bg111-payday-sale-tag"
+  },
+  {
+   "id": "BG-112",
+   "key": "bg112-clearance-evening-bakes",
+   "title": "Clearance Evening Bakes",
+   "category": "disc",
+   "style": "colour",
+   "has_photo": false,
+   "photo_slots": 0,
+   "text_slots": 8,
+   "path": "01-Discounts-and-Sales/bg112-clearance-evening-bakes"
   },
   {
    "id": "BG-008",
@@ -308,6 +330,28 @@
    "path": "02-Combos-and-Price-Deals/bg018-grill-combo-mvr99-classic"
   },
   {
+   "id": "BG-113",
+   "key": "bg113-breakfast-combo-split",
+   "title": "Breakfast Combo Split",
+   "category": "combo",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 9,
+   "path": "02-Combos-and-Price-Deals/bg113-breakfast-combo-split"
+  },
+  {
+   "id": "BG-114",
+   "key": "bg114-pick-two-menu",
+   "title": "Pick Two Menu",
+   "category": "combo",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 3,
+   "text_slots": 18,
+   "path": "02-Combos-and-Price-Deals/bg114-pick-two-menu"
+  },
+  {
    "id": "BG-019",
    "key": "bg019-bring-a-friend-coupon",
    "title": "Bring A Friend Coupon",
@@ -429,6 +473,28 @@
    "path": "03-Buy-1-Get-1-and-Freebies/bg029-coffee-buy1get1-classic"
   },
   {
+   "id": "BG-115",
+   "key": "bg115-coffee-bogo-mint",
+   "title": "Coffee Bogo Mint",
+   "category": "free",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 9,
+   "path": "03-Buy-1-Get-1-and-Freebies/bg115-coffee-bogo-mint"
+  },
+  {
+   "id": "BG-116",
+   "key": "bg116-free-fries-weekend",
+   "title": "Free Fries Weekend",
+   "category": "free",
+   "style": "colour",
+   "has_photo": false,
+   "photo_slots": 0,
+   "text_slots": 15,
+   "path": "03-Buy-1-Get-1-and-Freebies/bg116-free-fries-weekend"
+  },
+  {
    "id": "BG-030",
    "key": "bg030-breakfast-till-11",
    "title": "Breakfast Till 11",
@@ -539,6 +605,28 @@
    "path": "04-Time-Deals/bg039-short-eats-happy-hour-classic"
   },
   {
+   "id": "BG-117",
+   "key": "bg117-afternoon-tea-polaroid",
+   "title": "Afternoon Tea Polaroid",
+   "category": "time",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 9,
+   "path": "04-Time-Deals/bg117-afternoon-tea-polaroid"
+  },
+  {
+   "id": "BG-118",
+   "key": "bg118-early-bird-coffee",
+   "title": "Early Bird Coffee",
+   "category": "time",
+   "style": "colour",
+   "has_photo": false,
+   "photo_slots": 0,
+   "text_slots": 8,
+   "path": "04-Time-Deals/bg118-early-bird-coffee"
+  },
+  {
    "id": "BG-040",
    "key": "bg040-chefs-pick-photo-top",
    "title": "Chefs Pick Photo Top",
@@ -603,6 +691,28 @@
    "photo_slots": 1,
    "text_slots": 10,
    "path": "05-Item-Spotlight-and-New/bg045-todays-special-tag"
+  },
+  {
+   "id": "BG-119",
+   "key": "bg119-back-by-demand-cutout",
+   "title": "Back By Demand Cutout",
+   "category": "item",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 8,
+   "path": "05-Item-Spotlight-and-New/bg119-back-by-demand-cutout"
+  },
+  {
+   "id": "BG-120",
+   "key": "bg120-bajiya-magazine-cover",
+   "title": "Bajiya Magazine Cover",
+   "category": "item",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 11,
+   "path": "05-Item-Spotlight-and-New/bg120-bajiya-magazine-cover"
   },
   {
    "id": "BG-046",
@@ -726,6 +836,28 @@
    "path": "06-Drinks-and-Coffee/bg056-sai-time"
   },
   {
+   "id": "BG-121",
+   "key": "bg121-iced-coffee-arch",
+   "title": "Iced Coffee Arch",
+   "category": "drink",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 7,
+   "path": "06-Drinks-and-Coffee/bg121-iced-coffee-arch"
+  },
+  {
+   "id": "BG-122",
+   "key": "bg122-juice-bar-grid",
+   "title": "Juice Bar Grid",
+   "category": "drink",
+   "style": "colour",
+   "has_photo": false,
+   "photo_slots": 0,
+   "text_slots": 11,
+   "path": "06-Drinks-and-Coffee/bg122-juice-bar-grid"
+  },
+  {
    "id": "BG-057",
    "key": "bg057-cupcakes-tag",
    "title": "Cupcakes Tag",
@@ -825,6 +957,28 @@
    "path": "07-Bakery-and-Desserts/bg065-evening-bakery-50-off-classic"
   },
   {
+   "id": "BG-123",
+   "key": "bg123-bread-of-the-day-top",
+   "title": "Bread Of The Day Top",
+   "category": "bake",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 9,
+   "path": "07-Bakery-and-Desserts/bg123-bread-of-the-day-top"
+  },
+  {
+   "id": "BG-124",
+   "key": "bg124-cake-by-the-slice-split",
+   "title": "Cake By The Slice Split",
+   "category": "bake",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 9,
+   "path": "07-Bakery-and-Desserts/bg124-cake-by-the-slice-split"
+  },
+  {
    "id": "BG-066",
    "key": "bg066-burger-week-magazine",
    "title": "Burger Week Magazine",
@@ -902,6 +1056,28 @@
    "path": "08-Grill-and-Meals/bg072-bbq-night"
   },
   {
+   "id": "BG-125",
+   "key": "bg125-double-burger-polaroid",
+   "title": "Double Burger Polaroid",
+   "category": "grill",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 9,
+   "path": "08-Grill-and-Meals/bg125-double-burger-polaroid"
+  },
+  {
+   "id": "BG-126",
+   "key": "bg126-mixed-grill-circle",
+   "title": "Mixed Grill Circle",
+   "category": "grill",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 8,
+   "path": "08-Grill-and-Meals/bg126-mixed-grill-circle"
+  },
+  {
    "id": "BG-073",
    "key": "bg073-birthday-party-polaroid",
    "title": "Birthday Party Polaroid",
@@ -977,6 +1153,28 @@
    "photo_slots": 0,
    "text_slots": 9,
    "path": "09-Events-and-Catering/bg079-catering-10-off-classic"
+  },
+  {
+   "id": "BG-127",
+   "key": "bg127-catering-menu-trio",
+   "title": "Catering Menu Trio",
+   "category": "event",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 3,
+   "text_slots": 18,
+   "path": "09-Events-and-Catering/bg127-catering-menu-trio"
+  },
+  {
+   "id": "BG-128",
+   "key": "bg128-meeting-platters-tag",
+   "title": "Meeting Platters Tag",
+   "category": "event",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 9,
+   "path": "09-Events-and-Catering/bg128-meeting-platters-tag"
   },
   {
    "id": "BG-080",
@@ -1100,6 +1298,28 @@
    "path": "10-Online-Delivery-and-Loyalty/bg090-order-online-15-off-classic"
   },
   {
+   "id": "BG-129",
+   "key": "bg129-order-online-qr-mint",
+   "title": "Order Online Qr Mint",
+   "category": "online",
+   "style": "colour",
+   "has_photo": false,
+   "photo_slots": 0,
+   "text_slots": 12,
+   "path": "10-Online-Delivery-and-Loyalty/bg129-order-online-qr-mint"
+  },
+  {
+   "id": "BG-130",
+   "key": "bg130-points-every-order-stickers",
+   "title": "Points Every Order Stickers",
+   "category": "online",
+   "style": "colour",
+   "has_photo": false,
+   "photo_slots": 0,
+   "text_slots": 14,
+   "path": "10-Online-Delivery-and-Loyalty/bg130-points-every-order-stickers"
+  },
+  {
    "id": "BG-091",
    "key": "bg091-eid-mubarak-cakes",
    "title": "Eid Mubarak Cakes",
@@ -1164,6 +1384,28 @@
    "photo_slots": 1,
    "text_slots": 7,
    "path": "11-Festivals-and-Seasons/bg096-valentines-meal-for-two"
+  },
+  {
+   "id": "BG-131",
+   "key": "bg131-eid-gift-boxes",
+   "title": "Eid Gift Boxes",
+   "category": "fest",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 7,
+   "path": "11-Festivals-and-Seasons/bg131-eid-gift-boxes"
+  },
+  {
+   "id": "BG-132",
+   "key": "bg132-ramadan-suhoor",
+   "title": "Ramadan Suhoor",
+   "category": "fest",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 7,
+   "path": "11-Festivals-and-Seasons/bg132-ramadan-suhoor"
   },
   {
    "id": "BG-097",
@@ -1265,6 +1507,28 @@
    "path": "12-Kids-Family-and-Students/bg105-weekend-family-feast-classic"
   },
   {
+   "id": "BG-133",
+   "key": "bg133-family-night-magazine",
+   "title": "Family Night Magazine",
+   "category": "family",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 11,
+   "path": "12-Kids-Family-and-Students/bg133-family-night-magazine"
+  },
+  {
+   "id": "BG-134",
+   "key": "bg134-kids-meal-tag",
+   "title": "Kids Meal Tag",
+   "category": "family",
+   "style": "photo",
+   "has_photo": true,
+   "photo_slots": 1,
+   "text_slots": 9,
+   "path": "12-Kids-Family-and-Students/bg134-kids-meal-tag"
+  },
+  {
    "id": "BG-106",
    "key": "bg106-free-wifi",
    "title": "Free Wifi",
@@ -1318,6 +1582,28 @@
    "photo_slots": 0,
    "text_slots": 14,
    "path": "13-Notices-and-Info/bg110-we-are-hiring"
+  },
+  {
+   "id": "BG-135",
+   "key": "bg135-how-to-order",
+   "title": "How To Order",
+   "category": "notice",
+   "style": "colour",
+   "has_photo": false,
+   "photo_slots": 0,
+   "text_slots": 14,
+   "path": "13-Notices-and-Info/bg135-how-to-order"
+  },
+  {
+   "id": "BG-136",
+   "key": "bg136-ramadan-hours",
+   "title": "Ramadan Hours",
+   "category": "notice",
+   "style": "colour",
+   "has_photo": false,
+   "photo_slots": 0,
+   "text_slots": 14,
+   "path": "13-Notices-and-Info/bg136-ramadan-hours"
   },
   {
    "id": "TV-001",

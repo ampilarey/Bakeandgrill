@@ -277,6 +277,9 @@ PAL = {
     'lime':    dict(bg='url(#bg)', defs=lin('bg', [(0, '#A5D65A'), (1, '#5FA82E')]), ink=TEALD, light=CREAMW, pop=BERRY, alt=YELLOW, shadow=TEALD, deco=YELLOW, photo_bg=CREAMW, dark_text=True),
     'cyan':    dict(bg='url(#bg)', defs=lin('bg', [(0, CYAN), (1, '#0077B6')]), ink='#04395E', light=CREAMW, pop=YELLOW, alt=BERRY, shadow='#04395E', deco=CREAMW, photo_bg=YELLOW),
     'chili':   dict(bg='url(#bg)', defs=rad('bg', [(0, '#F04A2A'), (1, CHILI)], cy=0.5), ink=PLUM, light=CREAMW, pop=YELLOW, alt=CYAN, shadow=PLUM, deco=YELLOW, photo_bg=YELLOW),
+    'rust':    dict(bg='url(#bg)', defs=lin('bg', [(0, RUST), (1, '#6E2905')]), ink=BROWN, light=CREAMW, pop=YELLOW, alt=TEAL, shadow='#3E1803', deco=YELLOW, photo_bg=CREAMW),
+    'mocha':   dict(bg='url(#bg)', defs=lin('bg', [(0, '#7B4B2A'), (1, '#3B2314')]), ink=BROWN, light=CREAMW, pop=YELLOW, alt=ORANGE, shadow='#1F1108', deco='#C89B6D', photo_bg=YELLOW),
+    'mint':    dict(bg='url(#bg)', defs=lin('bg', [(0, '#D3F3E4'), (1, '#86D3B1')]), ink=TEALD, light=CREAMW, pop=CHILI, alt=BERRY, shadow=TEALD, deco=CREAMW, photo_bg=TEAL, dark_text=True),
     'flag':    dict(bg=REDF, defs='', ink='#5A0A16', light='#FFFFFF', pop=YELLOW, alt=GREENF, shadow='#5A0A16', deco='#FFFFFF', photo_bg=CREAMW),
 }
 

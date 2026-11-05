@@ -1356,9 +1356,12 @@ a 1920×1080 image slide on the dining playlist (`date_end` is the take-down
 date), a social draft (approval, best time, channel rules) plus WhatsApp and
 Viber share links, and an optional home hero slide for the offer's period.
 
-## Poster templates (the 110 designs)
+## Poster templates (the 136 designs)
 
-Owner, 2026-10-21. Make a poster opens on 110 ready-made designs in 13 categories
+Owner, 2026-10-21. Make a poster opens on 136 ready-made designs in 13 categories (BG-111 … BG-136
+added 2026-11-05, two per category, numbered after the first 110 by `catalog.py` so no saved key
+moves: `posters6.py`, `merge_more.py`, handoff § 6b; a new batch is numbered after them too, never
+sorted in)
 (`backend/resources/poster-themes/`, spec `docs/POSTER_THEMES_HANDOFF.md`), each with a `large`
 variant for A2/A3 and a `small` one for A4/A5; "No template (classic layout)" keeps the
 purposes. A template poster is purpose `themed` with `posters.theme`; its words and photo

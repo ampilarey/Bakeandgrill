@@ -79,6 +79,31 @@ class PosterThemePdfTest extends TestCase
         }
     }
 
+    /**
+     * Owner, 2026-11-05 ("Can u add more designs to poster template?"): BG-111 onwards are a later
+     * batch, numbered after the first 110 so a saved poster's or template's key never moves, and
+     * each one builds at a wall size and a counter size with its own words fitting as they are.
+     */
+    public function test_the_later_designs_come_after_the_first_110_and_each_one_builds(): void
+    {
+        $print = array_values(array_filter(PosterThemes::all(), static fn (array $t): bool => $t['kind'] === 'print'));
+        $ids = array_column($print, 'id');
+        sort($ids);
+        $this->assertSame('BG-110', $ids[109]);
+        $this->assertSame('bg110-we-are-hiring', collect($print)->firstWhere('id', 'BG-110')['key']);
+        $this->assertSame('bg001-flash-sale-pastries', collect($print)->firstWhere('id', 'BG-001')['key']);
+        $later = array_values(array_filter($print, static fn (array $t): bool => (int) substr($t['id'], 3) > 110));
+        $this->assertCount(26, $later);
+        $this->assertCount(13, array_unique(array_column($later, 'category')), 'two for every category');
+        foreach ($later as $t) {
+            foreach (['A4', 'A2'] as $size) {
+                [$pdf, $built] = $this->render($t['key'], $size);
+                $this->assertStringStartsWith('%PDF-1.6', $pdf, $t['key']);
+                $this->assertFalse($built['flags']['overflow'], $t['key'] . ' ' . $size);
+            }
+        }
+    }
+
     public function test_the_artwork_features_each_reach_the_content_stream(): void
     {
         // Gradient (the page's own fill), photo clips and the cream badge.

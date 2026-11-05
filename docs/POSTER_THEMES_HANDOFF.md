@@ -332,6 +332,26 @@ folder. They need fontTools, qrcode, svgelements, cairosvg and Pillow. The desig
 `tv_posters.py` (`D`); a new one is a row there, built and merged the same way, and
 `PosterThemesTest` holds every screen theme to this section.
 
+## 6b. Later print designs (BG-111 onwards, 2026-11-05)
+
+Owner: "Can u add more designs to poster template?" 26 more print designs, two per category, in
+`generator-source/posters6.py`, with three new palettes in `kit5.py` (`rust`, the logo's rust;
+`mocha`, coffee brown; `mint`, pale green with dark words). `catalog.py` numbers a later batch
+**after** the first 110 instead of sorting it in, because a saved poster (`posters.theme`) and a
+saved template keep the key (`bg012-value-meals-menu`): renumbering would point them at another
+design. The index lists them inside their category, after the designs already there.
+
+```bash
+OUT=/tmp/pout; mkdir -p $OUT; ln -s "$PWD" $OUT/repo       # from the repository root
+cd docs/poster-themes/generator-source
+POSTER_VARIANT=large POSTER_FROM=111 python3 build_variant.py $OUT
+POSTER_VARIANT=small POSTER_FROM=111 python3 build_variant.py $OUT
+POSTER_FROM=111 python3 merge_more.py $OUT                # theme.json each, rows into index.json
+```
+
+A further batch goes in a new `postersN.py` added to the `later` loop in `catalog.py`, built with
+`POSTER_FROM` set to its first number. Contact sheet: `docs/poster-themes/new-designs-BG-111-136.jpg`.
+
 ## 7. Notes
 
 - All prices, discounts and times in the designs are placeholders.

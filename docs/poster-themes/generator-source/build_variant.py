@@ -1,7 +1,7 @@
 """Build one variant (POSTER_VARIANT=large|small) for all templates:
    print PDFs for its two sizes, and its half of every theme (files suffixed -large / -small + variant-<v>.json).
-   usage: POSTER_VARIANT=small python3 build_variant.py OUT [filter]"""
-import os, sys, io, json, re
+   usage: POSTER_VARIANT=small [POSTER_FROM=111] python3 build_variant.py OUT [filter]"""
+import os, sys, io, json, re, gzip
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cairosvg
 from PIL import Image
@@ -13,6 +13,7 @@ from flatten import flatten, grads, ops_of
 V = lib.VARIANT
 OUT = sys.argv[1]
 ONLY = sys.argv[2] if len(sys.argv) > 2 else ''
+FROM = int(os.environ.get('POSTER_FROM', '0'))  # build only BG-<FROM> onwards (a new batch)
 THEMES = os.path.join(OUT, 'repo/backend/resources/poster-themes')
 MONEY = re.compile(r'(MVR|\d+\s*%|\d+X\b|^\d+$|FREE|HALF PRICE|2 FOR 1|BUY 1|GET 1|ONLY)', re.I)
 
@@ -63,7 +64,7 @@ def placeholder(slot):
 
 
 def main():
-    rows = [r for r in entries() if ONLY in r['key']]
+    rows = [r for r in entries() if ONLY in r['key'] and int(r['num']) >= FROM]
     for r in rows:
         # print files for this variant's two sizes
         lib.EXPORT = None
@@ -88,7 +89,8 @@ def main():
         for it in draw:
             if 'ops' in it:
                 it['ops'] = [[o, [round(v, 2) for v in a]] for o, a in it['ops']]
-        json.dump(draw, open(os.path.join(tdir, f'backdrop-{V}.json'), 'w'), separators=(',', ':'))
+        with gzip.open(os.path.join(tdir, f'backdrop-{V}.json.gz'), 'wt') as f:
+            json.dump(draw, f, separators=(',', ':'))
         G = grads(back)
         texts = [s for s in slots if s['kind'] == 'text' and s['default'] != '']
         roles(texts)
@@ -126,7 +128,8 @@ def main():
                        'bleed_units': lib.BLEED, 'trim_box': [lib.BLEED, lib.BLEED, 420, 594],
                        'safe_inset_units': round(lib.SAFE, 2), 'min_text_units': lib.FLOOR,
                        'corner_keepout': None if V == 'small' else {'diameter_units': 20, 'centre_from_cut_units': 20}},
-            'files': {'preview': f'preview-{V}.jpg', 'backdrop_svg': f'backdrop-{V}.svg', 'backdrop_draw_list': f'backdrop-{V}.json'},
+            'files': {'preview': f'preview-{V}.jpg', 'backdrop_svg': f'backdrop-{V}.svg', 'backdrop_draw_list': f'backdrop-{V}.json.gz',
+                      'backdrop_draw_list_note': 'gzip-compressed JSON: json_decode(gzdecode(file_get_contents($path)), true)'},
             'logo': next((s for s in slots if s['kind'] == 'logo'), None),
             'qr': next((s for s in slots if s['kind'] == 'qr'), None),
             'photo_slots': photos, 'text_slots': texts,

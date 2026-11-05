@@ -28,7 +28,7 @@ class PosterThemeMakeTest extends TestCase
 
         $catalog = $this->getJson('/api/posters/catalog')->assertOk();
         $this->assertCount(13, $catalog->json('themes.categories'));
-        $this->assertCount(149, $catalog->json('themes.themes'));
+        $this->assertCount(175, $catalog->json('themes.themes'));
         $this->assertSame('large', $catalog->json('themes.sizes.A3'));
         $this->assertSame('tv', $catalog->json('themes.sizes.TV4K'));
         $this->assertSame(['print' => 'Print', 'screen' => 'TV screens'], $catalog->json('themes.kinds'));

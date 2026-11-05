@@ -39,10 +39,11 @@ On the server the worker must be running (crontab keepalive, full deploys). **Se
 shop** makes the order at once with the file queued; once the file is ready the job emails
 the shop (or asks for the proof), and a shop with no email gets a note on the order.
 
-## Templates (110 print designs, 39 TV designs)
+## Templates (136 print designs, 39 TV designs)
 
-Make a poster opens on the ready-made designs (`docs/POSTER_THEMES_HANDOFF.md`): 110 promo
-posters in 13 categories, 50 with photo frames, each in a `large` variant for A2 and A3 and
+Make a poster opens on the ready-made designs (`docs/POSTER_THEMES_HANDOFF.md`): 136 promo
+posters in 13 categories (BG-001 … BG-110, then the later batch BG-111 … BG-136, two per category;
+§ 6b of the handoff), each in a `large` variant for A2 and A3 and
 a `small` one for A4 and A5 (bigger small print, no stand-off corners), and 39 TV designs (three
 per category) drawn for screens (§ TV designs below). Pick one by category,
 style (With item photo, Extra colourful, Colourful, Classic brand colours) or search; the

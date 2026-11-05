@@ -1,5 +1,7 @@
-"""All 110 templates, grouped into 13 categories with a global number."""
-import posters, posters2, posters3, posters4, posters5
+"""All print templates, grouped into 13 categories with a global number. The first 110
+(posters.py … posters5.py) are sorted together; later batches (posters6.py) are numbered after
+them, so a key that is already saved on a poster or template never changes."""
+import posters, posters2, posters3, posters4, posters5, posters6
 
 CATS = [
     ('disc',   '01', 'Discounts & Sales',          'Percent-off, flash sales, weekend sales'),
@@ -47,6 +49,16 @@ def entries():
     order = {c[0]: i for i, c in enumerate(CATS)}
     srank = {'photo': 0, 'extra': 1, 'colour': 2, 'classic': 3}
     rows.sort(key=lambda r: (order[r['cat']], srank[r['style']], r['slug']))
+    later = []
+    for mod in (posters6,):
+        batch = []
+        for key, fn in mod.P.items():
+            m = mod.META[key]
+            batch.append(dict(cat=m['category'], slug=m['slug'], style='photo' if m['has_photo'] else 'colour',
+                              fn=fn, has_photo=m['has_photo'], layout=m['layout'], palette=m['palette']))
+        batch.sort(key=lambda r: (order[r['cat']], srank[r['style']], r['slug']))
+        later += batch
+    rows += later
     for i, r in enumerate(rows, 1):
         c = CAT[r['cat']]
         r['num'] = f'{i:03d}'
