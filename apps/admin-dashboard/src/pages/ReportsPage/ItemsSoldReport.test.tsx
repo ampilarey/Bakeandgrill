@@ -115,6 +115,7 @@ describe('ItemsSoldReport', () => {
 
   it('opens straight on an item from the address', async () => {
     renderAt('/reports?tab=Items+Sold&from=2026-10-27&to=2026-10-27&item=2&size=0');
-    expect(await screen.findByTestId('item-view', {}, { timeout: 5000 })).toHaveTextContent('Bajiya · 2 · 0');
+    // The title fills in once the report has loaded, so wait for it rather than the first paint.
+    await waitFor(() => expect(screen.getByTestId('item-view')).toHaveTextContent('Bajiya · 2 · 0'), { timeout: 5000 });
   });
 });

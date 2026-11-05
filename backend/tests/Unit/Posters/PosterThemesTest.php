@@ -23,7 +23,7 @@ use Tests\TestCase;
 class PosterThemesTest extends TestCase
 {
     /** The print designs (BG-001 … BG-110) and the TV designs (TV-001 …). */
-    public const PRINT = 110;
+    public const PRINT = 136;
 
     public const SCREEN = 39;
 
@@ -41,23 +41,23 @@ class PosterThemesTest extends TestCase
         $this->assertSame(self::PRINT, array_sum(array_map(static fn (array $c): int => $c['counts']['print'], $categories)));
         $this->assertSame(self::SCREEN, array_sum(array_map(static fn (array $c): int => $c['counts']['screen'], $categories)));
         $this->assertSame('disc', $categories[0]['key']);
-        $this->assertSame(7, $categories[0]['counts']['print']);
+        $this->assertSame(9, $categories[0]['counts']['print']);
         $this->assertSame(3, $categories[0]['counts']['screen']);
-        $this->assertSame(10, $categories[0]['count']);
+        $this->assertSame(12, $categories[0]['count']);
         $this->assertSame(['classic', 'colour', 'extra', 'photo'], array_keys(PosterThemes::styles()));
 
         $all = PosterThemes::all();
         $this->assertCount(self::PRINT + self::SCREEN, $all);
         $this->assertSame('BG-001', $all[0]['id']);
-        $this->assertSame('BG-110', $all[self::PRINT - 1]['id']);
+        $this->assertSame('BG-136', $all[self::PRINT - 1]['id']);
         $this->assertSame('print', $all[0]['kind']);
         $this->assertSame('TV-001', $all[self::PRINT]['id']);
         $this->assertSame('screen', $all[self::PRINT]['kind']);
         $this->assertCount(self::PRINT, PosterThemes::ofKind('print'));
         $this->assertCount(self::SCREEN, PosterThemes::ofKind('screen'));
-        $this->assertCount(50, array_filter(PosterThemes::ofKind('print'), static fn (array $row): bool => $row['style'] === 'photo'));
-        $this->assertCount(74, array_filter($all, static fn (array $row): bool => $row['has_photo']));
-        $this->assertCount(14, PosterThemes::inCategory('combo'));
+        $this->assertCount(68, array_filter(PosterThemes::ofKind('print'), static fn (array $row): bool => $row['style'] === 'photo'));
+        $this->assertCount(92, array_filter($all, static fn (array $row): bool => $row['has_photo']));
+        $this->assertCount(16, PosterThemes::inCategory('combo'));
         $this->assertSame([], PosterThemes::inCategory('nope'));
 
         $this->assertTrue(PosterThemes::has('bg012-value-meals-menu'));

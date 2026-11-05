@@ -168,7 +168,7 @@ class PosterThemePdfTest extends TestCase
             $this->assertSame('TIKKA DEALS', $texts['t2']['text'], $size);
             $this->assertSame('anton', $texts['t2']['font'], $size);
             $this->assertSame('CHICKEN TIKKA', $texts['t3']['text'], $size);
-            $this->assertSame('MEAL DEALS' === $texts['t2']['text'], false);
+            $this->assertSame($texts['t2']['text'] === 'MEAL DEALS', false);
             $this->assertArrayNotHasKey('t18', $texts, $size . ' a blanked line prints nothing');
             $this->assertSame('Terms & conditions apply', PosterThemes::get('bg012-value-meals-menu')['variants']['large']['text_slots'][17]['default']);
             $this->assertSame('center', $texts['t2']['align']);
