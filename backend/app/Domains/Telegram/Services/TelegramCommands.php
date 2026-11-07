@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Telegram\Services;
 
 use App\Domains\Finance\Services\RefundWorkflowService;
+use App\Domains\Orders\Support\ActiveOrders;
+use App\Domains\Payments\Services\PaymentService;
 use App\Domains\Permissions\Services\PermissionService;
+use App\Domains\Printing\Services\PrintJobService;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Domains\Shifts\Services\ShiftAccessService;
 use App\Domains\Telegram\Support\TelegramText as T;
@@ -214,6 +217,7 @@ class TelegramCommands
         $lines = $this->dayReportLines($day);
 
         if ($day->isToday()) {
+            array_push($lines, ...$this->openOrderLines());
             $open = Shift::query()->whereNull('closed_at')->count();
             $lines[] = '';
             $lines[] = $open === 0 ? 'No shift open right now.' : ($open === 1 ? '1 shift open.' : "{$open} shifts open.");
@@ -221,6 +225,49 @@ class TelegramCommands
 
         $yesterday = $day->copy()->subDay()->toDateString();
         $this->send($link, implode("\n", $lines), [], [[T::button('◀ ' . Carbon::parse($yesterday)->format('D j M'), 'td:' . $yesterday)]]);
+    }
+
+    /**
+     * What is still open right now, from the till's own Active orders (`ActiveOrders`): the saved
+     * tickets waiting to be paid, each with its seat or name, what is left to pay and how long it
+     * has waited, then the online orders still in the kitchen or on the way (owner, 2026-11-07:
+     * "How about adding the open/saved orders in this").
+     *
+     * @return list<string>
+     */
+    public function openOrderLines(int $show = 8): array
+    {
+        $orders = ActiveOrders::apply(Order::query())
+            ->orderBy('created_at')
+            ->get(['id', 'order_number', 'type', 'status', 'payment_status', 'ticket_name', 'restaurant_table_id', 'total', 'total_laar', 'created_at', 'user_id']);
+        if ($orders->isEmpty()) {
+            return ['', 'No open orders.'];
+        }
+
+        $tickets = $orders->filter(fn (Order $o): bool => ActiveOrders::isUnpaidTicket((string) $o->type, $o->payment_status));
+        $online = $orders->count() - $tickets->count();
+        $payments = app(PaymentService::class);
+        $rows = $tickets->map(fn (Order $o): array => ['order' => $o, 'due' => $payments->getRemainingBalanceLaar($o) / 100]);
+        $due = (float) $rows->sum('due');
+
+        $lines = [''];
+        if ($tickets->isNotEmpty()) {
+            $lines[] = '<b>Open tickets</b> ' . $tickets->count() . ' · ' . T::mvr($due) . ' to pay';
+            foreach ($rows->take($show) as $r) {
+                $o = $r['order'];
+                $who = PrintJobService::seatLine($o) ?? '#' . $o->order_number;
+                $lines[] = '• ' . T::e($who) . ' · ' . T::e($this->typeLabel((string) $o->type)) . ' · ' . T::mvr($r['due'])
+                    . ' · open ' . T::ago($o->created_at);
+            }
+            if ($tickets->count() > $show) {
+                $lines[] = '…and ' . ($tickets->count() - $show) . ' more';
+            }
+        }
+        if ($online > 0) {
+            $lines[] = '<b>Online in progress</b> ' . $online;
+        }
+
+        return $lines;
     }
 
     /**

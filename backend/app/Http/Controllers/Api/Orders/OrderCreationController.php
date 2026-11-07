@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Orders;
 
 use App\Domains\Orders\Services\OrderVisibilityService;
+use App\Domains\Orders\Support\ActiveOrders;
 use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCustomerOrderRequest;
@@ -27,7 +28,7 @@ use Illuminate\Http\Request;
 class OrderCreationController extends Controller
 {
     /** How a customer pays online (a pay link or an invoice through the gateway), as the payments table records it. */
-    private const ONLINE_PAYMENT_METHODS = ['bml_connect', 'bml_pay', 'bml', 'online', 'stripe'];
+    private const ONLINE_PAYMENT_METHODS = ActiveOrders::ONLINE_PAYMENT_METHODS;
 
     /**
      * GET /api/orders — staff order list with filters.
@@ -220,37 +221,7 @@ class OrderCreationController extends Controller
         //     even when paid, so staff can Start cooking → Ready →
         //     Picked up / Delivered.
         if ($request->filled('active_only') && $request->boolean('active_only')) {
-            $query->whereNotIn('status', ['cancelled', 'refunded', 'completed', 'payment_pending']);
-            // Online gift-card purchases are not kitchen/cashier tickets.
-            $query->where('type', '!=', 'gift_card');
-            // Event orders live on the dedicated POS Events tab — never Active Orders.
-            $query->where('type', '!=', 'catering');
-
-            $query->where(function ($w) {
-                $w->whereIn('type', ['online_pickup', 'delivery'])
-                    ->orWhere(function ($w2) {
-                        $w2->whereIn('type', ['dine_in', 'takeaway'])
-                            ->where(function ($w3) {
-                                $w3->whereNull('payment_status')
-                                    ->orWhereIn('payment_status', ['unpaid', 'partial']);
-                            });
-                    })
-                    // Prepaid dine-in (customer paid online, user_id null) stays
-                    // visible even while fully paid — staff still have to fire
-                    // the kitchen, seat the guest, and possibly ring add-ons.
-                    ->orWhere(function ($w4) {
-                        $w4->where('type', 'dine_in')->whereNull('user_id');
-                    })
-                    // A takeaway the customer paid online (owner, 2026-10-15:
-                    // the cashier sent the invoice or pay link, the customer
-                    // paid it): it stays until the till marks it Collected,
-                    // as an online pickup does. A takeaway paid at the till
-                    // still leaves as soon as it is paid.
-                    ->orWhere(function ($w5) {
-                        $w5->where('type', 'takeaway')
-                            ->whereHas('payments', fn ($p) => $p->whereIn('method', self::ONLINE_PAYMENT_METHODS)->whereIn('status', ['paid', 'completed', 'confirmed']));
-                    });
-            });
+            ActiveOrders::apply($query);
         }
 
         // Cashier scope for receipts/history only — active orders are venue-wide.

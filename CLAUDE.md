@@ -480,8 +480,12 @@ shop-group feeds (`/feed@<bot>` online orders, `/feed@<bot> buying` the buying
 list; buttons checked against whoever presses; cards follow the order or
 request). No shift figures for cashiers: the close count is blind. Owner extras
 behind 🧰 More (who's working, low stock, find an order, message staff) and two
-Telegram-only alerts (order cancelled at the till, cash out). See
-`docs/TELEGRAM_BOTS.md`.
+Telegram-only alerts (order cancelled at the till, cash out). 📊 Today ends, while it is today,
+with the open tickets (owner, 2026-11-07: "How about adding the open/saved orders in this"):
+the till's own Active orders through `App\Domains\Orders\Support\ActiveOrders::apply()`, the one
+rule `GET /api/orders?active_only=1` uses too, each saved ticket with its seat or name, what is
+left to pay and how long it has been open, and online orders still in progress as a count
+(`TelegramCommands::openOrderLines()`). See `docs/TELEGRAM_BOTS.md`.
 
 ## Alert channels per role and person
 

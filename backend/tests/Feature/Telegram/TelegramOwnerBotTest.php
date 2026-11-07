@@ -13,7 +13,9 @@ use App\Models\AuditLog;
 use App\Models\Device;
 use App\Models\Item;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Refund;
+use App\Models\RestaurantTable;
 use App\Models\Shift;
 use App\Models\SiteSetting;
 use App\Models\SmsLog;
@@ -203,6 +205,36 @@ class TelegramOwnerBotTest extends TestCase
         $this->assertStringContainsString('<b>Sales</b> MVR 200.00', $text);
         $this->assertStringContainsString('<b>Orders</b> 2', $text);
         $this->assertStringContainsString('Takeaway: 1', $text);
+    }
+
+    /**
+     * Owner, 2026-11-07: "How about adding the open/saved orders in this". Today lists the till's
+     * own Active orders: a saved ticket with its seat and what is left to pay, never a paid sale,
+     * and online orders still in the kitchen as a count.
+     */
+    public function test_today_lists_the_open_tickets_and_what_is_left_to_pay(): void
+    {
+        $owner = $this->staff('owner', '+9607820288');
+        $bot = $this->bot();
+        $this->link($bot, $owner, '5550001');
+        $table = RestaurantTable::create(['name' => 'No. 4', 'kind' => 'stand', 'status' => 'occupied', 'is_active' => true]);
+        $saved = Order::factory()->dineIn()->create([
+            'status' => 'pending', 'payment_status' => 'partial', 'total' => 60, 'total_laar' => 6000,
+            'restaurant_table_id' => $table->id, 'user_id' => $owner->id, 'created_at' => now()->subMinutes(25),
+        ]);
+        Payment::create(['order_id' => $saved->id, 'method' => 'cash', 'amount' => 20, 'amount_laar' => 2000, 'status' => 'paid', 'processed_at' => now()]);
+        Order::factory()->takeaway()->create(['status' => 'pending', 'payment_status' => 'unpaid', 'ticket_name' => 'Ahmed', 'total' => 15, 'total_laar' => 1500, 'user_id' => $owner->id]);
+        Order::factory()->paid()->create(['payment_status' => 'paid', 'total' => 150, 'total_laar' => 15000, 'type' => 'takeaway', 'user_id' => $owner->id]);
+        Order::factory()->onlinePickup()->create(['status' => 'in_progress', 'payment_status' => 'paid']);
+
+        $this->telegramText($bot, '5550001', '📊 Today')->assertOk();
+
+        $text = $this->lastText('5550001');
+        $this->assertStringContainsString('<b>Open tickets</b> 2 · MVR 55.00 to pay', $text);
+        $this->assertStringContainsString('• No. 4 · Dine in · MVR 40.00 · open 25m', $text);
+        $this->assertStringContainsString('• Ahmed · Takeaway · MVR 15.00', $text);
+        $this->assertStringContainsString('<b>Online in progress</b> 1', $text);
+        $this->assertStringNotContainsString('MVR 150.00 ·', $text, 'a paid sale is not an open ticket');
     }
 
     public function test_shifts_shows_who_is_on_and_the_drawer_cash(): void
