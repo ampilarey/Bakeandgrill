@@ -10,6 +10,16 @@ export type OrderItem = {
   total_price: number;
 };
 
+export type OrderTimelineStep = {
+  key: string;
+  label: string;
+  at: string;
+  minutes_from_previous: number | null;
+  minutes_from_start: number;
+};
+
+export type OrderTimelineData = { steps: OrderTimelineStep[]; total_minutes: number | null; open: boolean };
+
 export type Order = {
   id: number;
   order_number: string;
@@ -44,6 +54,8 @@ export type Order = {
   customer_unverified_phone?: string | null;
   notes?: string | null;
   paid_at?: string | null;
+  /** Every recorded step with the minutes between, on the staff order detail (OrderTimeline, 2026-11-07). */
+  timeline?: OrderTimelineData;
   /** Present on staff order detail (`GET /orders/{id}`) — used to hide Void when money exists. */
   payments?: Array<{
     id?: number; method?: string; amount?: number; status?: string | null;

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Orders;
 
 use App\Domains\Orders\Services\OrderVisibilityService;
 use App\Domains\Orders\Support\ActiveOrders;
+use App\Domains\Orders\Support\OrderTimeline;
 use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCustomerOrderRequest;
@@ -698,6 +699,8 @@ class OrderCreationController extends Controller
                     $order->setAttribute('customer_unverified_phone', $order->customer->unverified_phone);
                 }
             }
+            // Every recorded step with the minutes between (owner, 2026-11-07).
+            $order->setAttribute('timeline', OrderTimeline::for($order));
 
             return response()->json(['order' => $order]);
         }

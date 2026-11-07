@@ -90,6 +90,19 @@
         "gift_to_name": null,
         "gift_to_phone": null,
         "gift_message": null,
+        "timeline": {
+            "steps": [
+                {
+                    "key": "start",
+                    "label": "Rung up",
+                    "at": "__VOLATILE__",
+                    "minutes_from_previous": null,
+                    "minutes_from_start": 0
+                }
+            ],
+            "total_minutes": null,
+            "open": true
+        },
         "items": [
             {
                 "id": "__VOLATILE__",

@@ -73,6 +73,11 @@ class OrderObserver
         if ($next === 'cancelled' && $order->cancelled_at === null) {
             $order->cancelled_at = now();
         }
+        // Ticket times (owner, 2026-11-07): every path to completed records when, not only
+        // the till's Collected, so the timeline and the report have the end of each ticket.
+        if ($next === 'completed' && $order->completed_at === null) {
+            $order->completed_at = now();
+        }
 
         return true;
     }

@@ -1541,6 +1541,25 @@ week or month (the dashboard's `TrendChart`); by hour of the day and by day of t
 the weekday × hour grid (`HeatGrid`, both in `components/charts/`); and by size, order type and staff;
 every size or one, count or money, its own period chips. `ItemSalesTest`, `ItemSalesView.test.tsx`.
 
+## Ticket times
+
+Owner, 2026-11-07 ("Will the site record time for each ticket and can admin view that?" → "Both").
+Every order keeps its own stamps (`created_at`, `held_at`, `fired_at`, `kitchen_started_at`,
+`kitchen_done_at` / `ready_at`, `paid_at`, `driver_assigned_at`, `picked_up_at`, `delivered_at`,
+`completed_at`, `cancelled_at`); `OrderObserver` stamps cooking, ready, cancelled and, since this
+change, completed on every path. `App\Domains\Orders\Support\OrderTimeline::for()` turns them into
+the steps in the order they happened with the minutes between ("Rung up" or "Placed online", Sent to
+kitchen, Cooking started, Ready, Paid, Collected / Completed / Delivered…), carried as `timeline` on
+the staff order detail (`GET /api/orders/{id}`) and drawn by `TicketTimeline` in the Orders panel.
+Reports → Operations → **Ticket times** (`TicketTimesReport.tsx`, `GET /api/reports/ticket-times`,
+`reports.view`, `App\Domains\Reporting\Services\TicketTimes`) measures five stages from the same
+`OrderTimeline::stamps()`: rung up → kitchen, cooking, ready → collected, waiting to pay (till tickets
+only) and the whole ticket; typical (median), average, slow (one in ten slower) and longest, by hour,
+day, order type and cashier, and the 15 slowest tickets opening their order (`/orders?order=`). A
+stage over `TicketTimes::MAX_MINUTES` (12 h) is a ticket closed long after and is left out and
+counted. A new stamp on an order goes into `OrderTimeline` (and `stamps()` if a stage reads it).
+`TicketTimesTest`, `TicketTimeline.test.tsx`, `TicketTimesReport.test.tsx`.
+
 ## Live order streams: the cursor is in the app's timezone
 
 Owner, 2026-10-29: Admin → Orders "flicks, content appears and dissapears quickly". The

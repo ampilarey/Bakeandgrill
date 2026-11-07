@@ -403,6 +403,22 @@ class ReportsController extends Controller
         ));
     }
 
+    /** How long tickets take, stage by stage (owner, 2026-11-07). */
+    public function ticketTimes(Request $request, \App\Domains\Reporting\Services\TicketTimes $report)
+    {
+        $data = $request->validate([
+            'user_id' => 'nullable|integer|min:1',
+            'type' => 'nullable|string|max:40',
+        ]);
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json($report->report(
+            \Carbon\CarbonImmutable::instance($from),
+            \Carbon\CarbonImmutable::instance($to),
+            ['user_id' => isset($data['user_id']) ? (int) $data['user_id'] : null, 'type' => $data['type'] ?? null],
+        ));
+    }
+
     /** The dashboard's Sales section: a period beside the one before it (2026-10-27). */
     public function salesTrend(Request $request, \App\Domains\Reporting\Services\SalesTrend $trend)
     {

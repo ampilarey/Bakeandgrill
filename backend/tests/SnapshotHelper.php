@@ -33,6 +33,8 @@ trait SnapshotHelper
         'hold_key',
         'created_at',
         'updated_at',
+        // A timeline step's time (OrderTimeline, 2026-11-07).
+        'at',
         // Kitchen audit, 2026-09-26: when a ticket's kitchen clock started.
         'kitchen_clock_at',
         'deleted_at',

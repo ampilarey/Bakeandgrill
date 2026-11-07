@@ -16,6 +16,7 @@ import { ADMIN_ORDER_PAYMENT_METHODS, paymentMethodLabel } from '../lib/paymentM
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { OrderMessagesPanel } from '../components/OrderMessagesPanel';
+import { TicketTimeline } from '../components/TicketTimeline';
 import {
   Badge, Btn, Card, EmptyState, TableStateBar, PageHeader, PageShell, Select, Spinner, statColor, ConfirmDialog, useConfirmDialog, Modal, TableCard, InlineIcon,
 } from '../components/SharedUI';
@@ -656,6 +657,8 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                 />
               )}
             </div>
+
+            <TicketTimeline timeline={order.timeline} />
 
             {order.type === 'delivery' && order.delivery_address_line1 && (
               <div style={{ background: 'var(--color-tone-rust-bg)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>

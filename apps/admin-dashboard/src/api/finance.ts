@@ -2166,3 +2166,31 @@ export async function fetchItemSales(itemId: number, q: Omit<ItemsSoldQuery, 'ca
   if (q.type) qs.set('type', q.type);
   return req(`/reports/items-sold/${itemId}?${qs.toString()}`);
 }
+
+// ── Ticket times (owner, 2026-11-07): how long tickets take, stage by stage ──
+export type TicketStageKey = 'to_kitchen' | 'cooking' | 'handover' | 'to_pay' | 'total';
+export type TicketStageStats = { count: number; avg: number | null; median: number | null; p90: number | null; max: number | null };
+export type TicketTimesGroup = { key: string; tickets: number; name?: string } & Record<TicketStageKey, number | null>;
+export type TicketTimesSlow = {
+  id: number; order_number: string; type: string; at: string; who: string | null; staff: string | null;
+} & Record<TicketStageKey, number | null>;
+export type TicketTimesReport = {
+  range: { from: string; to: string };
+  tickets: number;
+  stages: Record<TicketStageKey, TicketStageStats>;
+  left_out: Record<TicketStageKey, number>;
+  max_minutes: number;
+  by_day: TicketTimesGroup[];
+  by_hour: TicketTimesGroup[];
+  by_type: TicketTimesGroup[];
+  by_staff: TicketTimesGroup[];
+  slowest: TicketTimesSlow[];
+  type_choices: string[];
+  staff_choices: { id: number; name: string }[];
+};
+export async function fetchTicketTimes(q: { from: string; to: string; type?: string | null; user_id?: number | null }): Promise<TicketTimesReport> {
+  const qs = new URLSearchParams({ from: q.from, to: q.to });
+  if (q.type) qs.set('type', q.type);
+  if (q.user_id) qs.set('user_id', String(q.user_id));
+  return req(`/reports/ticket-times?${qs.toString()}`);
+}

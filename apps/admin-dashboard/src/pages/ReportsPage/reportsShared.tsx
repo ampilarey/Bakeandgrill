@@ -90,7 +90,7 @@ export const REPORT_SECTIONS = [
   {
     id: 'operations',
     label: 'Operations',
-    tabs: ['Delivery Zones', 'Discounts', 'Voids', 'Refunds', 'Overrides', 'Shift Variances'],
+    tabs: ['Ticket Times', 'Delivery Zones', 'Discounts', 'Voids', 'Refunds', 'Overrides', 'Shift Variances'],
   },
   {
     id: 'inventory',
