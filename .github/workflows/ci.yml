@@ -350,7 +350,9 @@ jobs:
 
   e2e:
     name: Playwright E2E (smoke)
-    runs-on: ubuntu-latest
+    # ubuntu-latest moved to 26.04 (2026-11-08), where Playwright 1.58 cannot install
+    # Chromium; stay on 24.04 until Playwright supports it.
+    runs-on: ubuntu-24.04
     needs: [frontend, test]
     # E2E runs against the live test server — skip on forks (no secrets)
     if: github.event_name == 'push' || github.event_name == 'pull_request'
@@ -406,7 +408,9 @@ jobs:
 
   e2e-gate:
     name: Playwright E2E (production gate)
-    runs-on: ubuntu-latest
+    # ubuntu-latest moved to 26.04 (2026-11-08), where Playwright 1.58 cannot install
+    # Chromium; stay on 24.04 until Playwright supports it.
+    runs-on: ubuntu-24.04
     needs: [frontend, test]
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
 
