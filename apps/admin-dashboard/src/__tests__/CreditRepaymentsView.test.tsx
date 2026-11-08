@@ -15,7 +15,7 @@ const { api, response } = vi.hoisted(() => {
     method: 'all',
     rows: [
       { id: 3, at: '2026-10-06 23:50', date: '2026-10-06', customer_id: 2, customer: 'Hassan', phone: '+9607772222', channel: 'retail', method: 'bank_transfer', method_label: 'Bank transfer', amount_mvr: 200, balance_after_mvr: 0, reference: 'BML ref 99812', invoices: ['INV-1'], recorded_by: 'Owner', shift_id: null },
-      { id: 2, at: '2026-10-06 18:00', date: '2026-10-06', customer_id: 2, customer: 'Corner Shop', phone: null, channel: 'wholesale', method: 'online', method_label: 'Online (BML)', amount_mvr: 30, balance_after_mvr: 0, reference: null, invoices: [], recorded_by: 'Online', shift_id: null },
+      { id: 2, at: '2026-10-06 18:00', date: '2026-10-06', customer_id: 2, customer: 'Corner Shop', phone: null, channel: 'wholesale', method: 'online', method_label: 'Online (BML)', amount_mvr: 30, balance_after_mvr: 0, reference: null, invoices: [], recorded_by: 'Customer (paid online)', shift_id: null },
       { id: 1, at: '2026-10-06 09:15', date: '2026-10-06', customer_id: 1, customer: 'Aisha', phone: '+9607771111', channel: 'retail', method: 'cash', method_label: 'Cash', amount_mvr: 100, balance_after_mvr: 50, reference: null, invoices: [], recorded_by: 'Owner', shift_id: 7 },
     ],
     totals: {

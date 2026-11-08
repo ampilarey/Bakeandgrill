@@ -105,7 +105,9 @@ final class CreditRepaymentsReport
                 'balance_after_mvr' => round((int) $r->balance_after_laar / 100, 2),
                 'reference' => $r->notes,
                 'invoices' => $applied,
-                'recorded_by' => $r->recordedBy?->name ?? ($r->payment_id ? 'Online' : null),
+                // A card payment online is the customer's own: the ledger keeps the
+                // owner as the stand-in actor for gateway settlements, never a cashier.
+                'recorded_by' => $r->payment_id !== null ? self::PAID_ONLINE_BY : $r->recordedBy?->name,
                 'shift_id' => $r->shift_id,
             ];
         })->values()->all();
@@ -133,6 +135,8 @@ final class CreditRepaymentsReport
             'truncated' => $truncated,
         ];
     }
+
+    public const PAID_ONLINE_BY = 'Customer (paid online)';
 
     public static function methodKey(CustomerCreditLedger $row): string
     {

@@ -181,7 +181,7 @@ export function CreditRepaymentsView() {
                 <Badge color={METHOD_COLOR[r.method] ?? 'gray'} label={r.method_label} />
                 {r.reference && <span>Ref {r.reference}</span>}
                 {r.invoices.length > 0 && <span>{r.invoices.join(', ')}</span>}
-                {r.recorded_by && <span>by {r.recorded_by}</span>}
+                {r.recorded_by && <span>{r.method === 'online' ? r.recorded_by : `by ${r.recorded_by}`}</span>}
               </div>
             </div>
           ))}

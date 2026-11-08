@@ -249,7 +249,8 @@ class CreditAccountsPageTest extends TestCase
             'balance_after_laar' => 0,
             'method' => $method,
             'payment_id' => $paymentId,
-            'recorded_by' => $paymentId ? null : $this->owner->id,
+            // Online settlements keep the owner as the stand-in actor.
+            'recorded_by' => $this->owner->id,
             'notes' => $note,
         ]);
         CustomerCreditLedger::whereKey($row->id)->update(['created_at' => \Illuminate\Support\Carbon::parse($at, 'Indian/Maldives')->format('Y-m-d H:i:s')]);
@@ -289,7 +290,8 @@ class CreditAccountsPageTest extends TestCase
         $this->assertSame(['bank_transfer', 'online', 'card', 'cash'], array_column($rows, 'method'));
         $this->assertSame('2026-10-06 23:50', $rows[0]['at']);
         $this->assertSame('BML ref 99812', $rows[0]['reference']);
-        $this->assertSame('Online', $rows[1]['recorded_by']);
+        $this->assertSame('Customer (paid online)', $rows[1]['recorded_by']);
+        $this->assertSame($this->owner->name, $rows[0]['recorded_by']);
     }
 
     public function test_repayments_filter_by_method_and_search_but_totals_keep_every_method(): void
