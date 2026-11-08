@@ -11,6 +11,7 @@ import {
 } from '../../api';
 import { type CutoutBackdrop, normalizeBackdrop } from '../../api/cutout';
 import { useConfirmDialog } from '../../components/SharedUI';
+import { useOptionalToast } from '../../components/ui/Toast';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import { emptyItemForm, formToPayload, itemToForm, type ItemForm } from './menuItemForm';
 
@@ -276,10 +277,14 @@ export function useMenuPage() {
       .catch((e: Error) => setError(e.message));
   };
 
-  // After a recipe is saved the roll-up cost changes, so refresh the row's
-  // margin badge by reloading the list; keep the modal on the fresh figures.
+  // After a recipe is saved the roll-up cost changes, so refresh the row's margin badge by
+  // reloading the list. The box closes (owner, 2026-11-08: "when save recipe is clicked, box does
+  // not go automatically") and a note says it saved, with the new cost.
+  const toaster = useOptionalToast();
   const handleRecipeSaved = (updated: ItemWithRecipe) => {
-    setRecipeItem(updated);
+    setRecipeItem(null);
+    const cost = typeof updated.recipe_cost === 'number' ? ` · cost MVR ${updated.recipe_cost.toFixed(2)}` : '';
+    toaster?.toast('success', `Recipe saved for ${updated.name}${cost}`);
     void loadItems();
   };
 

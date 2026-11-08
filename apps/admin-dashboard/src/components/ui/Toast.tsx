@@ -98,6 +98,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** The toaster when one is mounted, else null (a screen drawn on its own in a test). */
+export function useOptionalToast(): ToastContextValue | null {
+  return useContext(ToastContext);
+}
+
 export function useToast(): ToastContextValue {
   const ctx = useContext(ToastContext);
   if (!ctx) throw new Error('useToast must be used inside ToastProvider');
