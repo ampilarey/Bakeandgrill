@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { PhotoDropZone } from '../../components/PhotoDropZone';
 import { ChevronLeft, ChevronRight, Crop, Images, Star, Trash2, Upload } from 'lucide-react';
 import { getItemPhotos, uploadItemPhoto, updateItemPhoto, deleteItemPhoto, reorderItemPhotos, uploadItemVideo, type ItemPhoto } from '../../api';
 import { addItemPhotoFromLibrary } from '../../api/menu';
@@ -309,6 +310,15 @@ function Gallery({ itemId }: { itemId: number }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {error && <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
 
+      <PhotoDropZone
+        accept={`image/*,.heic,.heif,${MENU_VIDEO_LIMITS.accept}`}
+        onFile={(f) => { if (f.type.startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(f.name)) void handleVideoPick(f); else void openCropperFromFile(f); }}
+        disabled={uploading}
+        onReject={setError}
+        label="Drop the photo or clip here"
+        hint="or drag photos or a clip here"
+        testId="gallery-drop-zone"
+      >
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button
           type="button"
@@ -354,6 +364,7 @@ function Gallery({ itemId }: { itemId: number }) {
           Add video clip (≤{MENU_VIDEO_LIMITS.maxSeconds}s)
         </button>
       </div>
+      </PhotoDropZone>
       <MediaPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}

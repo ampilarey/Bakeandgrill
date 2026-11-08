@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { PhotoDropZone } from '../../components/PhotoDropZone';
 import { Scissors, Trash2, Upload } from 'lucide-react';
 import {
   CUTOUT_ACCEPT,
@@ -98,6 +99,8 @@ export function CutoutSlot({ itemId }: { itemId: number }) {
       </p>
       {error && <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
 
+      <PhotoDropZone onFile={(f) => void upload(f)} accept={CUTOUT_ACCEPT} disabled={busy} onReject={setError}
+        label="Drop the cut-out PNG here" hint="or drag a PNG here" testId="cutout-drop-zone">
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
         <CutoutPreview
           src={cutoutSrc}
@@ -145,6 +148,7 @@ export function CutoutSlot({ itemId }: { itemId: number }) {
           }}
         />
       </div>
+      </PhotoDropZone>
 
       {state && (
         <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>

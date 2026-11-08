@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { PhotoDropZone } from '../../components/PhotoDropZone';
 import { Crop, Images, Trash2, Upload, Check } from 'lucide-react';
 import { uploadMenuImage } from '../../api';
 import { Input, InlineIcon } from '../../components/SharedUI';
@@ -186,6 +187,7 @@ export function ImageUploadField({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <PhotoDropZone onFile={(f) => void openCropperFromFile(f)} disabled={uploading} onReject={setUploadError}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         {/* A row of its own: beside the buttons it shrank to a stub ("http://127.0.0.1:8000/im"). */}
         <Input
@@ -275,6 +277,7 @@ export function ImageUploadField({
           }}
         />
       </div>
+      </PhotoDropZone>
       <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
         {cfg.help}
         {originalValue.trim() ? <> Master saved <InlineIcon icon={Check} gap={0} /></> : ''}
