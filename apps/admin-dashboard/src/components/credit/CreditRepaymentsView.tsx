@@ -98,7 +98,10 @@ export function CreditRepaymentsView() {
     whiteSpace: 'nowrap',
   });
 
-  const activeRange = RANGES.find((r) => r.from() === from && r.to() === to)?.id;
+  // All: from the first repayment on record to today (owner, 2026-11-08).
+  const firstDay = data?.first_day ?? null;
+  const allActive = firstDay !== null && from === firstDay && to === today();
+  const activeRange = allActive ? 'all' : RANGES.find((r) => r.from() === from && r.to() === to)?.id;
   const totals = data?.totals;
   const byMethod = Object.fromEntries((totals?.by_method ?? []).map((m) => [m.method, m]));
 
@@ -109,6 +112,8 @@ export function CreditRepaymentsView() {
           {RANGES.map((r) => (
             <button key={r.id} type="button" style={chip(activeRange === r.id)} onClick={() => { setFrom(r.from()); setTo(r.to()); }}>{r.label}</button>
           ))}
+          <button type="button" data-testid="repayments-range-all" style={chip(activeRange === 'all')} disabled={!firstDay}
+            onClick={() => { if (firstDay) { setFrom(firstDay); setTo(today()); } }}>All</button>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
           <DateInput label="From" value={from} max={today()} onChange={(v) => { setFrom(v); if (v > to) setTo(v); }} />

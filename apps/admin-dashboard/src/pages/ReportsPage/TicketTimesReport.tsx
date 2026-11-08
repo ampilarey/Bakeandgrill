@@ -22,6 +22,7 @@ const QUICK_DAYS: { key: PresetKey; label: string }[] = [
   { key: 'this_week', label: 'This week' },
   { key: 'this_month', label: 'This month' },
   { key: 'last_month', label: 'Last month' },
+  { key: 'all', label: 'All' },
 ];
 
 export const STAGES: { key: TicketStageKey; label: string; help: string }[] = [
@@ -89,7 +90,7 @@ export function TicketTimesReport() {
     placeholderData: keepPreviousData,
   });
   const data = query.data;
-  const pickedPreset = QUICK_DAYS.find((p) => { const r = presetRange(p.key); return r.from === from && r.to === to; })?.key;
+  const pickedPreset = QUICK_DAYS.find((p) => { const r = presetRange(p.key, undefined, data?.first_day); return r.from === from && r.to === to; })?.key;
   const leftOut = data ? Object.values(data.left_out).reduce((a, b) => Math.max(a, b), 0) : 0;
 
   const exportCsv = () => {
@@ -110,7 +111,7 @@ export function TicketTimesReport() {
         <TabScrollRow role="group" aria-label="Days" style={{ gap: 6 }}>
           {QUICK_DAYS.map((p) => (
             <Btn key={p.key} small variant={pickedPreset === p.key ? 'primary' : 'secondary'} aria-pressed={pickedPreset === p.key}
-              onClick={() => { const r = presetRange(p.key); set({ from: r.from, to: r.to }); }}>{p.label}</Btn>
+              onClick={() => { const r = presetRange(p.key, undefined, data?.first_day); set({ from: r.from, to: r.to }); }}>{p.label}</Btn>
           ))}
         </TabScrollRow>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>

@@ -375,7 +375,7 @@ class ReportsController extends Controller
                 'user_id' => isset($data['user_id']) ? (int) $data['user_id'] : null,
                 'type' => $data['type'] ?? null,
             ],
-        ));
+        ) + ['first_day' => \App\Support\FirstDay::orders()]);
     }
 
     /** Every item sold in a period, optionally between two times of day and in one category (2026-10-27). */
@@ -400,7 +400,13 @@ class ReportsController extends Controller
                 'user_id' => isset($data['user_id']) ? (int) $data['user_id'] : null,
                 'type' => $data['type'] ?? null,
             ],
-        ));
+        ) + ['first_day' => \App\Support\FirstDay::orders()]);
+    }
+
+    /** The first day with an order, where the Reports page's All chip starts (owner, 2026-11-08). */
+    public function firstDay()
+    {
+        return response()->json(['first_day' => \App\Support\FirstDay::orders()]);
     }
 
     /** How long tickets take, stage by stage (owner, 2026-11-07). */
@@ -416,7 +422,7 @@ class ReportsController extends Controller
             \Carbon\CarbonImmutable::instance($from),
             \Carbon\CarbonImmutable::instance($to),
             ['user_id' => isset($data['user_id']) ? (int) $data['user_id'] : null, 'type' => $data['type'] ?? null],
-        ));
+        ) + ['first_day' => \App\Support\FirstDay::orders()]);
     }
 
     /** The dashboard's Sales section: a period beside the one before it (2026-10-27). */
@@ -441,7 +447,7 @@ class ReportsController extends Controller
                 'hour_from' => isset($data['hour_from']) ? (int) $data['hour_from'] : null,
                 'hour_to' => isset($data['hour_to']) ? (int) $data['hour_to'] : null,
             ],
-        ));
+        ) + ['first_day' => \App\Support\FirstDay::orders()]);
     }
 
     public function hourlySales(Request $request)
@@ -540,7 +546,10 @@ class ReportsController extends Controller
             throw ValidationException::withMessages(['to' => ['End date must be after start date.']]);
         }
 
-        if ($to->diffInDays($from) > 365) {
+        // "All" runs from the first order; nothing older exists, so a longer pick is pulled up to it.
+        $first = \App\Support\FirstDay::orders();
+        $from = \App\Support\FirstDay::clamp($from, $to, 365, $first);
+        if (\App\Support\FirstDay::tooLong($from, $to, 365, $first)) {
             throw ValidationException::withMessages(['from' => ['Date range cannot exceed 365 days.']]);
         }
 

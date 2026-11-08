@@ -25,6 +25,7 @@ const QUICK_DAYS: { key: PresetKey; label: string }[] = [
   { key: 'this_week', label: 'This week' },
   { key: 'this_month', label: 'This month' },
   { key: 'last_month', label: 'Last month' },
+  { key: 'all', label: 'All' },
 ];
 
 const QUICK_TIMES: { label: string; from: string; to: string }[] = [
@@ -202,7 +203,7 @@ export function ItemsSoldReport() {
     ?? data?.items.find((r) => r.item_id === openId);
   const openItem = (r: ItemsSoldRow) => set({ item: String(r.item_id), size: String(r.variant_id ?? 0) });
 
-  const pickedPreset = QUICK_DAYS.find((p) => { const r = presetRange(p.key); return r.from === from && r.to === to; })?.key;
+  const pickedPreset = QUICK_DAYS.find((p) => { const r = presetRange(p.key, undefined, data?.first_day); return r.from === from && r.to === to; })?.key;
   const categoryName = (data?.category_choices ?? []).find((c) => String(c.id) === category)?.name;
 
   return (
@@ -211,7 +212,7 @@ export function ItemsSoldReport() {
         <TabScrollRow role="group" aria-label="Days" style={{ gap: 6 }}>
           {QUICK_DAYS.map((p) => (
             <Btn key={p.key} small variant={pickedPreset === p.key ? 'primary' : 'secondary'} aria-pressed={pickedPreset === p.key}
-              onClick={() => { const r = presetRange(p.key); set({ from: r.from, to: r.to }); }}>{p.label}</Btn>
+              onClick={() => { const r = presetRange(p.key, undefined, data?.first_day); set({ from: r.from, to: r.to }); }}>{p.label}</Btn>
           ))}
         </TabScrollRow>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

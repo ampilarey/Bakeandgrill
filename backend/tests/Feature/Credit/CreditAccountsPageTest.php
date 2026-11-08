@@ -309,7 +309,9 @@ class CreditAccountsPageTest extends TestCase
         $this->assertSame(['Aisha'], array_column($res->json('rows'), 'customer'));
 
         $this->getJson('/api/admin/customers/credit-repayments?from=2026-10-06&to=2026-10-01')->assertStatus(422);
-        $this->getJson('/api/admin/customers/credit-repayments?from=2025-01-01&to=2026-10-06')->assertStatus(422);
+        // Back before the first repayment is All, allowed; a year-plus starting after it is not.
+        $this->getJson('/api/admin/customers/credit-repayments?from=2025-01-01&to=2026-10-06')->assertOk();
+        $this->getJson('/api/admin/customers/credit-repayments?from=2026-10-07&to=2027-12-01')->assertStatus(422);
         $this->getJson('/api/admin/customers/credit-repayments?method=cheque')->assertStatus(422);
     }
 

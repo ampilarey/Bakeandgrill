@@ -797,6 +797,8 @@ export type CreditRepaymentsResponse = {
     by_method: { method: Exclude<CreditRepaymentMethod, 'all'>; label: string; count: number; total_mvr: number }[];
   };
   truncated: boolean;
+  /** The first repayment on record, for the All chip. */
+  first_day?: string;
 };
 
 export type CreditRepaymentFilters = { from: string; to: string; method?: CreditRepaymentMethod; q?: string };

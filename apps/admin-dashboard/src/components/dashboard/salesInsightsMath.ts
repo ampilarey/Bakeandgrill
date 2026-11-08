@@ -7,7 +7,7 @@ import type { TrendFigures, TrendGroup, TrendPoint } from '../../api';
  * be tested on their own.
  */
 
-export type PresetKey = 'today' | 'yesterday' | 'this_week' | 'last_7' | 'this_month' | 'last_30' | 'last_month' | 'custom';
+export type PresetKey = 'today' | 'yesterday' | 'this_week' | 'last_7' | 'this_month' | 'last_30' | 'last_month' | 'all' | 'custom';
 
 export const PRESETS: { key: PresetKey; label: string }[] = [
   { key: 'today', label: 'Today' },
@@ -17,6 +17,7 @@ export const PRESETS: { key: PresetKey; label: string }[] = [
   { key: 'this_month', label: 'This month' },
   { key: 'last_30', label: 'Last 30 days' },
   { key: 'last_month', label: 'Last month' },
+  { key: 'all', label: 'All' },
   { key: 'custom', label: 'Pick dates' },
 ];
 
@@ -32,9 +33,11 @@ export function spanDays(r: Range): number {
   return Math.round((parse(r.to).getTime() - parse(r.from).getTime()) / 86_400_000) + 1;
 }
 
-export function presetRange(key: PresetKey, now: Date = new Date()): Range {
+/** `firstDay` is the first day with a sale (`first_day` on the reply), where All starts. */
+export function presetRange(key: PresetKey, now: Date = new Date(), firstDay?: string | null): Range {
   const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   switch (key) {
+    case 'all': return { from: firstDay && firstDay <= iso(t) ? firstDay : iso(t), to: iso(t) };
     case 'yesterday': { const y = addDays(t, -1); return { from: iso(y), to: iso(y) }; }
     case 'this_week': { const dow = (t.getDay() + 6) % 7; return { from: iso(addDays(t, -dow)), to: iso(t) }; }
     case 'last_7': return { from: iso(addDays(t, -6)), to: iso(t) };

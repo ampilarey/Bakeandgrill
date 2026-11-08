@@ -53,7 +53,7 @@ class CreditAccountsController extends Controller
     {
         [$from, $to, $method, $q] = $this->repaymentFilters($request);
 
-        return response()->json($report->build($from, $to, $method, $q));
+        return response()->json($report->build($from, $to, $method, $q) + ['first_day' => \App\Support\FirstDay::creditRepayments()]);
     }
 
     /** GET /admin/customers/credit-repayments.csv — the same list as a spreadsheet. */
@@ -111,7 +111,9 @@ class CreditAccountsController extends Controller
         $today = now($tz)->toDateString();
         $from = \Illuminate\Support\Carbon::parse($v['from'] ?? $today, $tz);
         $to = \Illuminate\Support\Carbon::parse($v['to'] ?? ($v['from'] ?? $today), $tz);
-        if ($from->diffInDays($to) > 366) {
+        $first = \App\Support\FirstDay::creditRepayments();
+        $from = \App\Support\FirstDay::clamp($from, $to, 366, $first);
+        if (\App\Support\FirstDay::tooLong($from, $to, 366, $first)) {
             throw \Illuminate\Validation\ValidationException::withMessages(['to' => ['Pick a range of a year or less.']]);
         }
 

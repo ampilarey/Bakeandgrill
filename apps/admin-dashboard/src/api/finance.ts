@@ -2081,6 +2081,8 @@ export type TrendFigures = {
 };
 export type TrendPoint = TrendFigures & { key: string; from: string; to: string };
 export type SalesTrend = {
+  /** The first day with a sale, where the All chip starts. */
+  first_day?: string;
   range: { from: string; to: string; days: number; group: TrendGroup };
   previous: { from: string; to: string };
   totals: TrendFigures;
@@ -2117,6 +2119,8 @@ export type ItemsSoldRow = {
   qty: number; sales: number; avg_price: number; orders: number; share: number;
 };
 export type ItemsSoldReport = {
+  /** The first day with a sale, where the All chip starts. */
+  first_day?: string;
   range: { from: string; to: string; time_from: string | null; time_to: string | null };
   totals: { items: number; qty: number; sales: number; orders: number };
   items: ItemsSoldRow[];
@@ -2143,6 +2147,8 @@ export type ItemSalesCell = { qty: number; sales: number; orders: number };
 export type ItemSalesSplit = { key: string; label: string; qty: number; sales: number; orders: number };
 export type ItemSalesFigures = { qty: number; sales: number; orders: number; avg_price: number; per_day: number; per_order: number };
 export type ItemSalesReport = {
+  /** The first day with a sale, where the All chip starts. */
+  first_day?: string;
   item: { id: number; name: string; category: string | null; sizes: { id: number; name: string; price: number; active: boolean }[] };
   range: { from: string; to: string; days: number; group: TrendGroup };
   previous: { from: string; to: string };
@@ -2175,6 +2181,8 @@ export type TicketTimesSlow = {
   id: number; order_number: string; type: string; at: string; who: string | null; staff: string | null;
 } & Record<TicketStageKey, number | null>;
 export type TicketTimesReport = {
+  /** The first day with a sale, where the All chip starts. */
+  first_day?: string;
   range: { from: string; to: string };
   tickets: number;
   stages: Record<TicketStageKey, TicketStageStats>;
@@ -2188,6 +2196,11 @@ export type TicketTimesReport = {
   type_choices: string[];
   staff_choices: { id: number; name: string }[];
 };
+/** The first day with an order, where the Reports page's All chip starts. */
+export async function fetchReportsFirstDay(): Promise<{ first_day: string }> {
+  return req('/reports/first-day');
+}
+
 export async function fetchTicketTimes(q: { from: string; to: string; type?: string | null; user_id?: number | null }): Promise<TicketTimesReport> {
   const qs = new URLSearchParams({ from: q.from, to: q.to });
   if (q.type) qs.set('type', q.type);

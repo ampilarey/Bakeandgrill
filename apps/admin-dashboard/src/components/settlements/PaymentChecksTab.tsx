@@ -53,14 +53,17 @@ const dayWord = (ymd: string) => new Date(`${ymd}T00:00:00`).toLocaleDateString(
 const timeWord = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true });
 
 /** The date presets, worked out from today each time they are drawn. */
-function presets(): Array<{ id: string; label: string; from: string; to: string }> {
-  return [
+function presets(startDate?: string | null): Array<{ id: string; label: string; from: string; to: string }> {
+  const list = [
     { id: 'today', label: 'Today', from: today(), to: today() },
     { id: 'yesterday', label: 'Yesterday', from: daysAgo(1), to: daysAgo(1) },
     { id: '7d', label: 'Last 7 days', from: daysAgo(6), to: today() },
     { id: 'month', label: 'This month', from: monthStart(), to: today() },
     { id: '30d', label: 'Last 30 days', from: daysAgo(30), to: today() },
   ];
+  // All: from the day checking started, since nothing before it is listed (owner, 2026-11-08).
+  if (startDate && startDate <= today()) list.push({ id: 'all', label: 'All', from: startDate, to: today() });
+  return list;
 }
 
 const card: React.CSSProperties = { background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: 14, padding: 12 };
@@ -162,7 +165,8 @@ export function PaymentChecksTab({ from, to, onRange, onError }: {
     return n;
   });
 
-  const preset = presets().find((p) => p.from === from && p.to === to);
+  const startDate = view?.range.start_date ?? null;
+  const preset = presets(startDate).find((p) => p.from === from && p.to === to);
   const extra = [
     userId && { key: 'user', text: view?.choices.staff.find((u) => String(u.id) === userId)?.name ?? 'Cashier', clear: () => setUserId('') },
     deviceId && { key: 'device', text: view?.choices.stations.find((d) => String(d.id) === deviceId)?.name ?? 'Station', clear: () => setDeviceId('') },
@@ -185,7 +189,7 @@ export function PaymentChecksTab({ from, to, onRange, onError }: {
       {/* Dates: presets first, two date boxes only when asked for. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <TabScrollRow fit style={{ gap: 6 }} role="tablist" aria-label="Dates">
-          {presets().map((p) => (
+          {presets(startDate).map((p) => (
             <button key={p.id} type="button" role="tab" aria-selected={!custom && preset?.id === p.id} style={chip(!custom && preset?.id === p.id)}
               onClick={() => { setCustom(false); onRange(p.from, p.to); }}>{p.label}</button>
           ))}

@@ -1580,6 +1580,17 @@ stage over `TicketTimes::MAX_MINUTES` (12 h) is a ticket closed long after and i
 counted. A new stamp on an order goes into `OrderTimeline` (and `stamps()` if a stage reads it).
 `TicketTimesTest`, `TicketTimeline.test.tsx`, `TicketTimesReport.test.tsx`.
 
+## Date presets end with All
+
+Owner, 2026-11-08 ("today, yesterday, … all"). Every row of date chips (Repayments, Check payments,
+the dashboard's Sales over time, Items Sold and an item's page, Ticket times, the Reports page's
+quick ranges) ends with **All**: from the first day on record to today. The first day comes with the
+reply (`first_day`, `App\Support\FirstDay::orders()` / `creditRepayments()`; Check payments uses
+its start date; the Reports page asks `GET /api/reports/first-day`, `reports.view`). A range check
+measures through `FirstDay::clamp()` and `tooLong()`, so a range from the first day on is everything
+there is and is never refused for its length. A new row of date chips gets All the same way.
+`AllDatesPresetTest`.
+
 ## Live order streams: the cursor is in the app's timezone
 
 Owner, 2026-10-29: Admin → Orders "flicks, content appears and dissapears quickly". The

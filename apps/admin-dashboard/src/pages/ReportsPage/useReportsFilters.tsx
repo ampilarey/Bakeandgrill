@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { fetchPosStaffOptions, fetchShiftHistory, fetchDevices } from '../../api';
+import { fetchPosStaffOptions, fetchShiftHistory, fetchDevices, fetchReportsFirstDay } from '../../api';
 import { Btn, Card, DateInput } from '../../components/SharedUI';
 import { daysAgo, tabNeedsDate, today, type Tab } from './reportsShared';
 import { inputFont } from '../../utils/cssVars';
@@ -90,6 +90,13 @@ export function ReportsFilters({
   shiftOptions,
   deviceOptions,
 }: ReportsFiltersProps) {
+  // All: from the first order to today (owner, 2026-11-08: "today, yesterday, … all").
+  const { data: firstDay } = useQuery({
+    queryKey: ['reports', 'first-day'],
+    queryFn: async () => (await fetchReportsFirstDay()).first_day,
+    staleTime: 10 * 60_000,
+  });
+
   return (
     <Card style={{ marginBottom: 20 }}>
       {/* Was the collapsible-panel body from Orders: on a phone it stacked
@@ -129,6 +136,10 @@ export function ReportsFilters({
               {label}
             </Btn>
           ))}
+          <Btn small variant="secondary" style={{ whiteSpace: 'nowrap' }} disabled={!firstDay} data-testid="reports-range-all"
+            onClick={() => { if (firstDay) { setFrom(firstDay); setTo(today()); } }}>
+            All
+          </Btn>
         </div>
       </div>
     </Card>

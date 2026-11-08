@@ -23,13 +23,14 @@ const TYPE_WORDS: Record<string, string> = { dine_in: 'Dine in', takeaway: 'Take
 const money = (v: number) => `MVR ${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const num = (v: number) => v.toLocaleString('en-US', { maximumFractionDigits: 1 });
 
-const PERIODS: { key: string; label: string; range: () => Range }[] = [
+const PERIODS: { key: string; label: string; range: (firstDay?: string | null) => Range }[] = [
   { key: 'today', label: 'Today', range: () => presetRange('today') },
   { key: 'last_7', label: 'Last 7 days', range: () => presetRange('last_7') },
   { key: 'last_30', label: 'Last 30 days', range: () => presetRange('last_30') },
   { key: 'this_month', label: 'This month', range: () => presetRange('this_month') },
   { key: 'last_90', label: 'Last 3 months', range: () => { const t = new Date(); const f = new Date(t); f.setDate(f.getDate() - 89); return { from: iso(f), to: iso(t) }; } },
   { key: 'last_365', label: 'Last 12 months', range: () => { const t = new Date(); const f = new Date(t); f.setDate(f.getDate() - 364); return { from: iso(f), to: iso(t) }; } },
+  { key: 'all', label: 'All', range: (firstDay) => presetRange('all', undefined, firstDay) },
 ];
 
 type Props = {
@@ -116,7 +117,7 @@ export function ItemSalesView({ itemId, variantId, title, initial, onClose }: Pr
           <TabScrollRow role="group" aria-label="Period" style={{ gap: 6 }}>
             {PERIODS.map((p) => (
               <Btn key={p.key} small variant={period === p.key ? 'primary' : 'secondary'} aria-pressed={period === p.key}
-                onClick={() => { setPeriod(p.key); setRange(p.range()); }}>{p.label}</Btn>
+                onClick={() => { setPeriod(p.key); setRange(p.range(data?.first_day)); }}>{p.label}</Btn>
             ))}
           </TabScrollRow>
           <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }} data-testid="item-sales-range">

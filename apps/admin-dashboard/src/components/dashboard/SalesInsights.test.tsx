@@ -166,3 +166,12 @@ describe('sales insights maths', () => {
     expect(csv.split('\n')[1]).toMatch(/^"?Tue,? 27 Oct"?,2026-10-27,2026-10-27,100\.00,10\.00,5\.00,8\.00,82\.00,2,50\.00,4$/);
   });
 });
+
+describe('the All preset', () => {
+  it('runs from the first day with a sale to today, never past today', () => {
+    const now = new Date(2026, 10, 8, 12);
+    expect(presetRange('all', now, '2025-03-02')).toEqual({ from: '2025-03-02', to: '2026-11-08' });
+    expect(presetRange('all', now, null)).toEqual({ from: '2026-11-08', to: '2026-11-08' });
+    expect(presetRange('all', now, '2027-01-01')).toEqual({ from: '2026-11-08', to: '2026-11-08' });
+  });
+});

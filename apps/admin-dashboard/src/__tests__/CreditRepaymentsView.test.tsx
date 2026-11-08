@@ -30,6 +30,7 @@ const { api, response } = vi.hoisted(() => {
       ],
     },
     truncated: false,
+    first_day: '2026-03-01',
   };
   return { response, api: { fetchCreditRepayments: vi.fn(), exportCreditRepayments: vi.fn() } };
 });
@@ -45,6 +46,14 @@ describe('CreditRepaymentsView', () => {
     vi.clearAllMocks();
     api.fetchCreditRepayments.mockResolvedValue(response);
     api.exportCreditRepayments.mockResolvedValue(new Blob(['a,b'], { type: 'text/csv' }));
+  });
+
+  it('All asks from the first repayment to today', async () => {
+    renderWithRouter(<CreditRepaymentsView />);
+    await screen.findAllByTestId('credit-repayment-row');
+    fireEvent.click(screen.getByTestId('repayments-range-all'));
+    await waitFor(() => expect(api.fetchCreditRepayments.mock.lastCall?.[0].from).toBe('2026-03-01'));
+    expect(screen.getByTestId('repayments-range-all')).toHaveStyle({ background: 'var(--color-primary)' });
   });
 
   it('lists the day with totals and the figure to match at the bank', async () => {

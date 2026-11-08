@@ -232,7 +232,7 @@ export function SalesInsights() {
 
   const choosePreset = (k: PresetKey) => {
     setPreset(k);
-    if (k !== 'custom') setRange(presetRange(k));
+    if (k !== 'custom') setRange(presetRange(k, undefined, data?.first_day));
   };
   const step = (dir: -1 | 1) => { setPreset('custom'); setRange((r) => shiftRange(r, dir)); };
 
