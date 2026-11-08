@@ -86,7 +86,10 @@ export function TicketRow({
     const r = btn.getBoundingClientRect();
     const menuWidth = 200;
     const pad = 8;
-    const estimatedHeight = moreMenuRef.current?.offsetHeight
+    // The menu's whole height (scrollHeight, not the height its max-height cut it to), so a long
+    // menu opens upward when there is more room above (owner, 2026-11-08: it opened down, ran
+    // off the screen and could not be scrolled).
+    const estimatedHeight = moreMenuRef.current?.scrollHeight
       || (moreMenuRef.current?.childElementCount ?? 4) * 44;
     const spaceBelow = window.innerHeight - r.bottom - pad;
     const spaceAbove = r.top - pad;
@@ -101,6 +104,9 @@ export function TicketRow({
       minWidth: menuWidth,
       maxHeight: Math.max(160, openUp ? spaceAbove : spaceBelow),
       overflowY: "auto",
+      // A scroll that reaches the menu's end stays in the menu instead of moving the list behind.
+      overscrollBehavior: "contain",
+      WebkitOverflowScrolling: "touch",
       background: "#fff",
       border: "1px solid #CBD5E1",
       borderRadius: radius.m,
@@ -114,6 +120,19 @@ export function TicketRow({
     placeMoreMenu();
   }, [moreOpen]);
 
+  // Placed once more as soon as the menu is drawn, now that its real height is known.
+  const measuredRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!moreOpen) {
+      measuredRef.current = false;
+      return;
+    }
+    if (moreMenuStyle && moreMenuRef.current && !measuredRef.current) {
+      measuredRef.current = true;
+      placeMoreMenu();
+    }
+  }, [moreOpen, moreMenuStyle]);
+
   useEffect(() => {
     if (!moreOpen) return;
     const onDoc = (e: MouseEvent | TouchEvent) => {
@@ -124,7 +143,13 @@ export function TicketRow({
       closeMore();
     };
     const onReposition = () => placeMoreMenu();
-    const onScrollClose = () => closeMore();
+    // Scrolling the list moves the button, so the menu closes; scrolling the menu itself does not
+    // (owner, 2026-11-08: "When i try to scroll down the popup it doesn't scroll but disappears").
+    const onScrollClose = (e: Event) => {
+      const target = e.target as Node | null;
+      if (target && moreMenuRef.current?.contains(target)) return;
+      closeMore();
+    };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("touchstart", onDoc, { passive: true });
     window.addEventListener("resize", onReposition);

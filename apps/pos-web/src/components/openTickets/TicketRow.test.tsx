@@ -113,6 +113,31 @@ describe("TicketRow bill link", () => {
     expect(handleBillLink).toHaveBeenLastCalledWith(expect.objectContaining({ id: 5 }), false);
   });
 
+  // Owner, 2026-11-08: "When i try to scroll down the popup it doesn't scroll but disappears".
+  it("keeps the More menu open while it is scrolled, and closes it when the list scrolls", () => {
+    const noop = vi.fn();
+    render(
+      <TicketRow
+        ticket={ticket({ type: "takeaway" })}
+        busy={false} msg={null} mergeTargetId={null}
+        canVoidOrders={false} canHoldResume canManageOrderStatus canSendBill={false} canSendPayLink={false}
+        requirePosReceivingBeforeReady={false}
+        smsNotifications={{ send_bill: false, send_pay_link: false }}
+        onResume={noop} onVoid={noop} onSplit={noop}
+        handleFireToKitchen={noop} handleSendPayLink={noop} handleStartCooking={noop} handleMarkReady={noop}
+        handleMarkPickedUp={noop} handleSendBill={noop} handlePrintBill={noop} handleStartMerge={noop}
+        handlePickMergeSource={noop} handleBillLink={noop}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    const menu = screen.getByRole("menu");
+    expect(menu.style.overflowY).toBe("auto");
+    fireEvent.scroll(menu);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    fireEvent.scroll(document);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
   it("Mark ready goes to the pop-up on the first tap (no tap-twice as well)", () => {
     const handleMarkReady = vi.fn();
     const noop = vi.fn();
