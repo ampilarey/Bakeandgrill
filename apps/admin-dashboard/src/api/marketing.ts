@@ -36,6 +36,8 @@ export type PromotionMetadata = {
   get_qty?: number;
   get_discount_pct?: number;
   cheapest?: boolean;
+  /** Free item: one per order, or one for each item the customer must buy (2026-11-08). */
+  free_per?: 'order' | 'trigger';
 };
 
 export type Promotion = {
@@ -62,6 +64,9 @@ export type Promotion = {
   days_of_week?: number[] | null;
   starts_time?: string | null;
   ends_time?: string | null;
+  /** Which orders (2026-11-08): null is every order. */
+  order_channels?: PromotionChannel[] | null;
+  order_types?: PromotionOrderType[] | null;
   restricted_customer_id?: number | null;
   restricted_customer?: { id: number; name: string | null; phone: string } | null;
   targets?: PromotionTarget[];
@@ -89,9 +94,14 @@ export type PromotionPayload = {
   days_of_week?: number[] | null;
   starts_time?: string | null;
   ends_time?: string | null;
+  order_channels?: PromotionChannel[] | null;
+  order_types?: PromotionOrderType[] | null;
   restricted_customer_id?: number | null;
   targets?: PromotionTarget[];
 };
+
+export type PromotionChannel = 'till' | 'online';
+export type PromotionOrderType = 'dine_in' | 'takeaway' | 'online_pickup' | 'delivery';
 
 export async function fetchPromotions(params?: { page?: number; status?: string }): Promise<{ data: Promotion[]; meta?: { current_page: number; last_page: number; total: number } }> {
   const qs = new URLSearchParams();

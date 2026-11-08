@@ -128,7 +128,7 @@ type Props = {
   appliedPromo: AppliedPromo | null;
   setAppliedPromo: (v: AppliedPromo | null) => void;
   /** The automatic offer on the cart, previewed before Charge (useAutoPromoPreview). */
-  autoPromo?: { name: string; discount: number; endsAt: string | null } | null;
+  autoPromo?: { name: string; discount: number; endsAt: string | null; limitLabel?: string | null } | null;
   appliedLoyalty: AppliedLoyalty | null;
   setAppliedLoyalty: (v: AppliedLoyalty | null) => void;
   appliedGiftCard: AppliedGiftCard | null;
@@ -1290,7 +1290,7 @@ export function OrderCart(p: Props) {
             {p.autoPromo && (
               <div data-testid="cart-auto-promo">
                 <Row
-                  label={`Offer · ${p.autoPromo.name}${p.autoPromo.endsAt ? ` · until ${offerEndLabel(p.autoPromo.endsAt)}` : ""}`}
+                  label={`Offer · ${p.autoPromo.name}${p.autoPromo.limitLabel ? ` · ${p.autoPromo.limitLabel}` : ""}${p.autoPromo.endsAt ? ` · until ${offerEndLabel(p.autoPromo.endsAt)}` : ""}`}
                   value={`− MVR ${p.autoPromo.discount.toFixed(2)}`}
                   accent={C.primaryDark}
                 />

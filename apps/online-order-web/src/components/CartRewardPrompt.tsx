@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { fetchCartRewards, type CartRewardChoice } from '../api/promotions';
+import { promoOrderType } from '../utils/promoOrderType';
+import { useOptionalOrderMode } from '../context/OrderModeContext';
 import type { Item } from '../api';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -11,6 +13,7 @@ import { useLanguage } from '../context/LanguageContext';
 export function CartRewardPrompt() {
   const { cart, addItem, removeRewardClaims } = useCart();
   const { t } = useLanguage();
+  const mode = useOptionalOrderMode()?.mode ?? null;
   const [offers, setOffers] = useState<CartRewardChoice[]>([]);
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
   const [withdrawnMsg, setWithdrawnMsg] = useState<string | null>(null);
@@ -48,7 +51,7 @@ export function CartRewardPrompt() {
       return;
     }
 
-    fetchCartRewards(items)
+    fetchCartRewards(items, promoOrderType(mode))
       .then((res) => {
         if (cancelled) return;
         const next = res.rewards ?? [];
@@ -69,7 +72,7 @@ export function CartRewardPrompt() {
     return () => {
       cancelled = true;
     };
-  }, [cart, removeRewardClaims, t]);
+  }, [cart, removeRewardClaims, t, mode]);
 
   const visible = offers.filter(
     (o) => !dismissed.has(o.promotion_id) && !claimedPromoIds.current.has(o.promotion_id),

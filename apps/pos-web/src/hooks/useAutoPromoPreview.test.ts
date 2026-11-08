@@ -26,9 +26,28 @@ describe("useAutoPromoPreview (owner, 2026-10-16: the offer shows before Charge)
     const { result } = renderHook(() => useAutoPromoPreview({ lines, customerId: 4, enabled: true }));
     await act(async () => { await vi.advanceTimersByTimeAsync(400); });
     expect(result.current).toEqual({
-      name: "Morning 10%", promotionId: 7, discount: 20, endsAt: "2026-10-16T10:00:00+05:00",
+      name: "Morning 10%", promotionId: 7, discount: 20, endsAt: "2026-10-16T10:00:00+05:00", limitLabel: null,
     });
-    expect(previewAutoPromo).toHaveBeenCalledWith({ items: lines, customerId: 4 });
+    expect(previewAutoPromo).toHaveBeenCalledWith({ items: lines, customerId: 4, orderType: null });
+  });
+
+  // Owner, 2026-11-08: an offer for some order types waits for the type, and says which.
+  it("sends the ticket's order type and asks again when it changes", async () => {
+    previewAutoPromo.mockResolvedValue({
+      discount_laar: 600, discount_mvr: "6.00",
+      promotions: [{ id: 9, name: "Dine-in 10%", type: "percentage", discount_value: 10, expires_at: null, limit_label: "Dine-in only" }],
+      ends_at: null,
+    });
+    const { result, rerender } = renderHook(
+      (p: { t: string | null }) => useAutoPromoPreview({ lines, customerId: null, orderType: p.t, enabled: true }),
+      { initialProps: { t: null as string | null } },
+    );
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    expect(previewAutoPromo).toHaveBeenLastCalledWith({ items: lines, customerId: null, orderType: null });
+    rerender({ t: "dine_in" });
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    expect(previewAutoPromo).toHaveBeenLastCalledWith({ items: lines, customerId: null, orderType: "dine_in" });
+    expect(result.current?.limitLabel).toBe("Dine-in only");
   });
 
   it("shows nothing for a resumed ticket, an empty cart, or when the server cannot answer", async () => {

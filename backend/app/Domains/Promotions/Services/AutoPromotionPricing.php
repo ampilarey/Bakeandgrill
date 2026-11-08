@@ -6,8 +6,8 @@ namespace App\Domains\Promotions\Services;
 
 use App\Models\Item;
 use App\Models\Promotion;
-use Illuminate\Support\Collection;
 use App\Support\ResilientCache;
+use Illuminate\Support\Collection;
 
 /**
  * Resolves the best item/category-targeted auto-apply promotion for a catalog price.
@@ -140,6 +140,11 @@ class AutoPromotionPricing
             ->get()
             ->filter(function (Promotion $p) {
                 if (!$p->isValid()) {
+                    return false;
+                }
+                // Nor which orders an offer is limited to (till or app, order type, 2026-11-08):
+                // those apply at order time too.
+                if ($p->isLimitedToSomeOrders()) {
                     return false;
                 }
                 // Catalog prices cannot know basket triggers — skip those promos here.

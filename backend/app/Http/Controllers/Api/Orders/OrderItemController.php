@@ -221,8 +221,20 @@ class OrderItemController extends Controller
 
             if ($meta !== []) {
                 $updated->update($meta);
-                $updated = app(OrderTotalsCalculator::class)
-                    ->recalculateAndPersist($updated->fresh(['items.item']));
+                $fresh = $updated->fresh(['items.item']);
+                // A new order type may open or close an offer limited to some types (owner,
+                // 2026-11-08): the automatic offers are chosen again for the type now on the
+                // ticket, and the recalculation below rechecks the rest.
+                if ($newType !== $oldType) {
+                    $fresh->subtotal_laar = (int) round((float) $fresh->items->sum('total_price') * 100);
+                    app(\App\Domains\Promotions\Services\PromotionEvaluator::class)->applyAutomatic(
+                        $fresh,
+                        $fresh->customer_id !== null ? (int) $fresh->customer_id : null,
+                        itemLevelAlreadyInLinePrices: true,
+                    );
+                    $fresh = $fresh->fresh(['items.item']);
+                }
+                $updated = app(OrderTotalsCalculator::class)->recalculateAndPersist($fresh);
             }
 
             // Floor map: seat ownership follows restaurant_table_id.

@@ -44,6 +44,8 @@ class PromotionController extends Controller
             'items.*.unit_price' => 'nullable|numeric|min:0',
             'items.*.total_price' => 'nullable|numeric|min:0',
             'customer_id' => 'nullable|integer',
+            // The order type once chosen; an offer for some types waits for it (2026-11-08).
+            'order_type' => 'nullable|string|in:' . implode(',', Promotion::ORDER_TYPES),
         ]);
 
         $user = $request->user();
@@ -55,17 +57,25 @@ class PromotionController extends Controller
         }
 
         $lines = $this->linesWithCatalogPrices($validated['items']);
-        $preview = $this->evaluator->previewAutomatic($lines, $customerId);
+        $preview = $this->evaluator->previewAutomatic($lines, $customerId, $this->channelOf($request), $validated['order_type'] ?? null);
 
         return response()->json([
             'discount_laar' => $preview['discount_laar'],
             'discount_mvr' => number_format($preview['discount_laar'] / 100, 2),
             'promotions' => array_map(
-                fn (Promotion $p) => $p->only('id', 'name', 'type', 'discount_value', 'expires_at'),
+                fn (Promotion $p) => $p->only('id', 'name', 'type', 'discount_value', 'expires_at') + ['limit_label' => $p->orderLimitLabel()],
                 $preview['promotions'],
             ),
             'ends_at' => $preview['ends_at'],
         ]);
+    }
+
+    /** A staff sign-in is the till; anyone else is ordering in the app. */
+    private function channelOf(Request $request): string
+    {
+        $user = $request->user();
+
+        return $user instanceof \App\Models\User && $user->tokenCan('staff') ? 'till' : 'online';
     }
 
     /**
@@ -104,6 +114,7 @@ class PromotionController extends Controller
             'items.*.item_id' => 'required|integer|min:1',
             'items.*.quantity' => 'required|integer|min:1|max:99',
             'items.*.unit_price' => 'nullable|numeric|min:0',
+            'order_type' => 'nullable|string|in:' . implode(',', Promotion::ORDER_TYPES),
         ]);
 
         $user = $request->user();
@@ -130,7 +141,7 @@ class PromotionController extends Controller
         unset($line);
 
         return response()->json([
-            'rewards' => $this->evaluator->earnedRewardChoices($lines, $customerId),
+            'rewards' => $this->evaluator->earnedRewardChoices($lines, $customerId, $this->channelOf($request), $validated['order_type'] ?? null),
         ]);
     }
 
@@ -534,6 +545,12 @@ class PromotionController extends Controller
             'stackable' => 'boolean',
             'min_order_laar' => 'nullable|integer|min:0',
             'scope' => 'in:order,item',
+            // Which orders (owner, 2026-11-08): none ticked means every order.
+            'order_channels' => 'nullable|array',
+            'order_channels.*' => 'string|in:' . implode(',', Promotion::CHANNELS),
+            'order_types' => 'nullable|array',
+            'order_types.*' => 'string|in:' . implode(',', Promotion::ORDER_TYPES),
+            'metadata.free_per' => 'nullable|in:order,trigger',
             'restricted_customer_id' => 'nullable|integer|exists:customers,id',
             'targets' => 'nullable|array',
             'targets.*.target_type' => 'required_with:targets|in:item,category',
@@ -568,6 +585,13 @@ class PromotionController extends Controller
         $targets = $validated['targets'] ?? [];
         unset($validated['targets']);
 
+        // Nothing ticked, or everything ticked, is every order.
+        foreach (['order_channels' => Promotion::CHANNELS, 'order_types' => Promotion::ORDER_TYPES] as $key => $all) {
+            if (array_key_exists($key, $validated)) {
+                $picked = array_values(array_unique(array_intersect($all, (array) ($validated[$key] ?? []))));
+                $validated[$key] = ($picked === [] || count($picked) === count($all)) ? null : $picked;
+            }
+        }
         $promotion = Promotion::create($validated);
 
         foreach ($targets as $target) {
@@ -624,6 +648,11 @@ class PromotionController extends Controller
             'min_order_laar' => 'nullable|integer|min:0',
             'stackable' => 'sometimes|boolean',
             'scope' => 'sometimes|in:order,item',
+            'order_channels' => 'sometimes|nullable|array',
+            'order_channels.*' => 'string|in:' . implode(',', Promotion::CHANNELS),
+            'order_types' => 'sometimes|nullable|array',
+            'order_types.*' => 'string|in:' . implode(',', Promotion::ORDER_TYPES),
+            'metadata.free_per' => 'nullable|in:order,trigger',
             'restricted_customer_id' => 'nullable|integer|exists:customers,id',
             'targets' => 'nullable|array',
             'targets.*.target_type' => 'required_with:targets|in:item,category',
@@ -648,6 +677,13 @@ class PromotionController extends Controller
         $targets = $validated['targets'] ?? null;
         unset($validated['targets']);
 
+        // Nothing ticked, or everything ticked, is every order.
+        foreach (['order_channels' => Promotion::CHANNELS, 'order_types' => Promotion::ORDER_TYPES] as $key => $all) {
+            if (array_key_exists($key, $validated)) {
+                $picked = array_values(array_unique(array_intersect($all, (array) ($validated[$key] ?? []))));
+                $validated[$key] = ($picked === [] || count($picked) === count($all)) ? null : $picked;
+            }
+        }
         $promotion->update($validated);
 
         if (is_array($targets)) {

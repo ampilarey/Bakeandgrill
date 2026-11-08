@@ -44,6 +44,8 @@ class Promotion extends Model
         'stackable',
         'min_order_laar',
         'scope',
+        'order_channels',
+        'order_types',
         'metadata',
         'restricted_customer_id',
         'budget_laar',
@@ -60,6 +62,8 @@ class Promotion extends Model
         'starts_at' => 'datetime',
         'expires_at' => 'datetime',
         'days_of_week' => 'array',
+        'order_channels' => 'array',
+        'order_types' => 'array',
         'metadata' => 'array',
         'discount_value' => 'integer',
         'min_order_laar' => 'integer',
@@ -149,6 +153,89 @@ class Promotion extends Model
     public function scopeAutoApply(Builder $query): Builder
     {
         return $query->where('auto_apply', true)->whereNull('restricted_customer_id');
+    }
+
+    /** Where an order was placed: rung up by staff, or placed by the customer in the order app. */
+    public const CHANNELS = ['till', 'online'];
+
+    /** The order types an offer can be limited to. */
+    public const ORDER_TYPES = ['dine_in', 'takeaway', 'online_pickup', 'delivery'];
+
+    private const TYPE_WORDS = ['dine_in' => 'dine-in', 'takeaway' => 'takeaway', 'online_pickup' => 'pickup', 'delivery' => 'delivery'];
+
+    /** @return list<string> the channels it is for, empty for all */
+    public function channelLimits(): array
+    {
+        $v = array_values(array_intersect(self::CHANNELS, (array) ($this->order_channels ?? [])));
+
+        return count($v) === count(self::CHANNELS) ? [] : $v;
+    }
+
+    /** @return list<string> the order types it is for, empty for all */
+    public function typeLimits(): array
+    {
+        $v = array_values(array_intersect(self::ORDER_TYPES, (array) ($this->order_types ?? [])));
+
+        return count($v) === count(self::ORDER_TYPES) ? [] : $v;
+    }
+
+    /** Limited to some orders: never baked into menu prices, which every order sees. */
+    public function isLimitedToSomeOrders(): bool
+    {
+        return $this->channelLimits() !== [] || $this->typeLimits() !== [];
+    }
+
+    /**
+     * Why this order may not have the offer, or null when it may (owner, 2026-11-08). A cart whose
+     * channel or type is not known yet (the till before the cashier picks a type) does not get a
+     * limited offer: it shows once the type is picked.
+     */
+    public function orderLimitRejection(?string $channel, ?string $type): ?string
+    {
+        $channels = $this->channelLimits();
+        if ($channels !== [] && ($channel === null || !in_array($channel, $channels, true))) {
+            return $channels === ['online']
+                ? 'This offer is for orders placed in the app only.'
+                : 'This offer is for orders at the counter only.';
+        }
+        $types = $this->typeLimits();
+        if ($types !== [] && ($type === null || !in_array($type, $types, true))) {
+            return 'This offer is for ' . $this->typeWords($types) . ' orders only.';
+        }
+
+        return null;
+    }
+
+    /** "Dine-in only", "App orders only · delivery", or null for every order. */
+    public function orderLimitLabel(): ?string
+    {
+        $parts = [];
+        $channels = $this->channelLimits();
+        if ($channels !== []) {
+            $parts[] = $channels === ['online'] ? 'App orders' : 'At the counter';
+        }
+        $types = $this->typeLimits();
+        if ($types !== []) {
+            $parts[] = $this->typeWords($types);
+        }
+        if ($parts === []) {
+            return null;
+        }
+        $label = implode(' · ', $parts) . ' only';
+
+        return mb_strtoupper(mb_substr($label, 0, 1)) . mb_substr($label, 1);
+    }
+
+    /** @param list<string> $types */
+    private function typeWords(array $types): string
+    {
+        $words = array_map(static fn (string $t): string => self::TYPE_WORDS[$t] ?? $t, $types);
+        if (count($words) <= 1) {
+            return $words[0] ?? '';
+        }
+        $last = array_pop($words);
+
+        return implode(', ', $words) . ' and ' . $last;
     }
 
     public function isValid(): bool

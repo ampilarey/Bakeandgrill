@@ -118,6 +118,8 @@ class OrderCreationService
                 $rewardClaims,
                 $lines,
                 isset($payload['customer_id']) ? (int) $payload['customer_id'] : null,
+                $user !== null ? 'till' : 'online',
+                isset($payload['type']) ? (string) $payload['type'] : null,
             );
             if ($claimError !== null) {
                 abort(422, $claimError);

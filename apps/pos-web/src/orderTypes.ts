@@ -1,6 +1,17 @@
 export const POS_ORDER_TYPES = ["Dine-in", "Takeaway", "Pickup", "Delivery"] as const;
 export type PosOrderType = (typeof POS_ORDER_TYPES)[number];
 
+/** The server's name for a till order type (dine_in, takeaway, online_pickup, delivery), or null. */
+export function posOrderTypeSlug(t: PosOrderType | null | undefined): string | null {
+  switch (t) {
+    case "Dine-in": return "dine_in";
+    case "Takeaway": return "takeaway";
+    case "Pickup": return "online_pickup";
+    case "Delivery": return "delivery";
+    default: return null;
+  }
+}
+
 /** Backend types that charge packaging — mirrors PackagingFeeCalculator::orderTypeEligible. */
 const PACKAGING_ELIGIBLE_BACKEND = new Set([
   "takeaway",

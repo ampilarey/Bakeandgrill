@@ -1097,6 +1097,26 @@ minutes. If the saved order did not get the offer the cart showed, Charge stops 
 and Place order stops with `checkout.offer_ended` and the next tap reuses the order at
 the price shown. `AutoPromoTimingTest`, `useAutoPromoPreview.test.ts`.
 
+An offer can be for some orders only (owner, 2026-11-08: "today all online orders will get 10%
+discount", "all dine in customers will get 100% discount on a dish"; "online mean order app"):
+Promotions → the offer → **Which orders**, where ordered (`promotions.order_channels`: `till`,
+`online` = the order app, table QR included) and order type (`promotions.order_types`: `dine_in`,
+`takeaway`, `online_pickup`, `delivery`); nothing or everything picked is every order (stored null).
+One gate, `Promotion::orderLimitRejection()` through `PromotionEvaluator::orderLimitCheck()`, in
+both the automatic and the coded paths: a saved order is online when no staff is on it, a cart not
+saved yet carries what the caller said (`order_type` on `POST /promotions/auto-preview` and
+`/cart-rewards`; a staff token is the till, anything else online), and a cart whose type is not
+known yet gets no limited offer, so the till shows it once the cashier picks the type
+("Offer · name · Dine-in only", `limit_label`; the order app sends its mode, `promoOrderType()`).
+A limited offer is never baked into menu prices (`isItemLevelPromo()` and `AutoPromotionPricing`
+skip it) and applies at order time instead. Switching a saved ticket's type re-runs
+`applyAutomatic` (`OrderItemController::updateItems`), so it drops or gains the offer, and a
+released draft comes back to life. Strict: no manual override. A free-item offer gives one free
+per order or one for each item the customer must buy (`metadata.free_per`: `order` | `trigger`,
+`PromotionEvaluator::freePer()` / `triggerTimes()`; two curries, two free roshi), and the earned
+reward says what and how many ("You've earned 2 free Roshi"). `OrderLimitedPromotionTest`,
+`PromotionOrderLimits.test.tsx`, `useAutoPromoPreview.test.ts`.
+
 When two offers fit one order or dish, Promotions → Controls → When offers overlap decides
 (owner, 2026-10-17): Best one wins (default; free delivery still comes on top) or Add them
 up, the setting `discount_stacking_policy`, read only through

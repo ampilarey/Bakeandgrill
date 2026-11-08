@@ -9,6 +9,8 @@ export type AutoPromo = {
   discount: number;
   /** ISO time the offer ends, when it has one. */
   endsAt: string | null;
+  /** "Dine-in only", "At the counter only" … when the offer is for some orders (2026-11-08). */
+  limitLabel?: string | null;
 };
 
 const DEBOUNCE_MS = 350;
@@ -23,13 +25,15 @@ const POLL_MS = 5 * 60_000;
 export function useAutoPromoPreview(opts: {
   lines: PromoPreviewLine[];
   customerId: number | null;
+  /** The ticket's order type (server name), null until the cashier picks one. */
+  orderType?: string | null;
   enabled: boolean;
 }): AutoPromo | null {
   const [promo, setPromo] = useState<AutoPromo | null>(null);
   const seq = useRef(0);
   const [tick, setTick] = useState(0);
   const key = opts.enabled && opts.lines.length > 0
-    ? JSON.stringify({ l: opts.lines, c: opts.customerId })
+    ? JSON.stringify({ l: opts.lines, c: opts.customerId, t: opts.orderType ?? null })
     : "";
 
   useEffect(() => {
@@ -40,13 +44,13 @@ export function useAutoPromoPreview(opts: {
     }
     const mine = ++seq.current;
     const handle = window.setTimeout(() => {
-      const parsed = JSON.parse(key) as { l: PromoPreviewLine[]; c: number | null };
-      previewAutoPromo({ items: parsed.l, customerId: parsed.c })
+      const parsed = JSON.parse(key) as { l: PromoPreviewLine[]; c: number | null; t: string | null };
+      previewAutoPromo({ items: parsed.l, customerId: parsed.c, orderType: parsed.t })
         .then((res) => {
           if (mine !== seq.current) return;
           const first = res.promotions[0];
           setPromo(res.discount_laar > 0 && first
-            ? { name: first.name, promotionId: first.id, discount: res.discount_laar / 100, endsAt: res.ends_at }
+            ? { name: first.name, promotionId: first.id, discount: res.discount_laar / 100, endsAt: res.ends_at, limitLabel: first.limit_label ?? null }
             : null);
         })
         .catch(() => {

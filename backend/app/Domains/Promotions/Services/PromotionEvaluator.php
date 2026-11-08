@@ -115,7 +115,7 @@ class PromotionEvaluator
             $discountLaar = (int) $row['discount_laar'];
             $idempotencyKey = 'order-promo:' . $order->id . ':' . $promotion->id;
 
-            OrderPromotion::firstOrCreate(
+            $row = OrderPromotion::firstOrCreate(
                 ['idempotency_key' => $idempotencyKey],
                 [
                     'order_id' => $order->id,
@@ -124,6 +124,11 @@ class PromotionEvaluator
                     'status' => 'draft',
                 ],
             );
+            // Released earlier (the ticket lost the offer, say on a switch to takeaway) and
+            // eligible again now (switched back to dine-in, 2026-11-08): the same row is the draft.
+            if ($row->status === 'released') {
+                $row->update(['status' => 'draft', 'discount_laar' => $discountLaar]);
+            }
 
             $applied[] = $row;
         }
@@ -145,6 +150,10 @@ class PromotionEvaluator
     public function isItemLevelPromo(Promotion $promo): bool
     {
         if (!in_array($promo->type, ['percentage', 'fixed'], true)) {
+            return false;
+        }
+        // An offer for some orders only cannot sit in the menu prices every order sees.
+        if ($promo->isLimitedToSomeOrders()) {
             return false;
         }
 
@@ -304,6 +313,11 @@ class PromotionEvaluator
             return $this->reject('Promo code is not valid or has expired.');
         }
 
+        $limit = $this->orderLimitCheck($promotion, $order);
+        if ($limit !== null) {
+            return $this->reject($limit);
+        }
+
         if ($promotion->max_uses && self::campaignUsageIncludingPending($promotion, $excludeOrderId) >= (int) $promotion->max_uses) {
             return $this->reject('Promo code is not valid or has expired.');
         }
@@ -390,13 +404,13 @@ class PromotionEvaluator
      * @param array<int, array{item_id: int, quantity?: numeric, unit_price: numeric, total_price?: numeric}> $lines
      * @return array{discount_laar: int, promotions: list<Promotion>, ends_at: ?string}
      */
-    public function previewAutomatic(array $lines, ?int $customerId = null): array
+    public function previewAutomatic(array $lines, ?int $customerId = null, ?string $channel = null, ?string $type = null): array
     {
         if ($lines === []) {
             return ['discount_laar' => 0, 'promotions' => [], 'ends_at' => null];
         }
 
-        $order = $this->ephemeralOrderFromLines($lines);
+        $order = $this->ephemeralOrderFromLines($lines, $channel, $type);
 
         $eligible = [];
         $candidates = Promotion::query()
@@ -444,13 +458,13 @@ class PromotionEvaluator
      * @param array<int, array{item_id: int, quantity?: numeric, unit_price: numeric, total_price?: numeric}> $lines
      * @return array{valid: bool, discount_laar: int, message: string, promotion: ?Promotion}
      */
-    public function evaluateForCart(string $code, array $lines, ?int $customerId = null): array
+    public function evaluateForCart(string $code, array $lines, ?int $customerId = null, ?string $channel = null, ?string $type = null): array
     {
         if ($lines === []) {
             return $this->reject('Cart is empty.');
         }
 
-        return $this->evaluateAgainstOrder($code, $this->ephemeralOrderFromLines($lines), $customerId, null);
+        return $this->evaluateAgainstOrder($code, $this->ephemeralOrderFromLines($lines, $channel, $type), $customerId, null);
     }
 
     /**
@@ -472,6 +486,11 @@ class PromotionEvaluator
 
         if (!$promotion->isValid()) {
             return $this->reject('Promo code is not valid or has expired.');
+        }
+
+        $limit = $this->orderLimitCheck($promotion, $order);
+        if ($limit !== null) {
+            return $this->reject($limit);
         }
 
         // Campaign-wide max_uses: confirmed redemptions + pending draft reservations
@@ -562,7 +581,7 @@ class PromotionEvaluator
     /**
      * @param array<int, array{item_id: int, quantity?: numeric, unit_price: numeric, total_price?: numeric}> $lines
      */
-    private function ephemeralOrderFromLines(array $lines): Order
+    private function ephemeralOrderFromLines(array $lines, ?string $channel = null, ?string $type = null): Order
     {
         $itemIds = collect($lines)->pluck('item_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
         $catalog = Item::query()->whereIn('id', $itemIds)->get()->keyBy('id');
@@ -604,8 +623,35 @@ class PromotionEvaluator
             'subtotal_laar' => $subtotalLaar,
         ]);
         $order->setRelation('items', $orderItems);
+        // A cart not saved yet says where it is being rung up and its type, when known, so an
+        // offer for some orders only can be judged (owner, 2026-11-08).
+        if ($type !== null && $type !== '') {
+            $order->type = $type;
+        }
+        if ($channel !== null) {
+            $order->setAttribute('promo_channel', $channel);
+        }
 
         return $order;
+    }
+
+    /**
+     * Whether an offer limited to some orders (till or app, order type) may go on this one. A saved
+     * order is "online" when the customer placed it (no staff on it), "till" otherwise; a cart not
+     * saved yet carries what its caller said, and nothing when it is not known.
+     */
+    private function orderLimitCheck(Promotion $promotion, Order $order): ?string
+    {
+        if (!$promotion->isLimitedToSomeOrders()) {
+            return null;
+        }
+        $channel = $order->getAttribute('promo_channel');
+        if ($channel === null && $order->exists) {
+            $channel = $order->user_id === null ? 'online' : 'till';
+        }
+        $type = $order->type !== null && $order->type !== '' ? (string) $order->type : null;
+
+        return $promotion->orderLimitRejection(is_string($channel) ? $channel : null, $type);
     }
 
     private function calculateDiscount(Promotion $promo, Order $order, int $subtotalLaar): int
@@ -780,13 +826,13 @@ class PromotionEvaluator
      * @param array<int, array{item_id: int, quantity?: numeric, unit_price?: numeric, total_price?: numeric}> $lines
      * @return list<array{promotion_id: int, promotion_name: string, message: string, reward_items: list<array{id: int, name: string, base_price: float, image_url: ?string}>}>
      */
-    public function earnedRewardChoices(array $lines, ?int $customerId = null): array
+    public function earnedRewardChoices(array $lines, ?int $customerId = null, ?string $channel = null, ?string $type = null): array
     {
         if ($lines === []) {
             return [];
         }
 
-        $order = $this->ephemeralOrderFromLines($lines);
+        $order = $this->ephemeralOrderFromLines($lines, $channel, $type);
         $promos = Promotion::query()
             ->autoApply()
             ->active()
@@ -796,6 +842,9 @@ class PromotionEvaluator
 
         $out = [];
         foreach ($promos as $promo) {
+            if ($this->orderLimitCheck($promo, $order) !== null) {
+                continue;
+            }
             if (!$this->triggersSatisfied($promo, $order)) {
                 continue;
             }
@@ -854,10 +903,16 @@ class PromotionEvaluator
                 continue;
             }
 
+            // Say what was earned and how many (owner, 2026-11-08: it always said "a free drink").
+            $count = self::freePer($promo) === 'trigger' ? max(1, $this->triggerTimes($promo, $order)) : 1;
+            $what = count($rewardItems) === 1 ? (string) $rewardItems[0]['name'] : 'item';
             $out[] = [
                 'promotion_id' => $promo->id,
                 'promotion_name' => $promo->name,
-                'message' => "You've earned a free drink — choose one.",
+                'message' => $count > 1
+                    ? "You've earned {$count} free " . (count($rewardItems) === 1 ? $what : 'items') . ' — choose them.'
+                    : "You've earned a free {$what} — " . (count($rewardItems) === 1 ? 'add it.' : 'choose one.'),
+                'free_count' => $count,
                 'reward_items' => $rewardItems,
             ];
 
@@ -874,13 +929,13 @@ class PromotionEvaluator
      * @param list<array{promotion_id: int, item_id: int}> $claims
      * @param array<int, array{item_id: int, quantity?: numeric, unit_price?: numeric, total_price?: numeric}> $lines
      */
-    public function validateRewardClaims(array $claims, array $lines, ?int $customerId = null): ?string
+    public function validateRewardClaims(array $claims, array $lines, ?int $customerId = null, ?string $channel = null, ?string $type = null): ?string
     {
         if ($claims === []) {
             return null;
         }
 
-        $earned = $this->earnedRewardChoices($lines, $customerId);
+        $earned = $this->earnedRewardChoices($lines, $customerId, $channel, $type);
         $earnedMap = [];
         foreach ($earned as $offer) {
             $earnedMap[$offer['promotion_id']] = array_column($offer['reward_items'], 'id');
@@ -1199,7 +1254,54 @@ class PromotionEvaluator
             return 0;
         }
 
+        // One free for each item bought (owner, 2026-11-08: "1 per curry or selected item"): as
+        // many of the cheapest reward units as the trigger was met, else one per order.
+        if (self::freePer($promo) === 'trigger') {
+            $free = $this->triggerTimes($promo, $order);
+            $units = [];
+            foreach ($rewardLines as $line) {
+                for ($i = 0; $i < max(0, (int) $line->quantity); $i++) {
+                    $units[] = LaariConverter::toLaar($line->unit_price);
+                }
+            }
+            sort($units);
+
+            return array_sum(array_slice($units, 0, max(1, $free)));
+        }
+
         return LaariConverter::toLaar($cheapestItem->unit_price);
+    }
+
+    /** 'order' (one free per order, as before) or 'trigger' (one for each item bought). */
+    public static function freePer(Promotion $promo): string
+    {
+        $meta = is_array($promo->metadata) ? $promo->metadata : [];
+
+        return ($meta['free_per'] ?? 'order') === 'trigger' ? 'trigger' : 'order';
+    }
+
+    /**
+     * How many times the basket meets the offer's triggers: for each trigger row the matching
+     * quantity over its minimum, the smallest of them. No trigger rows: once.
+     */
+    public function triggerTimes(Promotion $promo, Order $order): int
+    {
+        $promo->loadMissing('targets');
+        $triggers = $promo->targets
+            ->where('is_exclusion', false)
+            ->filter(fn (PromotionTarget $t) => $t->isTrigger())
+            ->values();
+        if ($triggers->isEmpty()) {
+            return 1;
+        }
+        $order->loadMissing('items.item');
+        $times = PHP_INT_MAX;
+        foreach ($triggers as $trigger) {
+            $needed = max(1, (int) $trigger->triggerMinQty());
+            $times = min($times, (int) floor($this->quantityMatchingTarget($order, $trigger) / $needed));
+        }
+
+        return $times === PHP_INT_MAX ? 0 : $times;
     }
 
     /**

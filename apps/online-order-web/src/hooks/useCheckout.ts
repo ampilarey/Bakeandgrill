@@ -1,4 +1,5 @@
 import { giftCardTokenFromLink, normalizeGiftCardInput } from '../utils/giftCardInput';
+import { promoOrderType } from '../utils/promoOrderType';
 import { useTableSession } from './useTableSession';
 import { useTableSessionContext } from '../context/TableSessionContext';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
@@ -635,8 +636,9 @@ export function useCheckout() {
   // What the automatic offers take off this cart, before it is placed
   // (owner, 2026-10-16). Re-asked when the offer ends and now and then in
   // case one starts. Not sure means not shown: the placed order decides.
+  const autoPromoType = promoOrderType(orderType);
   const autoPromoKey = cart.length > 0
-    ? JSON.stringify(cart.map((i) => [i.id, i.quantity, Math.round(i.price * 100), (i.modifiers ?? []).map((m) => Math.round(m.price * 100))]))
+    ? JSON.stringify([autoPromoType, cart.map((i) => [i.id, i.quantity, Math.round(i.price * 100), (i.modifiers ?? []).map((m) => Math.round(m.price * 100))])])
     : '';
   useEffect(() => {
     if (!autoPromoKey) { setAutoPromo(null); return; }
@@ -646,7 +648,7 @@ export function useCheckout() {
         const unit = item.price + (item.modifiers ?? []).reduce((ms, m) => ms + m.price, 0);
         return { item_id: item.id, quantity: item.quantity, unit_price: unit, total_price: Math.round(unit * item.quantity * 100) / 100 };
       });
-      previewAutoPromo(lines)
+      previewAutoPromo(lines, autoPromoType)
         .then((res) => {
           if (!live) return;
           const first = res.promotions[0];

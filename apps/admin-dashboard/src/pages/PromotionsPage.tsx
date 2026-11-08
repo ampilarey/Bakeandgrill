@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { OrderLimitsField, orderLimitText } from './PromotionOrderLimits';
 import { SeeAlso } from '../components/SeeAlso';
 import { Link } from 'react-router-dom';
 import {
@@ -35,6 +36,7 @@ const EMPTY: PromotionPayload = {
   metadata: {},
   starts_at: null, expires_at: null,
   days_of_week: null, starts_time: null, ends_time: null,
+  order_channels: null, order_types: null,
   restricted_customer_id: null, targets: [],
 };
 
@@ -467,6 +469,29 @@ function PromotionForm({
         )}
       </Field>
 
+      {form.type === 'free_item' && (
+        <Field label="How many free">
+          <Select
+            value={meta.free_per === 'trigger' ? 'trigger' : 'order'}
+            onChange={(v) => setMeta({ free_per: v === 'trigger' ? 'trigger' : 'order' })}
+            options={[
+              { value: 'order', label: 'One per order' },
+              { value: 'trigger', label: 'One for each item the customer must buy' },
+            ]}
+            data-testid="promo-free-per"
+          />
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 3 }}>
+            For example two curries with &ldquo;one for each&rdquo; give two free roshi.
+          </div>
+        </Field>
+      )}
+
+      <OrderLimitsField
+        channels={form.order_channels}
+        types={form.order_types}
+        onChange={(next) => setForm((f) => ({ ...f, ...next }))}
+      />
+
       {/* Happy-hour / day windows — available for coded AND auto-apply promos.
           Backend already enforces days_of_week / starts_time / ends_time for both. */}
       <Field label="Days of week (optional — empty = every day)">
@@ -602,6 +627,8 @@ function toFormPayload(p: Promotion): PromotionPayload {
     days_of_week: p.days_of_week ?? null,
     starts_time: p.starts_time ?? null,
     ends_time: p.ends_time ?? null,
+    order_channels: p.order_channels ?? null,
+    order_types: p.order_types ?? null,
     restricted_customer_id: p.restricted_customer_id ?? null,
     targets: p.targets ?? [],
   };
@@ -820,6 +847,11 @@ export function PromotionsPage() {
                     {p.auto_apply && (
                       <div style={{ fontSize: 11, color: 'var(--color-success-strong)', fontWeight: 400, marginTop: 2 }}>
                         Automatic — no code
+                      </div>
+                    )}
+                    {orderLimitText(p.order_channels, p.order_types) && (
+                      <div data-testid={`promo-limit-${p.id}`} style={{ fontSize: 11, color: 'var(--color-primary)', fontWeight: 400, marginTop: 2 }}>
+                        {orderLimitText(p.order_channels, p.order_types)}
                       </div>
                     )}
                     {p.first_order_only && (

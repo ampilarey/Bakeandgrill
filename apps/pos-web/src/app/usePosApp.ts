@@ -37,6 +37,7 @@ import {
   type PosOrderType,
   EMPTY_DELIVERY_DETAILS,
   estimateDeliveryFeeMvr,
+  posOrderTypeSlug,
   resolveDeliveryDetails,
   savedAddressToDeliveryDetails,
 } from "../orderTypes";
@@ -768,6 +769,7 @@ export function usePosApp() {
   const autoPromoPreview = useAutoPromoPreview({
     lines: autoPromoLines,
     customerId: cart.attachedCustomer?.id ?? null,
+    orderType: posOrderTypeSlug(orderType),
     enabled: isReachable && order.resumedOrderId == null && cart.cartItems.length > 0,
   });
   const setAutoPromo = cart.setAutoPromo;

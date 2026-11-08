@@ -164,7 +164,7 @@ export async function removeGiftCardFromOrder(orderId: number): Promise<{ messag
 export type AutoPromoPreviewResponse = {
   discount_laar: number;
   discount_mvr: string;
-  promotions: Array<{ id: number; name: string; type: string; discount_value: number; expires_at: string | null }>;
+  promotions: Array<{ id: number; name: string; type: string; discount_value: number; expires_at: string | null; limit_label?: string | null }>;
   /** When the earliest of the offers shown ends; the cart re-checks then. */
   ends_at: string | null;
 };
@@ -175,12 +175,15 @@ export type AutoPromoPreviewResponse = {
 export async function previewAutoPromo(input: {
   items: PromoPreviewLine[];
   customerId?: number | null;
+  /** The ticket's order type once chosen: an offer for some types waits for it (2026-11-08). */
+  orderType?: string | null;
 }): Promise<AutoPromoPreviewResponse> {
   return request("/promotions/auto-preview", {
     method: "POST",
     body: JSON.stringify({
       items: input.items,
       ...(input.customerId != null ? { customer_id: input.customerId } : {}),
+      ...(input.orderType ? { order_type: input.orderType } : {}),
     }),
   });
 }

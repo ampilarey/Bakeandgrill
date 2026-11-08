@@ -28,10 +28,11 @@ export type CartRewardChoice = {
 /** Server decides which free rewards the basket has earned. */
 export async function fetchCartRewards(
   items: Array<{ item_id: number; quantity: number; unit_price?: number }>,
+  orderType?: string | null,
 ): Promise<{ rewards: CartRewardChoice[] }> {
   return request<{ rewards: CartRewardChoice[] }>('/promotions/cart-rewards', {
     method: 'POST',
-    body: JSON.stringify({ items }),
+    body: JSON.stringify({ items, ...(orderType ? { order_type: orderType } : {}) }),
   });
 }
 
@@ -48,10 +49,12 @@ export type AutoPromoPreview = {
  *  decides again when it is placed. */
 export async function previewAutoPromo(
   items: Array<{ item_id: number; quantity: number; unit_price?: number; total_price?: number }>,
+  /** dine_in, online_pickup or delivery: an offer for some order types waits for it (2026-11-08). */
+  orderType?: string | null,
 ): Promise<AutoPromoPreview> {
   return request<AutoPromoPreview>('/promotions/auto-preview', {
     method: 'POST',
-    body: JSON.stringify({ items }),
+    body: JSON.stringify({ items, ...(orderType ? { order_type: orderType } : {}) }),
   });
 }
 
