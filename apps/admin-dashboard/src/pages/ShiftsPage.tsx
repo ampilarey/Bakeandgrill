@@ -120,7 +120,7 @@ function AdminShiftTable({
               <td style={TD}>
                 <span style={{ whiteSpace: 'nowrap' }}>{formatMVR(s.opening_cash)}</span>
                 {floatVar != null && Math.abs(floatVar) >= 0.01 && (
-                  <div data-testid={`float-variance-${s.id}`} style={{ fontSize: 11, color: 'var(--color-danger)', fontWeight: 600, marginTop: 2 }}>
+                  <div data-testid={`float-variance-${s.id}`} style={{ fontSize: 11, color: floatVar < 0 ? 'var(--color-danger-strong)' : 'var(--color-tone-gold-text)', fontWeight: 600, marginTop: 2 }}>
                     {floatVar < 0 ? 'Short' : 'Over'} {formatMVR(Math.abs(floatVar))} vs last close {formatMVR(s.opening_float_expected)}
                   </div>
                 )}
@@ -130,7 +130,7 @@ function AdminShiftTable({
                 {s.force_closed_at ? (
                   <Badge color="yellow">Force-closed{s.force_closer?.name ? ` by ${s.force_closer.name}` : ''} · not counted</Badge>
                 ) : s.variance != null ? (
-                  <Badge color={Math.abs(s.variance) < 0.01 ? 'green' : 'red'}>{formatMVR(s.variance)}</Badge>
+                  <VarianceBadge value={Number(s.variance)} testId={`variance-${s.id}`} />
                 ) : '—'}
                 {fxSummary && Math.abs(variance) >= 0.01 && (
                   <div style={{ fontSize: 11, color: 'var(--color-warning-strong)', marginTop: 4, fontWeight: 600 }}>
@@ -419,5 +419,23 @@ export default function ShiftsPage() {
     </div>
 
     </PageShell>
+  );
+}
+
+/**
+ * A shift's count against what the till expected (owner, 2026-11-09: "change the color of the
+ * variance based on + - or 0"): short is red, over is gold, exact is green, each with its sign and
+ * word so the colour is never the only clue.
+ */
+function VarianceBadge({ value, testId }: { value: number; testId?: string }) {
+  const exact = Math.abs(value) < 0.01;
+  const short = !exact && value < 0;
+  const amount = formatMVR(Math.abs(value));
+  return (
+    <span data-testid={testId} data-variance={exact ? 'exact' : short ? 'short' : 'over'}>
+      <Badge color={exact ? 'green' : short ? 'red' : 'gold'}>
+        {exact ? `${formatMVR(0)} · exact` : short ? `−${amount} · short` : `+${amount} · over`}
+      </Badge>
+    </span>
   );
 }

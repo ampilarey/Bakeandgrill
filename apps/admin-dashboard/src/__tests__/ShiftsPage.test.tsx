@@ -29,7 +29,11 @@ vi.mock('../api', () => ({
       ],
     }],
   }),
-  fetchShiftHistory: vi.fn().mockResolvedValue({ shifts: [] }),
+  fetchShiftHistory: vi.fn().mockResolvedValue({ shifts: [
+    { id: 11, user_id: 2, opened_at: '2026-11-08T06:00:00Z', closed_at: '2026-11-08T15:00:00Z', opening_cash: 100, closing_cash: 205.2, variance: 5.2, user: { id: 2, name: 'Ariya' }, device: { id: 1, name: 'POS-1' } },
+    { id: 12, user_id: 3, opened_at: '2026-11-08T06:00:00Z', closed_at: '2026-11-08T15:00:00Z', opening_cash: 100, closing_cash: 99, variance: -1, user: { id: 3, name: 'Dikshya' }, device: { id: 1, name: 'POS-1' } },
+    { id: 13, user_id: 3, opened_at: '2026-11-07T06:00:00Z', closed_at: '2026-11-07T15:00:00Z', opening_cash: 100, closing_cash: 100, variance: 0, user: { id: 3, name: 'Dikshya' }, device: { id: 1, name: 'POS-1' } },
+  ] }),
   forceCloseShift: vi.fn(),
   voidCashMovement: vi.fn().mockResolvedValue({ movement: { id: 7 } }),
 }));
@@ -87,5 +91,16 @@ describe('ShiftsPage', () => {
     renderWithRouter(<ShiftsPage />);
     expect(screen.queryByRole('button', { name: /Live Shifts/i })).toBeNull();
     expect(screen.getByText(/manager permissions/i)).toBeTruthy();
+  });
+
+  it('colours the variance by its sign: over gold, short red, exact green (owner, 2026-11-09)', async () => {
+    renderWithRouter(<ShiftsPage />);
+    fireEvent.click(screen.getByRole('button', { name: /History/i }));
+    const over = await screen.findByTestId('variance-11');
+    expect(over).toHaveAttribute('data-variance', 'over');
+    expect(over).toHaveTextContent('+MVR 5.20 · over');
+    expect(screen.getByTestId('variance-12')).toHaveAttribute('data-variance', 'short');
+    expect(screen.getByTestId('variance-12')).toHaveTextContent('−MVR 1.00 · short');
+    expect(screen.getByTestId('variance-13')).toHaveAttribute('data-variance', 'exact');
   });
 });
