@@ -503,17 +503,533 @@ export const GUIDES: Guide[] = [
     ],
     words: 'inbox todo waiting pending tasks',
   },
+
+  // ── Daily running ─────────────────────────────────────────────────────────
+  {
+    id: 'orders-find',
+    page: '/orders',
+    title: 'Find an order and see what happened to it',
+    steps: [
+      'Open Orders.',
+      'Tap "Search & filters" and narrow by order number, customer, phone, type, status, cashier or station.',
+      'Tap View on the order.',
+      'The order shows its items, payments and a timeline: when it was rung up, sent to the kitchen, ready, paid and collected.',
+    ],
+    notes: [
+      'Export CSV saves the list you are looking at.',
+    ],
+    words: 'search order receipt lookup history timeline',
+  },
+  {
+    id: 'orders-send-bill',
+    page: '/orders',
+    title: 'Send a customer their bill, pay link or receipt',
+    steps: [
+      'Open Orders and tap View on the order.',
+      'For an unpaid order tap Send Bill, or Send Pay Link so they can pay by card.',
+      'For a paid order tap "Send receipt SMS".',
+      'Check the phone number and send.',
+    ],
+    notes: [
+      '"Copy invoice / receipt link" copies the link so you can paste it into WhatsApp or Viber.',
+    ],
+    words: 'bill invoice receipt sms link pay online',
+  },
+  {
+    id: 'orders-refund',
+    page: '/orders',
+    title: 'Refund a paid order, or cancel an unpaid one',
+    steps: [
+      'Open Orders and tap View on the order.',
+      'For a paid order tap Request Refund, choose what is refunded and type what happened.',
+      'For an order with no payment tap "Void / cancel this order".',
+    ],
+    notes: [
+      'A refund request waits for approval. It shows in Needs attention and under Finance → Refunds.',
+      'Once a payment is recorded the order cannot be voided: use Request Refund.',
+    ],
+    words: 'refund void cancel money back',
+  },
+  {
+    id: 'kds-watch',
+    page: '/kds',
+    title: 'Watch the kitchen queue from the admin',
+    steps: [
+      'Open Kitchen Display.',
+      'Orders move through Pending, Cooking and Ready.',
+      'The figures at the top show the average wait and how many are over their prep target.',
+      'Pick a station to see only its dishes. Tap Fullscreen for a wall screen.',
+    ],
+    notes: [
+      'Cooks work on the kitchen screen app. This page is for watching.',
+    ],
+    words: 'kitchen screen kds queue cooking',
+  },
+  {
+    id: 'reservation-new',
+    page: '/reservations',
+    title: 'Take a table booking by phone',
+    steps: [
+      'Open Reservations and tap + New booking.',
+      'Type the guest name and phone, then pick the date, time and party size.',
+      'Add notes such as a birthday or a high chair.',
+      'Tap Confirm.',
+    ],
+    notes: [
+      'Opening and closing time, slot length, the largest party and how far ahead people can book are under Settings → Booking Rules on this page.',
+    ],
+    words: 'booking reserve table reservation',
+  },
+  {
+    id: 'delivery-assign',
+    page: '/delivery',
+    title: 'Give a delivery to a driver',
+    steps: [
+      'Open Delivery Orders.',
+      'On the order tap Assign Driver and pick the driver.',
+      'The driver gets it on their phone and marks it picked up, on the way and delivered.',
+      'Tap Details to see where it is and the proof of delivery.',
+    ],
+    words: 'driver delivery assign dispatch',
+  },
+  {
+    id: 'kitchen-plan',
+    page: '/kitchen',
+    title: 'Plan what the kitchen makes for a day',
+    steps: [
+      'Open Kitchen. Plan suggests what to make for a day, slot by slot, from what sold on days like it.',
+      'Holidays holds the public holidays, school terms and closures the plan allows for.',
+      'Today shows what has been made and what the counter has received.',
+      'Receiving lists batches waiting for the counter to accept them. Variances shows what came short, over or was rejected.',
+    ],
+    notes: [
+      '"How it did" compares saved plans with what then sold.',
+      'Stock thrown away is logged under Inventory → Waste logs. Waste & remakes here is for production.',
+    ],
+    words: 'production plan batches handover receiving variance',
+  },
+  {
+    id: 'addon-new',
+    page: '/modifiers',
+    title: 'Add an extra customers can choose, like extra cheese',
+    steps: [
+      'Open Add-ons and tap + New add-on.',
+      'Type the Name and the Price. 0 means free.',
+      'Optional: pick the Ingredient it uses and the amount per add-on, so stock goes down when it is sold.',
+      'Save, then attach it to dishes in the dish\'s Add-ons section in Menu Items.',
+    ],
+    words: 'modifier extra topping add on option',
+  },
+  {
+    id: 'stock-count',
+    page: '/inventory',
+    title: 'Do a stock count',
+    steps: [
+      'Open Inventory and tap Stock Count.',
+      'Type what you counted for each item under Counted Qty.',
+      'Tap Submit Stock Count.',
+    ],
+    notes: [
+      'The Variance column shows the difference between the count and what the system expected.',
+      'To change one item only, use its adjustment on the Stock tab: Add, Remove, or Set to exact amount.',
+    ],
+    words: 'stock take count inventory adjust',
+  },
+  {
+    id: 'stock-low',
+    page: '/inventory',
+    title: 'See what is running low and set when to reorder',
+    steps: [
+      'Open Inventory. The Stock tab lists every item with what is on hand.',
+      'Use the Low stock filter to see only items at or under their reorder point.',
+      'Tap Edit on an item to set its Reorder point, Preferred supplier and Supplier lead days.',
+    ],
+    notes: [
+      'Low items also show on the Dashboard under Worth a look.',
+    ],
+    words: 'low stock reorder minimum running out',
+  },
+  {
+    id: 'stock-waste',
+    page: '/inventory',
+    title: 'Record stock that was thrown away',
+    steps: [
+      'Open Inventory and tap Waste logs.',
+      'Tap + Log Waste, pick the item, then type the quantity and the reason.',
+      'Save. The stock goes down and the waste shows in the reports.',
+    ],
+    words: 'waste spoiled expired thrown away write off',
+  },
+  {
+    id: 'purchase-flow',
+    page: '/purchasing',
+    title: 'Buy stock: from a request to goods received',
+    steps: [
+      'Staff ask for what is needed under Requests with New request. A manager approves or rejects it there.',
+      'Under Purchase orders, tap + Create Manual PO for a new order, or Auto-Suggest POs to get orders drafted from low stock.',
+      'When the goods arrive, open the order and tap Receive. Check the quantities and tap Confirm Receipt.',
+      'Tap Upload Receipt to keep the supplier\'s bill with the order.',
+    ],
+    notes: [
+      'Receiving is what adds the stock to Inventory and updates what each item costs.',
+      'Price changes shows what each item costs now against before.',
+    ],
+    words: 'purchase order supplier buy receive po request',
+  },
+  {
+    id: 'wholesale-invoice',
+    page: '/wholesale',
+    title: 'Invoice a shop for its deliveries',
+    open: { to: '/wholesale/invoicing', label: 'Open Invoicing' },
+    steps: [
+      'Open Wholesale → Invoicing and pick the shop.',
+      'Deliveries marked Ready can be billed. One with missing stock needs a decision first: choose Charge missing stock or Waive missing charge.',
+      'Tap Preview to check the invoice.',
+      'Tap Invoice deliveries, then Send to shop or Send SMS.',
+    ],
+    notes: [
+      'A delivery marked Mismatch is blocked until it is reconciled under Deliveries.',
+      'Shops and their prices are under Shops. What each shop owes is in Reports.',
+    ],
+    words: 'wholesale trade shop invoice delivery bill',
+  },
+
+  // ── Customers and marketing ───────────────────────────────────────────────
+  {
+    id: 'catering-follow',
+    page: '/catering',
+    title: 'Follow an event or catering order',
+    steps: [
+      'Open Events & Catering. Each row is one event with its date and where it stands.',
+      'Search by name or phone, or filter by status.',
+      'Tap an event to see what was asked for, the quote and the payments.',
+    ],
+    notes: [
+      'New requests text the catering team. Who gets that text is set under Notifications → Messages.',
+    ],
+    words: 'event catering quote party order',
+  },
+  {
+    id: 'loyalty-rules',
+    page: '/loyalty',
+    title: 'Set how customers earn and spend points',
+    steps: [
+      'Open Loyalty and tap Program Settings.',
+      'Under Earn rules set the points per MVR 1 spent.',
+      'Under Redeem rules set what points are worth, the smallest and largest redemption and the most of an order that points may cover.',
+      'Optional: Points expiry (days). Customers are warned before points run out.',
+      'Save.',
+    ],
+    notes: [
+      'Tiers gives regular customers a multiplier on what they earn.',
+      'Customer Accounts lists every balance. Adjust adds or takes points with a reason.',
+      'Print counter sign makes a sign that explains the programme.',
+    ],
+    words: 'points rewards loyalty earn redeem tier',
+  },
+  {
+    id: 'sms-campaign',
+    page: '/sms',
+    title: 'Send a text to a group of customers',
+    steps: [
+      'Open SMS campaigns and tap + New Campaign.',
+      'Type a Campaign Name and choose the Audience: any customer, a customer group, a loyalty tier, or birthdays in a month.',
+      'Write the message.',
+      'Send it now, or set it to run daily, weekly or monthly. Leave the schedule empty to send by hand from the list.',
+    ],
+    notes: [
+      'Customers who replied STOP or switched off offers are left out by themselves.',
+      'Contacts & Groups holds your own lists. Templates keeps wording you reuse.',
+      'Alerts such as "order ready" are not here. Those are under Notifications.',
+    ],
+    words: 'sms text blast campaign marketing message',
+  },
+  {
+    id: 'social-post',
+    page: '/social',
+    title: 'Post to Facebook, Instagram, Telegram or Viber',
+    steps: [
+      'Open Social Hub and tap + New post.',
+      'Write the post, add a photo or pick a dish, and choose the channels.',
+      'Tap Post now, or Schedule to send it later. Calendar shows what is planned.',
+    ],
+    notes: [
+      'A page is connected once under Channels.',
+      'Posts shows what was published, what is queued and anything that failed.',
+    ],
+    words: 'facebook instagram telegram viber post social share',
+  },
+  {
+    id: 'signage-playlist',
+    page: '/signage',
+    title: 'Change what the TV screens show',
+    steps: [
+      'Open TV Signage.',
+      'Screens & Groups lists each TV. Playlists holds what plays on them, in order.',
+      'Open a playlist to add, remove or reorder its slides, then save.',
+      'Notices posts a short message on the board. Banner sets the strip along the screen.',
+    ],
+    notes: [
+      'Emergency replaces everything on every screen at once: Closed, Prayer break, Maintenance and others. Set it back to None for the normal rotation.',
+      'TV status shows which screens are online.',
+    ],
+    words: 'tv screen menu board playlist display emergency',
+  },
+  {
+    id: 'poster-make',
+    page: '/posters',
+    title: 'Make a poster for the shop or a TV',
+    steps: [
+      'Open Posters. It opens on Make a poster.',
+      'Pick a design. Switch between Print and TV screens at the top of the designs.',
+      'Change the words and pick the dish or photo for each picture.',
+      'Choose the size, then download the file. The checks tell you if a photo is too small to print well.',
+    ],
+    notes: [
+      'My posters keeps what you made. Save as template keeps a design to start from again.',
+      'Print shops holds the shops you send posters to, with their quotes.',
+      'Stickers for packs and boxes are made under Labels.',
+    ],
+    words: 'poster print design template a4 a3 tv',
+  },
+  {
+    id: 'content-website',
+    page: '/content/website',
+    title: 'Change the words and pictures on the website',
+    steps: [
+      'Open Website Content.',
+      'Pick the page or section you want to change.',
+      'Edit the words or swap the picture. Changes show as Unsaved until you publish.',
+      'Tap Publish.',
+    ],
+    notes: [
+      '"Section order & visibility" moves sections of the home page up and down or hides them.',
+      'Opening hours, phone and address are not typed here. They come from the schedule and Settings → Business.',
+      'The Dhivehi switch and the Dhivehi font are under Everywhere.',
+    ],
+    words: 'website text banner home page hero logo dhivehi',
+  },
+  {
+    id: 'content-order-app',
+    page: '/content/order-app',
+    title: 'Change the words and pictures in the order app',
+    steps: [
+      'Open Order App Content.',
+      'Pick the screen or section you want to change.',
+      'Edit the words or swap the picture, then tap Publish.',
+    ],
+    notes: [
+      'The Dhivehi switch is one switch for the website and the app. Changing it here changes both.',
+    ],
+    words: 'order app text banner home dhivehi',
+  },
+  {
+    id: 'media-library',
+    page: '/media',
+    title: 'Find, replace or tidy an uploaded picture',
+    steps: [
+      'Open Media Library. Filter by Images, Video, Audio or Documents, or search.',
+      'Tap a file to see its details and where it is used.',
+      'Edit tools can crop, resize, rotate or convert it. "Save as new copy" keeps the original.',
+      '"Replace everywhere" swaps the file in every place that uses it.',
+    ],
+    notes: [
+      'Collections and Tags group files so they are easier to find.',
+      'A file marked "Not referenced anywhere" is not used on any page.',
+    ],
+    words: 'image photo upload media library replace crop',
+  },
+
+  // ── Numbers ───────────────────────────────────────────────────────────────
+  {
+    id: 'analytics-read',
+    page: '/analytics',
+    title: 'See busy hours, top customers and which dishes earn most',
+    steps: [
+      'Open Analytics.',
+      'Peak Hours shows when orders come in over the last 30 days.',
+      'Item Profitability shows what each dish earned this month after its cost.',
+      'Top Customers by Revenue and Customer Retention show who comes back.',
+    ],
+    notes: [
+      'Analytics looks at recent demand. Forecasts looks ahead: expected revenue and what to restock.',
+    ],
+    words: 'analytics peak hours top customers profitability retention',
+  },
+  {
+    id: 'forecast-restock',
+    page: '/forecasts',
+    title: 'See what to restock and what sales to expect',
+    steps: [
+      'Open Forecasts.',
+      'Revenue Forecast shows the next 4 weeks from recent sales.',
+      'Restock Plan lists what will run out and when, from how fast each item is used.',
+      'Inventory Runway shows how many days of each item are left.',
+    ],
+    notes: [
+      'The links at the side open Inventory and the purchase orders, where the buying is done.',
+    ],
+    words: 'forecast restock runway predict demand',
+  },
+
+  // ── System ────────────────────────────────────────────────────────────────
+  {
+    id: 'settings-where',
+    page: '/settings',
+    title: 'Find the right setting',
+    steps: [
+      'Open Settings. Each tab holds one kind of setting.',
+      'Business: the name, phone, address and tax details on receipts and invoices.',
+      'Ordering: online ordering, pickup, pre-orders, guest checkout and what the till and the order app offer.',
+      'Delivery: areas, fees and timing. Charges & fees: the service charge and fees.',
+      'Credit & wallet: credit limits, payment terms and wallet top-ups.',
+      'Roles & permissions: what each role and each person may do.',
+    ],
+    notes: [
+      'Alerts are not here. They are under Notifications.',
+      'Discount caps and approval for cashiers are under Promotions → Controls.',
+    ],
+    words: 'settings configuration business details service charge delivery fee roles',
+  },
+  {
+    id: 'settings-roles',
+    page: '/settings',
+    title: 'Change what a role, such as cashier or manager, may do',
+    open: { to: '/settings/permissions', label: 'Open Roles & permissions' },
+    steps: [
+      'Open Settings → Roles & permissions.',
+      'Pick the role.',
+      'The sections follow the admin menu: Till and orders, Kitchen, Menu, stock and buying, Customers and marketing, Money and reports, Team and system.',
+      'Switch each permission on or off. All on and All off set a whole group.',
+    ],
+    notes: [
+      'For one person only, use Staff → More → Permissions.',
+    ],
+    words: 'roles permissions access cashier manager allow',
+  },
+  {
+    id: 'telegram-link',
+    page: '/telegram',
+    title: 'Get alerts and the day report on Telegram',
+    steps: [
+      'Open Telegram. Bots lists the bots and which roles each serves.',
+      'People shows who is Linked and who is Not linked.',
+      'Each person links their own Telegram once with their link, then taps Start in the bot.',
+      'Groups sets up a shop group that gets online orders or the buying list.',
+    ],
+    notes: [
+      'Which alerts go to Telegram is set under Notifications → Messages, on each alert\'s Telegram switch.',
+      'In the bot, Today shows the day\'s sales and the open tickets.',
+    ],
+    words: 'telegram bot alerts link group report',
+  },
+  {
+    id: 'device-approve',
+    page: '/devices',
+    title: 'Add a new till or kitchen screen',
+    steps: [
+      'Open the till or kitchen screen app on the new device. It asks to be approved.',
+      'Open Devices. The device waits under Pending Approval.',
+      'Tap Approve and give it a name.',
+    ],
+    notes: [
+      'Disable stops a lost or old device from signing in.',
+      'Print queue shows receipt and kitchen print jobs, and lets you retry one that failed.',
+    ],
+    words: 'device pos till kitchen screen approve printer print queue',
+  },
+  {
+    id: 'pause-ordering',
+    page: '/system-health',
+    title: 'Pause online ordering or delivery for a while',
+    open: { to: '/system-health/controls', label: 'Open Availability controls' },
+    steps: [
+      'Open System Health → Availability controls.',
+      'Use a quick preset such as "Pause all online ordering" or "Pause delivery only", or switch one service to Unavailable.',
+      'Type the Public message customers will see.',
+      'Switch it back to Available when you are ready.',
+    ],
+    notes: [
+      'The till keeps working unless POS sales itself is paused.',
+      'Status shows whether payments, texts, printing and the scheduler are healthy.',
+    ],
+    words: 'pause close maintenance stop online orders delivery availability',
+  },
+  {
+    id: 'catalogue-feeds',
+    page: '/integrations',
+    title: 'Show the menu on Facebook, Instagram or Google',
+    open: { to: '/integrations/feeds', label: 'Open Catalogue feeds' },
+    steps: [
+      'Open Integrations → Catalogue feeds.',
+      'Copy the Google or Facebook link.',
+      'Paste it where that service asks for a product feed. It reads the menu from the link by itself.',
+    ],
+    notes: [
+      'The link is secret. If it was shared by mistake tap Make new links, then paste the new one.',
+      'Webhooks and Xero are for connecting other systems and accounting.',
+    ],
+    words: 'facebook instagram google catalogue feed shop xero webhook',
+  },
+
+  // ── Team ──────────────────────────────────────────────────────────────────
+  {
+    id: 'time-clock-read',
+    page: '/time-clock',
+    title: 'See who clocked in and how many hours they worked',
+    steps: [
+      'Open Time Clock.',
+      'History lists each clock in and clock out. "Still in" means the person has not clocked out.',
+      'Summary adds up the hours per person for the period.',
+    ],
+    words: 'attendance hours punch clock in out timesheet',
+  },
+  {
+    id: 'clock-machine',
+    page: '/time-clock',
+    title: 'Connect a staff member to the fingerprint clock',
+    steps: [
+      'Open Time Clock → Clock machine.',
+      'On the clock, each person has a User ID.',
+      '"Numbers nobody has" lists IDs the clock sent that no staff member has yet.',
+      'Tap "Give to…" beside the number and pick the staff member.',
+    ],
+    notes: [
+      'A new clock waits in the list until you allow it.',
+      '"How to set up the clock" on that page shows the clock\'s own menu steps.',
+    ],
+    words: 'fingerprint zkteco clock machine user id attendance',
+  },
+  {
+    id: 'activity-audit',
+    page: '/activity',
+    title: 'Check what a cashier did on the till',
+    steps: [
+      'Open POS Activity.',
+      'Filter by staff member and by action.',
+      'Each row shows the time, who did it and the details, such as a void, a discount or a cash movement.',
+    ],
+    words: 'audit log cashier activity void discount history',
+  },
+  {
+    id: 'account-lock',
+    page: '/account',
+    title: 'Change when the till locks itself for you',
+    steps: [
+      'Open My Account.',
+      'Under "POS auto-lock after inactivity" choose how long the till waits with no taps before it locks: from 2 minutes to 30, or never.',
+    ],
+    notes: [
+      'Each staff member sets their own. A shared iPad uses the setting of whoever is signed in.',
+    ],
+    words: 'auto lock till pos idle sign in session my account',
+  },
 ];
 
 /** Menu pages with no guide yet. A page leaves this list when its first guide is written. */
 export const PAGES_WITHOUT_GUIDE: string[] = [
-  '/orders', '/kds', '/reservations', '/delivery', '/kitchen',
-  '/modifiers', '/inventory', '/purchasing', '/wholesale',
-  '/catering', '/loyalty', '/sms', '/social', '/signage', '/posters',
-  '/content/website', '/content/order-app', '/media',
-  '/analytics', '/forecasts',
-  '/settings', '/telegram', '/devices', '/system-health', '/integrations',
-  '/time-clock', '/activity', '/account', '/help',
+  // Help is the guides themselves.
+  '/help',
 ];
 
 export function guidesForPage(page: string, guides: Guide[] = GUIDES): Guide[] {

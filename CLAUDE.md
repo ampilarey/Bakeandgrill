@@ -1448,7 +1448,8 @@ menu page (`page`, a `to` from `navConfig.ts`) and shows only to someone who may
 The "?" in the top bar (`HelpButton` in `AppShell`) opens `/help?page=<the page you are on>`, with
 that page's guides first; `?guide=<id>` opens one. **A change to a screen changes its guide in the
 same commit**, and a new page gets a guide or a line in `PAGES_WITHOUT_GUIDE` (`guides.test.ts`
-fails otherwise, and when a page on that list gains a guide). Guides are written from the screen:
+fails otherwise, and when a page on that list gains a guide). Every menu page has at least one
+guide since 2026-11-10 (62 in all); only Help itself is on that list. Guides are written from the screen:
 check the button and field names before writing them, no long dashes. Not a manual: one task per
 guide; a concept that needs explaining belongs on the screen itself. The offer form picks an item
 or category by name (`ItemSearch`, a category select; the server names each target,
