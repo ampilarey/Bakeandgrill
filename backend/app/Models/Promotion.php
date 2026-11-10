@@ -278,24 +278,27 @@ class Promotion extends Model
     {
         $now = $now ? \Carbon\Carbon::instance(\DateTimeImmutable::createFromInterface($now)) : now();
 
-        $days = $this->days_of_week;
-        if (is_array($days) && $days !== []) {
-            // Accept 0-6 (Sun-Sat) or 1-7 (Mon-Sun) — store as Carbon dayOfWeek (0=Sun).
-            $today = (int) $now->dayOfWeek;
-            $normalized = array_map('intval', $days);
-            if (!in_array($today, $normalized, true)) {
-                return false;
-            }
-        }
-
         $start = $this->starts_time;
         $end = $this->ends_time;
-        if ($start && $end) {
-            $current = $now->format('H:i:s');
-            $startStr = is_string($start) ? $start : (string) $start;
-            $endStr = is_string($end) ? $end : (string) $end;
-            // Support overnight windows (e.g. 22:00–02:00).
-            if ($startStr <= $endStr) {
+        $startStr = $start ? (is_string($start) ? $start : (string) $start) : null;
+        $endStr = $end ? (is_string($end) ? $end : (string) $end) : null;
+        $current = $now->format('H:i:s');
+        $overnight = $startStr !== null && $endStr !== null && $startStr > $endStr;
+
+        // The day a window belongs to is the day it opened: "Friday 22:00 to 02:00" is still
+        // Friday's at 01:00 on Saturday (discount audit, 2026-11-10; it used to stop at midnight).
+        $day = (int) $now->dayOfWeek;
+        if ($overnight && $current <= $endStr) {
+            $day = ($day + 6) % 7;
+        }
+
+        $days = $this->days_of_week;
+        if (is_array($days) && $days !== [] && !in_array($day, array_map('intval', $days), true)) {
+            return false;
+        }
+
+        if ($startStr !== null && $endStr !== null) {
+            if (!$overnight) {
                 if ($current < $startStr || $current > $endStr) {
                     return false;
                 }

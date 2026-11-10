@@ -93,7 +93,7 @@ class EffectivePriceService
         }
 
         return match ($promotion->type) {
-            'percentage' => round($basePrice * (1 - ((int) $promotion->discount_value) / 100), 2),
+            'percentage' => round($basePrice * (1 - min(100, max(0, (int) $promotion->discount_value)) / 100), 2),
             'fixed' => max(0, round($basePrice - ((int) $promotion->discount_value) / 100, 2)),
             default => $basePrice,
         };

@@ -103,6 +103,8 @@ class AutoPromoCheckoutTest extends TestCase
 
     public function test_coded_promo_still_applies_after_auto(): void
     {
+        // Under Add them up; under Best one wins the bigger one stays (DiscountAuditTest).
+        \App\Models\SiteSetting::set(\App\Domains\Orders\Support\DiscountSettings::STACKING, 'stack');
         Promotion::create([
             'name' => 'Auto 5%',
             'code' => null,

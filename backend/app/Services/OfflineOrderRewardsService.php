@@ -11,7 +11,6 @@ use App\Domains\Payments\Services\GiftCardRedemptionService;
 use App\Domains\Promotions\Services\PromotionEvaluator;
 use App\Models\Customer;
 use App\Models\Order;
-use App\Models\OrderPromotion;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -75,38 +74,17 @@ class OfflineOrderRewardsService
         }
 
         $promotion = $result['promotion'];
-        $idempotencyKey = 'order-promo:' . $order->id . ':' . $promotion->id;
-
-        DB::transaction(function () use ($order, $promotion, $result, $idempotencyKey): void {
+        DB::transaction(function () use ($order, $promotion, $result): void {
             $order = Order::lockForUpdate()->findOrFail($order->id);
 
             if (in_array($order->status, ['paid', 'completed', 'cancelled', 'partial'], true)) {
                 throw new \RuntimeException('Order is no longer modifiable.');
             }
 
-            $existing = OrderPromotion::where('order_id', $order->id)
-                ->whereNotIn('status', ['released'])
-                ->first();
-
-            if ($existing && !$promotion->stackable) {
-                $existing->update(['status' => 'released']);
+            $attached = $this->promoEvaluator->attachCode($order, $promotion, (int) $result['discount_laar']);
+            if (!$attached['applied']) {
+                throw new \RuntimeException((string) $attached['message']);
             }
-
-            OrderPromotion::firstOrCreate(
-                ['idempotency_key' => $idempotencyKey],
-                [
-                    'order_id' => $order->id,
-                    'promotion_id' => $promotion->id,
-                    'discount_laar' => $result['discount_laar'],
-                    'status' => 'draft',
-                ],
-            );
-
-            $totalPromoDiscount = OrderPromotion::where('order_id', $order->id)
-                ->where('status', 'draft')
-                ->sum('discount_laar');
-
-            $order->update(['promo_discount_laar' => $totalPromoDiscount]);
             $this->calculator->recalculateAndPersist($order);
         });
     }

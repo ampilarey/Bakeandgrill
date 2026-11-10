@@ -1122,9 +1122,28 @@ When two offers fit one order or dish, Promotions → Controls → When offers o
 up, the setting `discount_stacking_policy`, read only through
 `DiscountSettings::stackingPolicy()` (an unknown value reads as best wins). Promo codes,
 discount cards, automatic offers and daily specials follow it; a manual till discount always
-comes on top. Daily Specials, Loyalty and Referrals stay beside their own jobs, and the top of
+comes on top. A code goes on an order only through `PromotionEvaluator::attachCode()` (discount
+audit, 2026-11-10; the till, the order app and offline sync): under Best one wins the bigger of the
+code and what the ticket already has stays, a smaller code is refused with the reason, and
+`applyAutomatic` measures against a code already there (`againstCodesOnOrder`); a code removed and
+typed again revives its row. The per-offer `stackable` column no longer decides anything and the
+form no longer offers it. An item offer baked into menu prices, like a special, is a price, so a
+code still comes off that price. Daily Specials, Loyalty and Referrals stay beside their own jobs, and the top of
 Promotions links them (`ELSEWHERE_LINKS` in `PromotionsHub.tsx`, only the ones the reader can
 open): a new money-off page kept outside Promotions goes into that list.
+
+Discount audit (owner, 2026-11-10: "audit all discounts and promotions" → "Fix all"). An offer's
+dates are moments: the admin form shows them as local clock time and sends ISO (`toDateBox`,
+`toInstant` in `PromotionsPage.tsx`), and `PromotionController::checkedOffer()` turns them to the
+shop's timezone before saving (a "...Z" string saved raw moved the end five hours earlier on every
+edit) and runs the same checks on create and edit, on the offer as it would be stored: a percentage
+at most 100 (tiers and quantity breaks too), a fixed amount at most MVR 5,000, the end after the
+start, a free item with something picked. A new rule for a saved offer goes there. An automatic
+item offer with a minimum order is never in menu prices (`isItemLevelPromo()`,
+`AutoPromotionPricing`) and comes off at order time once the minimum is met; the free-item prompt
+asks the same gates as the discount (`rewardGateFails`); a happy hour past midnight belongs to the
+day it opened (`Promotion::matchesScheduleWindow`); and saving an offer asks `promotions.manage`,
+never a role name. `DiscountAuditTest`, `PromotionDates.test.ts`.
 
 ## POS suggestions: a row, never a pop-up
 

@@ -106,7 +106,8 @@ class AutoPromotionPricing
     private function applyPromoToPrice(Promotion $promo, float $catalogPrice): float
     {
         return match ($promo->type) {
-            'percentage' => round($catalogPrice * (1 - ((int) $promo->discount_value) / 100), 2),
+            // Never below nothing, whatever was typed (a 150% offer priced a dish at -30.00).
+            'percentage' => round($catalogPrice * (1 - min(100, max(0, (int) $promo->discount_value)) / 100), 2),
             'fixed' => max(0, round($catalogPrice - ((int) $promo->discount_value) / 100, 2)),
             default => $catalogPrice,
         };
@@ -145,6 +146,10 @@ class AutoPromotionPricing
                 // Nor which orders an offer is limited to (till or app, order type, 2026-11-08):
                 // those apply at order time too.
                 if ($p->isLimitedToSomeOrders()) {
+                    return false;
+                }
+                // Nor a minimum order (discount audit, 2026-11-10): the same, at order time.
+                if ((int) ($p->min_order_laar ?? 0) > 0) {
                     return false;
                 }
                 // Catalog prices cannot know basket triggers — skip those promos here.

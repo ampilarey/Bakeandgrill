@@ -258,14 +258,12 @@ class PromotionController extends Controller
         }
 
         $promotion = $result['promotion'];
-        $idempotencyKey = 'order-promo:' . $orderId . ':' . $promotion->id;
-
         // Track whether the promo was actually persisted so we can return the
         // correct status if the order was concurrently locked into a terminal state.
         $applied = false;
         $rejectMessage = null;
 
-        DB::transaction(function () use ($order, $orderId, $promotion, $result, $idempotencyKey, &$applied, &$rejectMessage): void {
+        DB::transaction(function () use ($order, $orderId, $promotion, $result, &$applied, &$rejectMessage): void {
             // Re-lock the order row inside the transaction to prevent race conditions.
             $order = Order::lockForUpdate()->findOrFail($orderId);
 
@@ -299,29 +297,12 @@ class PromotionController extends Controller
                 }
             }
 
-            $existing = OrderPromotion::where('order_id', $order->id)
-                ->whereNotIn('status', ['released'])
-                ->first();
+            $attached = $this->evaluator->attachCode($order, $promotion, (int) $result['discount_laar']);
+            if (!$attached['applied']) {
+                $rejectMessage = $attached['message'];
 
-            if ($existing && !$promotion->stackable) {
-                $existing->update(['status' => 'released']);
+                return;
             }
-
-            OrderPromotion::firstOrCreate(
-                ['idempotency_key' => $idempotencyKey],
-                [
-                    'order_id' => $order->id,
-                    'promotion_id' => $promotion->id,
-                    'discount_laar' => $result['discount_laar'],
-                    'status' => 'draft',
-                ],
-            );
-
-            $totalPromoDiscount = OrderPromotion::where('order_id', $order->id)
-                ->where('status', 'draft')
-                ->sum('discount_laar');
-
-            $order->update(['promo_discount_laar' => $totalPromoDiscount]);
             $this->calculator->recalculateAndPersist($order);
             $applied = true;
         });
@@ -493,16 +474,76 @@ class PromotionController extends Controller
     }
 
     // ─── Internal authorization guard (defense-in-depth) ─────────────────────
+    /**
+     * The routes already ask for promotions.manage; this repeats it rather than a role name, so
+     * a role the owner gave Promotions to can save what it can open (discount audit, 2026-11-10:
+     * only "owner" and "manager" could, whatever the role editor said).
+     */
     private function authorizeAdminRole(Request $request, string ...$roles): void
     {
         $user = $request->user();
-        if (!$user || $user instanceof Customer) {
+        if (!$user || $user instanceof Customer || !$user->hasPermission('promotions.manage')) {
             abort(403, 'Forbidden.');
         }
-        $user->loadMissing('role');
-        if (!in_array($user->role?->slug, $roles, true)) {
-            abort(403, 'Insufficient role.');
+    }
+
+    /**
+     * The checks a saved offer must pass whichever fields were sent, on the offer as it would be
+     * stored (discount audit, 2026-11-10: the edit route skipped them, and neither capped a
+     * percentage). Dates are turned to the shop's timezone: one sent back as "...Z" used to be
+     * stored as typed, five hours early, on every save.
+     *
+     * @param array<string, mixed> $validated
+     * @return array<string, mixed>
+     */
+    private function checkedOffer(array $validated, ?Promotion $existing, ?array $targets): array
+    {
+        $tz = (string) config('app.timezone', 'Indian/Maldives');
+        foreach (['starts_at', 'expires_at'] as $key) {
+            if (!empty($validated[$key])) {
+                $validated[$key] = \Illuminate\Support\Carbon::parse((string) $validated[$key], $tz)->setTimezone($tz);
+            }
         }
+
+        $type = (string) ($validated['type'] ?? $existing?->type ?? '');
+        $value = (int) ($validated['discount_value'] ?? $existing?->discount_value ?? 0);
+        $errors = [];
+        if ($type === 'percentage' && $value > 100) {
+            $errors['discount_value'] = ['A percentage discount cannot be more than 100%.'];
+        }
+        if ($type === 'fixed' && $value > 500000) {
+            $errors['discount_value'] = ['Fixed discount cannot exceed MVR 5000.'];
+        }
+        $meta = (array) ($validated['metadata'] ?? []);
+        if (($meta['kind'] ?? null) === 'percentage' && (int) ($meta['value'] ?? 0) > 100) {
+            $errors['metadata.value'] = ['A percentage discount cannot be more than 100%.'];
+        }
+        foreach ((array) ($meta['tiers'] ?? []) as $i => $tier) {
+            if (($tier['kind'] ?? null) === 'percentage' && (int) ($tier['value'] ?? 0) > 100) {
+                $errors["metadata.tiers.{$i}.value"] = ['A percentage discount cannot be more than 100%.'];
+            }
+        }
+
+        $starts = array_key_exists('starts_at', $validated) ? $validated['starts_at'] : $existing?->starts_at;
+        $expires = array_key_exists('expires_at', $validated) ? $validated['expires_at'] : $existing?->expires_at;
+        if ($starts && $expires && !\Illuminate\Support\Carbon::parse($expires)->gt(\Illuminate\Support\Carbon::parse($starts))) {
+            $errors['expires_at'] = ['The end must be after the start.'];
+        }
+
+        // A free item with nothing picked would give every order its cheapest item.
+        if ($type === 'free_item') {
+            $rows = $targets ?? ($existing?->targets()->get()->toArray() ?? []);
+            $picked = array_filter($rows, fn ($t) => empty($t['is_exclusion']));
+            if ($picked === []) {
+                $errors['targets'] = ['Pick the item or category that is free.'];
+            }
+        }
+
+        if ($errors !== []) {
+            throw \Illuminate\Validation\ValidationException::withMessages($errors);
+        }
+
+        return $validated;
     }
 
     public function adminStore(Request $request): JsonResponse
@@ -535,7 +576,7 @@ class PromotionController extends Controller
             'metadata.get_discount_pct' => 'nullable|integer|min:0|max:100',
             'metadata.cheapest' => 'nullable|boolean',
             'starts_at' => 'nullable|date',
-            'expires_at' => 'nullable|date|after:starts_at',
+            'expires_at' => 'nullable|date',
             'days_of_week' => 'nullable|array',
             'days_of_week.*' => 'integer|min:0|max:6',
             'starts_time' => 'nullable|date_format:H:i,H:i:s',
@@ -574,16 +615,9 @@ class PromotionController extends Controller
             $validated['auto_apply'] = false;
         }
 
-        // Fixed promos are stored in laari — hard cap MVR 5000.
-        if (($validated['type'] ?? '') === 'fixed' && (int) $validated['discount_value'] > 500000) {
-            return response()->json([
-                'message' => 'Fixed discount cannot exceed MVR 5000.',
-                'errors' => ['discount_value' => ['Fixed discount cannot exceed MVR 5000.']],
-            ], 422);
-        }
-
         $targets = $validated['targets'] ?? [];
         unset($validated['targets']);
+        $validated = $this->checkedOffer($validated, null, $targets);
 
         // Nothing ticked, or everything ticked, is every order.
         foreach (['order_channels' => Promotion::CHANNELS, 'order_types' => Promotion::ORDER_TYPES] as $key => $all) {
@@ -638,7 +672,8 @@ class PromotionController extends Controller
             'metadata.get_qty' => 'nullable|integer|min:1',
             'metadata.get_discount_pct' => 'nullable|integer|min:0|max:100',
             'metadata.cheapest' => 'nullable|boolean',
-            'expires_at' => 'nullable|date',
+            'starts_at' => 'sometimes|nullable|date',
+            'expires_at' => 'sometimes|nullable|date',
             'days_of_week' => 'nullable|array',
             'days_of_week.*' => 'integer|min:0|max:6',
             'starts_time' => 'nullable|date_format:H:i,H:i:s',
@@ -676,6 +711,7 @@ class PromotionController extends Controller
 
         $targets = $validated['targets'] ?? null;
         unset($validated['targets']);
+        $validated = $this->checkedOffer($validated, $promotion, $targets);
 
         // Nothing ticked, or everything ticked, is every order.
         foreach (['order_channels' => Promotion::CHANNELS, 'order_types' => Promotion::ORDER_TYPES] as $key => $all) {

@@ -107,6 +107,7 @@ class PromotionEvaluator
 
         $policy = DiscountSettings::stackingPolicy();
         $selected = $this->selectByStackingPolicy($eligible, $policy);
+        $selected = $this->againstCodesOnOrder($order, $selected, $policy);
 
         $applied = [];
         foreach ($selected as $row) {
@@ -143,6 +144,106 @@ class PromotionEvaluator
     }
 
     /**
+     * Best one wins counts a code already on the ticket too (discount audit, 2026-11-10): the
+     * bigger of the code and the best automatic offer stays, never both. The loser is released,
+     * or left out. Free delivery is beside the point and always stays.
+     *
+     * @param list<array{promotion: Promotion, discount_laar: int}> $selected
+     * @return list<array{promotion: Promotion, discount_laar: int}>
+     */
+    private function againstCodesOnOrder(Order $order, array $selected, string $policy): array
+    {
+        if ($policy === 'stack' || !$order->exists) {
+            return $selected;
+        }
+        $coded = $this->merchandiseDrafts($order)->filter(fn (OrderPromotion $d) => !$d->promotion->auto_apply);
+        if ($coded->isEmpty()) {
+            return $selected;
+        }
+        $codedLaar = (int) $coded->sum('discount_laar');
+        $autoLaar = 0;
+        foreach ($selected as $row) {
+            if (!$this->isDeliveryWaiver($row['promotion'])) {
+                $autoLaar += (int) $row['discount_laar'];
+            }
+        }
+        if ($autoLaar > $codedLaar) {
+            foreach ($coded as $draft) {
+                $draft->update(['status' => 'released']);
+            }
+
+            return $selected;
+        }
+
+        return array_values(array_filter($selected, fn (array $row) => $this->isDeliveryWaiver($row['promotion'])));
+    }
+
+    /** @return Collection<int, OrderPromotion> the drafts on an order that take money off the items */
+    private function merchandiseDrafts(Order $order): Collection
+    {
+        return OrderPromotion::query()
+            ->where('order_id', $order->id)
+            ->where('status', 'draft')
+            ->with('promotion')
+            ->get()
+            ->filter(fn (OrderPromotion $d) => $d->promotion !== null && !$this->isDeliveryWaiver($d->promotion))
+            ->values();
+    }
+
+    /**
+     * Put a code that passed evaluate() on an order, by the rule in Promotions → Controls → When
+     * offers overlap (discount audit, 2026-11-10; before, a code's own "stackable" tick decided,
+     * so a 5% code replaced a 20% automatic offer, and a stackable one added to it under Best one
+     * wins). Best one wins: the bigger of this code and what is already on the ticket stays, and
+     * a smaller code is refused with the reason. Add them up: everything stays. Free delivery
+     * always goes on beside the rest. The caller holds the order's row lock and recalculates.
+     *
+     * @return array{applied: bool, message: ?string}
+     */
+    public function attachCode(Order $order, Promotion $promotion, int $discountLaar): array
+    {
+        if (DiscountSettings::stackingPolicy() !== 'stack' && !$this->isDeliveryWaiver($promotion)) {
+            $others = $this->merchandiseDrafts($order)->filter(fn (OrderPromotion $d) => (int) $d->promotion_id !== (int) $promotion->id);
+            $othersLaar = (int) $others->sum('discount_laar');
+            if ($others->isNotEmpty() && $othersLaar >= $discountLaar) {
+                $first = $others->first()->promotion;
+                $name = $first->auto_apply ? $first->name : ($first->code ?? $first->name);
+
+                return ['applied' => false, 'message' => sprintf(
+                    'This ticket already has %s (MVR %s off), which is more than this code gives (MVR %s). The bigger one stays.',
+                    $name,
+                    number_format($othersLaar / 100, 2),
+                    number_format($discountLaar / 100, 2),
+                )];
+            }
+            foreach ($others as $other) {
+                $other->update(['status' => 'released']);
+            }
+        }
+
+        $row = OrderPromotion::firstOrCreate(
+            ['idempotency_key' => 'order-promo:' . $order->id . ':' . $promotion->id],
+            [
+                'order_id' => $order->id,
+                'promotion_id' => $promotion->id,
+                'discount_laar' => $discountLaar,
+                'status' => 'draft',
+            ],
+        );
+        // Removed earlier and typed again: the same row is the draft again (it used to stay
+        // released, so the till said "applied" and took nothing off).
+        if (!$row->wasRecentlyCreated && $row->status !== 'consumed') {
+            $row->update(['status' => 'draft', 'discount_laar' => $discountLaar]);
+        }
+
+        $order->update(['promo_discount_laar' => (int) OrderPromotion::where('order_id', $order->id)
+            ->where('status', 'draft')
+            ->sum('discount_laar')]);
+
+        return ['applied' => true, 'message' => null];
+    }
+
+    /**
      * Promo whose discount is baked into catalog line prices by EffectivePriceService.
      * Only percentage/fixed with reward targets and NO trigger rows qualify — free_item,
      * BOGO, and trigger-gated offers must still run through applyAutomatic.
@@ -154,6 +255,11 @@ class PromotionEvaluator
         }
         // An offer for some orders only cannot sit in the menu prices every order sees.
         if ($promo->isLimitedToSomeOrders()) {
+            return false;
+        }
+        // Nor can one with a minimum order: the menu cannot know the ticket's size, so it comes
+        // off at order time once the minimum is met (discount audit, 2026-11-10).
+        if ((int) ($promo->min_order_laar ?? 0) > 0) {
             return false;
         }
 
@@ -665,7 +771,7 @@ class PromotionEvaluator
         $applicableAmount = $this->applicableSubtotal($promo, $order);
 
         $raw = match ($promo->type) {
-            'percentage' => (int) floor($applicableAmount * $promo->discount_value / 100),
+            'percentage' => (int) floor($applicableAmount * min(100, max(0, (int) $promo->discount_value)) / 100),
             'fixed' => min((int) $promo->discount_value, $applicableAmount),
             'free_item' => $this->freeItemDiscount($promo, $order),
             'tiered' => $this->tieredDiscount($promo, $applicableAmount > 0 ? $applicableAmount : $subtotalLaar),
@@ -884,6 +990,12 @@ class PromotionEvaluator
             if ($firstOrderCheck !== null) {
                 continue;
             }
+            // The gates the discount itself has (discount audit, 2026-11-10): the prompt used to
+            // say "You've earned a free Roshi" on a ticket under the minimum order, or to someone
+            // past their limit, and the customer paid for the item they added.
+            if ($this->rewardGateFails($promo, $order, $customerId)) {
+                continue;
+            }
 
             $itemIds = $rewardTargets->pluck('target_id')->all();
             $items = Item::query()
@@ -921,6 +1033,28 @@ class PromotionEvaluator
         }
 
         return $out;
+    }
+
+    private function rewardGateFails(Promotion $promo, Order $order, ?int $customerId): bool
+    {
+        if ($promo->min_order_laar && (int) ($order->subtotal_laar ?? 0) < (int) $promo->min_order_laar) {
+            return true;
+        }
+        if ($customerId === null && ($promo->max_uses_per_customer || $promo->first_order_only)) {
+            return true;
+        }
+        if ($customerId !== null && $promo->max_uses_per_customer) {
+            $used = $this->redemptionRepo->countByPromotionAndCustomer($promo->id, $customerId)
+                + OrderPromotion::where('promotion_id', $promo->id)
+                    ->where('status', 'draft')
+                    ->whereHas('order', fn ($q) => $q->where('customer_id', $customerId)->whereNotIn('status', ['cancelled', 'refunded']))
+                    ->count();
+            if ($used >= (int) $promo->max_uses_per_customer) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

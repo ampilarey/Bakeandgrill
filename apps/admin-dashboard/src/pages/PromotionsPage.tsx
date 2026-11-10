@@ -194,7 +194,9 @@ function PromotionForm({
       setError('BOGO needs buy and get quantities.'); return;
     }
     if (form.min_order_laar != null && form.min_order_laar < 0) { setError('Minimum order amount cannot be negative.'); return; }
-    if (form.starts_at && form.expires_at && form.starts_at >= form.expires_at) {
+    const startsAt = toInstant(form.starts_at);
+    const expiresAt = toInstant(form.expires_at);
+    if (startsAt && expiresAt && new Date(startsAt) >= new Date(expiresAt)) {
       setError('Expiry date must be after start date.'); return;
     }
     setError('');
@@ -202,6 +204,8 @@ function PromotionForm({
     try {
       const payload: PromotionPayload = {
         ...form,
+        starts_at: startsAt,
+        expires_at: expiresAt,
         discount_value: isStrategy ? (form.discount_value || 0) : form.discount_value,
         waive_delivery: form.type === 'free_delivery' ? true : !!form.waive_delivery,
         code: autoApply ? (form.code?.trim() || null) : form.code,
@@ -292,10 +296,10 @@ function PromotionForm({
           />
         </Field>
         <Field label="Starts At">
-          <Input value={form.starts_at ?? ''} onChange={(v) => set('starts_at', v || null)} type="datetime-local" />
+          <Input value={toDateBox(form.starts_at)} onChange={(v) => set('starts_at', v || null)} type="datetime-local" />
         </Field>
         <Field label="Expires At">
-          <Input value={form.expires_at ?? ''} onChange={(v) => set('expires_at', v || null)} type="datetime-local" />
+          <Input value={toDateBox(form.expires_at)} onChange={(v) => set('expires_at', v || null)} type="datetime-local" />
         </Field>
       </div>
 
@@ -536,14 +540,13 @@ function PromotionForm({
           </div>
         </Field>
       )}
+      <p data-testid="promo-overlap-note" style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
+        When this meets another offer on one order, Controls → When offers overlap decides: the best one wins, or they add up.
+      </p>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
           <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />
           Active
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
-          <input type="checkbox" checked={form.stackable} onChange={(e) => set('stackable', e.target.checked)} />
-          Stackable
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
           <input type="checkbox" checked={!!form.first_order_only} onChange={(e) => set('first_order_only', e.target.checked)} />
@@ -602,6 +605,27 @@ function formatBudget(p: Promotion): string {
   const spent = (p.spent_laar ?? 0) / 100;
   const budget = p.budget_laar / 100;
   return `${spent.toFixed(0)} / ${budget.toFixed(0)}`;
+}
+
+/*
+ * The date boxes (discount audit, 2026-11-10). The server gives a moment ("2026-11-09T10:00:00Z")
+ * and a date box wants the clock time where the reader is ("2026-11-09T15:00"): shown raw the box
+ * stayed blank, and sent back raw the end moved five hours earlier on every save. So the box shows
+ * local time and the save sends the moment.
+ */
+export function toDateBox(value: string | null | undefined): string {
+  if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return value;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+export function toInstant(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 function toFormPayload(p: Promotion): PromotionPayload {
