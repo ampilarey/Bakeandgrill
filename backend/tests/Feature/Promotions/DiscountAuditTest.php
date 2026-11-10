@@ -216,4 +216,40 @@ class DiscountAuditTest extends TestCase
         $this->patchJson("/api/admin/promotions/{$id}", ['name' => 'Y'])->assertOk();
         $this->deleteJson("/api/admin/promotions/{$id}")->assertOk();
     }
+
+    /** Owner, 2026-11-10: "1st 50 customers get 15% off from an item or category or free". */
+    public function test_the_first_customers_get_an_item_offer_once_each_until_it_runs_out(): void
+    {
+        Sanctum::actingAs($this->staff, ['staff']);
+        $id = $this->postJson('/api/admin/promotions', [
+            'name' => 'First two customers', 'type' => 'percentage', 'discount_value' => 15, 'auto_apply' => true, 'scope' => 'item',
+            'max_uses' => 2, 'max_uses_per_customer' => 1,
+            'targets' => [['target_type' => 'item', 'target_id' => $this->curry->id]],
+        ])->assertCreated()->assertJsonPath('promotion.max_uses_per_customer', 1)->json('promotion.id');
+        Cache::flush();
+        $pricing = app(AutoPromotionPricing::class);
+        $pricing->bustCache();
+        $this->assertNull($pricing->resolveForItem($this->curry->id, 60.0, $this->curry)['promotion'], 'not in the menu price');
+
+        $order = function (?int $customerId): Order {
+            $r = $this->postJson('/api/orders', array_filter([
+                'type' => 'takeaway', 'device_identifier' => $this->device->identifier, 'print' => false, 'customer_id' => $customerId,
+                'items' => [['item_id' => $this->curry->id, 'quantity' => 1]],
+            ]))->assertCreated();
+
+            return Order::findOrFail((int) $r->json('order.id'));
+        };
+        $a = \App\Models\Customer::create(['name' => 'A', 'phone' => '+9607770001', 'is_active' => true]);
+        $b = \App\Models\Customer::create(['name' => 'B', 'phone' => '+9607770002', 'is_active' => true]);
+        $c = \App\Models\Customer::create(['name' => 'C', 'phone' => '+9607770003', 'is_active' => true]);
+
+        $this->assertSame(0, (int) $order(null)->promo_discount_laar, 'a walk-in with nobody on the ticket');
+        $this->assertSame(900, (int) $order($a->id)->promo_discount_laar);
+        $this->assertSame(0, (int) $order($a->id)->promo_discount_laar, 'once each');
+        $this->assertSame(900, (int) $order($b->id)->promo_discount_laar);
+        $this->assertSame(0, (int) $order($c->id)->promo_discount_laar, 'the two are gone');
+
+        $this->patchJson("/api/admin/promotions/{$id}", ['max_uses_per_customer' => null])->assertOk();
+        $this->assertNull(Promotion::find($id)->max_uses_per_customer);
+    }
 }

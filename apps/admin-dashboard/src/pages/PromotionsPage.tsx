@@ -30,7 +30,7 @@ const TYPE_OPTIONS = [
 
 const EMPTY: PromotionPayload = {
   name: '', code: '', type: 'fixed', discount_value: 0,
-  scope: 'order', min_order_laar: null, max_uses: null,
+  scope: 'order', min_order_laar: null, max_uses: null, max_uses_per_customer: null,
   stackable: false, is_active: true, auto_apply: false,
   first_order_only: false, registered_only: false, waive_delivery: false, budget_laar: null,
   metadata: {},
@@ -284,7 +284,7 @@ function PromotionForm({
             Approximate under high concurrency.
           </div>
         </Field>
-        <Field label="Max Uses">
+        <Field label="Max uses (all customers)">
           <Input
             value={form.max_uses != null ? String(form.max_uses) : ''}
             onChange={(v) => {
@@ -294,6 +294,20 @@ function PromotionForm({
             }}
             type="number" placeholder="Unlimited"
           />
+        </Field>
+        <Field label="Uses per customer">
+          <Input
+            value={form.max_uses_per_customer != null ? String(form.max_uses_per_customer) : ''}
+            onChange={(v) => {
+              const n = v ? parseInt(v, 10) : null;
+              if (n !== null && (!Number.isFinite(n) || n < 1)) return;
+              set('max_uses_per_customer', n);
+            }}
+            type="number" placeholder="Unlimited"
+          />
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 3 }}>
+            For "the first 50 customers": 50 above and 1 here. The order then needs a customer on it, so a walk-in is added at the till first.
+          </div>
         </Field>
         <Field label="Starts At">
           <Input value={toDateBox(form.starts_at)} onChange={(v) => set('starts_at', v || null)} type="datetime-local" />
@@ -638,6 +652,7 @@ function toFormPayload(p: Promotion): PromotionPayload {
     scope: p.scope,
     min_order_laar: p.min_order_laar,
     max_uses: p.max_uses,
+    max_uses_per_customer: p.max_uses_per_customer ?? null,
     stackable: p.stackable,
     is_active: p.is_active,
     auto_apply: !!p.auto_apply,

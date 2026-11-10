@@ -53,6 +53,9 @@ describe('PromotionsPage strategy fields', () => {
     expect(screen.getByText('Get qty')).toBeTruthy();
     expect(screen.getByText('First order only')).toBeTruthy();
     expect(screen.getByText('Campaign budget (MVR, optional)')).toBeTruthy();
+    // Owner, 2026-11-10: "1st 50 customers" needs a limit per customer beside the total.
+    expect(screen.getByText('Max uses (all customers)')).toBeTruthy();
+    expect(screen.getByText('Uses per customer')).toBeTruthy();
   });
 
   it('lists spent / budget progress', async () => {

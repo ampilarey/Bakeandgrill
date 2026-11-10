@@ -262,6 +262,11 @@ class PromotionEvaluator
         if ((int) ($promo->min_order_laar ?? 0) > 0) {
             return false;
         }
+        // Nor one limited per customer (owner, 2026-11-10: "1st 50 customers get 15% off"): the
+        // menu cannot know who is buying, so it comes off the order of a customer still in limit.
+        if ($promo->max_uses_per_customer) {
+            return false;
+        }
 
         $promo->loadMissing('targets');
         $inclusions = $promo->targets->where('is_exclusion', false);

@@ -49,6 +49,8 @@ export type Promotion = {
   scope: string;
   min_order_laar?: number | null;
   max_uses?: number | null;
+  /** How many times one customer may use it; the order then needs a customer on it. */
+  max_uses_per_customer?: number | null;
   redemptions_count: number;
   budget_laar?: number | null;
   spent_laar?: number;
@@ -81,6 +83,8 @@ export type PromotionPayload = {
   scope?: string;
   min_order_laar?: number | null;
   max_uses?: number | null;
+  /** How many times one customer may use it; the order then needs a customer on it. */
+  max_uses_per_customer?: number | null;
   stackable?: boolean;
   is_active?: boolean;
   auto_apply?: boolean;

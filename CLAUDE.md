@@ -1143,7 +1143,10 @@ item offer with a minimum order is never in menu prices (`isItemLevelPromo()`,
 `AutoPromotionPricing`) and comes off at order time once the minimum is met; the free-item prompt
 asks the same gates as the discount (`rewardGateFails`); a happy hour past midnight belongs to the
 day it opened (`Promotion::matchesScheduleWindow`); and saving an offer asks `promotions.manage`,
-never a role name. `DiscountAuditTest`, `PromotionDates.test.ts`.
+never a role name. "The first 50 customers" (owner, 2026-11-10) is Max uses 50 with Uses per
+customer 1 (`max_uses_per_customer`, now on the offer form): the order needs a customer on it, and
+an item offer limited per customer is, like one with a minimum order, never in menu prices.
+`DiscountAuditTest`, `PromotionDates.test.ts`.
 
 ## POS suggestions: a row, never a pop-up
 

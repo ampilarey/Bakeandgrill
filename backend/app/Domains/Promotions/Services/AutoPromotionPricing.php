@@ -152,6 +152,10 @@ class AutoPromotionPricing
                 if ((int) ($p->min_order_laar ?? 0) > 0) {
                     return false;
                 }
+                // Nor a limit per customer: the menu cannot know who is buying.
+                if ($p->max_uses_per_customer) {
+                    return false;
+                }
                 // Catalog prices cannot know basket triggers — skip those promos here.
                 // They apply at order time via PromotionEvaluator::applyAutomatic.
                 $inclusions = $p->targets->where('is_exclusion', false);
