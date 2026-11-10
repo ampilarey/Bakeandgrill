@@ -1438,6 +1438,22 @@ are in `components/posters/` and `PostersPage.tsx`. Saved templates keep `sizes`
 `docs/poster-themes/generator-source/` (`POSTER_VARIANT=tv|tvp python3 build_tv.py`, then
 `merge_tv.py`; handoff § 6). Audit and recommendations: `docs/POSTER_AUDIT_2026-10.md`.
 
+## Help: short guides inside the admin
+
+Owner, 2026-11-10 ("there are lots of different features that I don't know how to use"). Team →
+Help (`/help`, `HelpPage.tsx`, no permission of its own) lists short "How do I…" guides from
+`apps/admin-dashboard/src/help/guides.ts`: a title as the reader would say it, a few steps in the
+screen's own words, Good to know, and a button that opens the screen. Each guide belongs to one
+menu page (`page`, a `to` from `navConfig.ts`) and shows only to someone who may open that page.
+The "?" in the top bar (`HelpButton` in `AppShell`) opens `/help?page=<the page you are on>`, with
+that page's guides first; `?guide=<id>` opens one. **A change to a screen changes its guide in the
+same commit**, and a new page gets a guide or a line in `PAGES_WITHOUT_GUIDE` (`guides.test.ts`
+fails otherwise, and when a page on that list gains a guide). Guides are written from the screen:
+check the button and field names before writing them, no long dashes. Not a manual: one task per
+guide; a concept that needs explaining belongs on the screen itself. The offer form picks an item
+or category by name (`ItemSearch`, a category select; the server names each target,
+`PromotionController::nameTargets`), never by ID.
+
 ## Needs attention
 
 iruali import plan, feature 14 (2026-10-18). One list of what wants a person today:

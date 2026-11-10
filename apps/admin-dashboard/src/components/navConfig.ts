@@ -8,7 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, Utensils,
-  LayoutTemplate, Shield, UserCog, Images, Tv, Store, Tags, Send, Bell, Frame, Inbox, Globe } from 'lucide-react';
+  LayoutTemplate, Shield, UserCog, Images, Tv, Store, Tags, Send, Bell, Frame, Inbox, Globe, LifeBuoy } from 'lucide-react';
 import type { StaffUser } from '../api';
 
 export { LogOut };
@@ -184,6 +184,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/time-clock',  icon: Clock,      label: 'Time Clock',     permissions: ['staff.view', 'pos.time_clock'], description: 'Punch history & summaries' },
       { to: '/activity',    icon: Zap,        label: 'POS Activity',   permission: 'reports.view',            description: 'Audit trail of cashier actions' },
       { to: '/account',       icon: UserCircle,  label: 'My Account',     description: 'Profile & session' },
+      // Owner, 2026-11-10: short "How do I…" guides; each shows to whoever may open its page.
+      { to: '/help',          icon: LifeBuoy,    label: 'Help',           description: 'Short guides: how to do one thing, step by step' },
     ],
   },
 ];

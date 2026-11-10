@@ -27,7 +27,7 @@ describe('admin route audit', () => {
     expect(labelsOf('analyze')).toEqual(['Reports', 'Analytics', 'Website visitors', 'Forecasts', 'Finance']);
     // Notifications audit, 2026-10-10: every text, email and Telegram alert in one place.
     expect(labelsOf('system')).toEqual(['Needs attention', 'Settings', 'Notifications', 'Telegram', 'Devices', 'System Health', 'Integrations']);
-    expect(labelsOf('team')).toEqual(['Staff', 'Shifts & Cash', 'Time Clock', 'POS Activity', 'My Account']);
+    expect(labelsOf('team')).toEqual(['Staff', 'Shifts & Cash', 'Time Clock', 'POS Activity', 'My Account', 'Help']);
   });
 
   it('has no complaint, GST, refund, print-queue or availability entries of their own any more', () => {

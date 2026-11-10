@@ -10,6 +10,8 @@ export type PromotionTarget = {
   /** null/absent = reward (legacy). UI uses "Customer must buy" / "They get". */
   role?: 'trigger' | 'reward' | null;
   metadata?: { min_qty?: number } | null;
+  /** The item's or category's name, for showing; the server works it out. */
+  name?: string | null;
 };
 
 export type PromotionType =

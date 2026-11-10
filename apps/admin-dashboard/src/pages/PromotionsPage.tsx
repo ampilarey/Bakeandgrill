@@ -3,7 +3,7 @@ import { OrderLimitsField, orderLimitText } from './PromotionOrderLimits';
 import { SeeAlso } from '../components/SeeAlso';
 import { Link } from 'react-router-dom';
 import {
-  fetchPromotions, createPromotion, updatePromotion, deletePromotion, fetchOffersPerformance,
+  fetchPromotions, createPromotion, updatePromotion, deletePromotion, fetchOffersPerformance, fetchAdminCategories,
   type Promotion, type PromotionPayload, type PromotionType, type PromotionTier,
   type OffersPerformanceReport,
 } from '../api';
@@ -12,6 +12,7 @@ import {
   Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, PageHeader, PageShell, ScrollX, Select, Spinner, TableCard, TD, TH, useConfirmDialog, InlineIcon,
 } from '../components/SharedUI';
 import { CustomerSearch } from '../components/CustomerSearch';
+import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import { downloadCSV } from '../utils/csvExport';
 import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
 import { Lock, Printer } from 'lucide-react';
@@ -58,6 +59,16 @@ function PromotionForm({
   const [error, setError] = useState('');
   const [targetType, setTargetType] = useState<'item' | 'category'>('category');
   const [targetId, setTargetId] = useState('');
+  // Picked by name (owner, 2026-11-10: the box asked for the item's ID number).
+  const [targetItem, setTargetItem] = useState<MenuItemSelection | null>(null);
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  useEffect(() => {
+    let off = false;
+    void fetchAdminCategories()
+      .then((res) => { if (!off) setCategories((res.data ?? []).map((c) => ({ id: c.id, name: c.name })).sort((a, b) => a.name.localeCompare(b.name))); })
+      .catch(() => { /* the picker stays empty; the rest of the form works */ });
+    return () => { off = true; };
+  }, []);
   /** UI: "must_buy" = trigger, "they_get" = reward — never show those API words. */
   const [targetSide, setTargetSide] = useState<'must_buy' | 'they_get'>('they_get');
   const [targetMinQty, setTargetMinQty] = useState('1');
@@ -153,8 +164,9 @@ function PromotionForm({
   };
 
   const addTarget = () => {
-    const id = parseInt(targetId, 10);
+    const id = targetType === 'item' ? (targetItem?.id ?? 0) : parseInt(targetId, 10);
     if (!Number.isFinite(id) || id < 1) return;
+    const name = targetType === 'item' ? (targetItem?.label ?? null) : (categories.find((c) => c.id === id)?.name ?? null);
     const existing = form.targets ?? [];
     const role = targetSide === 'must_buy' ? 'trigger' as const : 'reward' as const;
     if (existing.some((t) => t.target_type === targetType && t.target_id === id && (t.role ?? 'reward') === role)) {
@@ -167,8 +179,10 @@ function PromotionForm({
       is_exclusion: false,
       role,
       metadata: role === 'trigger' ? { min_qty: minQty } : null,
+      name,
     }]);
     setTargetId('');
+    setTargetItem(null);
   };
 
   const removeTarget = (idx: number) => {
@@ -458,7 +472,18 @@ function PromotionForm({
             onChange={(v) => setTargetType(v as 'item' | 'category')}
             options={[{ value: 'category', label: 'Category' }, { value: 'item', label: 'Item' }]}
           />
-          <Input value={targetId} onChange={setTargetId} type="number" placeholder="ID" />
+          {targetType === 'category' ? (
+            <Select
+              value={targetId}
+              onChange={setTargetId}
+              options={[{ value: '', label: 'Pick a category…' }, ...categories.map((c) => ({ value: String(c.id), label: c.name }))]}
+              data-testid="promo-target-category"
+            />
+          ) : (
+            <div style={{ flex: '1 1 220px', minWidth: 0 }} data-testid="promo-target-item">
+              <ItemSearch kind="menu" value={targetItem} onChange={setTargetItem} placeholder="Type a dish name…" resultsPlacement="inline" />
+            </div>
+          )}
           {targetSide === 'must_buy' && (
             <Input
               value={targetMinQty}
@@ -478,7 +503,7 @@ function PromotionForm({
               const min = t.metadata?.min_qty;
               return (
                 <span key={`${t.target_type}-${t.target_id}-${t.role ?? 'reward'}-${i}`} style={{ fontSize: 12, background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 6, padding: '4px 8px' }}>
-                  {side}: {t.target_type} #{t.target_id}{min && min > 1 ? ` ×${min}` : ''}
+                  {side}: {t.name ?? `${t.target_type} #${t.target_id}`}{t.name && t.target_type === 'category' ? ' (category)' : ''}{min && min > 1 ? ` ×${min}` : ''}
                   <button type="button" onClick={() => removeTarget(i)} style={{ marginLeft: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)' }}>×</button>
                 </span>
               );

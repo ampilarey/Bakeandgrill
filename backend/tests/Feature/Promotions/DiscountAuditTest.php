@@ -225,7 +225,10 @@ class DiscountAuditTest extends TestCase
             'name' => 'First two customers', 'type' => 'percentage', 'discount_value' => 15, 'auto_apply' => true, 'scope' => 'item',
             'max_uses' => 2, 'max_uses_per_customer' => 1,
             'targets' => [['target_type' => 'item', 'target_id' => $this->curry->id]],
-        ])->assertCreated()->assertJsonPath('promotion.max_uses_per_customer', 1)->json('promotion.id');
+        ])->assertCreated()->assertJsonPath('promotion.max_uses_per_customer', 1)
+            // The form shows what was picked by name, not "item #2".
+            ->assertJsonPath('promotion.targets.0.name', 'Chicken Curry')->json('promotion.id');
+        $this->assertSame('Chicken Curry', collect($this->getJson('/api/admin/promotions')->json('data'))->firstWhere('id', $id)['targets'][0]['name']);
         Cache::flush();
         $pricing = app(AutoPromotionPricing::class);
         $pricing->bustCache();

@@ -5,7 +5,7 @@ import { useInbox } from '../hooks/useInbox';
 import type { StaffUser } from '../api';
 import { fetchLowStockItems } from '../api';
 import {
-  Bell, BellOff, ChevronLeft, ChevronRight, Inbox, Info, Moon, Package, Search, ShoppingBag, Sun, TriangleAlert, UserCircle, X,
+  Bell, BellOff, ChevronLeft, ChevronRight, CircleHelp, Inbox, Info, Moon, Package, Search, ShoppingBag, Sun, TriangleAlert, UserCircle, X,
   type LucideIcon,
 } from 'lucide-react';
 import { isAudioEnabled, setAudioEnabled } from '../utils/audio';
@@ -17,6 +17,7 @@ import {
   getPermittedSections,
   getSectionById,
   LogOut,
+  navItemPathname,
   resolveNavItemForPath,
   type NavGroup,
 } from './navConfig';
@@ -113,6 +114,30 @@ function InboxButton() {
     >
       <Inbox size={16} />
       {total > 0 && <span className="admin-shell-notif-dot">{total > 99 ? '99+' : total}</span>}
+    </button>
+  );
+}
+
+/**
+ * Help for the page you are on (owner, 2026-11-10): opens the guides with this page's first.
+ * Not shown on Help itself.
+ */
+function HelpButton() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const item = resolveNavItemForPath(location.pathname, getAllNavItems());
+  const page = item ? navItemPathname(item.to) : null;
+  if (page === '/help') return null;
+  return (
+    <button
+      type="button"
+      onClick={() => navigate(page ? `/help?page=${encodeURIComponent(page)}` : '/help')}
+      title="Help for this page"
+      aria-label="Help for this page"
+      className="admin-shell-icon-btn"
+      data-testid="help-button"
+    >
+      <CircleHelp size={16} />
     </button>
   );
 }
@@ -362,6 +387,7 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
       >
         {audioOn ? <Bell size={16} /> : <BellOff size={16} />}
       </button>
+      <HelpButton />
       <InboxButton />
       <NotificationsBell />
     </>

@@ -74,6 +74,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/integrations', permissions: ['integrations.webhooks', 'integrations.xero', 'website.manage'] },
   { to: '/system-health', permissions: ['website.manage', 'service_availability.view'] },
   { to: '/account' },
+  { to: '/help' },
 ];
 
 function staff(permissions: string[]): StaffUser {

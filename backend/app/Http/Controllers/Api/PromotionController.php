@@ -456,8 +456,32 @@ class PromotionController extends Controller
             })
             ->orderByDesc('created_at')
             ->paginate(50);
+        $this->nameTargets($promotions->getCollection());
 
         return response()->json($promotions);
+    }
+
+    /**
+     * Each target's item or category by name, for the form's chips (owner, 2026-11-10: the form
+     * showed "item #42" and asked for the number).
+     *
+     * @param iterable<Promotion> $promotions
+     */
+    private function nameTargets(iterable $promotions): void
+    {
+        $targets = collect($promotions)->flatMap(fn (Promotion $p) => $p->targets);
+        if ($targets->isEmpty()) {
+            return;
+        }
+        $items = \App\Models\Item::query()->withTrashed()
+            ->whereIn('id', $targets->where('target_type', 'item')->pluck('target_id')->unique())->pluck('name', 'id');
+        $categories = \App\Models\Category::query()
+            ->whereIn('id', $targets->where('target_type', 'category')->pluck('target_id')->unique())->pluck('name', 'id');
+        foreach ($targets as $target) {
+            $target->setAttribute('name', $target->target_type === 'item'
+                ? ($items[$target->target_id] ?? null)
+                : ($categories[$target->target_id] ?? null));
+        }
     }
 
     /**
@@ -640,6 +664,7 @@ class PromotionController extends Controller
         }
 
         $promotion->load('targets');
+        $this->nameTargets([$promotion]);
 
         return response()->json(['promotion' => $promotion], 201);
     }
@@ -736,6 +761,7 @@ class PromotionController extends Controller
         }
 
         $promotion->load('targets');
+        $this->nameTargets([$promotion]);
 
         return response()->json(['promotion' => $promotion]);
     }
