@@ -514,7 +514,7 @@ class InvoiceController extends Controller
                 ),
                 'total' => $order->total,
                 'total_laar' => (int) ($order->total_laar ?? round($order->total * 100)),
-                'tax_rate_bp' => $order->tax_rate_bp ?: $this->gstSettings->defaultTaxRateBp(),
+                'tax_rate_bp' => $order->tax_rate_bp ?: $this->gstSettings->salesTaxRateBp(),
                 'issue_date' => now()->toDateString(),
             ]);
 

@@ -28,6 +28,7 @@ class UpdateGstSettingsRequest extends FormRequest
     {
         return [
             'gst_registered' => ['sometimes', 'boolean'],
+            'charge_gst' => ['sometimes', 'boolean'],
             'seller_name' => ['nullable', 'string', 'max:255'],
             'seller_address' => ['nullable', 'string'],
             'seller_tin' => ['nullable', 'string', 'max:30'],

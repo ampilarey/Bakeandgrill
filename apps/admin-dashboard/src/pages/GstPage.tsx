@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { PageHeader, PageShell, ResponsiveTable, StatCard } from '../components/SharedUI';
+import { PageHeader, PageShell, ResponsiveTable, StatCard, Switch } from '../components/SharedUI';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Tabs, TabList, Tab } from '../components/ui/Tabs';
@@ -628,6 +628,17 @@ export default function GstPage() {
 
       {tab === 'Settings' && settings && (
         <Card style={{ marginTop: 16, padding: 16, maxWidth: 640 }}>
+          <div style={{ marginBottom: 16, padding: 12, borderRadius: 10, background: 'var(--color-bg)', border: '1px solid var(--color-border-light)' }} data-testid="gst-charge">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700 }}>
+              <Switch checked={settings.charge_gst !== false} onChange={(on: boolean) => setSettings({ ...settings, charge_gst: on })} aria-label="Charge GST on sales" />
+              Charge GST on sales
+            </label>
+            <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '8px 0 0' }}>
+              {settings.charge_gst !== false
+                ? 'On: GST is charged by each dish\'s GST treatment and on the fees. Switch off to charge no GST anywhere.'
+                : 'Off: no GST on any bill, at the till or online, whatever the dishes and fees are set to. Bills already made keep theirs. Save to apply.'}
+            </p>
+          </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <input type="checkbox" checked={settings.gst_registered} onChange={(e) => setSettings({ ...settings, gst_registered: e.target.checked })} />
             GST registered with MIRA
@@ -663,7 +674,7 @@ export default function GstPage() {
             </label>
             <label style={{ fontSize: 13 }}>
               GST rate (basis points)
-              <input type="number" value={settings.default_tax_rate_bp} onChange={(e) => setSettings({ ...settings, default_tax_rate_bp: parseInt(e.target.value, 10) || 800 })} style={inputFont(settingsField)} />
+              <input type="number" value={settings.default_tax_rate_bp} onChange={(e) => setSettings({ ...settings, default_tax_rate_bp: Number.isFinite(parseInt(e.target.value, 10)) ? parseInt(e.target.value, 10) : 800 })} style={inputFont(settingsField)} />
               <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Bake &amp; Grill General Sector: 800 bp (8%). Tourism sector was 16% (1 Jan 2023–30 Jun 2025) and 17% from 1 Jul 2025 — not used unless a tourism activity is added.</span>
             </label>
             <label style={{ fontSize: 13 }}>

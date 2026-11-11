@@ -1078,6 +1078,16 @@ Built from the stored order on every open, so old orders show it too. The GST on
 follows its switch on Settings → Ordering → **Fees & slots** (`packaging_fee_taxable` and kin,
 `OrderFeeTaxCalculator`; linked from Finance → GST settings), not the items' tax codes.
 
+## One switch for GST on sales
+
+Owner, 2026-11-11 ("How can i turn off all gst from admin?"). Finance → GST → Settings → **Charge GST on
+sales** (`gst_settings.charge_gst`, on by default). Off, nothing sold is taxed: `GstSettingsService::salesTaxRateBp()`
+is 0, and `GstTaxCalculator`, the fees, the service charge, wholesale invoices and the bootstrap the till and the
+order app read (`default_tax_rate_bp`, `tax_rate_percent`, the fee flags) all follow it; the stored rate and each
+dish's tax code are kept. A new place that taxes a sale reads `salesTaxRateBp()` or `GstTaxCalculator`, never
+`defaultTaxRateBp()` (that one is the stored rate, for supplier bills and the ledger). "GST registered" is about
+filing and tax invoices, not about charging. `FeeGstTest::test_the_one_switch_turns_every_gst_off`.
+
 ## QR and card payments are checked by hand
 
 Owner, 2026-10-28: a QR customer types the bill amount themselves and the cashier keys the card

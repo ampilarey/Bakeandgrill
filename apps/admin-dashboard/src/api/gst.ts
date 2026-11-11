@@ -3,6 +3,8 @@ import { req, requestBlob } from './client';
 
 export interface GstSettings {
   gst_registered: boolean;
+  /** Off: nothing sold carries GST, whatever the dishes and fees are set to. */
+  charge_gst?: boolean;
   seller_name: string | null;
   seller_address: string | null;
   seller_tin: string | null;

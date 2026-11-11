@@ -106,7 +106,7 @@ final class TradeInvoiceService
                 abort(422, 'Nothing left to invoice on the selected deliveries.');
             }
 
-            $taxRateBp = $this->gstSettings->defaultTaxRateBp();
+            $taxRateBp = $this->gstSettings->salesTaxRateBp();
             $totalInclusiveLaar = $built['total_laar'];
             $taxLaar = (new Money($totalInclusiveLaar))->extractTax($taxRateBp)->amountLaar;
             $subtotalLaar = $totalInclusiveLaar - $taxLaar;
@@ -449,7 +449,7 @@ final class TradeInvoiceService
             }
             $partial = $amountLaar < $uncredited;
 
-            $taxRateBp = (int) ($parent->tax_rate_bp ?: $this->gstSettings->defaultTaxRateBp());
+            $taxRateBp = (int) ($parent->tax_rate_bp ?: $this->gstSettings->salesTaxRateBp());
             $taxLaar = (new Money($amountLaar))->extractTax($taxRateBp)->amountLaar;
             $subtotalLaar = $amountLaar - $taxLaar;
 
@@ -668,7 +668,7 @@ final class TradeInvoiceService
                                 'unit_price_laar' => $price,
                                 'total_laar' => 0,
                                 'kind' => 'sold',
-                                'tax_rate_bp' => $this->gstSettings->defaultTaxRateBp(),
+                                'tax_rate_bp' => $this->gstSettings->salesTaxRateBp(),
                             ];
                         }
                         $agg[$key]['quantity'] += $qty;
@@ -696,7 +696,7 @@ final class TradeInvoiceService
                                 'unit_price_laar' => $price,
                                 'total_laar' => 0,
                                 'kind' => 'missing',
-                                'tax_rate_bp' => $this->gstSettings->defaultTaxRateBp(),
+                                'tax_rate_bp' => $this->gstSettings->salesTaxRateBp(),
                             ];
                         }
                         $agg[$key]['quantity'] += $qty;

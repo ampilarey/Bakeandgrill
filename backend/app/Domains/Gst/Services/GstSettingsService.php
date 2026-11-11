@@ -46,6 +46,23 @@ class GstSettingsService
         return (int) $this->get()->default_tax_rate_bp;
     }
 
+    /**
+     * Whether sales carry GST at all (owner, 2026-11-11: one switch to turn
+     * every GST off). Off, nothing sold is taxed: dishes whatever their tax
+     * code, the fees, the service charge and wholesale invoices. The stored
+     * rate is kept, so switching back on charges it again.
+     */
+    public function chargesGst(): bool
+    {
+        return (bool) ($this->get()->charge_gst ?? true);
+    }
+
+    /** The rate sales are taxed at: the GST rate, or 0 while GST is switched off. */
+    public function salesTaxRateBp(): int
+    {
+        return $this->chargesGst() ? $this->defaultTaxRateBp() : 0;
+    }
+
     public function defaultTaxRatePercent(): float
     {
         return $this->defaultTaxRateBp() / 100;
@@ -87,15 +104,17 @@ class GstSettingsService
 
         return [
             'gst_registered' => (bool) $s->gst_registered,
-            'default_tax_rate_bp' => (int) $s->default_tax_rate_bp,
-            'tax_rate_percent' => round($s->default_tax_rate_bp / 100, 2),
+            'charge_gst' => $this->chargesGst(),
+            // The till and the order app work their totals out from these: 0 while GST is off.
+            'default_tax_rate_bp' => $this->salesTaxRateBp(),
+            'tax_rate_percent' => round($this->salesTaxRateBp() / 100, 2),
             'tax_inclusive' => (bool) $s->tax_inclusive,
             'currency' => $s->currency,
             'sector' => $s->sector,
             'accounting_basis' => $s->accounting_basis,
-            'packaging_fee_taxable' => $feeTax->packagingTaxable(),
-            'small_order_fee_taxable' => $feeTax->smallOrderTaxable(),
-            'delivery_fee_taxable' => $feeTax->deliveryTaxable(),
+            'packaging_fee_taxable' => $this->chargesGst() && $feeTax->packagingTaxable(),
+            'small_order_fee_taxable' => $this->chargesGst() && $feeTax->smallOrderTaxable(),
+            'delivery_fee_taxable' => $this->chargesGst() && $feeTax->deliveryTaxable(),
         ];
     }
 
@@ -106,6 +125,7 @@ class GstSettingsService
 
         return [
             'gst_registered' => (bool) $s->gst_registered,
+            'charge_gst' => (bool) ($s->charge_gst ?? true),
             'seller_name' => $s->seller_name,
             'seller_address' => $s->seller_address,
             'seller_tin' => $s->seller_tin,
@@ -134,6 +154,7 @@ class GstSettingsService
     {
         return [
             'gst_registered' => false,
+            'charge_gst' => true,
             'sector' => GstSector::General->value,
             'default_tax_rate_bp' => 800,
             'tax_inclusive' => false,

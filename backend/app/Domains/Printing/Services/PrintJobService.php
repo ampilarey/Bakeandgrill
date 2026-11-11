@@ -497,7 +497,8 @@ class PrintJobService
                 'table' => self::seatLine($order, withTicketName: false),
                 'notes' => $order->notes,
                 'subtotal' => $order->subtotal,
-                'tax_amount' => $order->tax_amount,
+                // No "Tax: 0.00" on a slip with no GST on it.
+                'tax_amount' => (float) $order->tax_amount > 0 ? $order->tax_amount : null,
                 'discount_amount' => $order->discount_amount,
                 'service_charge_enabled' => $order->service_charge_enabled,
                 'service_charge_amount' => $order->service_charge_amount,

@@ -38,7 +38,7 @@ class GstTaxCalculator
             return 0.0;
         }
 
-        return $this->settings->defaultTaxRatePercent();
+        return $this->settings->salesTaxRateBp() / 100;
     }
 
     public function resolveTaxRateBp(?string $taxCode): int
@@ -49,7 +49,7 @@ class GstTaxCalculator
             return 0;
         }
 
-        return $this->settings->defaultTaxRateBp();
+        return $this->settings->salesTaxRateBp();
     }
 
     public function calculateLineTaxLaar(int $lineLaar, ?string $taxCode, ?bool $taxInclusive = null): int
@@ -63,7 +63,8 @@ class GstTaxCalculator
             return 0;
         }
 
-        $rateBp = $this->settings->defaultTaxRateBp();
+        // 0 while GST is switched off (GstSettingsService::chargesGst): no line, fee or service charge is taxed.
+        $rateBp = $this->settings->salesTaxRateBp();
         $taxInclusive ??= $this->settings->taxInclusive();
 
         if ($taxInclusive) {

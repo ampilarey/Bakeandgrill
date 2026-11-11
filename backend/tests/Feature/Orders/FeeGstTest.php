@@ -113,6 +113,35 @@ class FeeGstTest extends TestCase
         $this->assertSame(14040, (int) $order->total_laar);
     }
 
+    public function test_the_one_switch_turns_every_gst_off(): void
+    {
+        // Owner, 2026-11-11: "How can i turn off all gst from admin?" A standard-rated
+        // dish, a taxable delivery fee and the rate left at 8%: off, nothing is taxed.
+        $this->configureGst(false);
+        $this->configureFeeTax();
+        GstSetting::query()->update(['charge_gst' => false]);
+        app(GstSettingsService::class)->bust();
+
+        $order = $this->deliveryOrder(100, 30);
+        app(OrderTotalsCalculator::class)->recalculateAndPersist($order);
+        $order->refresh();
+        $this->assertSame(0, (int) $order->tax_laar);
+        $this->assertSame(13000, (int) $order->total_laar);
+
+        // The till and the order app work their totals out from the bootstrap.
+        $boot = app(GstSettingsService::class)->bootstrapPayload();
+        $this->assertFalse($boot['charge_gst']);
+        $this->assertSame(0, $boot['default_tax_rate_bp']);
+        $this->assertFalse($boot['delivery_fee_taxable']);
+        // The stored rate is kept for the day it is switched back on.
+        $this->assertSame(800, app(GstSettingsService::class)->adminPayload()['default_tax_rate_bp']);
+
+        GstSetting::query()->update(['charge_gst' => true]);
+        app(GstSettingsService::class)->bust();
+        app(OrderTotalsCalculator::class)->recalculateAndPersist($order->fresh());
+        $this->assertSame(1040, (int) $order->fresh()->tax_laar);
+    }
+
     public function test_inclusive_gst_is_extracted_from_the_delivery_fee(): void
     {
         // Inclusive: the MVR 30 fee already contains its GST, so the customer

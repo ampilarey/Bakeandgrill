@@ -180,6 +180,25 @@ export const GUIDES: Guide[] = [
 
   // ── Money ─────────────────────────────────────────────────────────────────
   {
+    id: 'gst-off',
+    page: '/finance',
+    title: 'Stop charging GST on every bill',
+    about: 'One switch. Off, no bill carries GST, whatever each dish and fee is set to.',
+    open: { to: '/gst', label: 'Open GST' },
+    steps: [
+      'Open Finance → GST and tap the Settings tab.',
+      'Switch off Charge GST on sales.',
+      'Tap Save settings.',
+    ],
+    notes: [
+      'It covers dishes, the packaging, small-order and delivery fees, the service charge, and wholesale invoices, at the till and online.',
+      'Bills already made keep the GST they had.',
+      'A till that is already open picks the change up when it is reloaded.',
+      'Switch it back on and GST is charged again as each dish and fee is set.',
+    ],
+    words: 'gst tax off remove no tax 8% bill receipt',
+  },
+  {
     id: 'check-payments',
     page: '/finance',
     title: 'Check today\'s QR, card and transfer payments',

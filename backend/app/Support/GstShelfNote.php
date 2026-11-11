@@ -19,7 +19,7 @@ final class GstShelfNote
             return $cached;
         }
         $gst = GstSetting::query()->first();
-        $text = ($gst && $gst->gst_registered && !$gst->tax_inclusive)
+        $text = ($gst && $gst->gst_registered && ($gst->charge_gst ?? true) && !$gst->tax_inclusive)
             ? 'GST added at checkout'
             : '';
         $request->attributes->set('gst_shelf_note', $text);

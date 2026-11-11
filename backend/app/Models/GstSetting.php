@@ -10,6 +10,7 @@ class GstSetting extends Model
 {
     protected $fillable = [
         'gst_registered',
+        'charge_gst',
         'seller_name',
         'seller_address',
         'seller_tin',
@@ -32,6 +33,7 @@ class GstSetting extends Model
 
     protected $casts = [
         'gst_registered' => 'boolean',
+        'charge_gst' => 'boolean',
         'default_tax_rate_bp' => 'integer',
         'tax_inclusive' => 'boolean',
         'next_invoice_sequence' => 'integer',
