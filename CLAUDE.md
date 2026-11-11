@@ -450,7 +450,10 @@ frozen momo's zip pouch, "different type of background… steam, frying and othe
 what a sticker draws), filled boxes only, the photo cut to a circle (`PouchDesign::circle`), the name in
 Lobster (`FONTS['lob']`). A new pouch colour or cooking method is a row in `PouchConfig` (and
 `POUCH_FALLBACK` in `PouchPicker.tsx`), never a new design; presets r120x53, r140x62, r160x70; templates
-`momo-pouch*` and `pouch-any`; the wizard's Pouch or bag front card. Every size in one go (owner,
+`momo-pouch*` and `pouch-any`; the wizard's Pouch or bag front card. The business's logo and name
+stand in the strip beside the ingredients; the size word prints as "Small Pack" (`packWords()`), where `pack_place`
+says (`PouchConfig::PACK_PLACES`: panel tag, photo badge, line), never a bare "Small" over the count; a cut-out
+photo is fitted whole in the circle. Every size in one go (owner,
 2026-11-11: "an easy option for 3 sizes with photos"): Pouch labels in every size (`PouchSetModal`, the wizard's
 Something else and Custom labels; `POST /labels/pouch-set`, `PouchSet`) makes a custom label per size, "Chicken Momo
 (Small)" printed without the bracket (`PouchSet::printName`), with the shipped momo photo or a Library one, and a

@@ -49,6 +49,7 @@ export function PouchSetModal({ onClose, onMade }: { onClose: () => void; onMade
   const [rows, setRows] = useState<Row[]>(SET_FALLBACK.sizes.map(toRow));
   const [photo, setPhoto] = useState<Photo>({ kind: 'builtin' });
   const [on, setOn] = useState<'sheet' | 'printer'>('sheet');
+  const [place, setPlace] = useState('panel');
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [made, setMade] = useState<PouchSetRow[] | null>(null);
@@ -78,7 +79,7 @@ export function PouchSetModal({ onClose, onMade }: { onClose: () => void; onMade
     setBusy(true);
     try {
       const r = await createPouchSet({
-        name: name.trim(), template, look, on,
+        name: name.trim(), template, look, on, pack_place: place,
         photo: shownPhoto.kind === 'builtin' ? 'builtin' : shownPhoto.kind === 'library' ? shownPhoto.id : null,
         sizes: rows.map((row) => ({ word: row.word.trim(), qty: row.qty ? Number(row.qty) : null, price: row.price !== '' ? Number(row.price) : null, preset: row.preset })),
       });
@@ -157,6 +158,12 @@ export function PouchSetModal({ onClose, onMade }: { onClose: () => void; onMade
               </select>
             </div>
             <div>
+              <label className={labelClass} htmlFor="ps-place">Where the pack size goes</label>
+              <select id="ps-place" value={place} onChange={(e) => setPlace(e.target.value)} className={fieldClass}>
+                {(pouch.pack_places ?? POUCH_FALLBACK.pack_places ?? []).map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+              </select>
+            </div>
+            <div>
               <label className={labelClass} htmlFor="ps-on">Printed on</label>
               <select id="ps-on" value={on} onChange={(e) => setOn(e.target.value as 'sheet' | 'printer')} className={fieldClass}>
                 <option value="sheet">A4 sticker paper, as many as fit</option>
@@ -179,7 +186,7 @@ export function PouchSetModal({ onClose, onMade }: { onClose: () => void; onMade
                 <Btn small variant={shownPhoto.kind === 'none' ? 'primary' : 'secondary'} onClick={() => setPhoto({ kind: 'none' })}>No photo</Btn>
               </div>
             </div>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">The same photo goes on every size, cut to a circle.</p>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">The same photo goes on every size, in a circle. The size word prints as "Small Pack", so nobody reads it as small momo.</p>
           </div>
 
           <div>

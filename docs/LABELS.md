@@ -146,6 +146,15 @@ how it is cooked with its picture, the phone, a panel with the size word, the pa
 and unit and the price, and a strip with the ingredients (allergens bold), how to use, the
 storage line with the dates and batch, the complaints QR and "Made by Bake & Grill …".
 
+Bake & Grill's logo and name stand at the head of the strip, beside the ingredients (owner,
+2026-11-11: "below near ingredients with bigger logo"); only another food brand (Amma) keeps its
+logo above the name. The size word prints as **"Small Pack"** (`PouchDesign::packWords`; a word
+that already says pack, box, bag, pouch, tray or tub stays as typed), since "Small / 6 pieces"
+read as small momo, and the product picks where (`pack_place`, `PouchConfig::PACK_PLACES`): a
+script tag at the top of the panel, a round badge on the photo, or an italic line under the
+count. A cut-out photo (clear corners, such as the shipped momo plate) is fitted whole in the
+circle; an ordinary photo is cut to its middle square (`PouchDesign::circle`).
+
 Two picks do the work, so a new product needs no new design:
 
 - **What the pouch looks like** (`PouchConfig::LOOKS`): gold, clear or white, kraft, dark,

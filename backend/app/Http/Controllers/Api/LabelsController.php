@@ -1217,6 +1217,7 @@ class LabelsController extends Controller
             'template' => ['sometimes', 'nullable', Rule::in(array_keys(PouchSet::templates()))],
             'look' => ['sometimes', 'nullable', Rule::in(array_keys(PouchConfig::LOOKS))],
             'method' => ['sometimes', 'nullable', Rule::in(array_keys(PouchConfig::METHODS))],
+            'pack_place' => ['sometimes', 'nullable', Rule::in(array_keys(PouchConfig::PACK_PLACES))],
             // "builtin" is the momo photo that comes with the templates; a number a library picture.
             'photo' => 'sometimes|nullable',
             'on' => ['sometimes', Rule::in(['sheet', 'printer'])],

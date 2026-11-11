@@ -108,10 +108,13 @@ export type LabelArrangement = Partial<Record<'full' | 'mini' | 'small' | 'round
  * after the pouch behind the label, and how the food is cooked (the pill and
  * the how-to-use wording). Null on a label is an ordinary sticker.
  */
-export type LabelPouch = { look: string; method: string; method_text: string; method_text_dv: string; tagline: string; tagline_dv: string; size_word: string };
+export type LabelPouch = { look: string; method: string; method_text: string; method_text_dv: string; tagline: string; tagline_dv: string; size_word: string; pack_place?: string };
 export type PouchCatalogue = {
   looks: { key: string; label: string; hint: string; bg: string; border: string; panel: string; pill: string }[];
   methods: { key: string; label: string; how: string }[];
+  /** Where the pack words ("Small Pack") print. */
+  pack_places?: { key: string; label: string; hint: string }[];
+  default_pack_place?: string;
   default_look: string; default_method: string; min_w: number; min_h: number; min_ratio: number;
 };
 /** A pouch product in its sizes, made in one go (2026-11-11): the form's starting rows, and what comes back. */
@@ -626,7 +629,7 @@ export function createCustomLabel(body: CustomLabelPayload) {
 }
 
 /** A custom label and a saved label per size of a pouch product; nothing is printed until Print. */
-export function createPouchSet(body: { name: string; template?: string | null; look?: string | null; method?: string | null; photo?: 'builtin' | number | null; on?: 'sheet' | 'printer'; sizes: PouchSetSize[] }) {
+export function createPouchSet(body: { name: string; template?: string | null; look?: string | null; method?: string | null; photo?: 'builtin' | number | null; on?: 'sheet' | 'printer'; pack_place?: string | null; sizes: PouchSetSize[] }) {
   return req<{ data: PouchSetRow[]; expires_in_minutes: number }>('/labels/pouch-set', { method: 'POST', body: JSON.stringify(body) });
 }
 

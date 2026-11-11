@@ -34,7 +34,7 @@ final class PouchDesign
     /** @var array<string, mixed> */
     private array $c;
 
-    /** @var array{look: string, method: string, method_text: string, method_text_dv: string, tagline: string, tagline_dv: string, size_word: string} */
+    /** @var array{look: string, method: string, method_text: string, method_text_dv: string, tagline: string, tagline_dv: string, size_word: string, pack_place: string} */
     private array $cfg;
 
     private bool $both;
@@ -104,6 +104,24 @@ final class PouchDesign
             $in += 0.85 * $u;
             $this->img($x + $in, $py + $in, $dia - 2 * $in, $dia - 2 * $in, self::circle($photo));
             $this->p[] = LabelSpots::close();
+            $pack = $this->packWords();
+            if ($pack !== '' && $this->packPlace() === 'badge') {
+                // A round sticker on the photo's shoulder: "SMALL" over "PACK".
+                $bd = $dia * 0.44;
+                $bx = $x + $dia - $bd * 0.9;
+                $by = $py + $dia - $bd * 0.92;
+                $this->box($bx, $by, $bd, $bd, $c['bg'], $bd / 2);
+                $rim = 0.5 * $u;
+                $this->box($bx + $rim, $by + $rim, $bd - 2 * $rim, $bd - 2 * $rim, $c['accent'], ($bd - 2 * $rim) / 2);
+                $parts = explode(' ', mb_strtoupper($pack), 2);
+                $tw = $bd * 0.74;
+                $pt1 = LabelText::fitPt($parts[0], 'j8', $tw, $bd * 0.3 / LabelText::PT, 3.6);
+                $this->text($bx + ($bd - $tw) / 2, $this->baseCentred($by + $bd * 0.2, $bd * 0.32, 'j8', $pt1), $tw, 'c', 'j8', $pt1, $c['bg'], $parts[0]);
+                if (isset($parts[1])) {
+                    $pt2 = LabelText::fitPt($parts[1], 'j8', $tw, $bd * 0.2 / LabelText::PT, 3.4);
+                    $this->text($bx + ($bd - $tw) / 2, $this->baseCentred($by + $bd * 0.52, $bd * 0.24, 'j8', $pt2), $tw + 0.1 * $pt2 * LabelText::PT, 'c', 'j8', $pt2, $c['bg'], $parts[1], 0.0, [], 0.1);
+                }
+            }
             $x += $dia + 2.6 * $u;
         } else {
             $x += 1.0 * $u;
@@ -137,33 +155,42 @@ final class PouchDesign
             $nameH += $pillH;
             $pillH = 0.0;
         }
-        $free = $mh - $logoH - $nameH - $tagH - $pillH;
-        $g = $free / 5;
-        $cy = $y + $g * 1.25;
-
-        // The brand's logo on a plate that keeps it readable on any look.
-        $logo = $c['dark_logo'] && !empty($d['brand']['is_default']) ? ($d['wordmark'] ?? null) : ($d['brand']['logo'] ?? $d['logo'] ?? null);
-        $ratio = $c['dark_logo'] && !empty($d['brand']['is_default']) ? (float) ($d['wordmark_ratio'] ?? 1.0) : (float) ($d['brand']['logo_ratio'] ?? $d['logo_ratio'] ?? 1.0);
-        $this->p[] = LabelSpots::open('brand');
-        if (is_string($logo) && $logo !== '') {
-            $lw = min($mw, $logoH * $ratio);
-            $lh = $lw / max(0.1, $ratio);
-            $this->img($this->dv ? $x + $mw - $lw : $x, $cy + ($logoH - $lh) / 2, $lw, $lh, $logo);
-            // A logo that is a mark (the flame) gets the brand's name beside it; a wide one already says it.
-            $name = mb_strtoupper(trim((string) ($d['brand']['name'] ?? '')));
-            if ($ratio < 2.0 && $name !== '' && !$this->dv) {
-                $ls = 0.16;
-                $room = $mw - $lw - 1.6 * $u;
-                $pt = LabelText::fitPt($name, 'j8', $room / (1 + $ls * 1.15), $logoH * 0.5 / LabelText::PT, 4.0);
-                $this->text($x + $lw + 1.6 * $u, $this->baseCentred($cy, $logoH, 'j8', $pt), $room, 'l', 'j8', $pt, $c['ink'], $name, 0.0, [], $ls);
-            }
-        } else {
-            $name = mb_strtoupper((string) ($d['brand']['name'] ?? ''));
-            $pt = LabelText::fitPt($name, 'j8', $mw, $logoH * 0.62 / LabelText::PT, 4.0);
-            $this->text($x, $this->baseCentred($cy, $logoH, 'j8', $pt), $mw, $this->a('l'), 'j8', $pt, $c['ink'], $name, 0.0, [], 0.12);
+        // Bake & Grill's own logo and name sit in the strip beside the ingredients (owner, 2026-11-11);
+        // only another food brand (Amma) keeps its logo up here, and the name takes the room otherwise.
+        $topBrand = empty($d['brand']['is_default']);
+        if (!$topBrand) {
+            $nameH += $logoH * 0.8;
+            $logoH = 0.0;
         }
-        $this->p[] = LabelSpots::close();
-        $cy += $logoH + $g;
+        $free = $mh - $logoH - $nameH - $tagH - $pillH;
+        $g = $free / ($topBrand ? 5 : 4);
+        $cy = $y + $g * ($topBrand ? 1.25 : 1.1);
+
+        if ($topBrand) {
+            // The brand's logo on a plate that keeps it readable on any look.
+            $logo = $d['brand']['logo'] ?? null;
+            $ratio = (float) ($d['brand']['logo_ratio'] ?? 1.0);
+            $this->p[] = LabelSpots::open('brand');
+            if (is_string($logo) && $logo !== '') {
+                $lw = min($mw, $logoH * $ratio);
+                $lh = $lw / max(0.1, $ratio);
+                $this->img($this->dv ? $x + $mw - $lw : $x, $cy + ($logoH - $lh) / 2, $lw, $lh, $logo);
+                // A logo that is a mark (the flame) gets the brand's name beside it; a wide one already says it.
+                $name = mb_strtoupper(trim((string) ($d['brand']['name'] ?? '')));
+                if ($ratio < 2.0 && $name !== '' && !$this->dv) {
+                    $ls = 0.16;
+                    $room = $mw - $lw - 1.6 * $u;
+                    $pt = LabelText::fitPt($name, 'j8', $room / (1 + $ls * 1.15), $logoH * 0.5 / LabelText::PT, 4.0);
+                    $this->text($x + $lw + 1.6 * $u, $this->baseCentred($cy, $logoH, 'j8', $pt), $room, 'l', 'j8', $pt, $c['ink'], $name, 0.0, [], $ls);
+                }
+            } else {
+                $name = mb_strtoupper((string) ($d['brand']['name'] ?? ''));
+                $pt = LabelText::fitPt($name, 'j8', $mw, $logoH * 0.62 / LabelText::PT, 4.0);
+                $this->text($x, $this->baseCentred($cy, $logoH, 'j8', $pt), $mw, $this->a('l'), 'j8', $pt, $c['ink'], $name, 0.0, [], 0.12);
+            }
+            $this->p[] = LabelSpots::close();
+            $cy += $logoH + $g;
+        }
 
         // The name: hand-lettered when the label has a title picture, else the script face.
         $this->p[] = LabelSpots::open('name');
@@ -245,6 +272,27 @@ final class PouchDesign
         }
     }
 
+    /** "Small Pack": the size word says it is the pack that is small (owner, 2026-11-11), unless it already says what it is. */
+    private function packWords(): string
+    {
+        $word = trim($this->cfg['size_word'] !== '' ? $this->cfg['size_word'] : (string) ($this->d['size_name'] ?? ''));
+        if ($word === '') {
+            return '';
+        }
+        $word = mb_convert_case(mb_strtolower($word), MB_CASE_TITLE);
+
+        return preg_match('/\b(pack|box|bag|pouch|tray|tub)\b/i', $word) ? $word : $word . ' Pack';
+    }
+
+    /** Where the pack words go: the panel's tag, a round badge on the photo (the panel without one), or a line under the count. */
+    private function packPlace(): string
+    {
+        $place = (string) ($this->cfg['pack_place'] ?? PouchConfig::DEFAULT_PACK_PLACE);
+        $hasPhoto = is_string($this->d['photo'] ?? null) && $this->d['photo'] !== '';
+
+        return $place === 'badge' && !$hasPhoto ? 'panel' : $place;
+    }
+
     private function pillWords(): string
     {
         if ($this->cfg['method'] === 'none') {
@@ -265,7 +313,8 @@ final class PouchDesign
         $u = $this->u;
         $in = 1.8 * $u;
         $iw = $pw - 2 * $in;
-        $size = mb_strtoupper($this->cfg['size_word'] !== '' ? $this->cfg['size_word'] : (string) ($d['size_name'] ?? ''));
+        $pack = $this->packWords();
+        $place = $pack === '' ? '' : $this->packPlace();
         $qty = trim((string) ($d['qty'] ?? ''));
         $net = trim((string) ($d['net_weight'] ?? ''));
         $price = trim((string) ($d['price'] ?? ''));
@@ -278,14 +327,17 @@ final class PouchDesign
         $small = $qty !== '' ? $net : '';
 
         $rows = [];
-        if ($size !== '') {
-            $rows[] = ['size', $ph * 0.13];
+        if ($place === 'panel') {
+            $rows[] = ['size', $ph * 0.2];
         }
         if ($big !== '') {
-            $rows[] = ['big', $ph * ($qty !== '' ? 0.34 : 0.22)];
+            $rows[] = ['big', $ph * ($qty !== '' ? ($place === 'panel' || $place === 'line' ? 0.28 : 0.34) : 0.22)];
         }
         if ($under !== '') {
             $rows[] = ['under', $ph * 0.1];
+        }
+        if ($place === 'line') {
+            $rows[] = ['packline', $ph * 0.15];
         }
         if ($small !== '') {
             $rows[] = ['small', $ph * 0.09];
@@ -302,9 +354,14 @@ final class PouchDesign
         foreach ($rows as [$what, $rh]) {
             switch ($what) {
                 case 'size':
-                    $ls = 0.18;
-                    $pt = LabelText::fitPt($size, 'j8', $iw / (1 + $ls * 1.2), $rh * 0.72 / LabelText::PT, 4.0);
-                    $this->text($x + $in, $this->baseCentred($cy, $rh, 'j8', $pt), $iw + $ls * $pt * LabelText::PT, 'c', 'j8', $pt, $c['panel_accent'], $size, 0.0, [], $ls);
+                    // "Small Pack" in the script face, on a tag of its own: the pack is small, not the momo.
+                    $this->box($x + $in, $cy, $iw, $rh, $c['panel_accent'], min(1.6 * $u, $rh * 0.3));
+                    $pt = LabelText::fitPt($pack, 'lob', $iw - 2.0 * $u, $rh * 0.7 / LabelText::PT, 4.5);
+                    $this->text($x + $in, $this->baseCentred($cy, $rh, 'lob', $pt), $iw, 'c', 'lob', $pt, $c['panel'], $pack);
+                    break;
+                case 'packline':
+                    $pt = LabelText::fitPt($pack, 'dsi', $iw, $rh * 0.78 / LabelText::PT, 4.5);
+                    $this->text($x + $in, $this->baseCentred($cy, $rh, 'dsi', $pt), $iw, 'c', 'dsi', $pt, $c['panel_accent'], $pack);
                     break;
                 case 'big':
                     $this->p[] = LabelSpots::open('qty');
@@ -354,6 +411,38 @@ final class PouchDesign
             $this->text($left, $bottom - LabelText::descent('j5') * $mpt * LabelText::PT, $right - $left, $this->a('l'), 'j5', $mpt, $c['strip_ink'], $maker);
             $this->p[] = LabelSpots::close();
             $bottom -= $this->lead('j5', $mpt) + 0.5 * $u;
+        }
+
+        // Bake & Grill's logo and name, big, at the head of the strip beside the ingredients (owner, 2026-11-11).
+        $logo = $c['dark_logo'] ? ($d['wordmark'] ?? $d['logo'] ?? null) : ($d['logo'] ?? null);
+        $ratio = max(0.2, (float) ($c['dark_logo'] && !empty($d['wordmark']) ? ($d['wordmark_ratio'] ?? 1.0) : ($d['logo_ratio'] ?? 1.0)));
+        $maker = trim((string) ($d['footer']['name'] ?? ''));
+        if (is_string($logo) && $logo !== '') {
+            $bh = $bottom - $top;
+            $wide = $ratio >= 2.0;
+            $words = $wide || $maker === '' ? [] : [mb_strtoupper($maker)];
+            $wordH = $words === [] ? 0.0 : $bh * 0.2;
+            $lh = $bh - $wordH - ($words === [] ? 0.0 : 0.4 * $u);
+            $lw = min($lh * $ratio, 30.0 * $u);
+            $lh = $lw / $ratio;
+            $bwid = max($lw, $words === [] ? 0.0 : 17.0 * $u);
+            $bx = $this->dv ? $right - $bwid : $left;
+            $this->p[] = LabelSpots::open('brand');
+            $this->img($bx + ($bwid - $lw) / 2, $top, $lw, $lh, $logo);
+            $wy = $top + $lh + 0.4 * $u;
+            foreach ($words as $word) {
+                $rowH = $wordH / count($words);
+                $ls = 0.1;
+                $pt = LabelText::fitPt($word, 'j8', $bwid / (1 + $ls * 1.2), $rowH * 0.86 / LabelText::PT, 3.4);
+                $this->text($bx, $this->baseCentred($wy, $rowH, 'j8', $pt), $bwid + $ls * $pt * LabelText::PT, 'c', 'j8', $pt, $c['strip_head'], $word, 0.0, [], $ls);
+                $wy += $rowH;
+            }
+            $this->p[] = LabelSpots::close();
+            if ($this->dv) {
+                $right -= $bwid + 2.8 * $u;
+            } else {
+                $left += $bwid + 2.8 * $u;
+            }
         }
 
         // The complaints QR on a white plate, with a word beneath.
@@ -627,7 +716,9 @@ final class PouchDesign
             }
             $sw = imagesx($src);
             $sh = imagesy($src);
-            $side = min($sw, $sh);
+            // A cut-out (clear corners: a plate lifted off its photo) is fitted whole on white; a photo is cut to its middle square.
+            $cutout = (((int) imagecolorat($src, 0, 0)) >> 24 & 0x7F) > 100 && (((int) imagecolorat($src, $sw - 1, $sh - 1)) >> 24 & 0x7F) > 100;
+            $side = $cutout ? max($sw, $sh) : min($sw, $sh);
             $px = min(520, $side);
             $out = imagecreatetruecolor($px, $px);
             imagealphablending($out, false);
@@ -635,7 +726,12 @@ final class PouchDesign
             // A cut-out's clear parts show the plate behind it, white.
             imagefill($out, 0, 0, imagecolorallocate($out, 255, 255, 255));
             imagealphablending($out, true);
-            imagecopyresampled($out, $src, 0, 0, (int) (($sw - $side) / 2), (int) (($sh - $side) / 2), $px, $px, $side, $side);
+            if ($cutout) {
+                $k = $px * 0.97 / $side;
+                imagecopyresampled($out, $src, (int) round(($px - $sw * $k) / 2), (int) round(($px - $sh * $k) / 2), 0, 0, (int) round($sw * $k), (int) round($sh * $k), $sw, $sh);
+            } else {
+                imagecopyresampled($out, $src, 0, 0, (int) (($sw - $side) / 2), (int) (($sh - $side) / 2), $px, $px, $side, $side);
+            }
             imagealphablending($out, false);
             $clear = imagecolorallocatealpha($out, 255, 255, 255, 127);
             $r = $px / 2;
@@ -660,7 +756,7 @@ final class PouchDesign
             return 'data:image/png;base64,' . base64_encode($png);
         };
         try {
-            return (string) Cache::remember('label-circle:' . md5($uri), 86400, $make);
+            return (string) Cache::remember('label-circle2:' . md5($uri), 86400, $make);
         } catch (\Throwable) {
             return $make();
         }

@@ -93,6 +93,19 @@ final class PouchConfig
         'none' => ['', '', null, ''],
     ];
 
+    /**
+     * Where the pack words ("Small Pack") print, each in a face of its own
+     * (owner, 2026-11-11: "people may think this is small size momo… put the
+     * small pack in different places and different fonts").
+     */
+    public const PACK_PLACES = [
+        'panel' => ['A tag at the top of the panel', 'Script lettering on a coloured tag, over the count'],
+        'badge' => ['A round badge on the photo', 'Capitals on a round sticker at the photo\'s corner'],
+        'line' => ['A line under the count', 'Italic lettering under "pieces"'],
+    ];
+
+    public const DEFAULT_PACK_PLACE = 'panel';
+
     public const DEFAULT_LOOK = 'gold';
 
     public const DEFAULT_METHOD = 'microwave';
@@ -107,7 +120,7 @@ final class PouchConfig
     /**
      * The product's pouch config, tidied, or null when it prints as an ordinary sticker.
      *
-     * @return ?array{look: string, method: string, method_text: string, method_text_dv: string, tagline: string, tagline_dv: string, size_word: string}
+     * @return ?array{look: string, method: string, method_text: string, method_text_dv: string, tagline: string, tagline_dv: string, size_word: string, pack_place: string}
      */
     public static function of(Item|CustomLabel $product): ?array
     {
@@ -121,7 +134,7 @@ final class PouchConfig
 
     /**
      * @param array<string, mixed> $in
-     * @return array{look: string, method: string, method_text: string, method_text_dv: string, tagline: string, tagline_dv: string, size_word: string}
+     * @return array{look: string, method: string, method_text: string, method_text_dv: string, tagline: string, tagline_dv: string, size_word: string, pack_place: string}
      */
     public static function clean(array $in): array
     {
@@ -139,6 +152,7 @@ final class PouchConfig
             'tagline_dv' => $text('tagline_dv', 60),
             // SMALL, MEDIUM, LARGE over the count; blank takes the size being printed, when the item has sizes.
             'size_word' => $text('size_word', 14),
+            'pack_place' => isset(self::PACK_PLACES[$place = (string) (is_scalar($in['pack_place'] ?? null) ? $in['pack_place'] : '')]) ? $place : self::DEFAULT_PACK_PLACE,
         ];
     }
 
@@ -160,6 +174,7 @@ final class PouchConfig
             "$key.tagline" => 'sometimes|nullable|string|max:60',
             "$key.tagline_dv" => 'sometimes|nullable|string|max:60',
             "$key.size_word" => 'sometimes|nullable|string|max:14',
+            "$key.pack_place" => ['sometimes', 'nullable', Rule::in(array_keys(self::PACK_PLACES))],
         ];
     }
 
@@ -179,6 +194,11 @@ final class PouchConfig
             $methods[] = ['key' => $key, 'label' => $key === 'none' ? 'Nothing (no pill)' : $en, 'how' => $how];
         }
 
-        return ['looks' => $looks, 'methods' => $methods, 'default_look' => self::DEFAULT_LOOK, 'default_method' => self::DEFAULT_METHOD, 'min_w' => self::MIN_W, 'min_h' => self::MIN_H, 'min_ratio' => self::MIN_RATIO];
+        $places = [];
+        foreach (self::PACK_PLACES as $key => [$label, $hint]) {
+            $places[] = ['key' => $key, 'label' => $label, 'hint' => $hint];
+        }
+
+        return ['looks' => $looks, 'methods' => $methods, 'pack_places' => $places, 'default_pack_place' => self::DEFAULT_PACK_PLACE, 'default_look' => self::DEFAULT_LOOK, 'default_method' => self::DEFAULT_METHOD, 'min_w' => self::MIN_W, 'min_h' => self::MIN_H, 'min_ratio' => self::MIN_RATIO];
     }
 }

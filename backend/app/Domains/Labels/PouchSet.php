@@ -87,14 +87,14 @@ final class PouchSet
     /**
      * One custom label per size.
      *
-     * @param array{name: string, name_dv?: ?string, template?: ?string, look?: ?string, method?: ?string, photo_media_id?: ?int, sizes: list<array{word: string, qty?: ?int, price?: ?float, preset: string}>} $in
+     * @param array{name: string, name_dv?: ?string, template?: ?string, look?: ?string, method?: ?string, pack_place?: ?string, photo_media_id?: ?int, sizes: list<array{word: string, qty?: ?int, price?: ?float, preset: string}>} $in
      * @return list<array{label: CustomLabel, preset: string}>
      */
     public static function create(array $in, ?int $userId): array
     {
         $template = self::templates()[$in['template'] ?? 'momo-pouch'] ?? self::templates()['momo-pouch'];
         $fields = array_intersect_key($template['fields'], array_flip(self::FIELDS));
-        $pouch = PouchConfig::clean(array_filter(['look' => $in['look'] ?? null, 'method' => $in['method'] ?? null], fn ($v) => $v !== null && $v !== '') + $template['fields']['label_pouch']);
+        $pouch = PouchConfig::clean(array_filter(['look' => $in['look'] ?? null, 'method' => $in['method'] ?? null, 'pack_place' => $in['pack_place'] ?? null], fn ($v) => $v !== null && $v !== '') + $template['fields']['label_pouch']);
         $name = trim($in['name']);
         $out = [];
         foreach ($in['sizes'] as $size) {

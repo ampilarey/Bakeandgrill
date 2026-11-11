@@ -24,10 +24,16 @@ export const POUCH_FALLBACK: PouchCatalogue = {
     { key: 'bake', label: 'Oven Bake', how: '' }, { key: 'ready', label: 'Ready to Eat', how: '' }, { key: 'thaw', label: 'Thaw & Serve', how: '' },
     { key: 'none', label: 'Nothing (no pill)', how: '' },
   ],
+  pack_places: [
+    { key: 'panel', label: 'A tag at the top of the panel', hint: 'Script lettering on a coloured tag, over the count' },
+    { key: 'badge', label: 'A round badge on the photo', hint: "Capitals on a round sticker at the photo's corner" },
+    { key: 'line', label: 'A line under the count', hint: 'Italic lettering under "pieces"' },
+  ],
+  default_pack_place: 'panel',
   default_look: 'gold', default_method: 'microwave', min_w: 90, min_h: 40, min_ratio: 1.5,
 };
 
-export const newPouch = (c: PouchCatalogue): LabelPouch => ({ look: c.default_look, method: c.default_method, method_text: '', method_text_dv: '', tagline: '', tagline_dv: '', size_word: '' });
+export const newPouch = (c: PouchCatalogue): LabelPouch => ({ look: c.default_look, method: c.default_method, method_text: '', method_text_dv: '', tagline: '', tagline_dv: '', size_word: '', pack_place: c.default_pack_place ?? 'panel' });
 
 /** Whether a label this size prints the pouch design (the server's PouchConfig::fits). */
 export const pouchFits = (c: PouchCatalogue, shape: string, w: number, h: number): boolean => shape === 'rect' && w >= c.min_w && h >= c.min_h && w >= h * c.min_ratio;
@@ -114,7 +120,14 @@ export function PouchPicker({ value, onChange, catalogue, howToUse, onUseHow, si
             <div>
               <label className={labelClass} htmlFor={`${idPrefix}-size-word`}>Size word</label>
               <input id={`${idPrefix}-size-word`} value={value.size_word} maxLength={14} onChange={(e) => set('size_word', e.target.value)} className={fieldClass} placeholder="Medium" />
-              <p className={hintClass}>Over the count: Small, Medium, Large. Blank prints the size being printed, when the item has sizes.</p>
+              <p className={hintClass}>Small, Medium, Large. Prints as "Small Pack", so nobody reads it as small momo. Blank prints the size being printed, when the item has sizes.</p>
+            </div>
+            <div>
+              <label className={labelClass} htmlFor={`${idPrefix}-pack-place`}>Where the pack size goes</label>
+              <select id={`${idPrefix}-pack-place`} value={value.pack_place ?? c.default_pack_place ?? 'panel'} onChange={(e) => set('pack_place', e.target.value)} className={fieldClass}>
+                {(c.pack_places ?? POUCH_FALLBACK.pack_places ?? []).map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+              </select>
+              <p className={hintClass}>{(c.pack_places ?? POUCH_FALLBACK.pack_places ?? []).find((p) => p.key === (value.pack_place ?? 'panel'))?.hint}</p>
             </div>
           </div>
 
@@ -126,7 +139,7 @@ export function PouchPicker({ value, onChange, catalogue, howToUse, onUseHow, si
               )}</p>
             </div>
           )}
-          <p className={hintClass}>The count is the pack quantity, the price is the label's price, and the photo is the label's food photo. Bake &amp; Grill's name, phone and the complaints QR always print.</p>
+          <p className={hintClass}>The count is the pack quantity, the price is the label's price, and the photo is the label's food photo. Bake &amp; Grill's logo and name print beside the ingredients, with the phone and the complaints QR.</p>
         </>
       )}
     </div>

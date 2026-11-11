@@ -87,7 +87,8 @@ class PouchLabelTest extends TestCase
             '>STEAMED · FROZEN · HANDMADE<' => 'the tagline',
             '>Microwave &amp; Eat<' => 'the cooking pill',
             '>Call 9120011<' => 'the phone',
-            '>MEDIUM<' => 'the size word',
+            '>Medium Pack<' => 'the pack word: the pack is medium, not the momo',
+            '>BAKE &amp; GRILL<' => 'the business name under its logo, beside the ingredients',
             '>8<' => 'the count',
             '>PIECES<' => 'the unit in full',
             '>MVR 45.00<' => 'the price',
@@ -185,6 +186,40 @@ class PouchLabelTest extends TestCase
         $this->assertStringNotContainsString('Do not thaw', $html, 'the label\'s own wording wins');
     }
 
+    public function test_the_pack_word_prints_in_the_place_picked_and_the_shipped_plate_is_fitted_whole(): void
+    {
+        Storage::fake('public');
+        $photo = \App\Domains\Labels\PouchSet::momoPhoto();
+        $this->assertNotNull($photo);
+        foreach (['panel' => ['Medium Pack', 'f-lob'], 'badge' => ['MEDIUM', 'f-j8'], 'line' => ['Medium Pack', 'f-dsi']] as $place => [$words, $face]) {
+            $this->putJson("/api/labels/custom/{$this->momo}", ['name' => 'Chicken Momo', 'label_photo_media_id' => $photo->id, 'label_pouch' => ['look' => 'gold', 'method' => 'microwave', 'tagline' => 'Steamed · Frozen · Handmade', 'size_word' => 'Medium', 'pack_place' => $place]])
+                ->assertOk()->assertJsonPath('data.label_pouch.pack_place', $place);
+            [$html, $res] = $this->sheet();
+            $this->dump("pouch-pack-{$place}", $html);
+            $this->assertMatchesRegularExpression('/class="pc tx ' . $face . '"[^>]*>' . $words . '</', $html, "{$place}: the pack word in its own face");
+            $this->assertSame([], $res['summary']['dropped']);
+        }
+        // A size word that already says what it is stays as typed; without a photo the badge falls back to the panel.
+        $this->putJson("/api/labels/custom/{$this->momo}", ['name' => 'Chicken Momo', 'label_photo_media_id' => null, 'label_pouch' => ['size_word' => 'Family box', 'pack_place' => 'badge']])->assertOk();
+        [$html] = $this->sheet();
+        $this->assertStringContainsString('>Family Box<', $html);
+        $this->assertStringNotContainsString('Box Pack', $html);
+
+        // The plate that ships is a cut-out: fitted whole in the circle, its rim not cut off.
+        $label = CustomLabel::query()->findOrFail($this->momo);
+        $label->label_photo_media_id = $photo->id;
+        $sheets = app(StickerSheet::class);
+        $data = $sheets->stickerData($label, ['batch' => '', 'qty' => '', 'mfg' => '', 'exp' => '', 'for' => '', 'for2' => '', 'codes' => [], 'lang' => 'en', 'fill' => false, 'size' => null], $sheets->common());
+        $this->assertGreaterThan(1.1, $data['photo_ratio'], 'the plate is wider than tall');
+        $round = imagecreatefromstring((string) base64_decode(substr(PouchDesign::circle((string) $data['photo']), 22)));
+        $mid = intdiv(imagesy($round), 2);
+        $left = imagecolorat($round, 12, $mid);
+        $this->assertSame(0, ($left >> 24) & 0x7F, 'inside the circle');
+        $this->assertGreaterThan(200, ($left >> 16) & 0xFF, 'the plate\'s white rim reaches the circle\'s edge');
+        $top = imagecolorat($round, intdiv(imagesx($round), 2), 14);
+        $this->assertGreaterThan(235, ($top >> 8) & 0xFF, 'white above the plate, not a cut dumpling');
+    }
+
     public function test_a_photo_is_cut_to_a_circle_and_the_label_printer_draws_it(): void
     {
         Storage::fake('public');
@@ -251,7 +286,7 @@ class PouchLabelTest extends TestCase
             $html = (string) $this->get($row['view_url'])->assertOk()->getContent();
             $this->dump('pouch-set-' . $row['preset'], $html);
             $this->assertStringContainsString('>Chicken Momo<', $html, 'the size is on the panel, not in the name');
-            $this->assertStringContainsString('>' . mb_strtoupper($row['label']['label_pouch']['size_word']) . '<', $html);
+            $this->assertStringContainsString('>' . $row['label']['label_pouch']['size_word'] . ' Pack<', $html);
             $this->assertStringContainsString('>' . $row['label']['label_pack_qty'] . '<', $html);
         }
         $this->assertSame(3, \App\Models\LabelJob::query()->count());
