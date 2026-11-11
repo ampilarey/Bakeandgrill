@@ -370,7 +370,14 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browsers (Chromium only)
-        run: npx playwright install chromium --with-deps
+        # The runner image already carries Chromium's libraries; --with-deps adds a few
+        # extra fonts through apt. When the Ubuntu mirror cannot be reached (2026-11-11:
+        # four runs in a row failed here, before any test ran) the browser alone is enough.
+        run: |
+          npx playwright install chromium --with-deps || {
+            echo "::warning::apt could not install Playwright's extra packages; installing the browser alone."
+            npx playwright install chromium
+          }
 
       - name: Run smoke E2E tests
         env:
@@ -427,7 +434,14 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browsers (Chromium only)
-        run: npx playwright install chromium --with-deps
+        # The runner image already carries Chromium's libraries; --with-deps adds a few
+        # extra fonts through apt. When the Ubuntu mirror cannot be reached (2026-11-11:
+        # four runs in a row failed here, before any test ran) the browser alone is enough.
+        run: |
+          npx playwright install chromium --with-deps || {
+            echo "::warning::apt could not install Playwright's extra packages; installing the browser alone."
+            npx playwright install chromium
+          }
 
       - name: Run smoke E2E tests (blocking)
         env:
