@@ -4,7 +4,7 @@ import { Bookmark, ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, Ref
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelSettings, fetchLabelTypes,
   previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture,
-  type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type ShelfLifeSuggestions, type LabelType, type StickerLang, type WrapCatalogue, type WrapPartKey, type WrapStrips,
+  type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type ShelfLifeSuggestions, type LabelType, type StickerLang, type PouchCatalogue, type WrapCatalogue, type WrapPartKey, type WrapStrips,
 } from '../../api';
 import { FooterPicker } from './FooterPicker';
 import { SaveAsTemplate, StartFromRow } from './StartFrom';
@@ -13,6 +13,7 @@ import { ArrangeBar } from './ArrangeBar';
 import { clearDesign, hasOverrides, isMovable, nudgeSpot } from './labelLayout';
 import { BadgePicker } from './BadgePicker';
 import { WRAP_FALLBACK, WrapParts } from './WrapParts';
+import { POUCH_FALLBACK, PouchPicker, pouchFits, pouchSummary } from './PouchPicker';
 import { StripOverlay } from './StripEditor';
 import { SpotOverlay } from './SpotOverlay';
 import { FoldHelp } from './FoldHelp';
@@ -131,6 +132,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   const [picker, setPicker] = useState<'photo' | 'title' | 'mark' | null>(null);
   // The wrap-around label's parts and marks, as the server lists them (2026-10-12).
   const [catalogue, setCatalogue] = useState<WrapCatalogue | null>(null);
+  const [pouchCatalogue, setPouchCatalogue] = useState<PouchCatalogue | null>(null);
   const [uploading, setUploading] = useState<'photo' | 'title' | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
@@ -170,7 +172,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
     fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === label?.label_type_id))).catch(() => setTypes([]));
   }, [label?.label_type_id]);
   useEffect(() => {
-    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); setCatalogue(r.wrap ?? null); setRolls(r.rolls ?? []); setBadges(r.badges ?? []); setShelfLife(r.shelf_life ?? null); }).catch(() => setPresets([]));
+    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); setCatalogue(r.wrap ?? null); setPouchCatalogue(r.pouch ?? null); setRolls(r.rolls ?? []); setBadges(r.badges ?? []); setShelfLife(r.shelf_life ?? null); }).catch(() => setPresets([]));
     fetchLabelFooters().then((r) => setFooters(r.data)).catch(() => setFooters([]));
     fetchLabelSettings().then((r) => setDvFont(r.data.label_dhivehi_font || 'noto')).catch(() => setDvFont(null));
   }, []);
@@ -478,6 +480,18 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
                   <option value="off">Leave it off</option>
                 </select>
               </Field>
+            </Section>
+
+            <Section title="Pouch label (zip pouches and bags)" summary={pouchSummary(d.label_pouch, pouchCatalogue)} open={d.label_pouch !== null} testId="custom-label-pouch" help="A front-of-pack label for a pouch or bag: the food photo in a circle, the name in script, how it is cooked, the pieces and price, and the ingredients, storage, dates and complaints QR along the bottom. Pick the pouch colour and the cooking method; everything else is this label's own wording.">
+              <PouchPicker
+                value={d.label_pouch}
+                onChange={(v) => set('label_pouch', v)}
+                catalogue={pouchCatalogue}
+                howToUse={d.label_how_to_use}
+                onUseHow={(text) => set('label_how_to_use', text)}
+                sizeNote={pouchFits(pouchCatalogue ?? POUCH_FALLBACK, choice.shape, dims.w, dims.h) ? null : 'This size prints the ordinary sticker. Pick a wide size, such as 140 × 62 mm, for the pouch label.'}
+                idPrefix="cl-pouch"
+              />
             </Section>
 
             <Section title="Wrap-around label (wide sizes)" summary={`${d.label_wrap.parts.length} parts${d.label_wrap.band ? ' · band' : ''}`} open={false} testId="custom-label-wrap" help="Only for a wide label such as a bottle wrap: which strips print and in what order, the band along the bottom, and the recycling marks.">

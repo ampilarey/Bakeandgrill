@@ -380,7 +380,8 @@ final class StickerSheet
      */
     private function pieces(array $sheet, array $data, bool $dv): array
     {
-        $pieces = match ($sheet['design']) {
+        $pieces = match (self::designOf($sheet, $data)) {
+            'pouch' => PouchDesign::pouch($data, $dv, $sheet['w'], $sheet['h']),
             'full' => StickerDesign::full($data, $dv),
             'round' => StickerDesign::round($data, $dv, $sheet['w']),
             'small' => SmallStickerDesign::rect($data, $dv, $sheet['w'], $sheet['h']),
@@ -389,7 +390,19 @@ final class StickerSheet
         };
 
         // The parts moved or resized by hand on this design (the drag designer, round 8, 2026-10-13).
-        return LabelLayout::apply($pieces, $data['layout'][$sheet['design']] ?? []);
+        return LabelLayout::apply($pieces, $data['layout'][self::designOf($sheet, $data)] ?? []);
+    }
+
+    /**
+     * The design one sticker is drawn in: the size's (StickerLayouts), unless
+     * the product is a pouch label and the size can hold one (2026-11-11).
+     *
+     * @param array<string, mixed> $sheet
+     * @param array<string, mixed> $data from stickerData()
+     */
+    public static function designOf(array $sheet, array $data): string
+    {
+        return is_array($data['pouch'] ?? null) && PouchConfig::fits((string) $sheet['shape'], (float) $sheet['w'], (float) $sheet['h']) ? 'pouch' : (string) $sheet['design'];
     }
 
     /**
@@ -591,7 +604,9 @@ final class StickerSheet
             $first = $found[$products[0]['key']];
             $dv = $req['lang'] === 'dv';
             $data = $this->stickerData($first, self::rowRequest($req, $req['items'][0]), $this->common() + ['both' => $req['lang'] === 'both'], $production);
-            if ($sheet['design'] === 'wrap') {
+            // The first product's own design: a pouch label where the product is one.
+            $summary['design'] = $design = self::designOf($sheet, $data);
+            if ($design === 'wrap') {
                 $summary['wrap'] = WrapDesign::strips($data, $dv, (float) $sheet['w'], (float) $sheet['h']);
             }
             $pieces = $this->pieces($sheet, $data, $dv);
@@ -716,6 +731,10 @@ final class StickerSheet
 
         return $common + [
             'wrap' => $wrap,
+            // A pouch label's look and cooking method (2026-11-11); null prints the size's ordinary design.
+            'pouch' => PouchConfig::of($item),
+            // The size being printed, for the pouch panel's SMALL / MEDIUM / LARGE.
+            'size_name' => $item instanceof Item && $item->relationLoaded('labelSize') ? (string) ($item->labelSize?->name ?? '') : '',
             // The parts moved or resized by hand, per design (round 8).
             'layout' => LabelLayout::of($item),
             // Badges (round 9): rust pills under the name.
@@ -803,7 +822,7 @@ final class StickerSheet
         $all = ' ' . implode(' ', $texts) . ' ';
         $has = fn (string $word): bool => $word !== '' && str_contains($all, $word);
         $out = [];
-        if ($sheet['design'] === 'wrap') {
+        if (self::designOf($sheet, $data) === 'wrap') {
             foreach (array_keys(array_filter($leftOut, fn ($why) => $why === 'narrow')) as $part) {
                 $out[] = WrapConfig::PART_WORDS[$part][0] ?? ucfirst(str_replace('_', ' ', (string) $part));
             }
@@ -823,6 +842,14 @@ final class StickerSheet
             $qrs = array_filter([$data['qr'] ?? null, $data['qr_branded'] ?? null]);
             if (!empty($data['show_qr']) && $qrs !== [] && array_intersect($qrs, $imgs) === []) {
                 $out[] = 'QR code';
+            }
+        }
+        // A pouch label has no place for these (2026-11-11).
+        if (self::designOf($sheet, $data) === 'pouch') {
+            foreach ([['barcode', 'Barcode'], ['promo', 'Promotion flash'], ['packed_for', 'Packed for'], ['nutrition', 'Nutrition'], ['batch_qr', 'Pack QR code']] as [$key, $word]) {
+                if (!empty($data[$key])) {
+                    $out[] = $word;
+                }
             }
         }
         foreach ($data['badges'] ?? [] as $b) {

@@ -439,6 +439,27 @@ export const GUIDES: Guide[] = [
     ],
     words: 'sticker label print pack expiry',
   },
+  {
+    id: 'pouch-label',
+    page: '/labels',
+    title: 'Make a label for a zip pouch (frozen momo and other packs)',
+    open: { to: '/labels', label: 'Open Labels' },
+    steps: [
+      'Open Labels. It opens on Make a label.',
+      'Step 1: tap Something else, then New custom label.',
+      'In Start from pick Frozen momo pouch (microwave), or the steam or fry one. Type the product name and the price, add the food photo, and save.',
+      'Step 2: tap the Pouch or bag front card (140 × 62 mm). For a smaller or larger pouch tap My own size and type it, such as 120 × 53 or 160 × 70 mm.',
+      'Step 3: check the preview. To change the pouch colour or how it is cooked, tap All details and open Pouch label (zip pouches and bags).',
+      'Step 4: type how many and print.',
+    ],
+    notes: [
+      'What the pouch looks like has five choices: gold, clear or white, brown paper, black, and black and white for a label printer.',
+      'How it is cooked changes the pill under the name. While How to use is blank it also prints that method\'s instructions. Check the times against your own product.',
+      'The big number is the pack quantity. Bake & Grill\'s name, phone and the complaints QR always print.',
+      'For a menu item, the same Pouch label box is on the item\'s Label tab.',
+    ],
+    words: 'pouch bag momo frozen microwave steam fry zip label packet',
+  },
 
   // ── People and alerts ─────────────────────────────────────────────────────
   {

@@ -133,6 +133,38 @@ first roll, and keeps the picture cards and My own size behind **More sizes**. W
 rolls, nothing changes. A roll is a size choice as the picker holds it
 (`rollChoice()`), so anything that takes a `SizeChoice` takes a roll.
 
+### Pouch labels (zip pouches and bags)
+
+Owner, 2026-11-11 (the frozen momo's gold zip pouch; "for different type of background…
+steam, frying and other types… make it easy for different type of products"). A product
+whose **Pouch label** switch is on (`label_pouch` JSON on `items` and `custom_labels`,
+`App\Domains\Labels\PouchConfig`) prints the pouch design on any landscape label at least
+90 × 40 mm and 1.5 × as wide as tall (`PouchConfig::fits`); on any other size it prints the
+size's ordinary sticker. `PouchDesign` draws it: the food photo cut to a circle, the brand's
+logo, the name in Lobster (`LabelText::FONTS['lob']`), a line under the name, a pill saying
+how it is cooked with its picture, the phone, a panel with the size word, the pack quantity
+and unit and the price, and a strip with the ingredients (allergens bold), how to use, the
+storage line with the dates and batch, the complaints QR and "Made by Bake & Grill …".
+
+Two picks do the work, so a new product needs no new design:
+
+- **What the pouch looks like** (`PouchConfig::LOOKS`): gold, clear or white, kraft, dark,
+  and black and white for a label printer. A new look is one more palette there (and in
+  `POUCH_FALLBACK` in `PouchPicker.tsx`).
+- **How it is cooked** (`PouchConfig::METHODS`): microwave, steam, pan fry, deep fry, air
+  fry, boil, oven bake, ready to eat, thaw and serve, or nothing. Each has the pill's words,
+  an icon (`PouchDesign::icon`, drawn from filled boxes so the label printer draws it too)
+  and the how-to-use wording printed while the label's own How to use is blank. The times
+  are a start; the owner checks them. A new method is one more row there.
+
+Sizes: 120 × 53, 140 × 62 and 160 × 70 mm (the 14, 16 and 18 cm pouches) are one-tap
+presets. Built-in templates: Frozen momo pouch (microwave / steam / fry) and Pouch label (any
+product). The wizard's **Pouch or bag front** card switches the picked product to a pouch
+label. Not drawn on a pouch label, and said under the preview when the product has them:
+badges, the barcode, nutrition, the promotion flash, packed-for and the pack QR. Dhivehi
+words for the pill are typed (`method_text_dv`); none are built in. `PouchLabelTest`,
+`PouchPicker.test.tsx`.
+
 ### Templates: start from, save as
 
 Round 7 of the usability work (owner, 2026-10-13; the audit's "so a new sauce takes

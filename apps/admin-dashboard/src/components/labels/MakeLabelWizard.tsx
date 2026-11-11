@@ -18,6 +18,7 @@ import { openLabelsTour } from './LabelsTour';
 import { QuickEditSheet, quickSpec, type QuickContext, type QuickInput, type QuickSpec, type QuickValue } from './QuickEdit';
 import { customDraft, customPayload, itemDraft, itemPayload, nutritionWords, pickKeys, type CustomDraft, type ItemDraft } from './labelDrafts';
 import { SaveAsTemplate } from './StartFrom';
+import { POUCH_FALLBACK, newPouch } from './PouchPicker';
 import { templateFromCustom, templateFromItem } from './labelTemplates';
 import { ArrangeBar } from './ArrangeBar';
 import { clearDesign, hasOverrides, isMovable, layoutPayload, nudgeSpot } from './labelLayout';
@@ -57,13 +58,15 @@ type Picked = { kind: Kind; id: number; name: string; name_dv: string | null; la
 type Step = 1 | 2 | 3 | 4;
 
 /** The picture cards: a preset each, in everyday words. */
-export const LABEL_CARDS: { preset: string; name: string; blurb: string }[] = [
+export const LABEL_CARDS: { preset: string; name: string; blurb: string; pouch?: boolean }[] = [
   { preset: 'r105x148', name: 'Big pack sticker', blurb: 'Everything on it: ingredients, dates, QR. Four to an A4 sheet.' },
   { preset: 'r99x70', name: 'Half-size sticker', blurb: 'The same, smaller. Eight to a sheet.' },
   { preset: 'r60x40', name: 'Jar or tub', blurb: 'Name, dates and the brand on a small pack.' },
   { preset: 'r40x30', name: 'Price tag', blurb: 'Name and price, as small as it goes.' },
   { preset: 'c60', name: 'Round lid', blurb: 'A circle for a lid or a seal.' },
   { preset: 'r180x40', name: 'Bottle wrap', blurb: 'A long strip around a bottle, in parts.' },
+  // A pouch label (2026-11-11): picking it makes the product a pouch label, as picking a menu item switches it on for labels.
+  { preset: 'r140x62', name: 'Pouch or bag front', blurb: 'Photo in a circle, how to cook it, pieces and price. For zip pouches.', pouch: true },
 ];
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -73,7 +76,7 @@ const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary
 const chip = (on: boolean) => ['h-9 min-h-[36px] px-3 rounded-lg border text-sm font-semibold inline-flex items-center gap-1.5', on ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-on-primary)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]'].join(' ');
 
 /** A label drawn small, the way it prints: the shape to scale and the lines its design puts on it. */
-export function LabelSchematic({ preset, w, h, shape, size = 88 }: { preset?: LabelPreset; w?: number; h?: number; shape?: 'rect' | 'circle'; size?: number }) {
+export function LabelSchematic({ preset, w, h, shape, size = 88, pouch = false }: { preset?: LabelPreset; w?: number; h?: number; shape?: 'rect' | 'circle'; size?: number; pouch?: boolean }) {
   const sh = preset?.shape ?? shape ?? 'rect';
   const W = preset?.w ?? w ?? 60;
   const H = preset?.h ?? h ?? 40;
@@ -103,6 +106,15 @@ export function LabelSchematic({ preset, w, h, shape, size = 88 }: { preset?: La
       if (c > 0) lines.push(<rect key={`d${c}`} x={cx - gap / 2 - 0.3} y={y + 3} width={0.6} height={bh - 11} fill="var(--color-border)" />);
     }
     lines.push(<rect key="band" x={x + 2} y={y + bh - 6} width={bw - 4} height={4} rx={1} fill={rust} />);
+  } else if (pouch) {
+    const pw = bw * 0.22; const sh2 = bh * 0.34; const d = Math.min(bh - sh2 - 6, bw * 0.26);
+    lines.push(<circle key="ph" cx={x + 3 + d / 2} cy={y + 3 + d / 2} r={d / 2} fill="none" stroke={rust} strokeWidth={1.2} />);
+    line(x + d + 6, y + 5, bw * 0.3, ink, 2.2);
+    line(x + d + 6, y + 10, bw * 0.22, rust, 1.6);
+    lines.push(<rect key="panel" x={x + bw - pw - 2} y={y + 2} width={pw} height={bh - sh2 - 3} rx={1} fill={rust} />);
+    line(x + 3, y + bh - sh2 + 3, bw * 0.25, ink, 1);
+    line(x + 3 + bw * 0.32, y + bh - sh2 + 3, bw * 0.25, ink, 1);
+    line(x + 3 + bw * 0.64, y + bh - sh2 + 3, bw * 0.2, ink, 1);
   } else if (design === 'full' || design === 'mini') {
     lines.push(<rect key="head" x={x + 2} y={y + 2} width={bw - 4} height={bh * 0.14} rx={1} fill={rust} opacity={0.9} />);
     line(x + bw * 0.2, y + bh * 0.26, bw * 0.6, ink, 2.4);
@@ -273,6 +285,16 @@ export function MakeLabelWizard({ canManage = false }: {
   const pickCard = (id: string) => {
     setOwnSize(false);
     setChoice((c) => withPreset(c, id, presets));
+    // The pouch card makes the product a pouch label (gold pouch, microwave) unless it already is one; step 3 changes the picks.
+    const product = picked?.kind === 'custom' ? customs?.find((c) => c.id === picked.id) : products?.find((x) => x.id === picked?.id);
+    if (LABEL_CARDS.find((c) => c.preset === id)?.pouch && picked && product && !product.label_pouch) {
+      const body = { label_pouch: newPouch(POUCH_FALLBACK) };
+      (picked.kind === 'custom'
+        ? updateCustomLabel(picked.id, body).then((r) => setCustoms((list) => (list ?? []).map((x) => (x.id === r.data.id ? r.data : x))))
+        : updateItemLabel(picked.id, body).then((r) => setProducts((list) => (list ?? []).map((x) => (x.id === r.data.id ? r.data : x)))))
+        .then(() => setRedraw((n) => n + 1))
+        .catch((e) => toast('error', e instanceof Error ? e.message : 'Could not make it a pouch label.'));
+    }
   };
   // A roll you own, picked as a card; the standard cards stay under More sizes while one is picked.
   // The roll card tapped (label audit, Batch C): two rolls of one size are told apart by it, never guessed.
@@ -557,7 +579,7 @@ export function MakeLabelWizard({ canManage = false }: {
               return (
                 <button key={card.preset} type="button" onClick={() => pickCard(card.preset)} aria-pressed={on} disabled={!p}
                   className={['text-left rounded-xl border p-3 flex flex-col items-center gap-2', on ? 'border-[var(--color-primary)] bg-[var(--color-tone-rust-bg)]' : 'border-[var(--color-border)] bg-[var(--color-bg)]'].join(' ')}>
-                  {p ? <LabelSchematic preset={p} /> : <LabelSchematic shape={card.preset.startsWith('c') ? 'circle' : 'rect'} />}
+                  {p ? <LabelSchematic preset={p} pouch={card.pouch} /> : <LabelSchematic shape={card.preset.startsWith('c') ? 'circle' : 'rect'} />}
                   <span className="block w-full">
                     <span className="block text-sm font-bold text-[var(--color-text)]">{card.name}{was ? <span className="ml-1 text-[10px] font-semibold text-[var(--color-tone-rust-text)]">last used</span> : null}</span>
                     <span className="block text-xs text-[var(--color-text-muted)]">{card.blurb}</span>

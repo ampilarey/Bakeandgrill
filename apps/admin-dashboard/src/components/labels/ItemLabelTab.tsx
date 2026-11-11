@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, X, RefreshCw } from 'lucide-react';
-import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type ShelfLifeSuggestions, type IngredientsSource, type LabelArrangement, type LabelBadge, type LabelDesign, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type StickerLang, type WrapCatalogue } from '../../api';
+import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type ShelfLifeSuggestions, type IngredientsSource, type LabelArrangement, type LabelBadge, type LabelDesign, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type StickerLang, type PouchCatalogue, type WrapCatalogue } from '../../api';
 import { LabelSizePicker } from './LabelSizePicker';
 import { DEFAULT_CHOICE, rememberedSize, requestFor, sizeName, sizeOf, type SizeChoice } from './labelSize';
 import { SheetPreview } from './SheetPreview';
 import { WrapParts } from './WrapParts';
+import { PouchPicker } from './PouchPicker';
 import { SpotOverlay } from './SpotOverlay';
 import { FoldHelp } from './FoldHelp';
 import { ShelfLifeHint } from './ShelfLifeHint';
@@ -70,6 +71,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   const canManageTypes = useCurrentUserPermissions().can('labels.manage');
   // The wrap-around label's parts and marks, as the server lists them (2026-10-12).
   const [catalogue, setCatalogue] = useState<WrapCatalogue | null>(null);
+  const [pouchCatalogue, setPouchCatalogue] = useState<PouchCatalogue | null>(null);
   // The badges an item can carry (round 9), from the layouts.
   const [badges, setBadges] = useState<LabelBadge[]>([]);
   useEffect(() => { fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === product?.label_type_id))).catch(() => setTypes([])); }, [product?.label_type_id]);
@@ -77,7 +79,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   const [shelfLife, setShelfLife] = useState<ShelfLifeSuggestions | null>(null);
   useEffect(() => {
     fetchLabelLayouts().then((r) => {
-      setCatalogue(r.wrap ?? null); setBadges(r.badges ?? []); setShelfLife(r.shelf_life ?? null);
+      setCatalogue(r.wrap ?? null); setPouchCatalogue(r.pouch ?? null); setBadges(r.badges ?? []); setShelfLife(r.shelf_life ?? null);
       setPresets(r.presets ?? []); setLimits(r.limits ?? null); setRolls(r.rolls ?? []);
     }).catch(() => setCatalogue(null)).finally(() => setLayoutsLoaded(true));
   }, []);
@@ -320,6 +322,20 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
               <WordingSignoff kind="item" id={itemId} size={z.id} canManage refresh={savedTick} />
             </div>
           ))}
+        </fieldset>
+
+        {/* A pouch label (owner, 2026-11-11: the frozen momo's zip pouch). */}
+        <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3 min-w-0" data-testid="item-label-pouch">
+          <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Pouch label (zip pouches and bags)</legend>
+          <FoldHelp>A front-of-pack label for a pouch or bag, on a wide size such as 140 × 62 mm: the food photo in a circle, the name in script, how it is cooked, the pieces and price, and the ingredients, storage, dates and complaints QR along the bottom.</FoldHelp>
+          <PouchPicker
+            value={draft.label_pouch}
+            onChange={(v) => set('label_pouch', v)}
+            catalogue={pouchCatalogue}
+            howToUse={draft.label_how_to_use}
+            onUseHow={(text) => set('label_how_to_use', text)}
+            idPrefix="lbl-pouch"
+          />
         </fieldset>
 
         {/* The wrap-around label's parts (owner, 2026-10-12: a bottle label with parts side by side). */}

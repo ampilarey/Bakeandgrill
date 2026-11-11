@@ -1,0 +1,9 @@
+Lobster (lobster-400.woff2, pdf/Lobster-Regular.ttf)
+Copyright (c) 2010, Pablo Impallari (www.impallari.com|impallari@gmail.com),
+with Reserved Font Name Lobster.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+The licence is available with a FAQ at: https://openfontlicense.org
+
+Used for the product name on pouch labels (App\Domains\Labels\PouchDesign).
+The TTF was converted from the WOFF2 with fontTools, unmodified otherwise.

@@ -50,6 +50,8 @@ export type LabelProduct = {
   sizes?: { id: number; name: string; price: number; own_recipe?: boolean }[];
   /** The wrap-around label's parts (2026-10-12), as they stand (the defaults when nothing is kept). */
   label_wrap: LabelWrap;
+  /** The pouch label's look and cooking method, or null for an ordinary sticker. */
+  label_pouch?: LabelPouch | null;
   wrap_pictures: WrapPicture[];
   /** The parts moved or resized by hand on the preview, per design (the drag designer, round 8). */
   label_layout: LabelArrangement;
@@ -91,7 +93,7 @@ export type LabelWrap = {
 export type WrapPicture = { id: number; url: string | null };
 
 /** The looks a sticker prints in, decided by its size (StickerLayouts::design()). */
-export type LabelDesign = 'full' | 'mini' | 'small' | 'round' | 'wrap';
+export type LabelDesign = 'full' | 'mini' | 'small' | 'round' | 'wrap' | 'pouch';
 /** A part moved by (dx, dy) mm and scaled by s, about its own top-left corner. */
 export type LabelPartOverride = { dx: number; dy: number; s: number };
 /**
@@ -101,6 +103,17 @@ export type LabelPartOverride = { dx: number; dy: number; s: number };
  * arranged by its strips instead.
  */
 export type LabelArrangement = Partial<Record<'full' | 'mini' | 'small' | 'round', Partial<Record<LabelSpotKey, LabelPartOverride>>>>;
+/**
+ * A pouch label (2026-11-11: the frozen momo's zip pouch): the look, named
+ * after the pouch behind the label, and how the food is cooked (the pill and
+ * the how-to-use wording). Null on a label is an ordinary sticker.
+ */
+export type LabelPouch = { look: string; method: string; method_text: string; method_text_dv: string; tagline: string; tagline_dv: string; size_word: string };
+export type PouchCatalogue = {
+  looks: { key: string; label: string; hint: string; bg: string; border: string; panel: string; pill: string }[];
+  methods: { key: string; label: string; how: string }[];
+  default_look: string; default_method: string; min_w: number; min_h: number; min_ratio: number;
+};
 export type WrapCatalogue = {
   parts: { key: WrapPartKey; label: string; hint: string }[];
   marks: { key: string; label: string; caption: string }[];
@@ -219,7 +232,7 @@ export type KitchenLabelSetup = { size: { layout: string; w: number | null; h: n
 /** A shelf life to suggest per storage (round 15): days, and why. */
 export type ShelfLifeSuggestions = Record<LabelStorage, { days: number; why: string }>;
 
-export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; rolls?: LabelRoll[]; badges?: LabelBadge[]; kitchen?: KitchenLabelSetup; shelf_life?: ShelfLifeSuggestions };
+export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; pouch?: PouchCatalogue; rolls?: LabelRoll[]; badges?: LabelBadge[]; kitchen?: KitchenLabelSetup; shelf_life?: ShelfLifeSuggestions };
 
 /**
  * A label template (round 7, 2026-10-13: "Start from a saved label or a
@@ -235,7 +248,7 @@ export type LabelTemplateFields = Partial<{
   label_ingredients: string | null; label_ingredients_dv: string | null; label_how_to_use: string | null; label_how_to_use_dv: string | null;
   label_note: string | null; label_note_dv: string | null; footer_id: number | null; label_show_qr: boolean | null; label_lang: StickerLang | null;
   label_shelf_life_days: number | null; label_pack_qty: number | null; label_pack_unit: string | null; label_net_weight: string | null;
-  label_allergens: string | null; label_nutrition: string | null; label_nutrition_per: NutritionPer | null; label_wrap: LabelWrap | null;
+  label_allergens: string | null; label_nutrition: string | null; label_nutrition_per: NutritionPer | null; label_wrap: LabelWrap | null; label_pouch: LabelPouch | null;
   label_show_price: boolean | null; label_show_nutrition: boolean | null; label_layout: LabelArrangement | null; label_badges: string[] | null;
 }>;
 export type LabelTemplateSize = { shape: 'rect' | 'circle'; preset: string; on: LabelStock; w: number; h: number };
@@ -283,6 +296,8 @@ export type CustomLabel = {
   label_nutrition_per: NutritionPer;
   /** The wrap-around label's parts, as they stand. */
   label_wrap: LabelWrap;
+  /** The pouch label's look and cooking method, or null for an ordinary sticker. */
+  label_pouch?: LabelPouch | null;
   wrap_pictures: WrapPicture[];
   /** The parts moved or resized by hand on the preview, per design (round 8). */
   label_layout: LabelArrangement;
@@ -301,7 +316,7 @@ export type CustomLabelPayload = Partial<Pick<CustomLabel,
   | 'label_how_to_use' | 'label_how_to_use_dv' | 'label_note' | 'label_note_dv'
   | 'footer_id' | 'label_show_qr' | 'label_lang'
   | 'label_shelf_life_days' | 'label_pack_qty' | 'label_pack_unit' | 'label_photo_media_id' | 'label_title_media_id'
-  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition' | 'label_nutrition_per' | 'label_wrap'>> & { label_layout?: LabelArrangement | null; label_badges?: string[] | null };
+  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition' | 'label_nutrition_per' | 'label_wrap'>> & { label_pouch?: LabelPouch | null; label_layout?: LabelArrangement | null; label_badges?: string[] | null };
 
 /** The sticker's languages: English, Dhivehi, or both on one sticker (2026-10-12). */
 export type StickerLang = 'en' | 'dv' | 'both';

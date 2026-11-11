@@ -34,6 +34,9 @@ final class LabelText
         'dv' => ['LabelDV', 'fonts/pdf/NotoSansThaana-Regular.ttf', 'fonts/noto-sans-thaana-400.woff2', 1.069, 0.424],
         // The recycling marks on a wrap-around label (LabelMarks): a subset of
         // DejaVu Sans with the Unicode recycling symbols (scripts/label-symbol-font.py).
+        // The script face a pouch label sets the product's name in (PouchDesign):
+        // Lobster, SIL Open Font Licence (public/fonts/LOBSTER-LICENSE.txt).
+        'lob' => ['LabelLob', 'fonts/pdf/Lobster-Regular.ttf', 'fonts/lobster-400.woff2', 1.0, 0.25],
         'sym' => ['LabelSym', 'fonts/pdf/LabelSymbols.ttf', 'fonts/label-symbols.woff2', 0.928, 0.236],
     ];
 

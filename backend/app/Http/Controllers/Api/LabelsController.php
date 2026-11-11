@@ -19,6 +19,7 @@ use App\Domains\Labels\LabelSignoffs;
 use App\Domains\Labels\LabelTemplates;
 use App\Domains\Labels\LabelTypes;
 use App\Domains\Labels\Nutrition;
+use App\Domains\Labels\PouchConfig;
 use App\Domains\Labels\Reprint;
 use App\Domains\Labels\StickerLayouts;
 use App\Domains\Labels\StickerMockup;
@@ -94,6 +95,8 @@ class LabelsController extends Controller
             'limits' => StickerLayouts::limits(),
             // The wrap-around label's parts and marks, as the editors list them (2026-10-12).
             'wrap' => WrapConfig::catalogue(),
+            // A pouch label's looks and cooking methods (2026-11-11).
+            'pouch' => PouchConfig::catalogue(),
             // The rolls and sheets the business owns (round 6, 2026-10-13): every size picker shows them first; with what is left on each (round 13).
             'rolls' => LabelRolls::presentAll(),
             // The badges a product can carry (round 9), for the pickers.
@@ -1077,7 +1080,7 @@ class LabelsController extends Controller
      */
     private static function wrapRules(): array
     {
-        return ['label_nutrition_per' => ['sometimes', Rule::in(['g', 'ml'])]] + WrapConfig::rules() + LabelLayout::rules() + LabelBadges::rules();
+        return ['label_nutrition_per' => ['sometimes', Rule::in(['g', 'ml'])]] + WrapConfig::rules() + PouchConfig::rules() + LabelLayout::rules() + LabelBadges::rules();
     }
 
     /** A mark picture that is not an image is refused; a kept config is tidied (WrapConfig::clean), null clears it. */
@@ -1091,6 +1094,12 @@ class LabelsController extends Controller
         // Badges (round 9): known keys once each, at most four; none is null.
         if (request()->has('label_badges')) {
             $data['label_badges'] = LabelBadges::clean(request()->input('label_badges')) ?: null;
+        }
+        // A pouch label's look and cooking method (2026-11-11): tidied; null is an ordinary sticker again.
+        // (A template's fields carry theirs in $data; a label's empty {} is dropped by the validator, so the request says.)
+        if (array_key_exists('label_pouch', $data) || request()->has('label_pouch')) {
+            $pouch = array_key_exists('label_pouch', $data) ? $data['label_pouch'] : request()->input('label_pouch');
+            $data['label_pouch'] = is_array($pouch) ? PouchConfig::clean($pouch) : null;
         }
         if (!array_key_exists('label_wrap', $data)) {
             return null;
@@ -1329,6 +1338,7 @@ class LabelsController extends Controller
             'label_nutrition' => $c->label_nutrition,
             'label_nutrition_per' => Nutrition::per($c),
             'label_wrap' => $wrap = WrapConfig::of($c),
+            'label_pouch' => PouchConfig::of($c),
             'wrap_pictures' => $this->wrapPictures($wrap),
             'label_layout' => LabelLayout::of($c),
             'label_badges' => LabelBadges::of($c),
@@ -1689,6 +1699,7 @@ class LabelsController extends Controller
                 : [],
             // The wrap-around label's parts (2026-10-12), as they stand.
             'label_wrap' => $wrap = WrapConfig::of($item),
+            'label_pouch' => PouchConfig::of($item),
             'wrap_pictures' => $this->wrapPictures($wrap),
             // The parts moved or resized by hand, per design (round 8).
             'label_layout' => LabelLayout::of($item),

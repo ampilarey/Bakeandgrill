@@ -33,7 +33,7 @@ final class LabelTemplates
         'label_ingredients', 'label_ingredients_dv', 'label_how_to_use', 'label_how_to_use_dv', 'label_note', 'label_note_dv',
         'footer_id', 'label_show_qr', 'label_lang',
         'label_shelf_life_days', 'label_pack_qty', 'label_pack_unit', 'label_net_weight', 'label_allergens',
-        'label_nutrition', 'label_nutrition_per', 'label_wrap', 'label_show_price', 'label_show_nutrition', 'label_layout', 'label_badges',
+        'label_nutrition', 'label_nutrition_per', 'label_wrap', 'label_pouch', 'label_show_price', 'label_show_nutrition', 'label_layout', 'label_badges',
     ];
 
     public const NAME_MAX = 60;
@@ -87,6 +87,49 @@ final class LabelTemplates
             'fields' => ['label_storage' => 'chilled', 'label_heading' => 'HOMEMADE', 'label_shelf_life_days' => 30, 'label_pack_unit' => 'G', 'label_lang' => 'en'],
             'size' => ['shape' => 'circle', 'preset' => 'c60', 'on' => 'sheet'],
         ],
+        // Pouch labels (owner, 2026-11-11: the frozen momo's zip pouch). One per
+        // cooking method; the look, the method and the size are changed on the
+        // label itself (PouchConfig). 30 days, not the 90 of a frozen pack: the
+        // momo is already steamed and a zip pouch is not airtight.
+        [
+            'id' => 'momo-pouch', 'name' => 'Frozen momo pouch (microwave)', 'blurb' => 'A zip pouch of steamed, frozen momo to microwave: the pouch label with photo, pieces and price. 30 days, as a zip pouch is not airtight.',
+            'fields' => [
+                'label_storage' => 'frozen', 'label_heading' => 'FROZEN MOMO',
+                'label_ingredients' => 'Chicken, wheat flour, onion, coriander, ginger, vegetable oil, salt, MSG (E621).', 'label_allergens' => 'Wheat',
+                'label_how_to_use' => 'Open the zip slightly. Microwave from frozen for 2 to 3 minutes until steaming hot. Rest 1 minute before eating.',
+                'label_note' => 'Best within 1 month of production.', 'label_shelf_life_days' => 30, 'label_pack_unit' => 'PCS', 'label_pack_qty' => 8,
+                'label_show_price' => true, 'label_lang' => 'en',
+                'label_pouch' => ['look' => 'gold', 'method' => 'microwave', 'tagline' => 'Steamed · Frozen · Handmade', 'size_word' => 'Medium'],
+            ],
+            'size' => ['shape' => 'rect', 'preset' => 'r140x62', 'on' => 'sheet'],
+        ],
+        [
+            'id' => 'momo-pouch-steam', 'name' => 'Frozen momo pouch (steam)', 'blurb' => 'The same pouch label for raw frozen momo to steam at home.',
+            'fields' => [
+                'label_storage' => 'frozen', 'label_heading' => 'FROZEN MOMO',
+                'label_ingredients' => 'Chicken, wheat flour, onion, coriander, ginger, vegetable oil, salt, MSG (E621).', 'label_allergens' => 'Wheat',
+                'label_note' => 'Cook thoroughly before eating.', 'label_shelf_life_days' => 30, 'label_pack_unit' => 'PCS', 'label_pack_qty' => 8,
+                'label_show_price' => true, 'label_lang' => 'en',
+                'label_pouch' => ['look' => 'gold', 'method' => 'steam', 'tagline' => 'Frozen · Handmade', 'size_word' => 'Medium'],
+            ],
+            'size' => ['shape' => 'rect', 'preset' => 'r140x62', 'on' => 'sheet'],
+        ],
+        [
+            'id' => 'momo-pouch-fry', 'name' => 'Frozen momo pouch (fry)', 'blurb' => 'The same pouch label for frozen momo to pan fry.',
+            'fields' => [
+                'label_storage' => 'frozen', 'label_heading' => 'FROZEN MOMO',
+                'label_ingredients' => 'Chicken, wheat flour, onion, coriander, ginger, vegetable oil, salt, MSG (E621).', 'label_allergens' => 'Wheat',
+                'label_note' => 'Cook thoroughly before eating.', 'label_shelf_life_days' => 30, 'label_pack_unit' => 'PCS', 'label_pack_qty' => 8,
+                'label_show_price' => true, 'label_lang' => 'en',
+                'label_pouch' => ['look' => 'gold', 'method' => 'pan_fry', 'tagline' => 'Frozen · Handmade', 'size_word' => 'Medium'],
+            ],
+            'size' => ['shape' => 'rect', 'preset' => 'r140x62', 'on' => 'sheet'],
+        ],
+        [
+            'id' => 'pouch-any', 'name' => 'Pouch label (any product)', 'blurb' => 'The pouch label for anything sold in a pouch or bag: pick the pouch colour and how it is cooked on the label.',
+            'fields' => ['label_storage' => 'frozen', 'label_shelf_life_days' => 30, 'label_pack_unit' => 'PCS', 'label_show_price' => true, 'label_lang' => 'en', 'label_pouch' => ['look' => 'clear', 'method' => 'none']],
+            'size' => ['shape' => 'rect', 'preset' => 'r140x62', 'on' => 'sheet'],
+        ],
     ];
 
     /**
@@ -130,7 +173,7 @@ final class LabelTemplates
             $out[$prefix . $key] = is_array($rule) ? array_merge(['sometimes'], $rule) : 'sometimes|' . $rule;
         }
 
-        return $out + WrapConfig::rules($prefix . 'label_wrap') + LabelLayout::rules($prefix . 'label_layout') + LabelBadges::rules($prefix . 'label_badges');
+        return $out + WrapConfig::rules($prefix . 'label_wrap') + PouchConfig::rules($prefix . 'label_pouch') + LabelLayout::rules($prefix . 'label_layout') + LabelBadges::rules($prefix . 'label_badges');
     }
 
     /**
@@ -152,6 +195,8 @@ final class LabelTemplates
             $v = $in[$key];
             if ($key === 'label_wrap') {
                 $out[$key] = is_array($v) ? WrapConfig::clean($v) : null;
+            } elseif ($key === 'label_pouch') {
+                $out[$key] = is_array($v) ? PouchConfig::clean($v) : null;
             } elseif ($key === 'label_layout') {
                 $out[$key] = is_array($v) ? (LabelLayout::clean($v) ?: null) : null;
             } elseif ($key === 'label_badges') {
