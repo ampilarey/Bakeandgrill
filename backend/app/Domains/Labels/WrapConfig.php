@@ -51,6 +51,16 @@ final class WrapConfig
     public const FACES = [0, 2, 3, 4];
 
     /**
+     * The room kept clear each side of a fold, in mm (owner, 2026-11-11:
+     * "add some space between faces because bottle edges are circular"): a
+     * bottle's corners are rounded, and what is printed on the curve cannot
+     * be read from either side.
+     */
+    public const CORNER_DEFAULT = 3.0;
+
+    public const CORNER_MAX = 8.0;
+
+    /**
      * The effective config for a product: what is kept, filled in with the defaults.
      *
      * @return array{parts: list<string>, band: bool, band_text: string, band_text_dv: string, marks: list<string>, pictures: list<int>, faces: int, text_heading: string, text_heading_dv: string, text: string, text_dv: string}
@@ -108,6 +118,7 @@ final class WrapConfig
             'pictures' => $pictures,
             // The words on the expiry box ("BEST BEFORE"); blank keeps the label type's.
             'exp_label' => $text('exp_label', 16),
+            'corner' => is_numeric($in['corner'] ?? null) ? round(max(0.0, min(self::CORNER_MAX, (float) $in['corner'])), 1) : self::CORNER_DEFAULT,
             'faces' => in_array((int) ($in['faces'] ?? 0), self::FACES, true) ? (int) ($in['faces'] ?? 0) : 0,
             'text_heading' => $text('text_heading', 40),
             'text_heading_dv' => $text('text_heading_dv', 40),
@@ -134,6 +145,7 @@ final class WrapConfig
             "$key.marks" => 'sometimes|array|max:' . count(LabelMarks::KEYS),
             "$key.marks.*" => ['string', Rule::in(LabelMarks::KEYS)],
             "$key.exp_label" => 'sometimes|nullable|string|max:16',
+            "$key.corner" => 'sometimes|nullable|numeric|min:0|max:' . self::CORNER_MAX,
             "$key.faces" => ['sometimes', 'nullable', Rule::in(self::FACES)],
             "$key.pictures" => 'sometimes|array|max:' . self::MAX_PICTURES,
             "$key.pictures.*" => 'integer|exists:media_assets,id',

@@ -89,10 +89,12 @@ class BottleFacesLabelTest extends TestCase
         $face = 215 / 4;
         foreach (['brand' => 0, 'legal' => 1, 'marks' => 1, 'dates' => 2, 'maker' => 3] as $part => $n) {
             $s = $strips[$part];
-            $this->assertGreaterThanOrEqual($n * $face, $s['x'], "{$part} starts inside face " . ($n + 1));
-            $this->assertLessThanOrEqual(($n + 1) * $face, $s['x'] + $s['w'], "{$part} ends inside face " . ($n + 1) . ', clear of the fold');
+            // Three millimetres clear of each corner: a bottle's corners are rounded.
+            $this->assertGreaterThanOrEqual($n * $face + 3.0 - 0.01, $s['x'], "{$part} starts clear of the corner before face " . ($n + 1));
+            $this->assertLessThanOrEqual(($n + 1) * $face - 3.0 + 0.01, $s['x'] + $s['w'], "{$part} ends clear of the corner after face " . ($n + 1));
         }
         $this->assertGreaterThan(45, $strips['brand']['w']);
+        $this->assertSame(3.0, (float) $t['fields']['label_wrap']['corner']);
         // The name is large on the front, on two lines, and stays clear of the picture beside it.
         $spots = collect($res->json('summary.spots'));
         $name = $spots->firstWhere('key', 'name');
@@ -111,6 +113,12 @@ class BottleFacesLabelTest extends TestCase
         $this->assertEqualsWithDelta($strips['legal']['x'], $strips['marks']['x'], 0.01);
         $this->assertGreaterThanOrEqual($strips['legal']['y'] + $strips['legal']['h'], $strips['marks']['y']);
         $this->assertGreaterThan(45, $strips['maker']['w']);
+
+        // A rounder corner: more room, typed on the label.
+        $this->putJson("/api/labels/custom/{$id}", ['name' => $t['product'], 'label_wrap' => ['corner' => 6] + $t['fields']['label_wrap']])->assertOk()->assertJsonPath('data.label_wrap.corner', 6);
+        $wide = collect($this->postJson('/api/labels/stickers/url', ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 1]], 'layout' => 'single-custom', 'w' => 215, 'h' => 40, 'fill' => true, 'preview' => true])->assertOk()->json('summary.wrap.strips'))->keyBy('part');
+        $this->assertEqualsWithDelta(6.0, $wide['brand']['x'], 0.01);
+        $this->assertEqualsWithDelta($face + 6.0, $wide['legal']['x'], 0.01);
         $this->assertSame([], $res->json('summary.dropped'));
         $this->assertGreaterThanOrEqual(2, substr_count($html, '<img'), 'the logo and the bowl on the front face');
         // The round Amma's logo ships as the brand's own.

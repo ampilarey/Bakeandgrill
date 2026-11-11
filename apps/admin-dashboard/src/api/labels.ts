@@ -87,6 +87,8 @@ export type LabelWrap = {
   pictures: number[];
   /** A bottle with flat sides: the label in this many equal faces, a fold on each corner. 0 or missing is a round bottle. */
   faces?: number;
+  /** The room kept clear each side of a fold, in mm: a bottle's corners are rounded. */
+  corner?: number;
   /** The words on the expiry box ("Best before"); blank keeps the label type's. */
   exp_label?: string;
   text_heading: string;

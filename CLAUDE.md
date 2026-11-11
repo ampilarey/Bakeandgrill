@@ -463,7 +463,7 @@ Something else and Custom labels; `POST /labels/pouch-set`, `PouchSet`) makes a 
 saved label for each at its own size; nothing prints until Print. `PouchLabelTest`, `PouchSetModal.test.tsx`. A bottle with flat sides (owner, 2026-11-11: Amma's
 Theluli Rihaakuru, a four-sided bottle 21.5 cm about): `label_wrap.faces` (`WrapConfig::FACES`, The bottle's shape in
 `WrapParts.tsx`) divides a wrap-around label into equal faces, a part to a face (`WrapDesign::faceBoxes()`), so a fold
-never crosses a part; preset r215x40; the built-in template `rihaakuru-bottle` brings the product's name, the Amma
+never crosses a part, with `label_wrap.corner` mm (3 by default, Room at each corner) clear each side of a fold, as a bottle's corners are rounded; preset r215x40; the built-in template `rihaakuru-bottle` brings the product's name, the Amma
 brand and its photo (`product`, `brand`, `photo` on a `BUILTIN` row, as the momo ones bring their plate). The wrap part
 `maker` is the business's own side (logo, name, phone, website, address, complaints QR); `label_wrap.exp_label` words the
 expiry box ("Best before"); Make one beside a barcode box gives an in-house EAN starting with 2 (`inHouseBarcode()`). The

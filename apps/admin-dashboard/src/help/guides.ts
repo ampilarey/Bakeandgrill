@@ -476,6 +476,7 @@ export const GUIDES: Guide[] = [
     ],
     notes: [
       'The label is divided into four equal sides: name, picture and price; ingredients with the recycling marks; dates and barcode; then Bake & Grill\'s details with the complaints QR. Each fold lands on a corner of the bottle.',
+      'A bottle\'s corners are rounded, so 3 mm is kept clear each side of every fold. For a rounder corner, open Wrap-around label (wide sizes) and raise Room at each corner (mm).',
       'Leave the price empty when shops set their own. A barcode made with Make one starts with 2: each shop adds that number to its till once, then scans it.',
       'For another bottle, open Wrap-around label (wide sizes) on the label and set The bottle\'s shape: round, or 2, 3 or 4 flat sides.',
       'Measure round your own bottle before printing a full sheet. If it is not 21.5 cm, type your own size.',

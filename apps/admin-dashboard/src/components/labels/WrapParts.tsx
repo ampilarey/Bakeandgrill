@@ -110,6 +110,13 @@ export function WrapParts({ value, onChange, catalogue, pictures, onAddPicture, 
             <option value="3">3 flat sides</option>
             <option value="4">4 flat sides (square)</option>
           </select>
+          {(value.faces ?? 0) > 0 && (
+            <>
+              <label className={`${labelClass} mt-3`} htmlFor={`${idPrefix}-corner`}>Room at each corner (mm)</label>
+              <input id={`${idPrefix}-corner`} type="number" inputMode="decimal" min={0} max={8} step={0.5} value={value.corner ?? 3} onChange={(e) => set('corner', Math.max(0, Math.min(8, Number(e.target.value) || 0)))} className={fieldClass} />
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">Kept clear each side of a fold, because a bottle's corners are rounded. 3 mm suits most; more for a rounder corner.</p>
+            </>
+          )}
           <label className={`${labelClass} mt-3`} htmlFor={`${idPrefix}-exp`}>Words on the expiry date box</label>
           <input id={`${idPrefix}-exp`} maxLength={16} value={value.exp_label ?? ''} onChange={(e) => set('exp_label', e.target.value)} className={fieldClass} placeholder="EXP DATE" list={`${idPrefix}-exp-words`} />
           <datalist id={`${idPrefix}-exp-words`}><option value="Best before" /><option value="Use by" /><option value="Expiry date" /></datalist>

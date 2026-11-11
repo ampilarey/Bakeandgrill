@@ -206,7 +206,9 @@ Owner, 2026-11-11 (Amma's Theluli Rihaakuru in a four-sided bottle, 21.5 cm abou
 A wrap-around label can be told the bottle's shape (`label_wrap.faces`, `WrapConfig::FACES`: 0
 round, 2, 3 or 4; The bottle's shape in `WrapParts.tsx`). With flat sides `WrapDesign::faceBoxes()`
 divides the label into equal faces, a part to a face, so each fold falls in the gap between two
-parts; the parts after the last face share it, and with fewer parts than faces the last takes the
+parts, with `label_wrap.corner` mm kept clear each side of every fold and at the label's two ends
+(`WrapConfig::CORNER_DEFAULT` 3, up to 8; Room at each corner (mm) in `WrapParts.tsx`; a bottle's
+corners are rounded) and no rule drawn between faces; the parts after the last face share it, and with fewer parts than faces the last takes the
 faces left over. On a faced label the legal text sets at the largest size at which it all prints
 (`legalAt()`), and the picture stays beside the name from 46 mm. Preset 215 × 40 mm (five to a
 landscape A4 sheet). The built-in template **Theluli Rihaakuru bottle (4 sides)** carries the

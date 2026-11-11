@@ -217,10 +217,9 @@ final class WrapDesign
         $fw = $this->w / $n;
         $widths = [];
         $xs = [];
-        $inner = fn (int $from, int $to): array => [
-            $from * $fw + ($from === 0 ? $pad : $gap / 2),
-            ($to + 1) * $fw - ($to === $n - 1 ? $pad : $gap / 2),
-        ];
+        // Clear of every corner, the two ends of the label too (they meet on one): the corners are rounded.
+        $corner = max($gap / 2, (float) ($this->d['wrap']['corner'] ?? WrapConfig::CORNER_DEFAULT));
+        $inner = fn (int $from, int $to): array => [$from * $fw + $corner, ($to + 1) * $fw - $corner];
         $alone = array_slice($parts, 0, $n - 1);
         $rest = array_slice($parts, $n - 1);
         foreach ($alone as $i => $part) {
@@ -254,7 +253,8 @@ final class WrapDesign
             $x = $l['x'][$part];
             $py = $l['y'][$part];
             $ph = $l['h'][$part];
-            if ($i > 0 && !($part === 'marks' && $this->tucked !== null)) {
+            // No rule between a bottle's faces: the corner between them is curved, and the clear room says it.
+            if ($i > 0 && $this->faces === 0) {
                 $this->p[] = ['t' => 'rect', 'x' => round($x - $gap / 2 - 0.1, 3), 'y' => $top + 1.0, 'w' => 0.2, 'h' => $l['ph'] - 2.0, 'fill' => StickerDesign::BORDER];
             }
             match ($part) {
