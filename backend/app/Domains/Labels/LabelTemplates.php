@@ -129,13 +129,13 @@ final class LabelTemplates
         // label in four equal faces, a fold on each corner. `product` names a new label that has no name yet, `brand`
         // picks the brand of that name when there is one, `photo` comes with it. 90 days is a start: the owner checks it.
         [
-            'id' => 'rihaakuru-bottle', 'name' => 'Theluli Rihaakuru bottle (4 sides)', 'blurb' => "Amma's Theluli Rihaakuru in the four-sided bottle: one label right round, a side each for the name and picture, the ingredients, the dates and the QR.",
+            'id' => 'rihaakuru-bottle', 'name' => 'Theluli Rihaakuru bottle (4 sides)', 'blurb' => "Amma's Theluli Rihaakuru in the four-sided bottle: one label right round, a side each for the name and picture, the ingredients, the dates with the price and barcode, and Bake & Grill's details with the complaints QR.",
             'product' => 'Theluli Rihaakuru', 'brand' => 'Amma', 'photo' => 'brand/photos/rihaakuru/rihaakuru-bowl.png',
             'fields' => [
                 'label_storage' => 'ambient', 'label_heading' => 'BY BAKE & GRILL', 'label_storage_line' => 'Store in a cool, dry place',
                 'label_ingredients' => 'Rihaakuru, onion, curry leaves, pandan leaves, chilli, ginger, garlic.', 'label_allergens' => 'Fish',
                 'label_shelf_life_days' => 90, 'label_pack_unit' => 'G', 'label_lang' => 'en',
-                'label_wrap' => ['parts' => ['brand', 'legal', 'dates', 'qr', 'marks'], 'band' => false, 'faces' => 4, 'marks' => ['recycle', 'dispose']],
+                'label_wrap' => ['parts' => ['brand', 'legal', 'dates', 'maker'], 'band' => false, 'faces' => 4, 'exp_label' => 'Best before', 'marks' => ['recycle', 'dispose']],
             ],
             'size' => ['shape' => 'rect', 'preset' => 'r215x40', 'on' => 'sheet'],
         ],

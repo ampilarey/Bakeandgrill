@@ -464,7 +464,10 @@ saved label for each at its own size; nothing prints until Print. `PouchLabelTes
 Theluli Rihaakuru, a four-sided bottle 21.5 cm about): `label_wrap.faces` (`WrapConfig::FACES`, The bottle's shape in
 `WrapParts.tsx`) divides a wrap-around label into equal faces, a part to a face (`WrapDesign::faceBoxes()`), so a fold
 never crosses a part; preset r215x40; the built-in template `rihaakuru-bottle` brings the product's name, the Amma
-brand and its photo (`product`, `brand`, `photo` on a `BUILTIN` row, as the momo ones bring their plate).
+brand and its photo (`product`, `brand`, `photo` on a `BUILTIN` row, as the momo ones bring their plate). The wrap part
+`maker` is the business's own side (logo, name, phone, website, address, complaints QR); `label_wrap.exp_label` words the
+expiry box ("Best before"); Make one beside a barcode box gives an in-house EAN starting with 2 (`inHouseBarcode()`). The
+Amma brand's shipped logo is the round "AMMA'S" mark (owner, 2026-11-11).
 `BottleFacesLabelTest`. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.

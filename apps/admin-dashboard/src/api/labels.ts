@@ -75,7 +75,7 @@ export type LabelProduct = {
 export type NutritionPer = 'g' | 'ml';
 
 /** A wrap-around label's parts (owner, 2026-10-12: a bottle label with parts side by side), kept per product. */
-export type WrapPartKey = 'brand' | 'legal' | 'nutrition' | 'dates' | 'barcode' | 'qr' | 'marks' | 'text' | 'packed';
+export type WrapPartKey = 'brand' | 'legal' | 'nutrition' | 'dates' | 'barcode' | 'qr' | 'marks' | 'text' | 'packed' | 'maker';
 export type LabelWrap = {
   parts: WrapPartKey[];
   /** The flavour band along the bottom; its words, else the product name, with the net content at the end. */
@@ -87,6 +87,8 @@ export type LabelWrap = {
   pictures: number[];
   /** A bottle with flat sides: the label in this many equal faces, a fold on each corner. 0 or missing is a round bottle. */
   faces?: number;
+  /** The words on the expiry box ("Best before"); blank keeps the label type's. */
+  exp_label?: string;
   text_heading: string;
   text_heading_dv: string;
   text: string;

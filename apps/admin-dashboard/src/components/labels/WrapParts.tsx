@@ -25,6 +25,7 @@ export const WRAP_FALLBACK: WrapCatalogue = {
     { key: 'marks', label: 'Recycling marks and pictures', hint: 'Recycling symbols, the tidy man, and any mark pictures picked from the library' },
     { key: 'text', label: 'Free text', hint: 'A heading and lines of your own, English and Dhivehi' },
     { key: 'packed', label: 'Packed for and promotion', hint: 'The packed-for box and the promotion flash, when the sheet carries them' },
+    { key: 'maker', label: 'Bake & Grill details and complaints QR', hint: 'The business logo, name, phone, website and address, with the complaints QR beside them' },
   ],
   marks: [
     { key: 'recycle', label: 'Recycling loop', caption: 'RECYCLE' },
@@ -109,6 +110,9 @@ export function WrapParts({ value, onChange, catalogue, pictures, onAddPicture, 
             <option value="3">3 flat sides</option>
             <option value="4">4 flat sides (square)</option>
           </select>
+          <label className={`${labelClass} mt-3`} htmlFor={`${idPrefix}-exp`}>Words on the expiry date box</label>
+          <input id={`${idPrefix}-exp`} maxLength={16} value={value.exp_label ?? ''} onChange={(e) => set('exp_label', e.target.value)} className={fieldClass} placeholder="EXP DATE" list={`${idPrefix}-exp-words`} />
+          <datalist id={`${idPrefix}-exp-words`}><option value="Best before" /><option value="Use by" /><option value="Expiry date" /></datalist>
           <p className="text-xs text-[var(--color-text-muted)] mt-1">With flat sides the label is divided into equal sides, one strip to a side, so each fold lands on a corner and never through the words. Strips after the last side share it.</p>
         </div>
         <label className="flex items-start gap-3 min-h-[44px] cursor-pointer">

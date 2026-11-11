@@ -209,13 +209,13 @@ committed (archives are git-ignored); it goes to the owner directly.
 
 ## Amma
 
-The Amma sub-brand (home-made lines, Rihaakuru first) prints a rust tile: a rounded
-square in the brand rust with a dotted cream inner line, a cream heart, "Amma" in the
-brand serif, "އަންމާ" in Faruma and HOME-MADE spaced beneath (owner's pick, 2026-10-05,
-from three options). The source is `docs/brand/amma-logo.html` (render it 1080 × 1080
-with a transparent background in Chromium to regenerate
-`backend/public/brand/amma-logo.png`). Labels use it for the Amma brand until a logo is
-uploaded under Labels → Types & brands.
+The Amma sub-brand (home-made lines, Rihaakuru first) prints the round "AMMA'S" mark: a
+terracotta disc with a gold spoon and a cream fork over the name (owner, 2026-11-11: "Use the
+round Amma's logo"; lifted from the owner's own Theluli Rihaakuru label, 600 × 600 on a clear
+ground, `backend/public/brand/amma-logo.png`). It replaces the rust tile with the heart that
+was the pick of 2026-10-05, whose source stays at `docs/brand/amma-logo.html`. Labels use it
+for the Amma brand until a logo is uploaded under Labels → Wording and logos → Brands; a
+sharper original from the owner should replace this file when there is one.
 
 ## Menu colours (2026-10-07)
 

@@ -38,8 +38,8 @@ describe('StripEditor', () => {
     expect(within(counts).getByRole('button', { name: '3' })).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(within(counts).getByRole('button', { name: '3' }));
     expect(onChange).toHaveBeenLastCalledWith(['brand', 'legal', 'nutrition']);
-    fireEvent.click(within(counts).getByRole('button', { name: 'All 9' }));
-    expect(onChange).toHaveBeenLastCalledWith([...seven, 'text', 'packed']);
+    fireEvent.click(within(counts).getByRole('button', { name: 'All 10' }));
+    expect(onChange).toHaveBeenLastCalledWith([...seven, 'text', 'packed', 'maker']);
     fireEvent.click(within(board).getByRole('button', { name: 'Add a strip' }));
     expect(onChange).toHaveBeenLastCalledWith([...seven, 'text']);
   });

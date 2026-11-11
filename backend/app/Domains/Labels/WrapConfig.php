@@ -19,7 +19,7 @@ use Illuminate\Validation\Rule;
 final class WrapConfig
 {
     /** The parts a wrap label can hold, in the order they are offered. */
-    public const PARTS = ['brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr', 'marks', 'text', 'packed'];
+    public const PARTS = ['brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr', 'marks', 'text', 'packed', 'maker'];
 
     /** What each part is called in the Admin, and what it holds. */
     public const PART_WORDS = [
@@ -32,6 +32,8 @@ final class WrapConfig
         'marks' => ['Recycling marks and pictures', 'Recycling symbols, the tidy man, and any mark pictures picked from the library'],
         'text' => ['Free text', 'A heading and lines of your own, English and Dhivehi'],
         'packed' => ['Packed for and promotion', 'The packed-for box and the promotion flash, when the sheet carries them'],
+        // Owner, 2026-11-11: "proper branding details of Bake and Grill? Complain".
+        'maker' => ['Bake & Grill details and complaints QR', 'The business logo, name, phone, website and address, with the complaints QR beside them'],
     ];
 
     public const DEFAULT_PARTS = ['brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr', 'marks'];
@@ -83,6 +85,7 @@ final class WrapConfig
         if ($parts === []) {
             $parts = self::DEFAULT_PARTS;
         }
+        $text = fn (string $key, int $max): string => mb_substr(trim((string) ($in[$key] ?? '')), 0, $max);
         $marks = [];
         foreach ((array) ($in['marks'] ?? self::DEFAULT_MARKS) as $m) {
             if (isset(LabelMarks::MARKS[$m]) && !in_array($m, $marks, true)) {
@@ -95,7 +98,6 @@ final class WrapConfig
                 $pictures[] = (int) $id;
             }
         }
-        $text = fn (string $key, int $max): string => mb_substr(trim((string) ($in[$key] ?? '')), 0, $max);
 
         return [
             'parts' => $parts,
@@ -104,6 +106,8 @@ final class WrapConfig
             'band_text_dv' => $text('band_text_dv', 60),
             'marks' => $marks,
             'pictures' => $pictures,
+            // The words on the expiry box ("BEST BEFORE"); blank keeps the label type's.
+            'exp_label' => $text('exp_label', 16),
             'faces' => in_array((int) ($in['faces'] ?? 0), self::FACES, true) ? (int) ($in['faces'] ?? 0) : 0,
             'text_heading' => $text('text_heading', 40),
             'text_heading_dv' => $text('text_heading_dv', 40),
@@ -129,6 +133,7 @@ final class WrapConfig
             "$key.band_text_dv" => 'sometimes|nullable|string|max:60',
             "$key.marks" => 'sometimes|array|max:' . count(LabelMarks::KEYS),
             "$key.marks.*" => ['string', Rule::in(LabelMarks::KEYS)],
+            "$key.exp_label" => 'sometimes|nullable|string|max:16',
             "$key.faces" => ['sometimes', 'nullable', Rule::in(self::FACES)],
             "$key.pictures" => 'sometimes|array|max:' . self::MAX_PICTURES,
             "$key.pictures.*" => 'integer|exists:media_assets,id',

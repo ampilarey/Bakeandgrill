@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
-import { ArrowLeft, ArrowRight, Barcode, CalendarDays, FileText, Leaf, PackageOpen, Plus, QrCode, Recycle, RotateCcw, Tag, Trash2, Type } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Barcode, CalendarDays, FileText, Leaf, PackageOpen, Plus, QrCode, Recycle, RotateCcw, Store, Tag, Trash2, Type } from 'lucide-react';
 import type { WrapCatalogue, WrapPartKey, WrapStrips } from '../../api';
 import { Btn, Modal, ModalActions } from '../SharedUI';
 import { Button } from '../ui';
@@ -26,11 +26,12 @@ export const PART_ICONS: Record<WrapPartKey, ReactNode> = {
   marks: <Recycle size={16} />,
   text: <Type size={16} />,
   packed: <PackageOpen size={16} />,
+  maker: <Store size={16} />,
 };
 
 /** The word on a strip, short enough for a narrow one. */
 export const SHORT_NAMES: Record<WrapPartKey, string> = {
-  brand: 'Brand', legal: 'Ingredients', nutrition: 'Nutrition', dates: 'Dates', barcode: 'Barcode', qr: 'QR', marks: 'Marks', text: 'Free text', packed: 'Packed for',
+  brand: 'Brand', legal: 'Ingredients', nutrition: 'Nutrition', dates: 'Dates', barcode: 'Barcode', qr: 'QR', marks: 'Marks', text: 'Free text', packed: 'Packed for', maker: 'Bake & Grill',
 };
 
 /** How many strips the thumbnails offer; "All" is every part the catalogue lists. */

@@ -190,3 +190,16 @@ export function nutritionWords(n: LabelProduct['nutrition']): string {
   if (n.unweighed.length) parts.push(`${n.unweighed.join(', ')} ${n.unweighed.length === 1 ? 'is' : 'are'} not measured in grams in the recipe, so the panel cannot be worked out.`);
   return parts.join(' ');
 }
+
+/**
+ * A barcode number for a pack with no registered one (owner, 2026-11-11: "barcode that can be
+ * used by different shops"): twelve digits starting with 2, the range GS1 keeps for a shop's own
+ * use, so it never clashes with a brand's registered code. The server adds the check digit. Each
+ * shop that sells the pack adds the number to its own till once; a number registered with GS1 is
+ * typed instead when the business has one.
+ */
+export function inHouseBarcode(random: () => number = Math.random): string {
+  let digits = '2';
+  for (let i = 0; i < 11; i++) digits += String(Math.floor(random() * 10) % 10);
+  return digits;
+}

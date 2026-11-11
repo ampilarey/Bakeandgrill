@@ -21,7 +21,7 @@ import { FoldHelp } from './FoldHelp';
 import { ShelfLifeHint } from './ShelfLifeHint';
 import { WordingSignoff } from './WordingSignoff';
 import { QuickEditSheet, quickSpec } from './QuickEdit';
-import { customDraft as toDraft, customPayload as toPayload, type CustomDraft as Draft } from './labelDrafts';
+import { customDraft as toDraft, customPayload as toPayload, inHouseBarcode, type CustomDraft as Draft } from './labelDrafts';
 import { DEFAULT_CHOICE, rememberedRoll, rememberedSize, requestFor, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
 import { Btn, ConfirmDialog, Modal, ModalActions, useConfirmDialog } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
@@ -452,7 +452,12 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
             <Section title="For the shop till" summary={shopSummary} open={d.label_price !== '' || d.label_barcode.trim() !== ''} testId="custom-label-shop" help="A price and a barcode for a pack sold at another shop's till. Empty boxes print nothing.">
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field id="cl-price" label="Price (MVR)" hint="Empty prints no price."><input id="cl-price" type="number" inputMode="decimal" min={0} step="0.5" value={d.label_price} onChange={(e) => set('label_price', e.target.value)} className={fieldClass} placeholder="25.00" /></Field>
-                <Field id="cl-barcode" label="Barcode (EAN-13 or EAN-8)" hint="12 digits: the check digit is added. Prints on the full-size sticker."><input id="cl-barcode" inputMode="numeric" maxLength={20} value={d.label_barcode} onChange={(e) => set('label_barcode', e.target.value)} className={fieldClass} placeholder="590123412345" /></Field>
+                <Field id="cl-barcode" label="Barcode (EAN-13 or EAN-8)" hint="Type your registered number, or make one. A made number starts with 2, the range kept for a shop's own use: each shop that sells the pack adds it to its till once, then scans it. 12 digits: the check digit is added.">
+                  <div className="flex gap-2">
+                    <input id="cl-barcode" inputMode="numeric" maxLength={20} value={d.label_barcode} onChange={(e) => set('label_barcode', e.target.value)} className={`${fieldClass} min-w-0`} placeholder="590123412345" />
+                    <Btn small variant="secondary" onClick={() => set('label_barcode', inHouseBarcode())} data-testid="custom-label-make-barcode">Make one</Btn>
+                  </div>
+                </Field>
               </div>
             </Section>
 

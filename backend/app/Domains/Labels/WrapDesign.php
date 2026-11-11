@@ -45,10 +45,11 @@ final class WrapDesign
         'marks' => [0.0, 0.0, 8.0],
         'text' => [22.0, 1.1, 16.0],
         'packed' => [22.0, 0.9, 16.0],
+        'maker' => [40.0, 1.2, 30.0],
     ];
 
     /** When the parts do not fit the width even squeezed, they go in this order (the brand and the dates stay). */
-    private const DROP_ORDER = ['text', 'packed', 'marks', 'qr', 'barcode', 'nutrition', 'legal'];
+    private const DROP_ORDER = ['text', 'packed', 'marks', 'qr', 'barcode', 'nutrition', 'maker', 'legal'];
 
     /** @param array<string, mixed> $d see StickerSheet::stickerData() */
     /** The bottle's flat sides this label is folded round; 0 for a round one. */
@@ -240,6 +241,7 @@ final class WrapDesign
                 'marks' => $this->marks($x, $top, $pw, $ph),
                 'text' => $this->freeText($x, $top, $pw, $ph),
                 'packed' => $this->packed($x, $top, $pw, $ph),
+                'maker' => $this->maker($x, $top, $pw, $ph),
             };
         }
 
@@ -319,6 +321,7 @@ final class WrapDesign
 
         return match ($part) {
             'brand', 'legal', 'dates' => true,
+            'maker' => trim((string) ($d['footer']['name'] ?? '')) !== '',
             'barcode' => !empty($d['barcode']),
             'nutrition' => is_array($d['nutrition'] ?? null),
             'qr' => !empty($d['batch_qr']) || (!empty($d['show_qr']) && !empty($d['qr'])),
@@ -525,7 +528,7 @@ final class WrapDesign
             $block($within, $this->dv ? 'dv' : 'j7', $this->dv ? $dvPt : $pt, StickerDesign::PRIMARY, 0.5, [], false);
         }
         // Who made it, under a hairline, when there is room for it.
-        $maker = $this->producerLine();
+        $maker = in_array('maker', $this->parts, true) ? '' : $this->producerLine();
         if ($maker !== '' && $bottom - $cursor < $this->lead('j4', $pt) + 0.8) {
             $whole = false;
         }
@@ -616,11 +619,18 @@ final class WrapDesign
         // A bottle's face gives the lines under the boxes more height.
         $line = self::clamp(2.6 * $k, 2.3, 3.4) * ($this->faces > 0 ? 1.45 : 1.0);
         $side = $pw >= 40.0;
-        $bh = self::clamp($ph * ($side ? 0.42 : 0.3), 6.5, $this->faces > 0 ? 14.0 : 11.0);
+        // With a barcode to fit under them on a bottle's face, the boxes and the lines keep to their usual height.
+        $tight = $this->faces > 0 && !empty($d['barcode']) && !in_array('barcode', $this->parts, true);
+        if ($tight) {
+            $line = self::clamp(2.6 * $k, 2.3, 3.4) * 1.15;
+        }
+        $bh = self::clamp($ph * ($side ? 0.42 : 0.3), 6.5, $this->faces > 0 && !$tight ? 14.0 : 10.0);
         $boxesH = $side ? $bh : 2 * $bh + 0.8;
+        // "BEST BEFORE" when this label says so, else the label type's words.
+        $expWords = trim((string) ($d['wrap']['exp_label'] ?? '')) !== '' ? mb_strtoupper(trim((string) $d['wrap']['exp_label'])) : (string) $d['exp_label'];
         $rows = $this->dv
             ? [['ހެދި ތާރީޚު', 'ހެދި', StickerDesign::DARK, $d['mfg']], ['ހަމަވާ ތާރީޚު', 'ހަމަވާ', StickerDesign::PRIMARY, $d['exp']]]
-            : [[$d['mfg_label'], $d['mfg_label'], StickerDesign::DARK, $d['mfg']], [$d['exp_label'], $d['exp_label'], StickerDesign::PRIMARY, $d['exp']]];
+            : [[$d['mfg_label'], $d['mfg_label'], StickerDesign::DARK, $d['mfg']], [$expWords, $expWords, StickerDesign::PRIMARY, $d['exp']]];
         $g = $side ? 1.4 : 0.8;
         $boxW = $side ? ($pw - $g) / 2 : $pw;
         foreach ($rows as $i => [$long, $short, $colour, $date]) {
@@ -634,9 +644,20 @@ final class WrapDesign
         $pack = !empty($d['pack_of']) ? ' · ' . ($this->dv ? '' : 'PACK ') . $d['pack_no'] . '/' . $d['pack_of'] : '';
         $batch = $this->dv ? 'ބެޗް: ' . ($d['batch'] !== '' ? $d['batch'] : '..........') . $pack : 'BATCH: ' . ($d['batch'] !== '' ? $d['batch'] : '________') . $pack;
         $qty = $this->dv ? 'އަދަދު: ' . ($d['qty'] !== '' ? $d['qty'] : '......') : 'QTY: ' . ($d['qty'] !== '' ? $d['qty'] : '____') . ' ' . $d['unit'];
-        $bits = array_filter([$d['price'] !== '' ? $d['price'] : null, $qty, $d['net_weight'] !== '' ? $d['net_weight'] : null]);
+        // On a bottle's face the price stands on a line of its own, large; elsewhere it leads the quantity line.
+        $ownPrice = $this->faces > 0 && $d['price'] !== '';
+        if ($ownPrice && $cursor + $line * 1.7 <= $y + $ph) {
+            $this->p[] = LabelSpots::open('price');
+            $ppt = LabelText::fitPt($d['price'], 'j8', $pw, $line * 1.7 * 1.5, 5.0);
+            $this->text($x, $this->baseCentred($cursor, $line * 1.7, 'j8', $ppt), $pw, $this->a('l'), 'j8', $ppt, StickerDesign::PRIMARY, $d['price']);
+            $this->p[] = LabelSpots::close();
+            $cursor += $line * 1.7 + 0.3;
+        }
+        // A count nobody typed is left off a bottle's face (no "QTY: ____"); the net weight says how much.
+        $showQty = !($this->faces > 0 && $d['qty'] === '' && $d['net_weight'] !== '');
+        $bits = array_filter([!$ownPrice && $d['price'] !== '' ? $d['price'] : null, $showQty ? $qty : null, $d['net_weight'] !== '' ? ($showQty ? '' : 'NET ') . $d['net_weight'] : null]);
         $font = $this->dv ? 'dv' : 'j5';
-        foreach ([$batch, implode(' · ', $bits)] as $t) {
+        foreach ($tight ? [implode(' · ', array_filter([$batch, implode(' · ', $bits)]))] : [$batch, implode(' · ', $bits)] as $t) {
             if ($cursor + $line > $y + $ph) {
                 return;
             }
@@ -711,6 +732,85 @@ final class WrapDesign
         $captions = !empty($d['batch_qr']) ? ['SCAN FOR PACK INFO', 'PACK INFO'] : ['FEEDBACK & COMPLAINTS', 'FEEDBACK'];
         $caption = LabelText::widthMm($captions[0], 2.4, 'j7') <= $cw - 1.0 ? $captions[0] : $captions[1];
         $this->text($x - 1.0, $qy + $side + 0.6 + LabelText::ascent('j7') * $capPt * LabelText::PT, $cw, 'c', 'j7', LabelText::fitPt($caption, 'j7', $cw, $capPt, 2.4), StickerDesign::MUTED, $caption);
+    }
+
+    /**
+     * Who stands behind the pack (owner, 2026-11-11: "proper branding details
+     * of Bake and Grill? Complain"): the business's logo and name, its phone,
+     * website and address, and the complaints QR beside them, always the
+     * business's whatever food brand is on the front.
+     */
+    private function maker(float $x, float $y, float $pw, float $ph): void
+    {
+        $d = $this->d;
+        $k = $this->k;
+        $f = $d['footer'] ?? [];
+        $this->box($x, $y, $pw, $ph, StickerDesign::TINT, min(2.0, $ph * 0.08));
+        $in = 1.4 * $k;
+        $ix = $x + $in;
+        $iw = $pw - 2 * $in;
+        $top = $y + $in;
+        $ih = $ph - 2 * $in;
+
+        // The complaints QR at the far side, with its words beneath.
+        $qw = 0.0;
+        if (!empty($d['show_qr']) && !empty($d['qr'])) {
+            $capPt = self::clamp(3.0 * $k, 2.6, 3.8);
+            $capH = 2 * $this->lead('j7', $capPt);
+            $side = min($ih - $capH - 0.6, $iw * 0.42, 22.0);
+            if ($side >= 9.0) {
+                $qx = $this->dv ? $ix : $ix + $iw - $side;
+                $this->p[] = ['t' => 'rect', 'x' => round($qx - 0.4, 3), 'y' => round($top - 0.4, 3), 'w' => round($side + 0.8, 3), 'h' => round($side + 0.8, 3), 'fill' => '#FFFFFF', 'r' => 0.6];
+                $this->img($qx, $top, $side, $side, $d['qr']);
+                foreach (['FEEDBACK &', 'COMPLAINTS'] as $i => $word) {
+                    $this->text($qx - 1.0, $top + $side + 0.7 + $i * $this->lead('j7', $capPt) + LabelText::ascent('j7') * $capPt * LabelText::PT, $side + 2.0, 'c', 'j7', LabelText::fitPt($word, 'j7', $side + 2.0, $capPt, 2.4), StickerDesign::PRIMARY, $word);
+                }
+                $qw = $side + 2.2 * $k;
+            }
+        }
+        $tx = $this->dv ? $ix + $qw : $ix;
+        $tw = $iw - $qw;
+        $a = $this->a('l');
+
+        // The logo with the name beside it, then the lines.
+        $logo = $d['logo'] ?? null;
+        $lh = self::clamp($ih * 0.34, 7.0, 13.0);
+        $lw = 0.0;
+        if (is_string($logo) && $logo !== '') {
+            [$lw, $lhh] = StickerDesign::fit((float) ($d['logo_ratio'] ?? 1.0), $tw * 0.34, $lh);
+            $this->img($this->dv ? $tx + $tw - $lw : $tx, $top + ($lh - $lhh) / 2, $lw, $lhh, $logo);
+            $lw += 1.2 * $k;
+        }
+        $name = trim((string) ($f['name'] ?? ''));
+        $nw = $tw - $lw;
+        $nx = $this->dv ? $tx : $tx + $lw;
+        $tagline = trim((string) ($f['tagline'] ?? ''));
+        $npt = LabelText::fitPt($name, 'ds', $nw, min(9.5 * $k, $lh * 0.62 / LabelText::PT), 4.5);
+        $this->text($nx, $top + $lh * ($tagline !== '' ? 0.5 : 0.66), $nw, $a, 'ds', $npt, StickerDesign::DARK, $name);
+        if ($tagline !== '') {
+            $tpt = LabelText::fitPt($tagline, 'dsi', $nw, min(5.0 * $k, $lh * 0.3 / LabelText::PT), 3.0);
+            $this->text($nx, $top + $lh * 0.88, $nw, $a, 'dsi', $tpt, StickerDesign::PRIMARY, $tagline);
+        }
+        $cursor = $top + $lh + 1.0 * $k;
+        $bottom = $top + $ih;
+        $lines = array_values(array_filter([
+            [trim((string) ($f['phone'] ?? '')), 'j8', 6.4, StickerDesign::DARK],
+            [trim((string) ($f['website'] ?? '')), 'j7', 5.2, StickerDesign::PRIMARY],
+            [trim(trim((string) ($f['address'] ?? '')) . (trim((string) ($f['landmark'] ?? '')) !== '' ? ', ' . trim((string) $f['landmark']) : '')), 'j4', 4.0, StickerDesign::TEXT],
+        ], fn (array $l) => $l[0] !== ''));
+        foreach ($lines as [$text, $font, $size, $colour]) {
+            $size *= $k;
+            $wrapped = $font === 'j4' ? array_slice(LabelText::wrap($text, $size, $tw, $font), 0, 2) : [$text];
+            foreach ($wrapped as $line) {
+                $pt = $font === 'j4' ? $size : LabelText::fitPt($line, $font, $tw, $size, 3.2);
+                $lead = $this->lead($font, $pt);
+                if ($cursor + $lead > $bottom + 0.05) {
+                    return;
+                }
+                $this->text($tx, $cursor + LabelText::ascent($font) * $pt * LabelText::PT, $tw, $a, $font, $pt, $colour, $line);
+                $cursor += $lead + 0.25 * $k;
+            }
+        }
     }
 
     /**

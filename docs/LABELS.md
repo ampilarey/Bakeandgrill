@@ -211,7 +211,16 @@ faces left over. On a faced label the legal text sets at the largest size at whi
 (`legalAt()`), and the picture stays beside the name from 46 mm. Preset 215 × 40 mm (five to a
 landscape A4 sheet). The built-in template **Theluli Rihaakuru bottle (4 sides)** carries the
 product's name, the Amma brand and the bowl photo (`product`, `brand`, `photo` on a `BUILTIN` row;
-`LabelTemplates::builtinPhoto()`): Start from fills the name of a label that has none.
+`LabelTemplates::builtinPhoto()`): Start from fills the name of a label that has none. Its fourth
+face is the part **Bake & Grill details and complaints QR** (`maker`, owner 2026-11-11: "proper
+branding details of bake and grill? Complain"): the business's logo, name, tagline, phone,
+website and address with the complaints QR beside them, always the business's; with it printing,
+the legal text drops its small "Made by" line. The expiry box says what the label asks
+(`label_wrap.exp_label`, "Best before"; blank keeps the type's words). On a faced label the price
+stands on a line of its own and a count nobody typed is left off ("NET 200 g", never "QTY: ____"),
+and a barcode prints under the dates. A pack with no registered barcode gets one from **Make one**
+beside the barcode box (`inHouseBarcode()`: twelve digits starting with 2, GS1's range for a
+shop's own use, so every shop that sells the pack adds the same number to its till once).
 `BottleFacesLabelTest`.
 
 ### Templates: start from, save as

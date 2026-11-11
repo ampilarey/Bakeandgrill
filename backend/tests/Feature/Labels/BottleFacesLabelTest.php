@@ -71,20 +71,23 @@ class BottleFacesLabelTest extends TestCase
         $this->assertSame(5, $sheet['per_page'], 'five right-round labels on a landscape A4 sheet');
         $this->assertTrue($sheet['landscape']);
 
-        $id = $this->postJson('/api/labels/custom', ['name' => $t['product'], 'label_photo_media_id' => $t['photo']['id'], 'label_net_weight' => '200 g', 'label_price' => 85] + $t['fields'])->assertCreated()->json('data.id');
+        $id = $this->postJson('/api/labels/custom', ['name' => $t['product'], 'label_photo_media_id' => $t['photo']['id'], 'label_net_weight' => '200 g', 'label_price' => 85, 'label_barcode' => '200000012345'] + $t['fields'])->assertCreated()->json('data.id');
         $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 1]], 'layout' => 'single-custom', 'w' => 215, 'h' => 40, 'fill' => true])->assertOk();
         $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
         $this->dump('bottle-rihaakuru', $html);
         $this->assertSame('wrap', $res->json('summary.design'));
-        foreach (['Theluli Rihaakuru', 'BY BAKE &amp; GRILL', 'A M M A', 'Rihaakuru, onion', 'STORE IN A COOL, DRY PLACE', 'MFG DATE', 'Made by'] as $needle) {
+        $this->assertStringNotContainsString('EXP DATE', $html, 'the label says Best before');
+        $this->assertStringNotContainsString('Made by', $html, 'the business has a side of its own, so no small line as well');
+        $this->assertStringNotContainsString('QTY:', $html, 'no blank count on a bottle');
+        foreach (['Theluli Rihaakuru', 'BY BAKE &amp; GRILL', 'A M M A', 'Rihaakuru, onion', 'STORE IN A COOL, DRY PLACE', 'MFG DATE', '>BEST BEFORE<', '>MVR 85.00<', 'NET 200 g', '>FEEDBACK &amp;<', '>COMPLAINTS<', '+960 912 0011', '2 000000 12345'] as $needle) {
             $this->assertStringContainsStringIgnoringCase($needle, $html, $needle);
         }
 
         // A part to a face: brand, ingredients and dates each inside their own quarter, the QR and marks sharing the last.
         $strips = collect($res->json('summary.wrap.strips'))->keyBy('part');
-        $this->assertSame(['brand', 'legal', 'dates', 'qr', 'marks'], $strips->keys()->all());
+        $this->assertSame(['brand', 'legal', 'dates', 'maker'], $strips->keys()->all());
         $face = 215 / 4;
-        foreach (['brand' => 0, 'legal' => 1, 'dates' => 2, 'qr' => 3, 'marks' => 3] as $part => $n) {
+        foreach (['brand' => 0, 'legal' => 1, 'dates' => 2, 'maker' => 3] as $part => $n) {
             $s = $strips[$part];
             $this->assertGreaterThanOrEqual($n * $face, $s['x'], "{$part} starts inside face " . ($n + 1));
             $this->assertLessThanOrEqual(($n + 1) * $face, $s['x'] + $s['w'], "{$part} ends inside face " . ($n + 1) . ', clear of the fold');
@@ -92,6 +95,9 @@ class BottleFacesLabelTest extends TestCase
         $this->assertGreaterThan(45, $strips['brand']['w']);
         $this->assertSame([], $res->json('summary.dropped'));
         $this->assertGreaterThanOrEqual(2, substr_count($html, '<img'), 'the logo and the bowl on the front face');
+        // The round Amma's logo ships as the brand's own.
+        [$lw, $lh] = getimagesize(public_path('brand/amma-logo.png'));
+        $this->assertSame($lw, $lh);
     }
 
     public function test_faces_are_kept_tidy_and_a_round_bottle_shares_the_width_as_before(): void
