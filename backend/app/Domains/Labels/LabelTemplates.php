@@ -135,7 +135,7 @@ final class LabelTemplates
                 'label_storage' => 'ambient', 'label_heading' => 'BY BAKE & GRILL', 'label_storage_line' => 'Store in a cool, dry place',
                 'label_ingredients' => 'Rihaakuru, onion, curry leaves, pandan leaves, chilli, ginger, garlic.', 'label_allergens' => 'Fish',
                 'label_shelf_life_days' => 90, 'label_pack_unit' => 'G', 'label_lang' => 'en',
-                'label_wrap' => ['parts' => ['brand', 'legal', 'dates', 'maker'], 'band' => false, 'faces' => 4, 'exp_label' => 'Best before', 'marks' => ['recycle', 'dispose']],
+                'label_wrap' => ['parts' => ['brand', 'legal', 'marks', 'dates', 'maker'], 'band' => false, 'faces' => 4, 'exp_label' => 'Best before', 'marks' => ['recycle', 'dispose']],
             ],
             'size' => ['shape' => 'rect', 'preset' => 'r215x40', 'on' => 'sheet'],
         ],

@@ -55,6 +55,9 @@ final class WrapDesign
     /** The bottle's flat sides this label is folded round; 0 for a round one. */
     private int $faces = 0;
 
+    /** The part the recycling marks are tucked under on a bottle with flat sides; null when they stand alone. */
+    private ?string $tucked = null;
+
     private function __construct(private readonly array $d, private readonly bool $dv, private readonly float $w, private readonly float $h)
     {
         $this->k = self::clamp($h / 40.0, 0.75, 1.5);
@@ -89,7 +92,7 @@ final class WrapDesign
         $l = $s->layout();
         $strips = [];
         foreach ($l['order'] as $part) {
-            $strips[] = ['part' => $part, 'x' => round($l['x'][$part], 2), 'y' => round($l['top'], 2), 'w' => round($l['widths'][$part], 2), 'h' => round($l['ph'], 2)];
+            $strips[] = ['part' => $part, 'x' => round($l['x'][$part], 2), 'y' => round($l['y'][$part], 2), 'w' => round($l['widths'][$part], 2), 'h' => round($l['h'][$part], 2)];
         }
 
         return [
@@ -105,7 +108,7 @@ final class WrapDesign
      * The parts that print and their boxes: what each asks for, the width
      * shared out, and in Dhivehi the order reversed.
      *
-     * @return array{parts: list<string>, order: list<string>, widths: array<string, float>, x: array<string, float>, pad: float, gap: float, iw: float, top: float, ph: float, band: bool, bh: float, left_out: array<string, string>}
+     * @return array{y: array<string, float>, h: array<string, float>, parts: list<string>, order: list<string>, widths: array<string, float>, x: array<string, float>, pad: float, gap: float, iw: float, top: float, ph: float, band: bool, bh: float, left_out: array<string, string>}
      */
     private function layout(): array
     {
@@ -146,6 +149,13 @@ final class WrapDesign
         }
         $faces = (int) ($wrap['faces'] ?? 0);
         $this->faces = $faces >= 2 && $this->w / $faces >= 30.0 ? $faces : 0;
+        // On a bottle with flat sides the marks tuck under the part listed before them, on its face,
+        // and take no face of their own (owner, 2026-11-11: the marks squeezed the business's side).
+        $this->tucked = null;
+        if ($this->faces > 0 && ($at = array_search('marks', $parts, true)) !== false && $at > 0) {
+            $this->tucked = $parts[$at - 1];
+            array_splice($parts, $at, 1);
+        }
         if ($this->faces > 0) {
             [$widths, $xs] = $this->faceBoxes($parts, $asks, $pad, $gap);
         } else {
@@ -174,7 +184,21 @@ final class WrapDesign
             }
         }
 
-        return ['parts' => $parts, 'order' => $order, 'widths' => $widths, 'x' => $xs, 'pad' => $pad, 'gap' => $gap, 'iw' => $iw, 'top' => $top, 'ph' => $ph, 'band' => $band, 'bh' => $bh, 'left_out' => $leftOut];
+        // Every part runs the label's height, but a part with the marks under it, and the marks themselves.
+        $ys = array_fill_keys($parts, $top);
+        $hs = array_fill_keys($parts, $ph);
+        if ($this->tucked !== null && isset($widths[$this->tucked])) {
+            $mh = self::clamp($ph * 0.27, 7.0, 11.0);
+            $hs[$this->tucked] = $ph - $mh - 0.8;
+            $widths['marks'] = $widths[$this->tucked];
+            $xs['marks'] = $xs[$this->tucked];
+            $ys['marks'] = $top + $ph - $mh;
+            $hs['marks'] = $mh;
+            array_splice($parts, (int) array_search($this->tucked, $parts, true) + 1, 0, ['marks']);
+            array_splice($order, (int) array_search($this->tucked, $order, true) + 1, 0, ['marks']);
+        }
+
+        return ['y' => $ys, 'h' => $hs, 'parts' => $parts, 'order' => $order, 'widths' => $widths, 'x' => $xs, 'pad' => $pad, 'gap' => $gap, 'iw' => $iw, 'top' => $top, 'ph' => $ph, 'band' => $band, 'bh' => $bh, 'left_out' => $leftOut];
     }
 
     /**
@@ -228,20 +252,22 @@ final class WrapDesign
         foreach ($l['order'] as $i => $part) {
             $pw = $widths[$part];
             $x = $l['x'][$part];
-            if ($i > 0) {
-                $this->p[] = ['t' => 'rect', 'x' => round($x - $gap / 2 - 0.1, 3), 'y' => $top + 1.0, 'w' => 0.2, 'h' => $ph - 2.0, 'fill' => StickerDesign::BORDER];
+            $py = $l['y'][$part];
+            $ph = $l['h'][$part];
+            if ($i > 0 && !($part === 'marks' && $this->tucked !== null)) {
+                $this->p[] = ['t' => 'rect', 'x' => round($x - $gap / 2 - 0.1, 3), 'y' => $top + 1.0, 'w' => 0.2, 'h' => $l['ph'] - 2.0, 'fill' => StickerDesign::BORDER];
             }
             match ($part) {
-                'brand' => $this->brand($x, $top, $pw, $ph),
-                'legal' => $this->legal($x, $top, $pw, $ph),
-                'nutrition' => $this->nutrition($x, $top, $pw, $ph),
-                'dates' => $this->dates($x, $top, $pw, $ph),
-                'barcode' => $this->barcode($x, $top, $pw, $ph),
-                'qr' => $this->qr($x, $top, $pw, $ph),
-                'marks' => $this->marks($x, $top, $pw, $ph),
-                'text' => $this->freeText($x, $top, $pw, $ph),
-                'packed' => $this->packed($x, $top, $pw, $ph),
-                'maker' => $this->maker($x, $top, $pw, $ph),
+                'brand' => $this->brand($x, $py, $pw, $ph),
+                'legal' => $this->legal($x, $py, $pw, $ph),
+                'nutrition' => $this->nutrition($x, $py, $pw, $ph),
+                'dates' => $this->dates($x, $py, $pw, $ph),
+                'barcode' => $this->barcode($x, $py, $pw, $ph),
+                'qr' => $this->qr($x, $py, $pw, $ph),
+                'marks' => $this->marks($x, $py, $pw, $ph),
+                'text' => $this->freeText($x, $py, $pw, $ph),
+                'packed' => $this->packed($x, $py, $pw, $ph),
+                'maker' => $this->maker($x, $py, $pw, $ph),
             };
         }
 
@@ -396,10 +422,28 @@ final class WrapDesign
         // Badges (round 9): a row of pills under the name when the part is tall enough for both.
         $badges = $d['badges'] !== [] && $nh >= 9.5;
         $bh = $badges ? 3.0 : 0.0;
+        // On a bottle the price stands on the front face, under the name (owner, 2026-11-11: "Price should be on the main face").
+        $priceH = $this->frontPrice() && $nh >= 11.0 ? min(6.0, $nh * 0.34) : 0.0;
+        if ($priceH > 0) {
+            $nh -= $priceH + 0.9;
+            $ppt = LabelText::fitPt($d['price'], 'j8', $nw - 3.0, $priceH * 0.62 / LabelText::PT, 4.5);
+            $tagW = min($nw, LabelText::widthMm($d['price'], $ppt, 'j8') + 4.0);
+            $tagX = $this->dv ? $nx + $nw - $tagW : ($picW > 0 ? $nx : $nx + ($nw - $tagW) / 2);
+            $this->p[] = LabelSpots::open('price');
+            $this->box($this->ax($tagX, $tagW, $pw, $x), $ny + $nh + 0.9, $tagW, $priceH, StickerDesign::PRIMARY, $priceH / 2);
+            $this->text($this->ax($tagX, $tagW, $pw, $x), $this->baseCentred($ny + $nh + 0.9, $priceH, 'j8', $ppt), $tagW, 'c', 'j8', $ppt, StickerDesign::CREAM, $d['price']);
+            $this->p[] = LabelSpots::close();
+        }
         $this->name($this->ax($nx, $nw, $pw, $x), $ny, $nw, $nh - ($badges ? $bh + 0.8 : 0.0), $this->dv ? 'r' : ($picW > 0 ? 'l' : 'c'));
         if ($badges) {
             array_push($this->p, ...LabelBadges::pills($d['badges'], $this->dv, $this->ax($nx, $nw, $pw, $x), $ny + $nh - $bh, $nw, $bh, $this->dv ? 'r' : ($picW > 0 ? 'l' : 'c')));
         }
+    }
+
+    /** A bottle with flat sides carries its price on the front face, with the brand and the name. */
+    private function frontPrice(): bool
+    {
+        return $this->faces > 0 && trim((string) ($this->d['price'] ?? '')) !== '' && in_array('brand', $this->parts, true);
     }
 
     /** The product name: the hand lettering when there is some, else typed, English with Dhivehi beneath when both. */
@@ -645,7 +689,8 @@ final class WrapDesign
         $batch = $this->dv ? 'ބެޗް: ' . ($d['batch'] !== '' ? $d['batch'] : '..........') . $pack : 'BATCH: ' . ($d['batch'] !== '' ? $d['batch'] : '________') . $pack;
         $qty = $this->dv ? 'އަދަދު: ' . ($d['qty'] !== '' ? $d['qty'] : '......') : 'QTY: ' . ($d['qty'] !== '' ? $d['qty'] : '____') . ' ' . $d['unit'];
         // On a bottle's face the price stands on a line of its own, large; elsewhere it leads the quantity line.
-        $ownPrice = $this->faces > 0 && $d['price'] !== '';
+        $onFront = $this->frontPrice();
+        $ownPrice = $this->faces > 0 && $d['price'] !== '' && !$onFront;
         if ($ownPrice && $cursor + $line * 1.7 <= $y + $ph) {
             $this->p[] = LabelSpots::open('price');
             $ppt = LabelText::fitPt($d['price'], 'j8', $pw, $line * 1.7 * 1.5, 5.0);
@@ -655,7 +700,7 @@ final class WrapDesign
         }
         // A count nobody typed is left off a bottle's face (no "QTY: ____"); the net weight says how much.
         $showQty = !($this->faces > 0 && $d['qty'] === '' && $d['net_weight'] !== '');
-        $bits = array_filter([!$ownPrice && $d['price'] !== '' ? $d['price'] : null, $showQty ? $qty : null, $d['net_weight'] !== '' ? ($showQty ? '' : 'NET ') . $d['net_weight'] : null]);
+        $bits = array_filter([!$ownPrice && !$onFront && $d['price'] !== '' ? $d['price'] : null, $showQty ? $qty : null, $d['net_weight'] !== '' ? ($showQty ? '' : 'NET ') . $d['net_weight'] : null]);
         $font = $this->dv ? 'dv' : 'j5';
         foreach ($tight ? [implode(' · ', array_filter([$batch, implode(' · ', $bits)]))] : [$batch, implode(' · ', $bits)] as $t) {
             if ($cursor + $line > $y + $ph) {

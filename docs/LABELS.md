@@ -217,7 +217,9 @@ branding details of bake and grill? Complain"): the business's logo, name, tagli
 website and address with the complaints QR beside them, always the business's; with it printing,
 the legal text drops its small "Made by" line. The expiry box says what the label asks
 (`label_wrap.exp_label`, "Best before"; blank keeps the type's words). On a faced label the price
-stands on a line of its own and a count nobody typed is left off ("NET 200 g", never "QTY: ____"),
+stands on the front face, a rust tag under the name (`frontPrice()`; owner, 2026-11-11: "Price should
+be on the main face"), the recycling marks tuck under the part listed before them on its face and
+take no face of their own (`$tucked`), and a count nobody typed is left off ("NET 200 g", never "QTY: ____"),
 and a barcode prints under the dates. A pack with no registered barcode gets one from **Make one**
 beside the barcode box (`inHouseBarcode()`: twelve digits starting with 2, GS1's range for a
 shop's own use, so every shop that sells the pack adds the same number to its till once).

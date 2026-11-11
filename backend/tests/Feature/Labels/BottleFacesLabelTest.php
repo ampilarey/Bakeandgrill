@@ -85,14 +85,24 @@ class BottleFacesLabelTest extends TestCase
 
         // A part to a face: brand, ingredients and dates each inside their own quarter, the QR and marks sharing the last.
         $strips = collect($res->json('summary.wrap.strips'))->keyBy('part');
-        $this->assertSame(['brand', 'legal', 'dates', 'maker'], $strips->keys()->all());
+        $this->assertSame(['brand', 'legal', 'marks', 'dates', 'maker'], $strips->keys()->all());
         $face = 215 / 4;
-        foreach (['brand' => 0, 'legal' => 1, 'dates' => 2, 'maker' => 3] as $part => $n) {
+        foreach (['brand' => 0, 'legal' => 1, 'marks' => 1, 'dates' => 2, 'maker' => 3] as $part => $n) {
             $s = $strips[$part];
             $this->assertGreaterThanOrEqual($n * $face, $s['x'], "{$part} starts inside face " . ($n + 1));
             $this->assertLessThanOrEqual(($n + 1) * $face, $s['x'] + $s['w'], "{$part} ends inside face " . ($n + 1) . ', clear of the fold');
         }
         $this->assertGreaterThan(45, $strips['brand']['w']);
+        // The price is on the front face, with the name; the recycling marks share the last face.
+        $price = collect($res->json('summary.spots'))->firstWhere('key', 'price');
+        $this->assertNotNull($price);
+        $this->assertLessThanOrEqual($face, $price['x'] + $price['w'], 'the price sits on the front face');
+        $this->assertSame(1, substr_count($html, '>MVR 85.00<'));
+        $this->assertStringContainsString('>RECYCLE<', $html);
+        // The marks sit under the ingredients on the same face, and the business keeps its whole side.
+        $this->assertEqualsWithDelta($strips['legal']['x'], $strips['marks']['x'], 0.01);
+        $this->assertGreaterThanOrEqual($strips['legal']['y'] + $strips['legal']['h'], $strips['marks']['y']);
+        $this->assertGreaterThan(45, $strips['maker']['w']);
         $this->assertSame([], $res->json('summary.dropped'));
         $this->assertGreaterThanOrEqual(2, substr_count($html, '<img'), 'the logo and the bowl on the front face');
         // The round Amma's logo ships as the brand's own.
