@@ -188,7 +188,7 @@ final class WrapDesign
         $ys = array_fill_keys($parts, $top);
         $hs = array_fill_keys($parts, $ph);
         if ($this->tucked !== null && isset($widths[$this->tucked])) {
-            $mh = self::clamp($ph * 0.27, 7.0, 11.0);
+            $mh = self::clamp($ph * 0.3, 8.0, 12.0);
             $hs[$this->tucked] = $ph - $mh - 0.8;
             $widths['marks'] = $widths[$this->tucked];
             $xs['marks'] = $xs[$this->tucked];
@@ -372,7 +372,8 @@ final class WrapDesign
         // a narrow part puts the logo above them, everything centred.
         $logo = $brand['logo'] ?: $d['mark'];
         $narrow = $pw < 44.0;
-        $hb = $narrow ? self::clamp($ph * 0.5, 9.0, 18.0) : self::clamp($ph * 0.4, 8.0, 15.0);
+        // On a bottle's front face the header keeps low, so the name and the picture get the height (owner, 2026-11-11).
+        $hb = $narrow ? self::clamp($ph * 0.5, 9.0, 18.0) : ($this->faces > 0 ? self::clamp($ph * 0.29, 7.5, 11.0) : self::clamp($ph * 0.4, 8.0, 15.0));
         $lw = 0.0;
         $lh = 0.0;
         if ($logo) {
@@ -413,7 +414,7 @@ final class WrapDesign
         $photo = $d['photo'] ?: null;
         // A bottle's face is narrower than a free part: the picture stays from 46 mm there.
         if ($photo && $pw >= ($this->faces > 0 ? 46 : 56) && $nh >= 10) {
-            [$picW, $picH] = StickerDesign::fit($d['photo_ratio'], min($pw * 0.36, $nh * 1.3), $nh);
+            [$picW, $picH] = StickerDesign::fit($d['photo_ratio'], $this->faces > 0 ? min($pw * 0.5, $nh * 1.6) : min($pw * 0.36, $nh * 1.3), $nh);
             $this->img($this->ax($x + $pw - $in - $picW, $picW, $pw, $x), $ny + ($nh - $picH) / 2, $picW, $picH, $photo);
             $picW += 1.2;
         }
@@ -463,7 +464,17 @@ final class WrapDesign
         $lineK = $this->lead($font, 1.0);
         $withDv = $this->both && $d['name_dv'] !== '';
         $enH = $withDv ? $nh * 0.6 : $nh;
-        [$pt, $lines] = $this->fitLines($t, $font, $bw, $enH, min(16.0 * $this->k, 20.0), $useDv ? 6.0 : 5.5, 2);
+        [$pt, $lines] = $this->fitLines($t, $font, $bw, $enH, $this->faces > 0 ? 26.0 : min(16.0 * $this->k, 20.0), $useDv ? 6.0 : 5.5, 2);
+        // On a bottle's face a name of two words stands on two lines when that sets it clearly larger.
+        if ($this->faces > 0 && count($lines) === 1 && str_contains(trim($t), ' ')) {
+            for ($try = min(26.0, $enH / (2 * $lineK)); $try > $pt * 1.15; $try -= 0.5) {
+                $two = LabelText::wrap($t, $try, $bw, $font);
+                if (count($two) === 2 && max(LabelText::widthMm($two[0], $try, $font), LabelText::widthMm($two[1], $try, $font)) <= $bw) {
+                    [$pt, $lines] = [round($try, 2), $two];
+                    break;
+                }
+            }
+        }
         $lh = $lineK * $pt;
         $top = $y + max(0.0, ($enH - $lh * count($lines)) / 2);
         foreach ($lines as $i => $l) {
@@ -481,7 +492,7 @@ final class WrapDesign
     {
         // A bottle's face has room to spare: the largest type at which everything still prints whole.
         if ($this->faces > 0) {
-            foreach ([1.7, 1.55, 1.4, 1.28, 1.16, 1.08] as $f) {
+            foreach ([2.5, 2.35, 2.2, 2.1, 2.0, 1.9, 1.8, 1.7, 1.55, 1.4, 1.28, 1.16, 1.08] as $f) {
                 $mark = count($this->p);
                 if ($this->legalAt($x, $y, $pw, $ph, $f)) {
                     return;
@@ -787,11 +798,25 @@ final class WrapDesign
      */
     private function maker(float $x, float $y, float $pw, float $ph): void
     {
+        // The largest type at which every line still prints: the side is filled, not left half empty.
+        foreach ($this->faces > 0 ? [1.7, 1.55, 1.42, 1.3, 1.2, 1.1] : [] as $f) {
+            $mark = count($this->p);
+            if ($this->makerAt($x, $y, $pw, $ph, $f)) {
+                return;
+            }
+            array_splice($this->p, $mark);
+        }
+        $this->makerAt($x, $y, $pw, $ph, 1.0);
+    }
+
+    /** The business's side at $f times its usual size; false when a line did not fit. */
+    private function makerAt(float $x, float $y, float $pw, float $ph, float $f): bool
+    {
         $d = $this->d;
-        $k = $this->k;
-        $f = $d['footer'] ?? [];
+        $k = $this->k * $f;
+        $ft = $d['footer'] ?? [];
         $this->box($x, $y, $pw, $ph, StickerDesign::TINT, min(2.0, $ph * 0.08));
-        $in = 1.4 * $k;
+        $in = 1.4 * $this->k;
         $ix = $x + $in;
         $iw = $pw - 2 * $in;
         $top = $y + $in;
@@ -800,62 +825,73 @@ final class WrapDesign
         // The complaints QR at the far side, with its words beneath.
         $qw = 0.0;
         if (!empty($d['show_qr']) && !empty($d['qr'])) {
-            $capPt = self::clamp(3.0 * $k, 2.6, 3.8);
+            $capPt = self::clamp(3.0 * $k, 2.6, 4.6);
             $capH = 2 * $this->lead('j7', $capPt);
-            $side = min($ih - $capH - 0.6, $iw * 0.42, 22.0);
+            $side = min($ih - $capH - 0.6, $iw * 0.42 * min($f, 1.12), 26.0);
             if ($side >= 9.0) {
                 $qx = $this->dv ? $ix : $ix + $iw - $side;
-                $this->p[] = ['t' => 'rect', 'x' => round($qx - 0.4, 3), 'y' => round($top - 0.4, 3), 'w' => round($side + 0.8, 3), 'h' => round($side + 0.8, 3), 'fill' => '#FFFFFF', 'r' => 0.6];
-                $this->img($qx, $top, $side, $side, $d['qr']);
+                $qy = $top + max(0.0, ($ih - $side - $capH - 0.6) / 2);
+                $this->p[] = ['t' => 'rect', 'x' => round($qx - 0.4, 3), 'y' => round($qy - 0.4, 3), 'w' => round($side + 0.8, 3), 'h' => round($side + 0.8, 3), 'fill' => '#FFFFFF', 'r' => 0.6];
+                $this->img($qx, $qy, $side, $side, $d['qr']);
                 foreach (['FEEDBACK &', 'COMPLAINTS'] as $i => $word) {
-                    $this->text($qx - 1.0, $top + $side + 0.7 + $i * $this->lead('j7', $capPt) + LabelText::ascent('j7') * $capPt * LabelText::PT, $side + 2.0, 'c', 'j7', LabelText::fitPt($word, 'j7', $side + 2.0, $capPt, 2.4), StickerDesign::PRIMARY, $word);
+                    $this->text($qx - 1.0, $qy + $side + 0.7 + $i * $this->lead('j7', $capPt) + LabelText::ascent('j7') * $capPt * LabelText::PT, $side + 2.0, 'c', 'j7', LabelText::fitPt($word, 'j7', $side + 2.0, $capPt, 2.4), StickerDesign::PRIMARY, $word);
                 }
-                $qw = $side + 2.2 * $k;
+                $qw = $side + 2.2 * $this->k;
             }
         }
         $tx = $this->dv ? $ix + $qw : $ix;
         $tw = $iw - $qw;
         $a = $this->a('l');
+        if ($tw < 14.0) {
+            return false;
+        }
 
         // The logo with the name beside it, then the lines.
         $logo = $d['logo'] ?? null;
-        $lh = self::clamp($ih * 0.34, 7.0, 13.0);
+        $lh = self::clamp($ih * 0.34 * min($f, 1.25), 7.0, 15.0);
         $lw = 0.0;
         if (is_string($logo) && $logo !== '') {
             [$lw, $lhh] = StickerDesign::fit((float) ($d['logo_ratio'] ?? 1.0), $tw * 0.34, $lh);
             $this->img($this->dv ? $tx + $tw - $lw : $tx, $top + ($lh - $lhh) / 2, $lw, $lhh, $logo);
-            $lw += 1.2 * $k;
+            $lw += 1.2 * $this->k;
         }
-        $name = trim((string) ($f['name'] ?? ''));
+        $name = trim((string) ($ft['name'] ?? ''));
         $nw = $tw - $lw;
         $nx = $this->dv ? $tx : $tx + $lw;
-        $tagline = trim((string) ($f['tagline'] ?? ''));
+        $tagline = trim((string) ($ft['tagline'] ?? ''));
         $npt = LabelText::fitPt($name, 'ds', $nw, min(9.5 * $k, $lh * 0.62 / LabelText::PT), 4.5);
         $this->text($nx, $top + $lh * ($tagline !== '' ? 0.5 : 0.66), $nw, $a, 'ds', $npt, StickerDesign::DARK, $name);
         if ($tagline !== '') {
             $tpt = LabelText::fitPt($tagline, 'dsi', $nw, min(5.0 * $k, $lh * 0.3 / LabelText::PT), 3.0);
             $this->text($nx, $top + $lh * 0.88, $nw, $a, 'dsi', $tpt, StickerDesign::PRIMARY, $tagline);
         }
-        $cursor = $top + $lh + 1.0 * $k;
+        $cursor = $top + $lh + 1.0 * $this->k;
         $bottom = $top + $ih;
         $lines = array_values(array_filter([
-            [trim((string) ($f['phone'] ?? '')), 'j8', 6.4, StickerDesign::DARK],
-            [trim((string) ($f['website'] ?? '')), 'j7', 5.2, StickerDesign::PRIMARY],
-            [trim(trim((string) ($f['address'] ?? '')) . (trim((string) ($f['landmark'] ?? '')) !== '' ? ', ' . trim((string) $f['landmark']) : '')), 'j4', 4.0, StickerDesign::TEXT],
+            [trim((string) ($ft['phone'] ?? '')), 'j8', 6.4, StickerDesign::DARK],
+            [trim((string) ($ft['website'] ?? '')), 'j7', 5.2, StickerDesign::PRIMARY],
+            [trim(trim((string) ($ft['address'] ?? '')) . (trim((string) ($ft['landmark'] ?? '')) !== '' ? ', ' . trim((string) $ft['landmark']) : '')), 'j4', 4.0, StickerDesign::TEXT],
         ], fn (array $l) => $l[0] !== ''));
         foreach ($lines as [$text, $font, $size, $colour]) {
             $size *= $k;
-            $wrapped = $font === 'j4' ? array_slice(LabelText::wrap($text, $size, $tw, $font), 0, 2) : [$text];
+            $all = $font === 'j4' ? LabelText::wrap($text, $size, $tw, $font) : [$text];
+            $wrapped = array_slice($all, 0, 3);
+            $whole = count($all) <= 3 && ($font === 'j4' || LabelText::widthMm($text, $size, $font) <= $tw * 1.01);
             foreach ($wrapped as $line) {
                 $pt = $font === 'j4' ? $size : LabelText::fitPt($line, $font, $tw, $size, 3.2);
                 $lead = $this->lead($font, $pt);
                 if ($cursor + $lead > $bottom + 0.05) {
-                    return;
+                    return false;
                 }
                 $this->text($tx, $cursor + LabelText::ascent($font) * $pt * LabelText::PT, $tw, $a, $font, $pt, $colour, $line);
-                $cursor += $lead + 0.25 * $k;
+                $cursor += $lead + 0.25 * $this->k;
+            }
+            if (!$whole && $f > 1.0) {
+                return false;
             }
         }
+
+        return true;
     }
 
     /**
@@ -874,6 +910,10 @@ final class WrapDesign
         $rows = $n >= 3 && $ph >= 2 * (5.5 + $capH) + 0.6 ? 2 : 1;
         $cols = (int) ceil($n / $rows);
         $cell = min($cell, ($ph - ($rows - 1) * 0.6) / $rows - $capH);
+        // Tucked under another part on a bottle's face, the marks stand as tall as their row allows.
+        if ($this->tucked !== null && $rows === 1) {
+            $cell = max($cell, $ph - $capH - 0.2);
+        }
 
         return ['n' => $n, 'rows' => $rows, 'cols' => $cols, 'cell' => $cell, 'capPt' => $capPt, 'capH' => $capH];
     }

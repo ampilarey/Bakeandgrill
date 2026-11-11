@@ -79,7 +79,7 @@ class BottleFacesLabelTest extends TestCase
         $this->assertStringNotContainsString('EXP DATE', $html, 'the label says Best before');
         $this->assertStringNotContainsString('Made by', $html, 'the business has a side of its own, so no small line as well');
         $this->assertStringNotContainsString('QTY:', $html, 'no blank count on a bottle');
-        foreach (['Theluli Rihaakuru', 'BY BAKE &amp; GRILL', 'A M M A', 'Rihaakuru, onion', 'STORE IN A COOL, DRY PLACE', 'MFG DATE', '>BEST BEFORE<', '>MVR 85.00<', 'NET 200 g', '>FEEDBACK &amp;<', '>COMPLAINTS<', '+960 912 0011', '2 000000 12345'] as $needle) {
+        foreach (['>Theluli<', '>Rihaakuru<', 'BY BAKE &amp; GRILL', 'A M M A', 'Rihaakuru, onion', 'STORE IN A COOL, DRY PLACE', 'MFG DATE', '>BEST BEFORE<', '>MVR 85.00<', 'NET 200 g', '>FEEDBACK &amp;<', '>COMPLAINTS<', '+960 912 0011', '2 000000 12345'] as $needle) {
             $this->assertStringContainsStringIgnoringCase($needle, $html, $needle);
         }
 
@@ -93,6 +93,14 @@ class BottleFacesLabelTest extends TestCase
             $this->assertLessThanOrEqual(($n + 1) * $face, $s['x'] + $s['w'], "{$part} ends inside face " . ($n + 1) . ', clear of the fold');
         }
         $this->assertGreaterThan(45, $strips['brand']['w']);
+        // The name is large on the front, on two lines, and stays clear of the picture beside it.
+        $spots = collect($res->json('summary.spots'));
+        $name = $spots->firstWhere('key', 'name');
+        $photo = $spots->firstWhere('key', 'photo');
+        if ($name !== null && $photo !== null) {
+            $this->assertLessThanOrEqual($photo['x'] + 0.6, $name['x'] + $name['w'], 'the name does not run under the bowl');
+            $this->assertGreaterThan(14.0, $name['h'], 'two large lines');
+        }
         // The price is on the front face, with the name; the recycling marks share the last face.
         $price = collect($res->json('summary.spots'))->firstWhere('key', 'price');
         $this->assertNotNull($price);
