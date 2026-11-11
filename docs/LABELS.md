@@ -200,6 +200,20 @@ for each at its own size, drawn as a preview: nothing is printed, logged or coun
 roll until Print. The print's name leaves "(Small)" off (`PouchSet::printName`), since the
 panel says it.
 
+### A bottle with flat sides
+
+Owner, 2026-11-11 (Amma's Theluli Rihaakuru in a four-sided bottle, 21.5 cm about and 4 cm tall).
+A wrap-around label can be told the bottle's shape (`label_wrap.faces`, `WrapConfig::FACES`: 0
+round, 2, 3 or 4; The bottle's shape in `WrapParts.tsx`). With flat sides `WrapDesign::faceBoxes()`
+divides the label into equal faces, a part to a face, so each fold falls in the gap between two
+parts; the parts after the last face share it, and with fewer parts than faces the last takes the
+faces left over. On a faced label the legal text sets at the largest size at which it all prints
+(`legalAt()`), and the picture stays beside the name from 46 mm. Preset 215 × 40 mm (five to a
+landscape A4 sheet). The built-in template **Theluli Rihaakuru bottle (4 sides)** carries the
+product's name, the Amma brand and the bowl photo (`product`, `brand`, `photo` on a `BUILTIN` row;
+`LabelTemplates::builtinPhoto()`): Start from fills the name of a label that has none.
+`BottleFacesLabelTest`.
+
 ### Templates: start from, save as
 
 Round 7 of the usability work (owner, 2026-10-13; the audit's "so a new sauce takes

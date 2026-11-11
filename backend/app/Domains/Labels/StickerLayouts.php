@@ -127,6 +127,8 @@ final class StickerLayouts
         ['id' => 'r180x40', 'shape' => 'rect', 'w' => 180.0, 'h' => 40.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
         ['id' => 'r150x35', 'shape' => 'rect', 'w' => 150.0, 'h' => 35.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
         ['id' => 'r120x40', 'shape' => 'rect', 'w' => 120.0, 'h' => 40.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
+        // Right round a four-sided bottle 21.5 cm about (owner, 2026-11-11: the rihaakuru bottle): five to a landscape A4 sheet.
+        ['id' => 'r215x40', 'shape' => 'rect', 'w' => 215.0, 'h' => 40.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],
         // Pouch labels (owner, 2026-11-11: the frozen momo's zip pouches, 14, 16
         // and 18 cm wide): the front of a small, medium and large pouch.
         ['id' => 'r120x53', 'shape' => 'rect', 'w' => 120.0, 'h' => 53.0, 'on' => ['sheet' => 'a4-custom', 'printer' => 'single-custom']],

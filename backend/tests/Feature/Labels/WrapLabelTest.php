@@ -184,7 +184,7 @@ class WrapLabelTest extends TestCase
         $this->assertCount(12, $layouts['wrap']['marks']);
         $this->assertSame(4, $layouts['wrap']['max_pictures']);
         $wraps = collect($layouts['presets'])->where('design', 'wrap')->pluck('id')->all();
-        $this->assertSame(['r200x50', 'r180x40', 'r150x35', 'r120x40'], $wraps);
+        $this->assertSame(['r200x50', 'r180x40', 'r150x35', 'r120x40', 'r215x40'], $wraps);
         $this->assertSame(7, collect($layouts['presets'])->firstWhere('id', 'r180x40')['options'][0]['per_page'], 'seven 180 × 40 labels on an A4 sheet');
 
         $req = StickerSheet::normalise(['items' => [['id' => $this->juice, 'kind' => 'custom', 'copies' => 1]], 'layout' => 'single-custom', 'w' => 180, 'h' => 40, 'fill' => true]);

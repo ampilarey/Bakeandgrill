@@ -460,7 +460,12 @@ business name only under its logo, no line that repeats the name) and the dates,
 2026-11-11: "an easy option for 3 sizes with photos"): Pouch labels in every size (`PouchSetModal`, the wizard's
 Something else and Custom labels; `POST /labels/pouch-set`, `PouchSet`) makes a custom label per size, "Chicken Momo
 (Small)" printed without the bracket (`PouchSet::printName`), with the shipped momo photo or a Library one, and a
-saved label for each at its own size; nothing prints until Print. `PouchLabelTest`, `PouchSetModal.test.tsx`. How to
+saved label for each at its own size; nothing prints until Print. `PouchLabelTest`, `PouchSetModal.test.tsx`. A bottle with flat sides (owner, 2026-11-11: Amma's
+Theluli Rihaakuru, a four-sided bottle 21.5 cm about): `label_wrap.faces` (`WrapConfig::FACES`, The bottle's shape in
+`WrapParts.tsx`) divides a wrap-around label into equal faces, a part to a face (`WrapDesign::faceBoxes()`), so a fold
+never crosses a part; preset r215x40; the built-in template `rihaakuru-bottle` brings the product's name, the Amma
+brand and its photo (`product`, `brand`, `photo` on a `BUILTIN` row, as the momo ones bring their plate).
+`BottleFacesLabelTest`. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

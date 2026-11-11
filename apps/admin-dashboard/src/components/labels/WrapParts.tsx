@@ -83,7 +83,7 @@ export function WrapParts({ value, onChange, catalogue, pictures, onAddPicture, 
 
   return (
     <div className="space-y-4" data-testid="wrap-parts">
-      <p className="text-xs text-[var(--color-text-muted)]">Prints when the label is wide and short: 180 × 40, 150 × 35, 200 × 50, 120 × 40 mm on the size picker, or any size at least 90 × 25 mm and two and a half times as wide as tall. A strip with nothing to print is left out, and on a narrow label the last strips give way. Other sizes keep their usual sticker.</p>
+      <p className="text-xs text-[var(--color-text-muted)]">Prints when the label is wide and short: 180 × 40, 150 × 35, 200 × 50, 120 × 40, 215 × 40 mm on the size picker, or any size at least 90 × 25 mm and two and a half times as wide as tall. A strip with nothing to print is left out, and on a narrow label the last strips give way. Other sizes keep their usual sticker.</p>
 
       {/* Round 2 (owner, 2026-10-13): the parts as strips on a board, not a list. */}
       <StripEditor
@@ -101,6 +101,16 @@ export function WrapParts({ value, onChange, catalogue, pictures, onAddPicture, 
       />
 
       <div className="rounded-xl border border-[var(--color-border)] p-3 space-y-2">
+        <div className="mb-3">
+          <label className={labelClass} htmlFor={`${idPrefix}-faces`}>The bottle's shape</label>
+          <select id={`${idPrefix}-faces`} value={String(value.faces ?? 0)} onChange={(e) => set('faces', Number(e.target.value))} className={fieldClass}>
+            <option value="0">Round: the strips take the room they need</option>
+            <option value="2">2 flat sides</option>
+            <option value="3">3 flat sides</option>
+            <option value="4">4 flat sides (square)</option>
+          </select>
+          <p className="text-xs text-[var(--color-text-muted)] mt-1">With flat sides the label is divided into equal sides, one strip to a side, so each fold lands on a corner and never through the words. Strips after the last side share it.</p>
+        </div>
         <label className="flex items-start gap-3 min-h-[44px] cursor-pointer">
           <input type="checkbox" checked={value.band} onChange={(e) => set('band', e.target.checked)} className="mt-0.5 w-5 h-5 shrink-0 accent-[var(--color-primary)]" data-testid="wrap-band" />
           <span>

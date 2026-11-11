@@ -462,6 +462,25 @@ export const GUIDES: Guide[] = [
     ],
     words: 'pouch bag momo frozen microwave steam fry zip label packet',
   },
+  {
+    id: 'bottle-label',
+    page: '/labels',
+    title: 'Make a label that goes right round a bottle (Theluli Rihaakuru)',
+    open: { to: '/labels', label: 'Open Labels' },
+    steps: [
+      'Open Labels. It opens on Make a label.',
+      'Step 1: tap Something else, then New custom label.',
+      'In Start from pick Theluli Rihaakuru bottle (4 sides). The name, the Amma brand, the photo, the ingredients and the size (215 × 40 mm) fill in.',
+      'Check the wording, type the net weight and the price if you want them printed, and tap Add label.',
+      'Carry on to print. Five labels fit on one A4 sheet, turned sideways.',
+    ],
+    notes: [
+      'The label is divided into four equal sides: name and picture, ingredients, dates, then the QR and recycling marks. Each fold lands on a corner of the bottle.',
+      'For another bottle, open Wrap-around label (wide sizes) on the label and set The bottle\'s shape: round, or 2, 3 or 4 flat sides.',
+      'Measure round your own bottle before printing a full sheet. If it is not 21.5 cm, type your own size.',
+    ],
+    words: 'bottle jar wrap rihaakuru amma square sides round label',
+  },
 
   // ── People and alerts ─────────────────────────────────────────────────────
   {

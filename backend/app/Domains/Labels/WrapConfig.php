@@ -41,9 +41,17 @@ final class WrapConfig
     public const MAX_PICTURES = 4;
 
     /**
+     * A bottle or jar with flat sides (owner, 2026-11-11: a four-sided
+     * rihaakuru bottle): the label divides into this many equal faces and a
+     * fold falls between two parts, on a corner, never through one. 0 is a
+     * round bottle: the parts share the width by what they hold.
+     */
+    public const FACES = [0, 2, 3, 4];
+
+    /**
      * The effective config for a product: what is kept, filled in with the defaults.
      *
-     * @return array{parts: list<string>, band: bool, band_text: string, band_text_dv: string, marks: list<string>, pictures: list<int>, text_heading: string, text_heading_dv: string, text: string, text_dv: string}
+     * @return array{parts: list<string>, band: bool, band_text: string, band_text_dv: string, marks: list<string>, pictures: list<int>, faces: int, text_heading: string, text_heading_dv: string, text: string, text_dv: string}
      */
     public static function of(Item|CustomLabel $product): array
     {
@@ -62,7 +70,7 @@ final class WrapConfig
      * text. Null gives the defaults.
      *
      * @param ?array<string, mixed> $in
-     * @return array{parts: list<string>, band: bool, band_text: string, band_text_dv: string, marks: list<string>, pictures: list<int>, text_heading: string, text_heading_dv: string, text: string, text_dv: string}
+     * @return array{parts: list<string>, band: bool, band_text: string, band_text_dv: string, marks: list<string>, pictures: list<int>, faces: int, text_heading: string, text_heading_dv: string, text: string, text_dv: string}
      */
     public static function clean(?array $in): array
     {
@@ -96,6 +104,7 @@ final class WrapConfig
             'band_text_dv' => $text('band_text_dv', 60),
             'marks' => $marks,
             'pictures' => $pictures,
+            'faces' => in_array((int) ($in['faces'] ?? 0), self::FACES, true) ? (int) ($in['faces'] ?? 0) : 0,
             'text_heading' => $text('text_heading', 40),
             'text_heading_dv' => $text('text_heading_dv', 40),
             'text' => $text('text', 400),
@@ -120,6 +129,7 @@ final class WrapConfig
             "$key.band_text_dv" => 'sometimes|nullable|string|max:60',
             "$key.marks" => 'sometimes|array|max:' . count(LabelMarks::KEYS),
             "$key.marks.*" => ['string', Rule::in(LabelMarks::KEYS)],
+            "$key.faces" => ['sometimes', 'nullable', Rule::in(self::FACES)],
             "$key.pictures" => 'sometimes|array|max:' . self::MAX_PICTURES,
             "$key.pictures.*" => 'integer|exists:media_assets,id',
             "$key.text_heading" => 'sometimes|nullable|string|max:40',
@@ -141,6 +151,6 @@ final class WrapConfig
             $parts[] = ['key' => $key, 'label' => $label, 'hint' => $hint];
         }
 
-        return ['parts' => $parts, 'marks' => LabelMarks::catalogue(), 'default_parts' => self::DEFAULT_PARTS, 'default_marks' => self::DEFAULT_MARKS, 'max_pictures' => self::MAX_PICTURES];
+        return ['parts' => $parts, 'marks' => LabelMarks::catalogue(), 'default_parts' => self::DEFAULT_PARTS, 'default_marks' => self::DEFAULT_MARKS, 'max_pictures' => self::MAX_PICTURES, 'faces' => self::FACES];
     }
 }

@@ -96,6 +96,8 @@ export function applyToCustom(d: CustomDraft, t: LabelTemplate): CustomDraft {
   if (has('label_badges')) n.label_badges = f.label_badges ? [...f.label_badges] : [];
   // A built-in template's own photo fills an empty picture; one already picked stays.
   if (t.photo && n.label_photo_media_id == null) { n.label_photo_media_id = t.photo.id; n.label_photo_url = t.photo.url; }
+  // The product a built-in template is for names a label that has no name yet.
+  if (t.product && !n.name.trim()) n.name = t.product;
   return n;
 }
 

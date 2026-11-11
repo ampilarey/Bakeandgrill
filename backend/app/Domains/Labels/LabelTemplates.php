@@ -92,7 +92,7 @@ final class LabelTemplates
         // label itself (PouchConfig). 30 days, not the 90 of a frozen pack: the
         // momo is already steamed and a zip pouch is not airtight.
         [
-            'id' => 'momo-pouch', 'name' => 'Frozen momo pouch (microwave)', 'blurb' => 'A zip pouch of steamed, frozen momo to microwave: the pouch label with photo, pieces and price. 30 days, as a zip pouch is not airtight.',
+            'photo' => PouchSet::MOMO_PHOTO, 'id' => 'momo-pouch', 'name' => 'Frozen momo pouch (microwave)', 'blurb' => 'A zip pouch of steamed, frozen momo to microwave: the pouch label with photo, pieces and price. 30 days, as a zip pouch is not airtight.',
             'fields' => [
                 'label_storage' => 'frozen', 'label_heading' => 'FROZEN MOMO',
                 'label_ingredients' => 'Chicken, wheat flour, onion, coriander, ginger, vegetable oil, salt, MSG (E621).', 'label_allergens' => 'Wheat',
@@ -104,7 +104,7 @@ final class LabelTemplates
             'size' => ['shape' => 'rect', 'preset' => 'r140x62', 'on' => 'sheet'],
         ],
         [
-            'id' => 'momo-pouch-steam', 'name' => 'Frozen momo pouch (steam)', 'blurb' => 'The same pouch label for raw frozen momo to steam at home.',
+            'photo' => PouchSet::MOMO_PHOTO, 'id' => 'momo-pouch-steam', 'name' => 'Frozen momo pouch (steam)', 'blurb' => 'The same pouch label for raw frozen momo to steam at home.',
             'fields' => [
                 'label_storage' => 'frozen', 'label_heading' => 'FROZEN MOMO',
                 'label_ingredients' => 'Chicken, wheat flour, onion, coriander, ginger, vegetable oil, salt, MSG (E621).', 'label_allergens' => 'Wheat',
@@ -115,7 +115,7 @@ final class LabelTemplates
             'size' => ['shape' => 'rect', 'preset' => 'r140x62', 'on' => 'sheet'],
         ],
         [
-            'id' => 'momo-pouch-fry', 'name' => 'Frozen momo pouch (fry)', 'blurb' => 'The same pouch label for frozen momo to pan fry.',
+            'photo' => PouchSet::MOMO_PHOTO, 'id' => 'momo-pouch-fry', 'name' => 'Frozen momo pouch (fry)', 'blurb' => 'The same pouch label for frozen momo to pan fry.',
             'fields' => [
                 'label_storage' => 'frozen', 'label_heading' => 'FROZEN MOMO',
                 'label_ingredients' => 'Chicken, wheat flour, onion, coriander, ginger, vegetable oil, salt, MSG (E621).', 'label_allergens' => 'Wheat',
@@ -124,6 +124,20 @@ final class LabelTemplates
                 'label_pouch' => ['look' => 'gold', 'method' => 'pan_fry', 'tagline' => 'Frozen · Handmade', 'size_word' => 'Medium'],
             ],
             'size' => ['shape' => 'rect', 'preset' => 'r140x62', 'on' => 'sheet'],
+        ],
+        // A four-sided bottle (owner, 2026-11-11: Amma's Theluli Rihaakuru, 21.5 cm about and 4 cm tall): the wrap-around
+        // label in four equal faces, a fold on each corner. `product` names a new label that has no name yet, `brand`
+        // picks the brand of that name when there is one, `photo` comes with it. 90 days is a start: the owner checks it.
+        [
+            'id' => 'rihaakuru-bottle', 'name' => 'Theluli Rihaakuru bottle (4 sides)', 'blurb' => "Amma's Theluli Rihaakuru in the four-sided bottle: one label right round, a side each for the name and picture, the ingredients, the dates and the QR.",
+            'product' => 'Theluli Rihaakuru', 'brand' => 'Amma', 'photo' => 'brand/photos/rihaakuru/rihaakuru-bowl.png',
+            'fields' => [
+                'label_storage' => 'ambient', 'label_heading' => 'BY BAKE & GRILL', 'label_storage_line' => 'Store in a cool, dry place',
+                'label_ingredients' => 'Rihaakuru, onion, curry leaves, pandan leaves, chilli, ginger, garlic.', 'label_allergens' => 'Fish',
+                'label_shelf_life_days' => 90, 'label_pack_unit' => 'G', 'label_lang' => 'en',
+                'label_wrap' => ['parts' => ['brand', 'legal', 'dates', 'qr', 'marks'], 'band' => false, 'faces' => 4, 'marks' => ['recycle', 'dispose']],
+            ],
+            'size' => ['shape' => 'rect', 'preset' => 'r215x40', 'on' => 'sheet'],
         ],
         [
             'id' => 'pouch-any', 'name' => 'Pouch label (any product)', 'blurb' => 'The pouch label for anything sold in a pouch or bag: pick the pouch colour and how it is cooked on the label.',
@@ -278,11 +292,31 @@ final class LabelTemplates
      */
     public static function presentBuiltin(array $builtin, array $names): array
     {
-        // The momo templates come with their photo (owner, 2026-11-11): kept once in the library, offered to a label that has none.
-        $photo = str_starts_with((string) $builtin['id'], 'momo-') ? PouchSet::momoPhoto() : null;
+        // A built-in template may come with its photo (kept once in the library, offered to a label that has none),
+        // name the brand it prints under and the product it is for (owner, 2026-11-11: the momo plate, Amma's rihaakuru).
+        $photo = self::builtinPhoto($builtin);
+        $fields = self::normaliseFields($builtin['fields']);
+        if (isset($builtin['brand']) && ($brandId = LabelBrand::query()->where('name', $builtin['brand'])->value('id'))) {
+            $fields['brand_id'] = (int) $brandId;
+            $names['brands'] = $names['brands']->union(LabelBrand::query()->whereKey($brandId)->pluck('name', 'id'));
+        }
 
-        return self::row($builtin['id'], true, $builtin['name'], $builtin['blurb'], null, self::normaliseFields($builtin['fields']), self::normaliseSize($builtin['size']), $names)
-            + ['created_by' => null, 'created_at' => null, 'photo' => $photo ? ['id' => (int) $photo->id, 'url' => $photo->url] : null];
+        return self::row($builtin['id'], true, $builtin['name'], $builtin['blurb'], null, $fields, self::normaliseSize($builtin['size']), $names)
+            + ['created_by' => null, 'created_at' => null, 'photo' => $photo ? ['id' => (int) $photo->id, 'url' => $photo->url] : null, 'product' => $builtin['product'] ?? null];
+    }
+
+    /** A built-in template's own photo as a library picture, kept once; null when it has none. */
+    public static function builtinPhoto(array $builtin): ?Media
+    {
+        $file = isset($builtin['photo']) ? public_path((string) $builtin['photo']) : null;
+        if ($file === null || !is_file($file)) {
+            return null;
+        }
+        try {
+            return LabelMedia::storePng((string) file_get_contents($file), $builtin['name'] . ' photo');
+        } catch (\InvalidArgumentException) {
+            return null;
+        }
     }
 
     /**

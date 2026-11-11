@@ -85,6 +85,8 @@ export type LabelWrap = {
   /** Recycling marks (keys from the layouts catalogue) and pictures from the media library, in the marks part. */
   marks: string[];
   pictures: number[];
+  /** A bottle with flat sides: the label in this many equal faces, a fold on each corner. 0 or missing is a round bottle. */
+  faces?: number;
   text_heading: string;
   text_heading_dv: string;
   text: string;
@@ -265,6 +267,8 @@ export type LabelTemplate = {
   source: string | null;
   fields: LabelTemplateFields; /** A built-in template's own photo (the momo plate), for a label that has none. */
   photo?: { id: number; url: string | null } | null;
+  /** The product a built-in template is for: it names a new label that has no name yet. */
+  product?: string | null;
   wrap_pictures: WrapPicture[]; size: LabelTemplateSize | null;
   /** The names behind the ids, for the list line; `storage` is what its fields or its type say. */
   type_name: string | null; brand_name: string | null; footer_name: string | null; storage: LabelStorage | null;

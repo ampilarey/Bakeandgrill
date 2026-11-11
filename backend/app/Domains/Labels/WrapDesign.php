@@ -51,6 +51,9 @@ final class WrapDesign
     private const DROP_ORDER = ['text', 'packed', 'marks', 'qr', 'barcode', 'nutrition', 'legal'];
 
     /** @param array<string, mixed> $d see StickerSheet::stickerData() */
+    /** The bottle's flat sides this label is folded round; 0 for a round one. */
+    private int $faces = 0;
+
     private function __construct(private readonly array $d, private readonly bool $dv, private readonly float $w, private readonly float $h)
     {
         $this->k = self::clamp($h / 40.0, 0.75, 1.5);
@@ -140,7 +143,14 @@ final class WrapDesign
                 default => self::PARTS[$part][0],
             };
         }
-        $widths = $this->share($parts, $asks, $iw, $gap);
+        $faces = (int) ($wrap['faces'] ?? 0);
+        $this->faces = $faces >= 2 && $this->w / $faces >= 30.0 ? $faces : 0;
+        if ($this->faces > 0) {
+            [$widths, $xs] = $this->faceBoxes($parts, $asks, $pad, $gap);
+        } else {
+            $widths = $this->share($parts, $asks, $iw, $gap);
+            $xs = null;
+        }
         foreach ($parts as $part) {
             if (!isset($widths[$part])) {
                 $leftOut[$part] = 'narrow';
@@ -150,14 +160,62 @@ final class WrapDesign
 
         // Dhivehi reads right to left: the brand at the right, the parts in reverse.
         $order = $this->dv ? array_reverse($parts) : $parts;
-        $xs = [];
-        $x = $pad;
-        foreach ($order as $part) {
-            $xs[$part] = $x;
-            $x += $widths[$part] + $gap;
+        if ($xs === null) {
+            $xs = [];
+            $x = $pad;
+            foreach ($order as $part) {
+                $xs[$part] = $x;
+                $x += $widths[$part] + $gap;
+            }
+        } elseif ($this->dv) {
+            foreach ($xs as $part => $px) {
+                $xs[$part] = $this->w - $px - $widths[$part];
+            }
         }
 
         return ['parts' => $parts, 'order' => $order, 'widths' => $widths, 'x' => $xs, 'pad' => $pad, 'gap' => $gap, 'iw' => $iw, 'top' => $top, 'ph' => $ph, 'band' => $band, 'bh' => $bh, 'left_out' => $leftOut];
+    }
+
+    /**
+     * A bottle with flat sides: the label in equal faces, a part to a face
+     * so each fold falls in the gap between two parts. The parts after the
+     * last face share it; with fewer parts than faces the last one takes the
+     * faces left over.
+     *
+     * @param list<string> $parts
+     * @param array<string, float> $asks
+     * @return array{0: array<string, float>, 1: array<string, float>} widths and left edges by part
+     */
+    private function faceBoxes(array $parts, array $asks, float $pad, float $gap): array
+    {
+        $n = $this->faces;
+        $fw = $this->w / $n;
+        $widths = [];
+        $xs = [];
+        $inner = fn (int $from, int $to): array => [
+            $from * $fw + ($from === 0 ? $pad : $gap / 2),
+            ($to + 1) * $fw - ($to === $n - 1 ? $pad : $gap / 2),
+        ];
+        $alone = array_slice($parts, 0, $n - 1);
+        $rest = array_slice($parts, $n - 1);
+        foreach ($alone as $i => $part) {
+            // The last part of a short list takes the faces left over.
+            $to = $rest === [] && $i === count($alone) - 1 ? $n - 1 : $i;
+            [$l, $r] = $inner($i, $to);
+            $xs[$part] = $l;
+            $widths[$part] = $r - $l;
+        }
+        if ($rest !== []) {
+            [$l, $r] = $inner($n - 1, $n - 1);
+            $x = $l;
+            foreach ($this->share($rest, $asks, $r - $l, $gap) as $part => $pw) {
+                $xs[$part] = $x;
+                $widths[$part] = $pw;
+                $x += $pw + $gap;
+            }
+        }
+
+        return [$widths, $xs];
     }
 
     private function draw(): void
@@ -324,7 +382,8 @@ final class WrapDesign
         $nh = $y + $ph - $in - $ny;
         $picW = 0.0;
         $photo = $d['photo'] ?: null;
-        if ($photo && $pw >= 56 && $nh >= 10) {
+        // A bottle's face is narrower than a free part: the picture stays from 46 mm there.
+        if ($photo && $pw >= ($this->faces > 0 ? 46 : 56) && $nh >= 10) {
             [$picW, $picH] = StickerDesign::fit($d['photo_ratio'], min($pw * 0.36, $nh * 1.3), $nh);
             $this->img($this->ax($x + $pw - $in - $picW, $picW, $pw, $x), $ny + ($nh - $picH) / 2, $picW, $picH, $photo);
             $picW += 1.2;
@@ -373,17 +432,34 @@ final class WrapDesign
     /** Ingredients (allergens bold), the note, storage, how to use, use-within and who made it, as far down as the part reaches. */
     private function legal(float $x, float $y, float $pw, float $ph): void
     {
+        // A bottle's face has room to spare: the largest type at which everything still prints whole.
+        if ($this->faces > 0) {
+            foreach ([1.7, 1.55, 1.4, 1.28, 1.16, 1.08] as $f) {
+                $mark = count($this->p);
+                if ($this->legalAt($x, $y, $pw, $ph, $f)) {
+                    return;
+                }
+                array_splice($this->p, $mark);
+            }
+        }
+        $this->legalAt($x, $y, $pw, $ph, 1.0);
+    }
+
+    /** The legal text at $f times its usual size; false when something was cut short or left out for want of room. */
+    private function legalAt(float $x, float $y, float $pw, float $ph, float $f): bool
+    {
         $d = $this->d;
         $k = $this->k;
-        $pt = self::clamp(4.3 * $k, 3.4, 5.4);
-        $headPt = self::clamp(4.0 * $k, 3.2, 4.8);
-        $dvPt = self::clamp(5.4 * $k, 4.4, 6.6);
+        $whole = true;
+        $pt = self::clamp(4.3 * $k, 3.4, 5.4) * $f;
+        $headPt = self::clamp(4.0 * $k, 3.2, 4.8) * $f;
+        $dvPt = self::clamp(5.4 * $k, 4.4, 6.6) * $f;
         $cursor = $y + 0.2;
         $bottom = $y + $ph;
         $a = $this->a('l');
 
         // A block of wrapped lines in one font; drawn only when it fits whole, or at least two lines of it.
-        $block = function (string $text, string $font, float $size, string $colour, float $boldDv = 0.0, array $boldWords = [], bool $cut = true) use (&$cursor, $bottom, $pw, $x, $a): bool {
+        $block = function (string $text, string $font, float $size, string $colour, float $boldDv = 0.0, array $boldWords = [], bool $cut = true) use (&$cursor, &$whole, $bottom, $pw, $x, $a): bool {
             $text = trim($text);
             if ($text === '') {
                 return false;
@@ -392,9 +468,12 @@ final class WrapDesign
             $lines = LabelText::wrap($text, $size, $pw, $font);
             $room = (int) floor(($bottom - $cursor + 0.05) / $lead);
             if ($room < 1) {
+                $whole = false;
+
                 return false;
             }
             if (count($lines) > $room) {
+                $whole = false;
                 if (!$cut) {
                     return false;
                 }
@@ -447,11 +526,16 @@ final class WrapDesign
         }
         // Who made it, under a hairline, when there is room for it.
         $maker = $this->producerLine();
+        if ($maker !== '' && $bottom - $cursor < $this->lead('j4', $pt) + 0.8) {
+            $whole = false;
+        }
         if ($maker !== '' && $bottom - $cursor >= $this->lead('j4', $pt) + 0.8) {
             $this->p[] = ['t' => 'line', 'x' => $x, 'y' => round($cursor + 0.2, 3), 'w' => $pw, 'color' => StickerDesign::BORDER, 'sw' => 0.2];
             $cursor += 0.7;
             $block($maker, 'j4', max(3.2, $pt - 0.4), StickerDesign::MUTED);
         }
+
+        return $whole;
     }
 
     /** "Made by Bake & Grill, Kalaafaanu Hingun, Malé · +960 912 0011 · bakeandgrill.mv". */
@@ -529,9 +613,10 @@ final class WrapDesign
     {
         $d = $this->d;
         $k = $this->k;
-        $line = self::clamp(2.6 * $k, 2.3, 3.4);
+        // A bottle's face gives the lines under the boxes more height.
+        $line = self::clamp(2.6 * $k, 2.3, 3.4) * ($this->faces > 0 ? 1.45 : 1.0);
         $side = $pw >= 40.0;
-        $bh = self::clamp($ph * ($side ? 0.42 : 0.3), 6.5, 11.0);
+        $bh = self::clamp($ph * ($side ? 0.42 : 0.3), 6.5, $this->faces > 0 ? 14.0 : 11.0);
         $boxesH = $side ? $bh : 2 * $bh + 0.8;
         $rows = $this->dv
             ? [['ހެދި ތާރީޚު', 'ހެދި', StickerDesign::DARK, $d['mfg']], ['ހަމަވާ ތާރީޚު', 'ހަމަވާ', StickerDesign::PRIMARY, $d['exp']]]
