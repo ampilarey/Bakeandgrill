@@ -178,7 +178,7 @@ final class PouchDesign
             $this->lines($lines, 'dv', $pt, $x, $cy, $mw, $nameH, 'r', $c['ink'], 0.7);
         } else {
             $enH = $this->both && $nameDv !== '' ? $nameH * 0.64 : $nameH;
-            [$pt, $lines] = $this->fitLines((string) $d['name'], 'lob', $mw, $enH, $enH * 0.9 / LabelText::PT, 7.0, 2);
+            [$pt, $lines] = $this->fitLines(PouchSet::printName((string) $d['name'], $this->cfg['size_word']), 'lob', $mw, $enH, $enH * 0.9 / LabelText::PT, 7.0, 2);
             $this->lines($lines, 'lob', $pt, $x, $cy, $mw, $enH, 'l', $c['ink']);
             if ($enH < $nameH) {
                 $dh = $nameH - $enH;

@@ -13,6 +13,7 @@ import { ArrangeBar } from './ArrangeBar';
 import { clearDesign, hasOverrides, isMovable, nudgeSpot } from './labelLayout';
 import { BadgePicker } from './BadgePicker';
 import { WRAP_FALLBACK, WrapParts } from './WrapParts';
+import { PouchSetModal } from './PouchSetModal';
 import { POUCH_FALLBACK, PouchPicker, pouchFits, pouchSummary } from './PouchPicker';
 import { StripOverlay } from './StripEditor';
 import { SpotOverlay } from './SpotOverlay';
@@ -586,6 +587,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
   const navigate = useNavigate();
   const [rows, setRows] = useState<CustomLabel[] | null>(null);
   const [edit, setEdit] = useState<CustomLabel | null | 'new'>(null);
+  const [pouchSet, setPouchSet] = useState(false);
   const [query, setQuery] = useState('');
   const load = () => fetchCustomLabels().then((r) => setRows(r.data)).catch(() => setRows([]));
   useEffect(() => { void load(); }, []);
@@ -637,7 +639,12 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
                 <h3 className="font-bold text-[var(--color-text)]">Custom labels</h3>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">Stickers for things that are not on the menu, with any brand and logo, wording and picture. They print from Print labels, on any size, beside the menu items.</p>
               </div>
-              {canManage && <Button size="sm" icon={<Plus size={16} />} onClick={() => setEdit('new')} data-testid="custom-label-new">New custom label</Button>}
+              {canManage && (
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="secondary" icon={<Plus size={16} />} onClick={() => setPouchSet(true)} data-testid="custom-label-pouch-set">Pouch labels in every size</Button>
+                  <Button size="sm" icon={<Plus size={16} />} onClick={() => setEdit('new')} data-testid="custom-label-new">New custom label</Button>
+                </div>
+              )}
             </div>
             {(rows?.length ?? 0) >= 4 && (
               <label className="relative block max-w-sm">
@@ -687,6 +694,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
           )}
         </ul>
       </Card>
+      {pouchSet && <PouchSetModal onClose={() => { setPouchSet(false); void load(); }} />}
       {edit !== null && <CustomLabelModal label={edit === 'new' ? null : edit} onClose={() => setEdit(null)} onSaved={() => void load()} />}
     </div>
   );

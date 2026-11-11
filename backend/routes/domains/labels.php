@@ -179,3 +179,9 @@ Route::get('/labels/signoffs/{kind}/{id}/history', [LabelsController::class, 'si
 Route::post('/labels/signoffs/{kind}/{id}', [LabelsController::class, 'signOff'])
     ->middleware('permission:labels.manage')
     ->whereIn('kind', ['item', 'custom'])->whereNumber('id');
+
+// A pouch product in its sizes, in one go (owner, 2026-11-11: "an easy option
+// for 3 sizes with photos"): a custom label and a saved label per size. Kept
+// at the end of the file: the route permission fixture is keyed by line.
+Route::post('/labels/pouch-set', [LabelsController::class, 'storePouchSet'])
+    ->middleware('permission:labels.manage');

@@ -114,6 +114,10 @@ export type PouchCatalogue = {
   methods: { key: string; label: string; how: string }[];
   default_look: string; default_method: string; min_w: number; min_h: number; min_ratio: number;
 };
+/** A pouch product in its sizes, made in one go (2026-11-11): the form's starting rows, and what comes back. */
+export type PouchSetSize = { word: string; qty: number | null; price: number | null; preset: string };
+export type PouchSetCatalogue = { sizes: PouchSetSize[]; max_sizes: number; templates: { id: string; name: string; has_photo: boolean }[]; photo_url: string };
+export type PouchSetRow = { label: CustomLabel; job: { id: number; name: string }; preset: string; w: number; h: number; one_url: string | null; view_url: string; pdf_url: string };
 export type WrapCatalogue = {
   parts: { key: WrapPartKey; label: string; hint: string }[];
   marks: { key: string; label: string; caption: string }[];
@@ -232,7 +236,7 @@ export type KitchenLabelSetup = { size: { layout: string; w: number | null; h: n
 /** A shelf life to suggest per storage (round 15): days, and why. */
 export type ShelfLifeSuggestions = Record<LabelStorage, { days: number; why: string }>;
 
-export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; pouch?: PouchCatalogue; rolls?: LabelRoll[]; badges?: LabelBadge[]; kitchen?: KitchenLabelSetup; shelf_life?: ShelfLifeSuggestions };
+export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; pouch?: PouchCatalogue; pouch_set?: PouchSetCatalogue; rolls?: LabelRoll[]; badges?: LabelBadge[]; kitchen?: KitchenLabelSetup; shelf_life?: ShelfLifeSuggestions };
 
 /**
  * A label template (round 7, 2026-10-13: "Start from a saved label or a
@@ -619,6 +623,11 @@ export function fetchCustomLabels() {
 
 export function createCustomLabel(body: CustomLabelPayload) {
   return req<{ data: CustomLabel }>('/labels/custom', { method: 'POST', body: JSON.stringify(body) });
+}
+
+/** A custom label and a saved label per size of a pouch product; nothing is printed until Print. */
+export function createPouchSet(body: { name: string; template?: string | null; look?: string | null; method?: string | null; photo?: 'builtin' | number | null; on?: 'sheet' | 'printer'; sizes: PouchSetSize[] }) {
+  return req<{ data: PouchSetRow[]; expires_in_minutes: number }>('/labels/pouch-set', { method: 'POST', body: JSON.stringify(body) });
 }
 
 export function updateCustomLabel(id: number, body: CustomLabelPayload) {

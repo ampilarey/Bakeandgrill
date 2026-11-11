@@ -226,6 +226,48 @@ class PouchLabelTest extends TestCase
         }
     }
 
+    public function test_three_sizes_are_made_in_one_go_each_with_the_photo_and_a_saved_label_at_its_own_size(): void
+    {
+        Storage::fake('public');
+        $layouts = $this->getJson('/api/labels/layouts')->assertOk();
+        $this->assertSame(['Small', 'Medium', 'Large'], array_column($layouts->json('pouch_set.sizes'), 'word'));
+        $this->assertFileExists(public_path(ltrim((string) $layouts->json('pouch_set.photo_url'), '/')));
+
+        $res = $this->postJson('/api/labels/pouch-set', [
+            'name' => 'Chicken Momo', 'template' => 'momo-pouch', 'photo' => 'builtin', 'sizes' => $layouts->json('pouch_set.sizes'),
+        ])->assertCreated()->assertJsonCount(3, 'data');
+        $rows = $res->json('data');
+        $this->assertSame(['Chicken Momo (Small)', 'Chicken Momo (Medium)', 'Chicken Momo (Large)'], array_column(array_column($rows, 'label'), 'name'));
+        $this->assertSame([6, 8, 12], array_column(array_column($rows, 'label'), 'label_pack_qty'));
+        $this->assertEquals([35, 45, 65], array_column(array_column($rows, 'label'), 'label_price'));
+        $this->assertSame([[120, 53], [140, 62], [160, 70]], array_map(fn ($r) => [(int) $r['w'], (int) $r['h']], $rows));
+        $photos = array_unique(array_column(array_column($rows, 'label'), 'label_photo_media_id'));
+        $this->assertCount(1, $photos, 'one photo, shared');
+        $this->assertNotNull($photos[0]);
+        foreach ($rows as $row) {
+            $this->assertSame('microwave', $row['label']['label_pouch']['method']);
+            $this->assertSame('frozen', $row['label']['label_storage']);
+            $this->assertNotEmpty($row['job']['id'], 'kept under Saved labels');
+            $html = (string) $this->get($row['view_url'])->assertOk()->getContent();
+            $this->dump('pouch-set-' . $row['preset'], $html);
+            $this->assertStringContainsString('>Chicken Momo<', $html, 'the size is on the panel, not in the name');
+            $this->assertStringContainsString('>' . mb_strtoupper($row['label']['label_pouch']['size_word']) . '<', $html);
+            $this->assertStringContainsString('>' . $row['label']['label_pack_qty'] . '<', $html);
+        }
+        $this->assertSame(3, \App\Models\LabelJob::query()->count());
+        $this->assertSame(0, \App\Models\LabelPrint::query()->count(), 'nothing is printed or logged yet');
+        $this->assertSame(1, Media::query()->count());
+
+        // Again with other words: the photo is not stored twice; a size that cannot hold a pouch label is refused whole.
+        $this->postJson('/api/labels/pouch-set', ['name' => 'Veg Momo', 'template' => 'momo-pouch-steam', 'look' => 'kraft', 'photo' => 'builtin', 'sizes' => [['word' => 'Family', 'qty' => 20, 'price' => 99, 'preset' => 'r160x70']]])
+            ->assertCreated()->assertJsonPath('data.0.label.label_pouch.look', 'kraft')->assertJsonPath('data.0.label.label_pouch.method', 'steam');
+        $this->assertSame(1, Media::query()->count());
+        $before = CustomLabel::query()->count();
+        $this->postJson('/api/labels/pouch-set', ['name' => 'X', 'sizes' => [['word' => 'Small', 'preset' => 'r140x62'], ['word' => 'Tiny', 'preset' => 'r40x30']]])->assertStatus(422);
+        $this->postJson('/api/labels/pouch-set', ['name' => 'X', 'sizes' => [['word' => 'Small', 'preset' => 'r140x62'], ['word' => 'small', 'preset' => 'r160x70']]])->assertStatus(422);
+        $this->assertSame($before, CustomLabel::query()->count());
+    }
+
     public function test_the_built_in_pouch_templates_are_valid_and_their_size_is_offered(): void
     {
         $ids = array_column(LabelTemplates::BUILTIN, 'id');

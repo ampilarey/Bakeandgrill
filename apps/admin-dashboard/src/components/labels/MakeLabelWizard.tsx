@@ -19,6 +19,7 @@ import { QuickEditSheet, quickSpec, type QuickContext, type QuickInput, type Qui
 import { customDraft, customPayload, itemDraft, itemPayload, nutritionWords, pickKeys, type CustomDraft, type ItemDraft } from './labelDrafts';
 import { SaveAsTemplate } from './StartFrom';
 import { POUCH_FALLBACK, newPouch } from './PouchPicker';
+import { PouchSetModal } from './PouchSetModal';
 import { templateFromCustom, templateFromItem } from './labelTemplates';
 import { ArrangeBar } from './ArrangeBar';
 import { clearDesign, hasOverrides, isMovable, layoutPayload, nudgeSpot } from './labelLayout';
@@ -178,6 +179,7 @@ export function MakeLabelWizard({ canManage = false }: {
   const [query, setQuery] = useState('');
   const [switching, setSwitching] = useState<number | null>(null);
   const [newCustom, setNewCustom] = useState(false);
+  const [pouchSet, setPouchSet] = useState(false);
   const [details, setDetails] = useState(false);
   const [choice, setChoice] = useState<SizeChoice>(DEFAULT_CHOICE);
   const [ownSize, setOwnSize] = useState(false);
@@ -511,6 +513,7 @@ export function MakeLabelWizard({ canManage = false }: {
                   <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={kind === 'item' ? 'Find a menu item' : 'Find a custom label'} aria-label={kind === 'item' ? 'Find a menu item' : 'Find a custom label'} className={`${fieldClass} pl-9`} />
                 </div>
                 {kind === 'custom' && <Button size="sm" icon={<Plus size={16} />} onClick={() => setNewCustom(true)} data-testid="make-new-custom">New custom label</Button>}
+                {kind === 'custom' && canManage && <Button size="sm" variant="secondary" icon={<Plus size={16} />} onClick={() => setPouchSet(true)} data-testid="make-pouch-set">Pouch labels in every size</Button>}
               </div>
               <ul className="divide-y divide-[var(--color-border-light)] rounded-xl border border-[var(--color-border)] max-h-[360px] overflow-y-auto" data-testid="make-products">
                 {kind === 'item' && products === null && <li className="px-3 py-3 text-sm text-[var(--color-text-muted)]">Loading…</li>}
@@ -754,6 +757,7 @@ export function MakeLabelWizard({ canManage = false }: {
           idPrefix="make-quick"
         />
       )}
+      {pouchSet && <PouchSetModal onClose={() => setPouchSet(false)} onMade={(made) => setCustoms((list) => [...made.map((m) => m.label), ...(list ?? []).filter((x) => !made.some((m) => m.label.id === x.id))])} />}
       {newCustom && (
         <CustomLabelModal label={null} onClose={() => setNewCustom(false)} onSaved={(c) => { setNewCustom(false); setCustoms((list) => [c, ...(list ?? []).filter((x) => x.id !== c.id)]); pickCustom(c); }} />
       )}

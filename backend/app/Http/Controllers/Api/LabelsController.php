@@ -20,6 +20,7 @@ use App\Domains\Labels\LabelTemplates;
 use App\Domains\Labels\LabelTypes;
 use App\Domains\Labels\Nutrition;
 use App\Domains\Labels\PouchConfig;
+use App\Domains\Labels\PouchSet;
 use App\Domains\Labels\Reprint;
 use App\Domains\Labels\StickerLayouts;
 use App\Domains\Labels\StickerMockup;
@@ -46,6 +47,7 @@ use App\Models\TradeDelivery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 
@@ -97,6 +99,8 @@ class LabelsController extends Controller
             'wrap' => WrapConfig::catalogue(),
             // A pouch label's looks and cooking methods (2026-11-11).
             'pouch' => PouchConfig::catalogue(),
+            // A pouch product in its sizes, made in one go: the form's starting rows.
+            'pouch_set' => PouchSet::catalogue(),
             // The rolls and sheets the business owns (round 6, 2026-10-13): every size picker shows them first; with what is left on each (round 13).
             'rolls' => LabelRolls::presentAll(),
             // The badges a product can carry (round 9), for the pickers.
@@ -1196,6 +1200,65 @@ class LabelsController extends Controller
         $customLabel->fill($data)->save();
 
         return response()->json(['data' => $this->presentCustom($customLabel->refresh())]);
+    }
+
+    /**
+     * A pouch product in its sizes, in one go (owner, 2026-11-11: "an easy
+     * option for 3 sizes with photos"): a custom label per size and a saved
+     * label for each at its own paper size, drawn as a preview (nothing
+     * printed, logged or counted off a roll until it is printed).
+     */
+    public function storePouchSet(Request $request): JsonResponse
+    {
+        $presets = array_column(StickerLayouts::PRESETS, null, 'id');
+        $data = $request->validate([
+            'name' => 'required|string|max:60',
+            'name_dv' => 'sometimes|nullable|string|max:80',
+            'template' => ['sometimes', 'nullable', Rule::in(array_keys(PouchSet::templates()))],
+            'look' => ['sometimes', 'nullable', Rule::in(array_keys(PouchConfig::LOOKS))],
+            'method' => ['sometimes', 'nullable', Rule::in(array_keys(PouchConfig::METHODS))],
+            // "builtin" is the momo photo that comes with the templates; a number a library picture.
+            'photo' => 'sometimes|nullable',
+            'on' => ['sometimes', Rule::in(['sheet', 'printer'])],
+            'sizes' => 'required|array|min:1|max:' . PouchSet::MAX_SIZES,
+            'sizes.*.word' => 'required|string|max:14|distinct:ignore_case',
+            'sizes.*.qty' => 'sometimes|nullable|integer|min:1|max:9999',
+            'sizes.*.price' => 'sometimes|nullable|numeric|min:0|max:99999999',
+            'sizes.*.preset' => ['required', Rule::in(array_keys($presets))],
+        ]);
+        foreach ($data['sizes'] as $i => $size) {
+            $p = $presets[$size['preset']];
+            if (!PouchConfig::fits($p['shape'], $p['w'], $p['h'])) {
+                return response()->json(['message' => 'Pick a wide label size for a pouch label.', 'errors' => ["sizes.{$i}.preset" => ['Pick a wide size, such as 140 × 62 mm.']]], 422);
+            }
+        }
+        $photo = $data['photo'] ?? null;
+        $mediaId = null;
+        if ($photo === 'builtin') {
+            $mediaId = PouchSet::momoPhoto()?->id;
+        } elseif (is_numeric($photo)) {
+            if (Media::query()->whereKey((int) $photo)->value('media_type') !== 'image') {
+                return response()->json(['message' => 'Pick an image for the label.', 'errors' => ['photo' => ['Pick an image.']]], 422);
+            }
+            $mediaId = (int) $photo;
+        }
+        $userId = $request->user()?->id;
+        $on = $data['on'] ?? 'sheet';
+
+        $made = DB::transaction(function () use ($data, $mediaId, $userId, $on, $presets) {
+            $out = [];
+            foreach (PouchSet::create(['photo_media_id' => $mediaId] + $data, $userId) as $row) {
+                $p = $presets[$row['preset']];
+                $sheet = ['items' => [['id' => $row['label']->id, 'kind' => 'custom', 'copies' => 1]], 'layout' => $p['on'][$on] ?? $p['on']['sheet'], 'w' => $p['w'], 'h' => $p['h'], 'fill' => true, 'lang' => $row['label']->label_lang ?: 'en'];
+                $links = $this->stickerLinks(StickerSheet::normalise($sheet), $userId, true);
+                $job = $this->rememberJob('stickers', $sheet, $links['summary'], $userId, printed: false);
+                $out[] = ['label' => $this->presentCustom($row['label']->refresh()), 'job' => $job, 'preset' => $row['preset'], 'w' => $p['w'], 'h' => $p['h'], 'one_url' => $links['one_url'], 'view_url' => $links['view_url'], 'pdf_url' => $links['pdf_url'], 'request' => $sheet];
+            }
+
+            return $out;
+        });
+
+        return response()->json(['data' => $made, 'expires_in_minutes' => LabelSheetController::LINK_MINUTES], 201);
     }
 
     /** The picture or the hand-lettered name, kept as the PNG uploaded (LabelMedia), never flattened onto white. */

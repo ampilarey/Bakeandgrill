@@ -165,6 +165,18 @@ badges, the barcode, nutrition, the promotion flash, packed-for and the pack QR.
 words for the pill are typed (`method_text_dv`); none are built in. `PouchLabelTest`,
 `PouchPicker.test.tsx`.
 
+**Every size in one go** (owner, 2026-11-11: "an easy option for 3 sizes with photos"):
+**Pouch labels in every size** (`PouchSetModal.tsx`, on the wizard's Something else and on
+Custom labels) asks the product name and shows three rows already filled in (Small 6 pieces
+MVR 35 on 120 × 53, Medium 8 / 45 on 140 × 62, Large 12 / 65 on 160 × 70;
+`PouchSet::DEFAULT_SIZES`, up to four), the template, the pouch colour and the photo (the
+momo photo shipped at `public/brand/photos/momo/momo-plate.png`, kept once in the library by
+`PouchSet::momoPhoto()`, or one from the Library). `POST /api/labels/pouch-set`
+(`labels.manage`) makes a custom label per size, "Chicken Momo (Small)", and a saved label
+for each at its own size, drawn as a preview: nothing is printed, logged or counted off a
+roll until Print. The print's name leaves "(Small)" off (`PouchSet::printName`), since the
+panel says it.
+
 ### Templates: start from, save as
 
 Round 7 of the usability work (owner, 2026-10-13; the audit's "so a new sauce takes
