@@ -1,3 +1,4 @@
+import { today as localToday } from '../../utils/dateHelpers';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Box, Check, FileDown, HelpCircle, Pencil, Plus, Printer, Search, Tag, UtensilsCrossed } from 'lucide-react';
@@ -70,7 +71,8 @@ export const LABEL_CARDS: { preset: string; name: string; blurb: string; pouch?:
   { preset: 'r140x62', name: 'Pouch or bag front', blurb: 'Photo in a circle, how to cook it, pieces and price. For zip pouches.', pouch: true },
 ];
 
-const today = () => new Date().toISOString().slice(0, 10);
+// The shop's own day, not UTC's (label audit, 2026-11-11: between midnight and 5 am in the Maldives the made-on date was yesterday's).
+const today = () => localToday();
 
 const fieldClass = 'h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] w-full';
 const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary)] mb-1';
@@ -494,7 +496,11 @@ export function MakeLabelWizard({ canManage = false }: {
   const productLayout: LabelArrangement = pickedCustom?.label_layout ?? pickedItem?.label_layout ?? {};
   const saveLayout = (next: LabelArrangement) => void saveQuick({ label_layout: layoutPayload(next) });
 
-  const sizeLine = `${sizeName(choice.shape, stickerW, stickerH)} · ${DESIGN_NAMES[design]}${stock ? ` · ${stock.on === 'printer' ? 'one per label on a label printer' : `${stock.perPage} on ${stock.label}`}` : ''}`;
+  // The product behind the pick: a pouch label prints the pouch design at a size the size alone would call a small sticker.
+  const pickedProduct = picked?.kind === 'custom' ? customs?.find((c) => c.id === picked.id) : products?.find((x) => x.id === picked?.id);
+  const designWord = pickedProduct?.label_pouch && pouchFits(POUCH_FALLBACK, choice.shape, stickerW, stickerH) ? 'pouch label' : DESIGN_NAMES[design];
+  const ownQty = pickedProduct?.label_pack_qty ?? null;
+  const sizeLine = `${sizeName(choice.shape, stickerW, stickerH)} · ${designWord}${stock ? ` · ${stock.on === 'printer' ? 'one per label on a label printer' : `${stock.perPage} on ${stock.label}`}` : ''}`;
 
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 space-y-4 max-w-[760px]" data-testid="make-label">
@@ -652,7 +658,7 @@ export function MakeLabelWizard({ canManage = false }: {
                   overlay={spots.length > 0 ? <SpotOverlay spots={spots} w={spotBox?.w ?? stickerW} h={spotBox?.h ?? stickerH} onPick={openQuick} mode={moving ? 'move' : 'tap'} onMove={(key, dx, dy) => { if (movable) saveLayout(nudgeSpot(productLayout, movable, key, { dx, dy })); }} onScale={(key, f) => { if (movable) saveLayout(nudgeSpot(productLayout, movable, key, { s: f })); }} /> : null} />
               </div>
               )}
-              <p className="text-xs text-[var(--color-text-muted)] mt-2 text-center" data-testid="make-preview-line">{onPack ? 'The print is the flat label. ' : moving ? 'Drag a part to move it, its corner to resize it. ' : spots.length > 0 ? 'Tap a part of the label to change it. ' : ''}{sizeName(choice.shape, stickerW, stickerH)} · {DESIGN_NAMES[design]}. <button type="button" className="underline" onClick={() => jump(2)}>Change the label</button></p>
+              <p className="text-xs text-[var(--color-text-muted)] mt-2 text-center" data-testid="make-preview-line">{onPack ? 'The print is the flat label. ' : moving ? 'Drag a part to move it, its corner to resize it. ' : spots.length > 0 ? 'Tap a part of the label to change it. ' : ''}{sizeName(choice.shape, stickerW, stickerH)} · {designWord}. <button type="button" className="underline" onClick={() => jump(2)}>Change the label</button></p>
               {!onPack && !previewError && <div className="mt-1 flex justify-center"><DroppedNote dropped={checked?.dropped} /></div>}
               {movable && (
                 <div className="mt-2 flex justify-center">
@@ -696,7 +702,7 @@ export function MakeLabelWizard({ canManage = false }: {
               )}
               <div>
                 <label className={labelClass} htmlFor="make-qty">Quantity per pack</label>
-                <input id="make-qty" type="number" inputMode="numeric" min={1} value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Blank: write by hand" className={fieldClass} />
+                <input id="make-qty" type="number" inputMode="numeric" min={1} value={qty} onChange={(e) => setQty(e.target.value)} placeholder={ownQty ? `${ownQty}, the label's own` : 'Blank: write by hand'} className={fieldClass} />
               </div>
               <Button variant="secondary" icon={<Pencil size={16} />} onClick={() => setDetails(true)} data-testid="make-details">All details</Button>
               {/* Round 7: keep this label's settings, and the size picked, as a template to start the next one from. */}

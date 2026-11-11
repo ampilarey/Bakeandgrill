@@ -471,7 +471,18 @@ Amma brand's shipped logo is the round "AMMA'S" mark (owner, 2026-11-11).
 `BottleFacesLabelTest`. The wizard comes to a label at the size it is made for (owner, 2026-11-11: a momo label
 made from its template still asked "which label" with the big sticker picked): a new custom label's `onSaved` hands
 over the size its editor showed and the wizard goes straight to Looks right; a pouch label or a bottle with flat sides
-picked from the list has its size picked at step 2 (`sizeMadeFor()` in `MakeLabelWizard.tsx`). How to
+picked from the list has its size picked at step 2 (`sizeMadeFor()` in `MakeLabelWizard.tsx`). Label audit
+(owner, 2026-11-11: "Audit the whole label generator and fix all issues"; every size in English, Dhivehi and both, with
+a 39-letter name and a full list): **the ingredients print whole before anything optional does** (on the full sticker
+the type goes to 5.6 pt, then the barcode's band, the pictograms and HOW TO USE give way in turn, `$steps` in
+`StickerDesign::full()`); **one line of text never leaves its box**: `LabelText::fitted()` (the size that fits, else
+cut with "…" by `clip()`) for a name, a footer line or a storage line, and `LabelText::cut()` for a list kept to the
+lines it has room for, so a new line of text on any design is set through them, never a bare `fitPt()` with a floor;
+a narrow compact sticker (50 to 66 mm) breaks its storage line at the bullet and shares each footer line by what it
+holds; `dropped()` reports "Part of the ingredients" when the list was cut. On screen: Print labels says when a picked
+pouch or flat-sided bottle label is at a size that cannot draw it, with one tap to its size (`size-made-for`); Saved
+labels and Custom labels rows carry words on their buttons (PDF, Change, Copy, Pin, Remove); the made-on date is the
+shop's day (`utils/dateHelpers.today()`), never `toISOString()`. `LabelAuditFitTest`. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

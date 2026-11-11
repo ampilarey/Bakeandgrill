@@ -478,6 +478,7 @@ export const GUIDES: Guide[] = [
       'Bake & Grill\'s logo and name print beside the ingredients. The phone prints once, in the line along the bottom, and the complaints QR at the right.',
       'Each size is a custom label of its own, so its wording is changed under Custom labels, in Pouch label (zip pouches and bags).',
       'For a menu item, the same Pouch label box is on the item\'s Label tab.',
+      'On Print labels, a pouch label ticked at another size shows a note with Use 140 × 62 mm. Tap it, or the label prints as an ordinary sticker.',
     ],
     words: 'pouch bag momo frozen microwave steam fry zip label packet',
   },
@@ -511,9 +512,9 @@ export const GUIDES: Guide[] = [
     open: { to: '/labels/saved', label: 'Open Saved labels' },
     steps: [
       'Open Labels and tap the Saved labels tab. Every label you printed or saved is listed, newest first.',
-      'Tap Print to print the same sheet again, or the download icon for the PDF.',
-      'Tap the pencil to change it, the two-pages icon to copy it, or the star to keep it at the top.',
-      'Tap the bin to remove it, then confirm.',
+      'Tap Print to print the same sheet again, or PDF to download it.',
+      'Tap Change to open it and alter it, Copy for a second one like it, or Pin to keep it at the top.',
+      'Tap Remove to delete it, then confirm.',
     ],
     notes: [
       'You do not save by hand. Print or PDF on the last step of Make a label saves the sheet here.',

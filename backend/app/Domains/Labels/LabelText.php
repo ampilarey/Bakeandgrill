@@ -169,6 +169,56 @@ final class LabelText
         return max($minPt, round($pt, 2));
     }
 
+    /**
+     * $text cut to $widthMm at $pt, ending "…" when it is cut (label audit,
+     * 2026-11-11: a name wider than its box at the smallest size ran on over
+     * the dates box and off the label's edge).
+     */
+    public static function clip(string $text, float $pt, float $widthMm, string $font): string
+    {
+        if ($text === '' || self::widthMm($text, $pt, $font) <= $widthMm) {
+            return $text;
+        }
+        $chars = mb_str_split($text);
+        while (count($chars) > 1 && self::widthMm(rtrim(implode('', $chars)) . '…', $pt, $font) > $widthMm) {
+            array_pop($chars);
+        }
+
+        return rtrim(implode('', $chars), ' ,.;:·-') . '…';
+    }
+
+    /**
+     * The size and the text for one line in a box: the largest size from
+     * $maxPt to $minPt that fits, and at $minPt the text cut to the box.
+     *
+     * @return array{0: float, 1: string}
+     */
+    public static function fitted(string $text, string $font, float $widthMm, float $maxPt, float $minPt): array
+    {
+        $pt = self::fitPt($text, $font, $widthMm, $maxPt, $minPt);
+
+        return [$pt, self::clip($text, $pt, $widthMm, $font)];
+    }
+
+    /**
+     * The first $max of $lines, the last ending "…" when lines were left
+     * out, so a list that is cut says so on the label.
+     *
+     * @param list<string> $lines
+     * @return list<string>
+     */
+    public static function cut(array $lines, int $max, float $pt, float $widthMm, string $font): array
+    {
+        if (count($lines) <= $max) {
+            return $lines;
+        }
+        $kept = array_slice($lines, 0, max(1, $max));
+        $last = count($kept) - 1;
+        $kept[$last] = self::clip($kept[$last] . ' ' . ($lines[$last + 1] ?? ''), $pt, $widthMm, $font);
+
+        return $kept;
+    }
+
     /** @return list<string> */
     public static function wrap(string $text, float $pt, float $widthMm, string $font): array
     {

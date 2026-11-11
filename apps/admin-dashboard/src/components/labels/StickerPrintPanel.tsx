@@ -1,3 +1,5 @@
+import { POUCH_FALLBACK, pouchFits } from './PouchPicker';
+import { today as localToday } from '../../utils/dateHelpers';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Send, Image as ImageIcon, ListPlus, RotateCcw } from 'lucide-react';
@@ -21,7 +23,7 @@ import { FoldHelp } from './FoldHelp';
 import { ChooseItemsModal } from './ChooseItemsModal';
 import { ReprintScan } from './ReprintScan';
 import { pairedPrinter, printOverBluetooth } from './bluetoothPrinter';
-import { DEFAULT_CHOICE, choiceFromRequest, pageOf, pickRoll, rememberSize, rememberedSize, requestFor, rollName, rollStock, rollStockWords, sizeName, sizeOf, sizeProblem, stockOf, type SizeChoice } from './labelSize';
+import { DEFAULT_CHOICE, choiceFromRequest, pageOf, pickRoll, rememberSize, rememberedSize, requestFor, rollName, rollStock, rollStockWords, sizeName, sizeOf, sizeProblem, stockOf, designFor, withPreset, type SizeChoice } from './labelSize';
 
 /*
  * Print labels: pick products, how many, the language, the label size and
@@ -42,7 +44,8 @@ type Props = {
 
 type Row = { key: string; kind: 'item' | 'custom'; id: number; name: string; name_dv: string | null; shelf: number | null; ingredients: 'recipe' | 'manual' | 'none'; brand?: string; sizes?: { id: number; name: string; price: number }[] };
 
-const today = () => new Date().toISOString().slice(0, 10);
+// The shop's own day, not UTC's (label audit, 2026-11-11: between midnight and 5 am in the Maldives the made-on date was yesterday's).
+const today = () => localToday();
 /** A batch code from today's date, 261011 for 11 Oct 2026: one tap instead of typing. */
 const todayCode = () => today().slice(2).replace(/-/g, '');
 /** Made-on date + shelf life, as the server prints it (YYYY-MM-DD). */
@@ -460,6 +463,16 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     return customs.find((c) => c.id === id)?.name ?? '';
   };
   const { w: stickerW, h: stickerH } = sizeOf(choice, presets.length ? presets : []);
+  // A picked label made for a size of its own (label audit, 2026-11-11: a pouch label ticked at the big sticker's size
+  // printed as an ordinary sticker, and nothing said so): say it, with one tap to its size.
+  const pickedOnes = [...customs.filter((c) => picked[keyOf('custom', c.id)]), ...products.filter((x) => picked[keyOf('item', x.id)])];
+  const fitsPouch = pouchFits(POUCH_FALLBACK, choice.shape, stickerW, stickerH);
+  const pouchPicked = fitsPouch && pickedOnes.some((x) => x.label_pouch);
+  const wrongPouch = !fitsPouch ? pickedOnes.find((x) => x.label_pouch) : undefined;
+  const wrongBottle = designFor(choice.shape, stickerW, stickerH) !== 'wrap' ? pickedOnes.find((x) => (x.label_wrap?.faces ?? 0) > 0) : undefined;
+  const madeFor = wrongPouch
+    ? { name: wrongPouch.name, what: 'pouch label', preset: 'r140x62', size: '140 × 62 mm' }
+    : wrongBottle ? { name: wrongBottle.name, what: 'label for a bottle with flat sides', preset: 'r215x40', size: '215 × 40 mm' } : null;
   const page = pageOf(choice, presets, fixedPages);
   const round = choice.shape === 'circle';
   const mockOffered = preview ? (Object.keys(preview.mocks) as MockSurface[]) : [];
@@ -507,9 +520,9 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   };
 
   const modeToggle = (
-    <div className="inline-flex rounded-lg border border-[var(--color-border)] overflow-hidden" role="group" aria-label="What to preview">
+    <div className="flex flex-wrap max-w-full rounded-lg border border-[var(--color-border)] overflow-hidden" role="group" aria-label="What to preview">
       {(['one', 'sheet', 'mock'] as const).map((m) => (
-        <button key={m} type="button" onClick={() => setPreviewMode(m)} aria-pressed={previewMode === m} className={['px-3 h-8 min-w-[64px] text-xs font-semibold', previewMode === m ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]' : 'bg-[var(--color-surface)] text-[var(--color-text)]'].join(' ')}>
+        <button key={m} type="button" onClick={() => setPreviewMode(m)} aria-pressed={previewMode === m} className={['flex-1 px-2.5 h-8 whitespace-nowrap text-xs font-semibold', previewMode === m ? 'bg-[var(--color-primary)] text-[var(--color-on-primary)]' : 'bg-[var(--color-surface)] text-[var(--color-text)]'].join(' ')}>
           {m === 'one' ? 'Sticker' : m === 'sheet' ? 'Sheet' : 'Mock-up'}
         </button>
       ))}
@@ -743,8 +756,14 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
 
       <section className="space-y-3">
         <h3 className="text-sm font-bold text-[var(--color-text)]">Label size</h3>
+        {madeFor && (
+          <div role="alert" className="rounded-lg border p-3 text-sm text-[var(--color-text)]" style={{ borderColor: 'color-mix(in srgb, var(--color-warning) 45%, transparent)', background: 'color-mix(in srgb, var(--color-warning) 10%, transparent)' }} data-testid="size-made-for">
+            <p><span className="font-bold">{madeFor.name}</span> is a {madeFor.what}. At this size it prints as an ordinary sticker.</p>
+            <Button size="sm" className="mt-2" onClick={() => setChoice((c) => ({ ...withPreset(c, madeFor.preset, presets), on: 'sheet' }))}>Use {madeFor.size}</Button>
+          </div>
+        )}
         {presets.length > 0 ? (
-          <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} rolls={rolls} rollId={onRoll?.id ?? null} onRoll={setRollId} />
+          <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} rolls={rolls} rollId={onRoll?.id ?? null} onRoll={setRollId} designWord={pouchPicked ? 'pouch label' : undefined} />
         ) : (
           <p className="text-xs text-[var(--color-text-muted)]">Loading the sizes…</p>
         )}

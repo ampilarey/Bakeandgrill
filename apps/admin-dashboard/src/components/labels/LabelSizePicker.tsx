@@ -28,6 +28,8 @@ type Props = {
   /** The roll picked by name (label audit, Batch C): two rolls of one size are told apart by it; told when a roll is tapped. */
   rollId?: string | null;
   onRoll?: (id: string) => void;
+  /** What the size prints when the product decides it, not the size alone: "pouch label". */
+  designWord?: string;
 };
 
 const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary)] mb-1';
@@ -42,7 +44,7 @@ function chipClass(on: boolean) {
   ].join(' ');
 }
 
-export function LabelSizePicker({ presets, limits, choice, onChange, rounded, onRounded, rolls = [], rollId = null, onRoll: onRollPicked }: Props) {
+export function LabelSizePicker({ presets, limits, choice, onChange, rounded, onRounded, rolls = [], rollId = null, onRoll: onRollPicked, designWord }: Props) {
   const ofShape = presets.filter((p) => p.shape === choice.shape);
   const custom = choice.preset === 'custom';
   const stocks = stocksFor(choice, presets);
@@ -147,7 +149,7 @@ export function LabelSizePicker({ presets, limits, choice, onChange, rounded, on
         <p role="alert" className="text-xs text-[var(--color-danger-strong)]">{problem}</p>
       ) : (
         <p className="text-xs text-[var(--color-text-muted)]" data-testid="label-size-hint">
-          {onRoll ? `${rollName(onRoll)} · ` : ''}{sizeName(choice.shape, w, h)} ({sizeCm(choice.shape, w, h)}) · {DESIGN_NAMES[design]} · {where}.
+          {onRoll ? `${rollName(onRoll)} · ` : ''}{sizeName(choice.shape, w, h)} ({sizeCm(choice.shape, w, h)}) · {designWord ?? DESIGN_NAMES[design]} · {where}.
           {stock.on === 'precut' ? ' Nudge the position in Settings if it prints off the cut.' : ''}
         </p>
       )}

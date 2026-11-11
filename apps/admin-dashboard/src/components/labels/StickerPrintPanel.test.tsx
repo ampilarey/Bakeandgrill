@@ -328,6 +328,20 @@ describe('StickerPrintPanel', () => {
     expect(screen.getByTestId('custom-label-modal')).toBeInTheDocument();
   });
 
+  // Label audit, 2026-11-11: a pouch label ticked at the big sticker's size printed as an ordinary sticker, and nothing said so.
+  it('says when a pouch label is picked at a size that cannot draw it, with one tap to its size', async () => {
+    stickerLinks.mockRejectedValue(new Error('x'));
+    fetchCustomLabels.mockResolvedValue({ data: [custom(3, 'Chicken Momo', { label_pouch: { look: 'gold', method: 'microwave' } })] });
+    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
+    await screen.findByText('Chicken Momo');
+    await screen.findByTestId('label-size-picker');
+    expect(screen.queryByTestId('size-made-for')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Print Chicken Momo'));
+    const note = await screen.findByTestId('size-made-for');
+    expect(note).toHaveTextContent('Chicken Momo is a pouch label. At this size it prints as an ordinary sticker.');
+    expect(within(note).getByRole('button', { name: 'Use 140 × 62 mm' })).toBeInTheDocument();
+  });
+
   it('opens with a custom label picked from the Custom labels tab', async () => {
     stickerLinks.mockRejectedValue(new Error('x'));
     fetchCustomLabels.mockResolvedValue({ data: [custom(7, 'Gift box')] });

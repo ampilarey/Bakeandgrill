@@ -159,6 +159,9 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   const [signoffTick, setSignoffTick] = useState(0);
   const [choice, setChoice] = useState<SizeChoice>(() => (label === null && startFrom ? templateSize(startFrom) : null) ?? rememberedSize() ?? DEFAULT_CHOICE);
   const [rounded, setRounded] = useState(false);
+  // Whether the size is this label's own (a template brought it, or it was picked here) or only the one last printed.
+  const sizeIsOwn = useRef(label === null && startFrom !== null && templateSize(startFrom) !== null);
+  const pickSize = (c: SizeChoice) => { sizeIsOwn.current = true; setChoice(c); };
   const previewSeq = useRef(0);
   const files = { photo: useRef<HTMLInputElement>(null), title: useRef<HTMLInputElement>(null) };
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((s) => ({ ...s, [k]: v }));
@@ -166,7 +169,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   const applyTemplate = (t: LabelTemplate) => {
     setD((s) => applyToCustom(s, t));
     const at = templateSize(t);
-    if (at) setChoice(at);
+    if (at) pickSize(at);
   };
 
   useEffect(() => {
@@ -247,7 +250,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
       const r = saved ? await updateCustomLabel(saved.id, toPayload(d)) : await createCustomLabel(toPayload(d));
       setSaved(r.data);
       setD(toDraft(r.data));
-      onSaved(r.data, choice);
+      onSaved(r.data, sizeIsOwn.current ? choice : undefined);
       setSignoffTick((t) => t + 1);
       toast('success', saved ? 'Custom label saved.' : 'Custom label added.');
       return r.data;
@@ -344,7 +347,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   // custom labels"): the shape and size chips sit in plain view, as on Print labels.
   const sizeSection = (
     <Section title="Shape and size" summary={sizeLine} open testId="custom-label-size" help="Round or rectangle, a one-tap size or any size typed in. The preview and Print… use it; it starts as the one Print labels last printed.">
-      <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={setChoice} rounded={rounded} onRounded={setRounded} rolls={rolls} />
+      <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={pickSize} rounded={rounded} onRounded={setRounded} rolls={rolls} designWord={d.label_pouch && pouchFits(POUCH_FALLBACK, choice.shape, sizeOf(choice, presets).w, sizeOf(choice, presets).h) ? 'pouch label' : undefined} />
     </Section>
   );
   const touchable = previewWrap !== null || previewSpots.length > 0;
@@ -634,7 +637,6 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
       setSavingId(null);
     }
   };
-  const iconBtn = 'w-9 h-9 inline-flex items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]';
 
   const needle = query.trim().toLowerCase();
   const shown = (rows ?? []).filter((c) => !needle || c.name.toLowerCase().includes(needle) || (c.name_dv ?? '').includes(query.trim()) || c.brand_name.toLowerCase().includes(needle) || (c.label_type_name ?? '').toLowerCase().includes(needle));
@@ -684,13 +686,13 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
                   {` · prints in ${langOf(c) === 'both' ? 'English and Dhivehi' : langOf(c) === 'dv' ? 'Dhivehi' : 'English'}`}
                 </div>
               </div>
-              <div className="flex items-center gap-1 ml-auto">
+              <div className="flex flex-wrap items-center gap-1 ml-auto">
                 <Button size="sm" icon={<Printer size={14} />} onClick={() => navigate(`/labels/stickers?custom=${c.id}&lang=${langOf(c)}`)} aria-label={`Print ${c.name}`}>Print</Button>
                 <Button size="sm" variant="secondary" icon={<Bookmark size={14} />} loading={savingId === c.id} onClick={() => void saveToSaved(c)} aria-label={`Save ${c.name} to Saved labels`} data-testid={`custom-save-${c.id}`}>Save</Button>
                 {canManage && (
                   <>
-                    <button type="button" className={iconBtn} onClick={() => setEdit(c)} aria-label={`Edit ${c.name}`}><Pencil size={16} /></button>
-                    <button type="button" className={iconBtn} onClick={() => void copy(c)} aria-label={`Copy ${c.name}`}><Copy size={16} /></button>
+                    <Button size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setEdit(c)} aria-label={`Edit ${c.name}`}>Change</Button>
+                    <Button size="sm" variant="ghost" icon={<Copy size={14} />} onClick={() => void copy(c)} aria-label={`Copy ${c.name}`}>Copy</Button>
                     <Btn variant="danger-outline" small onClick={() => void remove(c)} aria-label={`Remove ${c.name}`}>Remove</Btn>
                   </>
                 )}

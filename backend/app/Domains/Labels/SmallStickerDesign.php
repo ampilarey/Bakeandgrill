@@ -312,7 +312,8 @@ final class SmallStickerDesign
         $mid = fn (float $y): float => ($D - $chord($y)) / 2;
         $put = function (float $base, float $up, string $font, float $max, float $min, string $color, string $t, float $bold = 0.0) use ($chord, $mid): void {
             $w = $chord($base - $up);
-            $pt = LabelText::fitPt($t, $font, $w, $max, $min);
+            // Cut with "…" at the smallest size, never run past the circle's edge (label audit, 2026-11-11).
+            [$pt, $t] = LabelText::fitted($t, $font, $w, $max, $min);
             $this->text($mid($base - $up), $base, $w, 'c', $font, $pt, $color, $t, $bold);
         };
 
@@ -473,8 +474,8 @@ final class SmallStickerDesign
             $dvPt = LabelText::fitPt($d['name_dv'], 'dv', $bw, min(10.0, $dvH / $dvK), 4.5);
             $enTop = $y + max(0.0, ($enH - $lineK * $enPt) / 2);
             $dvTop = $y + $enH + max(0.0, ($dvH - $dvK * $dvPt) / 2);
-            $this->text($this->X($x, $bw), $enTop + LabelText::ascent('dsi') * $enPt * LabelText::PT, $bw, $this->A($align), 'dsi', $enPt, StickerDesign::PRIMARY, $t);
-            $this->text($this->X($x, $bw), $dvTop + LabelText::ascent('dv') * $dvPt * LabelText::PT, $bw, $this->A($align), 'dv', $dvPt, StickerDesign::PRIMARY, $d['name_dv'], 0.6);
+            $this->text($this->X($x, $bw), $enTop + LabelText::ascent('dsi') * $enPt * LabelText::PT, $bw, $this->A($align), 'dsi', $enPt, StickerDesign::PRIMARY, LabelText::clip($t, $enPt, $bw, 'dsi'));
+            $this->text($this->X($x, $bw), $dvTop + LabelText::ascent('dv') * $dvPt * LabelText::PT, $bw, $this->A($align), 'dv', $dvPt, StickerDesign::PRIMARY, LabelText::clip($d['name_dv'], $dvPt, $bw, 'dv'), 0.6);
 
             return;
         }
@@ -494,6 +495,8 @@ final class SmallStickerDesign
         $lh = $lineK * $pt;
         $top = $y + max(0.0, ($nh - $lh * count($lines)) / 2);
         foreach ($lines as $i => $l) {
+            // A name too long even for two lines is cut with "…", never drawn over the dates beside it (label audit, 2026-11-11).
+            $l = LabelText::clip($l, $pt, $bw, $font);
             $this->text($this->X($x, $bw), $top + $i * $lh + LabelText::ascent($font) * $pt * LabelText::PT, $bw, $this->A($align), $font, $pt, StickerDesign::PRIMARY, $l, $useDv ? 0.7 : 0.0);
         }
     }

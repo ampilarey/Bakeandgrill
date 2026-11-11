@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SeeAlso } from '../components/SeeAlso';
-import { Search, Printer, FileDown, Pencil, Copy, Trash2, Tag, ChevronDown, ChevronUp, Star, Clock } from 'lucide-react';
+import { Search, Printer, FileDown, Pencil, Copy, Tag, ChevronDown, ChevronUp, Star, Clock } from 'lucide-react';
 import { HubPage, hubPermissions, type HubTab } from '../components/HubPage';
 import { MakeLabelWizard } from '../components/labels/MakeLabelWizard';
 import { StickerPrintPanel } from '../components/labels/StickerPrintPanel';
@@ -17,7 +17,7 @@ import { LabelsTour } from '../components/labels/LabelsTour';
 import { LabelRollsCard } from '../components/labels/LabelRollsCard';
 import { ShelfLifeHint } from '../components/labels/ShelfLifeHint';
 import { WordingLockCard } from '../components/labels/WordingLockCard';
-import { Switch } from '../components/SharedUI';
+import { Btn, Switch } from '../components/SharedUI';
 import { Button, Card, useToast } from '../components/ui';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -130,7 +130,6 @@ function SavedLabelsTab() {
   const dates = async (j: LabelJob, mode: 'shelf' | 'keep') => {
     try { await setLabelJobDates(j.id, mode); void load(); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not change it.'); }
   };
-  const btn = 'w-9 h-9 inline-flex items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] disabled:opacity-40';
 
   return (
     <div className="space-y-5">
@@ -150,11 +149,12 @@ function SavedLabelsTab() {
               </div>
               <div className="flex flex-wrap items-center gap-1 mt-1 pl-7">
                 <Button size="sm" icon={<Printer size={14} />} loading={busy === j.id} onClick={() => print(j, false)} aria-label={`Print ${j.name}`}>Print</Button>
-                <button type="button" className={btn} onClick={() => print(j, true)} aria-label={`Download PDF of ${j.name}`}><FileDown size={16} /></button>
-                <button type="button" className={btn} onClick={() => edit(j)} aria-label={`Edit ${j.name}`}><Pencil size={16} /></button>
-                <button type="button" className={btn} onClick={() => copy(j)} aria-label={`Copy ${j.name}`}><Copy size={16} /></button>
-                <button type="button" className={btn} onClick={() => pin(j)} aria-label={`${j.pinned ? 'Unpin' : 'Pin'} ${j.name}`} aria-pressed={j.pinned} title={j.pinned ? 'Unpin' : 'Pin: keep it at the top and in Print again'}><Star size={16} className={j.pinned ? 'text-[var(--color-warning)] fill-current' : ''} /></button>
-                <button type="button" className={btn} onClick={() => remove(j)} aria-label={`Remove ${j.name}`}><Trash2 size={16} /></button>
+                {/* Words beside the icons (label audit, 2026-11-11: "how to save/del": a finger gets no tooltip). */}
+                <Button size="sm" variant="ghost" icon={<FileDown size={14} />} onClick={() => print(j, true)} aria-label={`Download PDF of ${j.name}`}>PDF</Button>
+                <Button size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => edit(j)} aria-label={`Edit ${j.name}`}>Change</Button>
+                <Button size="sm" variant="ghost" icon={<Copy size={14} />} onClick={() => copy(j)} aria-label={`Copy ${j.name}`}>Copy</Button>
+                <Button size="sm" variant="ghost" icon={<Star size={14} className={j.pinned ? 'fill-current text-[var(--color-warning)]' : ''} />} onClick={() => pin(j)} aria-label={`${j.pinned ? 'Unpin' : 'Pin'} ${j.name}`} aria-pressed={j.pinned}>{j.pinned ? 'Unpin' : 'Pin'}</Button>
+                <Btn variant="danger-outline" small onClick={() => remove(j)} aria-label={`Remove ${j.name}`}>Remove</Btn>
               </div>
             </li>
           ))}

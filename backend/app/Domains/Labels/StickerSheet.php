@@ -838,6 +838,13 @@ final class StickerSheet
             $ingredients = $lang === 'dv' ? ($data['ingredients_dv'] ?? '') : ($data['ingredients_en'] ?? '');
             if (trim((string) $ingredients) !== '' && !isset($spots['ingredients'])) {
                 $out[] = 'Ingredients';
+            } elseif (trim((string) $ingredients) !== '') {
+                // A list cut to the room it has (label audit, 2026-11-11): the screen says so before it is printed.
+                $words = preg_split('/[\s,،.;]+/u', trim((string) $ingredients), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                $lastWord = (string) end($words);
+                if ($lastWord !== '' && !$has($lastWord)) {
+                    $out[] = 'Part of the ingredients';
+                }
             }
             if (!empty($data['photo']) && !isset($spots['photo'])) {
                 $out[] = 'Photo';

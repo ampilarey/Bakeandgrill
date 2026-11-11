@@ -1310,3 +1310,29 @@ came out the same. What differed was on the screens, fixed then:
   now goes and the reason shows in its place.
 - Each sticker frame takes the shape of the sticker the preview drew (the summary's `w` and `h`),
   so the last size's page is never squeezed into the next size's frame while it redraws.
+
+## Label audit, 2026-11-11
+
+Owner: "Audit the whole label generator and fix all issues". Every preset was drawn in English, Dhivehi and both with a
+39-letter name, a 14-word list, a barcode, HOW TO USE, an allergen and a note, and the Admin was walked on a phone and a
+computer. What changed:
+
+- **Full sticker**: the list was cut to one line (half of it gone) once a barcode, HOW TO USE, the pictograms and a
+  note were all there, and with both languages it was drawn over HOW TO USE. The list now prints whole first: smaller
+  type (to 5.6 pt), then the barcode's band (14.5 to 10.5 mm), the pictograms, the Dhivehi HOW TO USE, its second line
+  and HOW TO USE itself give way in that order.
+- **Compact sticker**: with both languages the name was drawn over the heading; a long name ran past the band; on 50
+  to 66 mm the phone ran over the name and the QR, the address under the website, the storage line off both ends of
+  its strip and the quantity over the batch blank. All are sized to their room, the storage line breaks at its bullet,
+  and a one-line HOW TO USE prints only when it fits whole.
+- **Small and round stickers**: a long name ran over the dates box or past the circle's edge; it now ends "…". A round
+  sticker's list that is cut ends "…".
+- **Said on screen**: a cut list shows as "Part of the ingredients" in what did not fit.
+- **Wizard**: a label made from a template opens on Looks right at its own size; a pouch or flat-sided bottle label
+  picked from the list has its size picked; the size line says "pouch label", not "small sticker"; Quantity per pack
+  shows the label's own number; the made-on date is the shop's day, not UTC's.
+- **Print labels**: a pouch or bottle label ticked at a size that cannot draw it shows a note with one tap to its
+  size; the Sticker | Sheet | Mock-up switch wraps on a phone instead of being cut.
+- **Saved labels and Custom labels**: the row buttons carry words (PDF, Change, Copy, Pin, Remove).
+
+Helpers for new work: `LabelText::fitted()`, `clip()` and `cut()`. `LabelAuditFitTest`.
