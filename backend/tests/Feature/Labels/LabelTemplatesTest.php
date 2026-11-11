@@ -135,8 +135,9 @@ class LabelTemplatesTest extends TestCase
             $size = LabelTemplates::normaliseSize($b['size']);
             $layout = $size['shape'] === 'circle' ? 'a4-round-custom' : ($size['preset'] === 'r105x148' ? 'a4-4' : 'a4-custom');
             $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 1]], 'layout' => $layout, 'w' => $size['w'], 'h' => $size['h'], 'preview' => true])->assertOk();
-            // A pouch label sets a long name on two lines, so only its first words are on one.
-            $needle = isset($b['fields']['label_pouch']) ? '>From ' : "From {$b['name']}";
+            // A pouch label, and a bottle's front face, set a long name on two lines, so only its first word is sure to be on one.
+            $twoLines = isset($b['fields']['label_pouch']) || !empty($b['fields']['label_wrap']['faces']);
+            $needle = $twoLines ? '>From' : "From {$b['name']}";
             $this->assertStringContainsString($needle, (string) $this->get($res->json('view_url'))->assertOk()->getContent(), $b['name']);
         }
     }
