@@ -456,7 +456,7 @@ export const GUIDES: Guide[] = [
       'What the pouch looks like has five choices: gold, clear or white, brown paper, black, and black and white for a label printer.',
       'How it is cooked changes the pill under the name. While How to use is blank it also prints that method\'s instructions. Check the times against your own product.',
       'The big number is the pack quantity. The size word prints as "Small Pack", so nobody reads it as small momo. Where the pack size goes has three choices: a tag on the panel, a round badge on the photo, or a line under the count.',
-      'Bake & Grill\'s logo and name print beside the ingredients, with the phone and the complaints QR.',
+      'Bake & Grill\'s logo and name print beside the ingredients. The phone prints once, in the line along the bottom, and the complaints QR at the right.',
       'Each size is a custom label of its own, so its wording is changed under Custom labels, in Pouch label (zip pouches and bags).',
       'For a menu item, the same Pouch label box is on the item\'s Label tab.',
     ],

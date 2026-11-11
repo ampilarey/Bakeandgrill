@@ -453,7 +453,10 @@ Lobster (`FONTS['lob']`). A new pouch colour or cooking method is a row in `Pouc
 `momo-pouch*` and `pouch-any`; the wizard's Pouch or bag front card. The business's logo and name
 stand in the strip beside the ingredients; the size word prints as "Small Pack" (`packWords()`), where `pack_place`
 says (`PouchConfig::PACK_PLACES`: panel tag, photo badge, line), never a bare "Small" over the count; a cut-out
-photo is fitted whole in the circle. Every size in one go (owner,
+photo is fitted whole in the circle. Nothing prints twice on it (audit, 2026-11-11: the phone only in the strip, the
+business name only under its logo, no line that repeats the name) and the dates, batch and packed-for always print
+(a block's sixth entry in `PouchDesign::strip()`); badges, promo flash, barcode, nutrition and packed-for are drawn.
+`SheetPreview` keeps the page on screen until the next has loaded, never a blank, with View bigger under it. Every size in one go (owner,
 2026-11-11: "an easy option for 3 sizes with photos"): Pouch labels in every size (`PouchSetModal`, the wizard's
 Something else and Custom labels; `POST /labels/pouch-set`, `PouchSet`) makes a custom label per size, "Chicken Momo
 (Small)" printed without the bracket (`PouchSet::printName`), with the shipped momo photo or a Library one, and a

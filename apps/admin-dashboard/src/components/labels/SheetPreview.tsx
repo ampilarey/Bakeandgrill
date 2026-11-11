@@ -28,47 +28,62 @@ type Props = {
 };
 
 export function SheetPreview({ url, ratio, busy = false, title = 'Preview', empty = 'Pick a product to see it.', className = '', round = false, overlay }: Props) {
-  const [loaded, setLoaded] = useState<string | null>(null);
-  const shown = useRef<string | null>(null);
-  useEffect(() => { if (url === null) { shown.current = null; setLoaded(null); } }, [url]);
+  // The page on screen stays until the next one has drawn (owner, 2026-11-11: "every time all the
+  // preview get refreshed"): the new page loads underneath, unseen, and takes its place in one step,
+  // so a change shows as the part that changed and the label never blanks.
+  const [shown, setShown] = useState<string | null>(null);
+  useEffect(() => { if (url === null) setShown(null); }, [url]);
   const src = url ? `${window.location.origin}${url}` : null;
-  const pending = Boolean(src) && loaded !== src;
+  const pending = Boolean(src) && shown !== src;
+  const frames = src ? (shown && shown !== src ? [shown, src] : [src]) : [];
   // Owner, 2026-10-26: "add option to view preview in label bigger … full screen, and option to close".
   const [full, setFull] = useState(false);
 
   return (
-    <div className={`relative w-full ${className}`} style={{ aspectRatio: String(ratio) }} data-testid="sheet-preview">
-      <div className={['absolute inset-0 overflow-hidden bg-white border border-[var(--color-border)]', round ? 'rounded-full' : 'rounded-lg'].join(' ')}>
-        {src ? (
-          <iframe // eslint-disable-line jsx-a11y/no-noninteractive-element-interactions -- onLoad only reveals the frame once drawn
-            key={src}
-            title={title}
-            src={src}
-            onLoad={() => { shown.current = src; setLoaded(src); }}
-            className="block w-full h-full border-0"
-            style={{ opacity: pending ? 0 : 1, transition: 'opacity 150ms' }}
-          />
-        ) : (
-          <p className="absolute inset-0 flex items-center justify-center p-4 text-center text-xs text-[var(--color-text-muted)]">{empty}</p>
+    <div className={`w-full ${className}`}>
+      <div className="relative w-full" style={{ aspectRatio: String(ratio) }} data-testid="sheet-preview">
+        <div className={['absolute inset-0 overflow-hidden bg-white border border-[var(--color-border)]', round ? 'rounded-full' : 'rounded-lg'].join(' ')}>
+          {frames.length > 0 ? frames.map((f) => (
+            <iframe // eslint-disable-line jsx-a11y/no-noninteractive-element-interactions -- onLoad only reveals the frame once drawn
+              key={f}
+              title={f === src ? title : `${title} (previous)`}
+              src={f}
+              onLoad={() => { if (f === src) setShown(f); }}
+              aria-hidden={f !== shown && shown !== null ? true : undefined}
+              className="absolute inset-0 block w-full h-full border-0"
+              style={{ opacity: f === shown ? 1 : 0 }}
+            />
+          )) : (
+            <p className="absolute inset-0 flex items-center justify-center p-4 text-center text-xs text-[var(--color-text-muted)]">{empty}</p>
+          )}
+        </div>
+        {overlay && src && <div className="absolute inset-0" data-testid="sheet-preview-overlay">{overlay}</div>}
+        {(busy || pending) && src && (
+          shown === null ? (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-live="polite" aria-label="Updating the preview">
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 border border-[var(--color-border)] text-xs text-[var(--color-text-secondary)] shadow-sm"><Loader2 size={14} className="animate-spin" /> Updating</span>
+            </div>
+          ) : (
+            // A label is already on screen: a small mark in the corner, never a pill across it.
+            <span className="absolute left-1.5 bottom-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/90 border border-[var(--color-border)] text-[var(--color-text-secondary)] pointer-events-none" aria-live="polite" aria-label="Updating the preview" data-testid="sheet-preview-updating">
+              <Loader2 size={12} className="animate-spin" />
+            </span>
+          )
         )}
       </div>
-      {overlay && src && <div className="absolute inset-0" data-testid="sheet-preview-overlay">{overlay}</div>}
-      {(busy || pending) && src && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-live="polite" aria-label="Updating the preview">
-          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 border border-[var(--color-border)] text-xs text-[var(--color-text-secondary)] shadow-sm"><Loader2 size={14} className="animate-spin" /> Updating</span>
-        </div>
-      )}
+      {/* Under the label, not over it: on the label it hid the corner of the print (the pack tag). */}
       {src && (
-        <button
-          type="button"
-          onClick={() => setFull(true)}
-          aria-label="View bigger"
-          title="View bigger"
-          data-testid="sheet-preview-bigger"
-          className="absolute top-1.5 right-1.5 z-10 inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/90 border border-[var(--color-border)] text-[var(--color-text-secondary)] shadow-sm"
-        >
-          <Maximize2 size={15} />
-        </button>
+        <div className="flex justify-end mt-1">
+          <button
+            type="button"
+            onClick={() => setFull(true)}
+            title="View bigger"
+            data-testid="sheet-preview-bigger"
+            className="inline-flex items-center gap-1.5 min-h-[32px] px-2 rounded-lg text-xs font-semibold text-[var(--color-text-secondary)]"
+          >
+            <Maximize2 size={14} aria-hidden /> View bigger
+          </button>
+        </div>
       )}
       {full && src && <FullScreenPreview src={src} ratio={ratio} round={round} title={title} onClose={() => setFull(false)} />}
     </div>

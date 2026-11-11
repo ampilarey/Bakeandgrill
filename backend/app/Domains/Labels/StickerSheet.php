@@ -769,6 +769,9 @@ final class StickerSheet
             'unit' => trim((string) $item->label_pack_unit) !== '' ? mb_strtoupper(trim((string) $item->label_pack_unit)) : 'PCS',
             // Wording from the item, its label type, or the per-storage defaults (LabelTypes).
             'header_line' => $w['heading'],
+            // The storage's stock heading, not words typed for this label or its type: a pouch label leaves it off.
+            'heading_stock' => $w['heading'] === LabelSettings::headingLine($w['storage'], false),
+            'heading_stock_dv' => $w['heading_dv'] === LabelSettings::headingLine($w['storage'], true),
             'header_line_dv' => $w['heading_dv'],
             'storage_en' => $w['storage_en'],
             'storage_dv' => $w['storage_dv'],
@@ -846,8 +849,8 @@ final class StickerSheet
         }
         // A pouch label has no place for these (2026-11-11).
         if (self::designOf($sheet, $data) === 'pouch') {
-            foreach ([['barcode', 'Barcode'], ['promo', 'Promotion flash'], ['packed_for', 'Packed for'], ['nutrition', 'Nutrition'], ['batch_qr', 'Pack QR code']] as [$key, $word]) {
-                if (!empty($data[$key])) {
+            foreach ([['barcode', 'barcode', 'Barcode'], ['promo', 'promo', 'Promotion flash'], ['packed_for', 'packed', 'Packed for'], ['nutrition', 'nutrition', 'Nutrition']] as [$key, $spot, $word]) {
+                if (!empty($data[$key]) && !isset($spots[$spot])) {
                     $out[] = $word;
                 }
             }

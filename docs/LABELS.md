@@ -155,6 +155,17 @@ script tag at the top of the panel, a round badge on the photo, or an italic lin
 count. A cut-out photo (clear corners, such as the shipped momo plate) is fitted whole in the
 circle; an ordinary photo is cut to its middle square (`PouchDesign::circle`).
 
+Audit, 2026-11-11 (owner: "duplication… number should be in the bottom only… when some items are
+selected its not showing"): nothing prints twice (the phone only in the strip's line, the business
+name only under its logo, and the line under the name is left off when it only repeats the name or
+is the storage's stock heading); the made-on and expiry dates, the batch and packed-for always
+print, and what stands above them is cut to leave them room; badges sit beside the cooking pill, a
+promotion flash in the field's corner, a barcode at the foot of a widened panel, the nutrition line
+under the ingredients and packed-for in the storage column. In Dhivehi a date's label and its
+figures are set apart, since a date inside a right-to-left line came out in pieces. The preview
+keeps the label on screen until the next one has drawn (`SheetPreview`), and View bigger sits
+under the label.
+
 Two picks do the work, so a new product needs no new design:
 
 - **What the pouch looks like** (`PouchConfig::LOOKS`): gold, clear or white, kraft, dark,

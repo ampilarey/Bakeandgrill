@@ -34,4 +34,28 @@ describe('SheetPreview full screen', () => {
     render(<SheetPreview url={null} ratio={1} />);
     expect(screen.queryByTestId('sheet-preview-bigger')).toBeNull();
   });
+  it('keeps the label on screen while the next one loads, then swaps without a blank', () => {
+    const { rerender } = render(<SheetPreview url="/labels/a" ratio={2} title="Label" />);
+    const first = screen.getByTitle('Label') as HTMLIFrameElement;
+    expect(first.style.opacity).toBe('0');
+    fireEvent.load(first);
+    expect((screen.getByTitle('Label') as HTMLIFrameElement).style.opacity).toBe('1');
+
+    rerender(<SheetPreview url="/labels/b" ratio={2} title="Label" />);
+    // The old page is still showing; the new one waits underneath.
+    expect((screen.getByTitle('Label (previous)') as HTMLIFrameElement).style.opacity).toBe('1');
+    expect((screen.getByTitle('Label') as HTMLIFrameElement).style.opacity).toBe('0');
+    expect(screen.getByTestId('sheet-preview-updating')).toBeTruthy();
+    expect(screen.queryByText('Updating')).toBeNull();
+
+    fireEvent.load(screen.getByTitle('Label'));
+    expect(screen.queryByTitle('Label (previous)')).toBeNull();
+    expect((screen.getByTitle('Label') as HTMLIFrameElement).style.opacity).toBe('1');
+    expect(screen.queryByTestId('sheet-preview-updating')).toBeNull();
+  });
+
+  it('puts View bigger under the label, not over it', () => {
+    render(<SheetPreview url="/labels/a" ratio={2} title="Label" />);
+    expect(screen.getByTestId('sheet-preview').contains(screen.getByTestId('sheet-preview-bigger'))).toBe(false);
+  });
 });

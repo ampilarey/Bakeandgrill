@@ -82,7 +82,8 @@ final class PouchDesign
         $gap = 0.5 * $u;
         $sh = round($h * 0.36, 2);
         $topH = $h - 2 * $bw - $sh - $gap;
-        $panelW = self::clamp($w * 0.2, 19.0, 36.0);
+        // A barcode needs a wider panel to scan.
+        $panelW = !empty($this->d['barcode']) ? self::clamp($w * 0.25, 31.0, 40.0) : self::clamp($w * 0.2, 19.0, 36.0);
         $panelX = $w - $bw - $panelW;
 
         // The frame, the cream field, the panel and the strip.
@@ -142,16 +143,27 @@ final class PouchDesign
         $nameH = $mh * 0.33;
         $tagH = $mh * 0.11;
         $pillH = $mh * 0.19;
-        $tagline = $this->dv ? ($this->cfg['tagline_dv'] !== '' ? $this->cfg['tagline_dv'] : (string) ($d['header_line_dv'] ?? ''))
-            : ($this->cfg['tagline'] !== '' ? $this->cfg['tagline'] : (string) ($d['header_line'] ?? ''));
+        // The line under the name: the pouch's own, else a heading typed for this label or its type. Never the
+        // storage's stock heading ("FROZEN HEDHIKA" on a momo), and never the name over again (audit, 2026-11-11).
+        $heading = $this->dv
+            ? (empty($d['heading_stock_dv']) ? (string) ($d['header_line_dv'] ?? '') : '')
+            : (empty($d['heading_stock']) ? (string) ($d['header_line'] ?? '') : '');
+        $tagline = $this->dv ? ($this->cfg['tagline_dv'] !== '' ? $this->cfg['tagline_dv'] : $heading)
+            : ($this->cfg['tagline'] !== '' ? $this->cfg['tagline'] : $heading);
+        $plain = fn (string $t): string => preg_replace('/[^\p{L}\p{N}]+/u', '', mb_strtolower($t)) ?? '';
+        $shown = PouchSet::printName((string) ($this->dv && trim((string) ($d['name_dv'] ?? '')) !== '' ? $d['name_dv'] : $d['name']), $this->cfg['size_word']);
+        if ($plain($tagline) === $plain($shown) || $plain($tagline) === $plain((string) $d['name'])) {
+            $tagline = '';
+        }
         $pill = $this->pillWords();
-        $phone = trim((string) ($d['footer']['phone'] ?? ''));
+        $badges = is_array($d['badges'] ?? null) ? $d['badges'] : [];
+        $promo = is_array($d['promo'] ?? null) ? $d['promo'] : null;
         // Rows left out give their room to the name.
         if ($tagline === '') {
             $nameH += $tagH;
             $tagH = 0.0;
         }
-        if ($pill === '' && $phone === '') {
+        if ($pill === '' && $badges === []) {
             $nameH += $pillH;
             $pillH = 0.0;
         }
@@ -192,25 +204,37 @@ final class PouchDesign
             $cy += $logoH + $g;
         }
 
+        // A promotion flash in the field's top corner; the name gives it the room.
+        $nw = $mw;
+        if ($promo !== null) {
+            $fw = min(20.0 * $u, $mw * 0.3);
+            $fh = min($nameH * 0.92, $fw * 0.78);
+            $this->p[] = LabelSpots::open('promo');
+            array_push($this->p, ...StickerDesign::flash($promo, round($this->dv ? $x : $x + $mw - $fw, 3), round($cy + ($nameH - $fh) / 2, 3), round($fw, 3), round($fh, 3)));
+            $this->p[] = LabelSpots::close();
+            $nw = $mw - $fw - 1.6 * $u;
+        }
+        $nx = $this->dv && $promo !== null ? $x + $mw - $nw : $x;
+
         // The name: hand-lettered when the label has a title picture, else the script face.
         $this->p[] = LabelSpots::open('name');
         $title = $d['title_img'] ?? null;
         $nameDv = trim((string) ($d['name_dv'] ?? ''));
         if (is_string($title) && $title !== '' && !$this->dv) {
             $tr = max(0.1, (float) ($d['title_ratio'] ?? 1.0));
-            $tw = min($mw, $nameH * $tr);
-            $this->img($x, $cy + ($nameH - $tw / $tr) / 2, $tw, $tw / $tr, $title);
+            $tw = min($nw, $nameH * $tr);
+            $this->img($nx, $cy + ($nameH - $tw / $tr) / 2, $tw, $tw / $tr, $title);
         } elseif ($this->dv && $nameDv !== '') {
-            [$pt, $lines] = $this->fitLines($nameDv, 'dv', $mw, $nameH, $nameH * 0.8 / LabelText::PT, 7.0, 2);
-            $this->lines($lines, 'dv', $pt, $x, $cy, $mw, $nameH, 'r', $c['ink'], 0.7);
+            [$pt, $lines] = $this->fitLines($nameDv, 'dv', $nw, $nameH, $nameH * 0.8 / LabelText::PT, 7.0, 2);
+            $this->lines($lines, 'dv', $pt, $nx, $cy, $nw, $nameH, 'r', $c['ink'], 0.7);
         } else {
             $enH = $this->both && $nameDv !== '' ? $nameH * 0.64 : $nameH;
-            [$pt, $lines] = $this->fitLines(PouchSet::printName((string) $d['name'], $this->cfg['size_word']), 'lob', $mw, $enH, $enH * 0.9 / LabelText::PT, 7.0, 2);
-            $this->lines($lines, 'lob', $pt, $x, $cy, $mw, $enH, 'l', $c['ink']);
+            [$pt, $lines] = $this->fitLines(PouchSet::printName((string) $d['name'], $this->cfg['size_word']), 'lob', $nw, $enH, $enH * 0.9 / LabelText::PT, 7.0, 2);
+            $this->lines($lines, 'lob', $pt, $nx, $cy, $nw, $enH, 'l', $c['ink']);
             if ($enH < $nameH) {
                 $dh = $nameH - $enH;
-                $dpt = LabelText::fitPt($nameDv, 'dv', $mw, $dh * 0.62 / LabelText::PT, 5.0);
-                $this->text($x, $this->baseCentred($cy + $enH, $dh, 'dv', $dpt), $mw, 'l', 'dv', $dpt, $c['ink'], $nameDv, 0.6);
+                $dpt = LabelText::fitPt($nameDv, 'dv', $nw, $dh * 0.62 / LabelText::PT, 5.0);
+                $this->text($nx, $this->baseCentred($cy + $enH, $dh, 'dv', $dpt), $nw, 'l', 'dv', $dpt, $c['ink'], $nameDv, 0.6);
             }
         }
         $this->p[] = LabelSpots::close();
@@ -234,7 +258,7 @@ final class PouchDesign
         if ($pillH <= 0) {
             return;
         }
-        // The pill: an icon and the words; the phone beside it when both fit.
+        // The pill: an icon and the words.
         $px = $x;
         if ($pill !== '') {
             $font = $this->dv && $this->cfg['method_text_dv'] !== '' ? 'dv' : 'j8';
@@ -257,16 +281,13 @@ final class PouchDesign
             $this->p[] = LabelSpots::close();
             $px = $x + $pw + 2.4 * $u;
         }
-        if ($phone !== '') {
-            $words = 'Call ' . $phone;
-            $pt = $pillH * 0.44 / LabelText::PT;
-            $room = $x + $mw - $px;
-            if (LabelText::widthMm($words, $pt, 'j8') > $room) {
-                $words = $phone;
-            }
-            if (LabelText::widthMm($words, $pt, 'j8') <= $room) {
-                $this->p[] = LabelSpots::open('footer');
-                $this->text($px, $this->baseCentred($cy, $pillH, 'j8', $pt), $room, 'l', 'j8', $pt, $c['ink'], $words);
+        // Badges beside the pill (the phone prints once, in the strip: audit, 2026-11-11).
+        if ($badges !== [] && $x + $mw - $px > 8.0) {
+            $bh = $pillH * 0.7;
+            $pills = LabelBadges::pills($badges, $this->dv, round($px, 3), round($cy + ($pillH - $bh) / 2, 3), round($x + $mw - $px, 3), round($bh, 3), 'l');
+            if ($pills !== []) {
+                $this->p[] = LabelSpots::open('badges');
+                array_push($this->p, ...$pills);
                 $this->p[] = LabelSpots::close();
             }
         }
@@ -345,8 +366,16 @@ final class PouchDesign
         if ($price !== '') {
             $rows[] = ['price', $ph * 0.2];
         }
+        if (!empty($d['barcode']) && $iw >= 25.0) {
+            $rows[] = ['barcode', $ph * 0.3];
+        }
         if ($rows === []) {
             return;
+        }
+        // Too much for the panel: every row gives a little.
+        $total = array_sum(array_column($rows, 1));
+        if ($total > $ph * 0.9) {
+            $rows = array_map(fn (array $r) => [$r[0], $r[1] * $ph * 0.9 / $total], $rows);
         }
         $used = array_sum(array_column($rows, 1));
         $g = min(2.2 * $u, ($ph - $used) / (count($rows) + 1));
@@ -358,6 +387,17 @@ final class PouchDesign
                     $this->box($x + $in, $cy, $iw, $rh, $c['panel_accent'], min(1.6 * $u, $rh * 0.3));
                     $pt = LabelText::fitPt($pack, 'lob', $iw - 2.0 * $u, $rh * 0.7 / LabelText::PT, 4.5);
                     $this->text($x + $in, $this->baseCentred($cy, $rh, 'lob', $pt), $iw, 'c', 'lob', $pt, $c['panel'], $pack);
+                    break;
+                case 'barcode':
+                    $this->p[] = LabelSpots::open('barcode');
+                    $this->box($x + $in, $cy, $iw, $rh, '#FFFFFF', 0.6 * $u);
+                    $digitsPt = self::clamp(3.4 * $u, 2.8, 4.0);
+                    $digitsH = $this->lead('j5', $digitsPt) + 0.3;
+                    $bw2 = $iw - 2.4;
+                    $bh2 = $rh - $digitsH - 1.0;
+                    $this->img($x + $in + 1.2, $cy + 0.6, $bw2, $bh2, (string) $d['barcode']);
+                    $this->text($x + $in, $cy + 0.6 + $bh2 + 0.3 + LabelText::ascent('j5') * $digitsPt * LabelText::PT, $iw, 'c', 'j5', $digitsPt, '#000000', (string) ($d['barcode_text'] ?? ''));
+                    $this->p[] = LabelSpots::close();
                     break;
                 case 'packline':
                     $pt = LabelText::fitPt($pack, 'dsi', $iw, $rh * 0.78 / LabelText::PT, 4.5);
@@ -402,8 +442,10 @@ final class PouchDesign
         $top = $y + 1.5 * $u;
         $bottom = $y + $sh - 1.2 * $u;
 
-        // Who made it: one line along the bottom, always the business.
-        $maker = $this->makerLine();
+        // Who made it: one line along the bottom, always the business; its name is under the logo, so not here again.
+        $logo = $c['dark_logo'] ? ($d['wordmark'] ?? $d['logo'] ?? null) : ($d['logo'] ?? null);
+        $hasLogo = is_string($logo) && $logo !== '';
+        $maker = $this->makerLine(!$hasLogo);
         if ($maker !== '') {
             $mpt = self::clamp(4.3 * $u, 3.8, 5.2);
             $mpt = LabelText::fitPt($maker, 'j5', $right - $left, $mpt, 3.4);
@@ -414,10 +456,9 @@ final class PouchDesign
         }
 
         // Bake & Grill's logo and name, big, at the head of the strip beside the ingredients (owner, 2026-11-11).
-        $logo = $c['dark_logo'] ? ($d['wordmark'] ?? $d['logo'] ?? null) : ($d['logo'] ?? null);
         $ratio = max(0.2, (float) ($c['dark_logo'] && !empty($d['wordmark']) ? ($d['wordmark_ratio'] ?? 1.0) : ($d['logo_ratio'] ?? 1.0)));
         $maker = trim((string) ($d['footer']['name'] ?? ''));
-        if (is_string($logo) && $logo !== '') {
+        if ($hasLogo) {
             $bh = $bottom - $top;
             $wide = $ratio >= 2.0;
             $words = $wide || $maker === '' ? [] : [mb_strtoupper($maker)];
@@ -486,7 +527,11 @@ final class PouchDesign
                 $col['blocks'][] = [trim((string) $d['ingredients_dv']), 'dv', false, []];
             }
             if ($note !== '') {
-                $col['blocks'][] = [rtrim($note, '.') . '.', $dvf ? 'dv' : 'j7', true, []];
+                $col['blocks'][] = [rtrim($note, '.') . '.', $dvf ? 'dv' : 'j7', true, [], 'note'];
+            }
+            $nutrition = trim((string) ($d['nutrition']['line'] ?? ''));
+            if ($nutrition !== '') {
+                $col['blocks'][] = ['Per 100 ' . ($d['nutrition']['per'] ?? 'g') . ': ' . $nutrition, 'j4', false, [], 'nutrition'];
             }
             $cols[] = $col;
         }
@@ -510,15 +555,23 @@ final class PouchDesign
         if ($within !== '') {
             $col['blocks'][] = [$within, $dvf ? 'dv' : 'j4', false, []];
         }
+        $for = trim(trim((string) ($d['packed_for'] ?? '')) . (trim((string) ($d['packed_for2'] ?? '')) !== '' ? ' · ' . trim((string) $d['packed_for2']) : ''));
+        if ($for !== '') {
+            $col['blocks'][] = ['Packed for: ' . $for, 'j7', true, [], 'packed', true];
+        }
         $blank = '__________';
         $mfgLabel = $dvf ? 'ހެދި ތާރީޚު' : self::title((string) $d['mfg_label']);
         $expLabel = $dvf ? 'ހަމަވާ ތާރީޚު' : self::title((string) $d['exp_label']);
-        $col['blocks'][] = [$mfgLabel . ': ' . ($d['mfg'] ?: $blank), $dvf ? 'dv' : 'j7', true, [], 'dates'];
-        $col['blocks'][] = [$expLabel . ': ' . ($d['exp'] ?: $blank), $dvf ? 'dv' : 'j7', true, [], 'dates'];
+        // The dates always print (the sixth entry): what stands above them is cut to leave them room.
+        // In Dhivehi the label and its value are set apart (the seventh entry): a date inside a right-to-left line comes out in pieces.
+        $col['blocks'][] = $dvf ? [$mfgLabel, 'dv', true, [], 'dates', true, $d['mfg'] ?: $blank] : [$mfgLabel . ': ' . ($d['mfg'] ?: $blank), 'j7', true, [], 'dates', true];
+        $col['blocks'][] = $dvf ? [$expLabel, 'dv', true, [], 'dates', true, $d['exp'] ?: $blank] : [$expLabel . ': ' . ($d['exp'] ?: $blank), 'j7', true, [], 'dates', true];
         $batch = trim((string) ($d['batch'] ?? ''));
         if ($batch !== '' || !empty($d['pack_of'])) {
-            $line = ($batch !== '' ? ($dvf ? 'ބެޗް: ' : 'Batch: ') . $batch : '') . (!empty($d['pack_of']) ? ($batch !== '' ? ' · ' : '') . 'Pack ' . $d['pack_no'] . '/' . $d['pack_of'] : '');
-            $col['blocks'][] = [$line, $dvf ? 'dv' : 'j4', false, [], 'batch'];
+            $pack = !empty($d['pack_of']) ? 'Pack ' . $d['pack_no'] . '/' . $d['pack_of'] : '';
+            $col['blocks'][] = $dvf && $batch !== ''
+                ? ['ބެޗް', 'dv', false, [], 'batch', true, $batch . ($pack !== '' ? ' · ' . $pack : '')]
+                : [($batch !== '' ? 'Batch: ' . $batch : '') . ($pack !== '' ? ($batch !== '' ? ' · ' : '') . $pack : ''), 'j4', false, [], 'batch', true];
         }
         $cols[] = $col;
         if ($dvf) {
@@ -596,16 +649,31 @@ final class PouchDesign
             $this->text($x, $cursor + LabelText::ascent($font) * $hp * LabelText::PT, $cw, $align, $font, $hp, $c['strip_head'], $col['head'], $this->dv ? 0.6 : 0.0, [], $this->dv ? 0.0 : 0.14);
             $cursor += $this->lead($font, $hp) + 0.5 * $this->u;
         }
+        // Room kept for the blocks that must print (the dates, the batch, packed for), one line each.
+        $kept = 0.0;
+        foreach ($col['blocks'] as $b) {
+            if (!empty($b[5])) {
+                $kept += $this->lead($b[1], $b[1] === 'dv' ? $pt * 1.22 : $pt) + 0.3 * $this->u;
+            }
+        }
         foreach ($col['blocks'] as $b) {
             [$text, $font, $bold, $words] = $b;
-            $mark($b[4] ?? $col['key']);
             $size = $font === 'dv' ? $pt * 1.22 : $pt;
             $lead = $this->lead($font, $size);
-            $lines = LabelText::wrap($text, $size, $cw, $font);
-            $fit = (int) floor(($bottom - $cursor + 0.05) / $lead);
-            if ($fit < 1) {
-                break;
+            $must = !empty($b[5]);
+            if ($must) {
+                $kept -= $lead + 0.3 * $this->u;
             }
+            $lines = LabelText::wrap($text, $size, $cw, $font);
+            $fit = (int) floor(($bottom - $cursor - ($must ? max(0.0, $kept) : $kept) + 0.05) / $lead);
+            if ($fit < 1) {
+                if ($must) {
+                    $fit = 1;
+                } else {
+                    continue;
+                }
+            }
+            $mark($b[4] ?? $col['key']);
             if (count($lines) > $fit) {
                 $lines = array_slice($lines, 0, $fit);
                 $last = rtrim((string) array_pop($lines), ' ,،.');
@@ -613,6 +681,15 @@ final class PouchDesign
                     $last = rtrim(mb_substr($last, 0, -1), ' ,،.');
                 }
                 $lines[] = $last . '…';
+            }
+            if (isset($b[6])) {
+                // A Dhivehi label at the right, its value in Latin figures at the left of the same line.
+                $base = $cursor + LabelText::ascent($font) * $size * LabelText::PT;
+                $this->text($x, $base, $cw, 'r', $font, $size, $bold ? $c['strip_head'] : $c['strip_ink'], $lines[0], $bold ? 0.6 : 0.35);
+                $this->text($x, $base, $cw, 'l', 'j7', $pt, $bold ? $c['strip_head'] : $c['strip_ink'], (string) $b[6]);
+                $cursor += $lead + 0.3 * $this->u;
+
+                continue;
             }
             foreach ($lines as $i => $l) {
                 $this->text($x, $cursor + $i * $lead + LabelText::ascent($font) * $size * LabelText::PT, $cw, $font === 'dv' ? 'r' : ($this->dv ? 'r' : 'l'), $font, $size, $bold ? $c['strip_head'] : $c['strip_ink'], $l, $font === 'dv' ? ($bold ? 0.6 : 0.35) : 0.0, $words);
@@ -623,14 +700,14 @@ final class PouchDesign
     }
 
     /** "Made by Bake & Grill · Kalaafaanu Hingun, Malé · 912 0011 · bakeandgrill.mv": the footer's lines, always the business's. */
-    private function makerLine(): string
+    private function makerLine(bool $withName = true): string
     {
         $f = $this->d['footer'] ?? [];
         $name = trim((string) ($f['name'] ?? ''));
         if ($name === '') {
             return '';
         }
-        $parts = ['Made by ' . $name];
+        $parts = $withName ? ['Made by ' . $name] : [];
         foreach (['address', 'phone', 'website'] as $k) {
             $v = trim((string) ($f[$k] ?? ''));
             if ($v !== '') {

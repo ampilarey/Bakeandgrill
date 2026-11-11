@@ -86,7 +86,6 @@ class PouchLabelTest extends TestCase
             'class="pc tx f-lob"' => 'set in the script face',
             '>STEAMED · FROZEN · HANDMADE<' => 'the tagline',
             '>Microwave &amp; Eat<' => 'the cooking pill',
-            '>Call 9120011<' => 'the phone',
             '>Medium Pack<' => 'the pack word: the pack is medium, not the momo',
             '>BAKE &amp; GRILL<' => 'the business name under its logo, beside the ingredients',
             '>8<' => 'the count',
@@ -98,13 +97,15 @@ class PouchLabelTest extends TestCase
             '>STORAGE<' => 'the storage heading',
             'Mfg date: ' => 'the made-on date',
             'Exp date: ' => 'the expiry date',
-            'Made by Bake' => 'who made it, always the business',
+            'Tel 9120011' => 'the phone, in the strip',
             '>FEEDBACK<' => 'the complaints QR\'s word',
             PouchConfig::LOOKS['gold']['border'] => 'the gold look\'s frame',
         ] as $needle => $what) {
             $this->assertStringContainsString($needle, $html, $what);
         }
         $this->assertSame([], $res['summary']['dropped'], 'nothing the label has is left out');
+        $this->assertSame(1, substr_count($html, '9120011'), 'the phone prints once, at the bottom');
+        $this->assertStringNotContainsString('Made by', $html, 'the name is under the logo, not in the line again');
         $keys = array_column($res['summary']['spots'], 'key');
         foreach (['brand', 'name', 'heading', 'how_to_use', 'qty', 'price', 'ingredients', 'dates', 'storage', 'footer'] as $key) {
             $this->assertContains($key, $keys, "the {$key} part can be tapped");
@@ -218,6 +219,40 @@ class PouchLabelTest extends TestCase
         $this->assertGreaterThan(200, ($left >> 16) & 0xFF, 'the plate\'s white rim reaches the circle\'s edge');
         $top = imagecolorat($round, intdiv(imagesx($round), 2), 14);
         $this->assertGreaterThan(235, ($top >> 8) & 0xFF, 'white above the plate, not a cut dumpling');
+    }
+
+    public function test_everything_picked_for_a_label_prints_and_nothing_prints_twice(): void
+    {
+        $badge = array_key_first(\App\Domains\Labels\LabelBadges::CATALOGUE);
+        $this->putJson("/api/labels/custom/{$this->momo}", [
+            'name' => 'Frozen Momo', 'name_dv' => 'ފްރޯޒަން މޯމޯ', 'label_heading' => 'Frozen Momo', 'label_barcode' => '5901234123457',
+            'label_nutrition' => 'Energy 180 kcal · Fat 6 g · Carbs 22 g · Protein 9 g', 'label_badges' => [$badge], 'label_net_weight' => '240 g',
+            'label_pouch' => ['look' => 'clear', 'method' => 'microwave'],
+        ])->assertOk();
+        foreach (['en', 'both', 'dv'] as $lang) {
+            foreach ([[140, 62], [120, 53], [160, 70]] as [$w, $h]) {
+                [$html, $res] = $this->sheet(['lang' => $lang, 'for' => 'NH Kuda Rah', 'promo' => 'text', 'promo_text' => 'New', 'batch' => 'B-1101'], ['w' => $w, 'h' => $h]);
+                $this->dump("pouch-all-{$lang}-{$w}", $html);
+                $this->assertSame([], $res['summary']['dropped'], "{$lang} {$w}: " . implode(', ', $res['summary']['dropped']));
+                $keys = array_column($res['summary']['spots'], 'key');
+                foreach (['badges', 'promo', 'barcode', 'packed', 'dates', 'batch'] as $key) {
+                    $this->assertContains($key, $keys, "{$lang} {$w} × {$h}: {$key}");
+                }
+                $this->assertSame(2, count(array_keys($keys, 'dates')) >= 1 ? 2 : 0);
+                $this->assertStringContainsString('5 901234 123457', $html);
+                foreach ($res['summary']['spots'] as $spot) {
+                    $this->assertLessThanOrEqual($w + 0.1, $spot['x'] + $spot['w'], "{$lang} {$w}: {$spot['key']} runs off the side");
+                    $this->assertLessThanOrEqual($h + 0.1, $spot['y'] + $spot['h'], "{$lang} {$w}: {$spot['key']} runs off the bottom");
+                }
+            }
+        }
+        // English: both dates print whatever else the column holds, and the heading that repeats the name does not.
+        [$html] = $this->sheet(['lang' => 'both'], ['w' => 120, 'h' => 53]);
+        $this->assertStringContainsString('Mfg date:', $html);
+        $this->assertStringContainsString('Exp date:', $html);
+        [$html] = $this->sheet();
+        $this->assertSame(1, substr_count($html, '>Frozen Momo<'), 'the name once, not again as the line under it');
+        $this->assertStringNotContainsString('FROZEN MOMO', $html);
     }
 
     public function test_a_photo_is_cut_to_a_circle_and_the_label_printer_draws_it(): void
