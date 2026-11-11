@@ -849,7 +849,7 @@ final class StickerSheet
         }
         // A pouch label has no place for these (2026-11-11).
         if (self::designOf($sheet, $data) === 'pouch') {
-            foreach ([['barcode', 'barcode', 'Barcode'], ['promo', 'promo', 'Promotion flash'], ['packed_for', 'packed', 'Packed for'], ['nutrition', 'nutrition', 'Nutrition']] as [$key, $spot, $word]) {
+            foreach ([['barcode', 'barcode', 'Barcode'], ['promo', 'promo', 'Promotion flash'], ['packed_for', 'packed', 'Packed for'], ['nutrition', 'nutrition', 'Nutrition'], ['batch_qr', 'batch_qr', 'Pack QR code'], ['icons', 'icons', 'Allergen pictures']] as [$key, $spot, $word]) {
                 if (!empty($data[$key]) && !isset($spots[$spot])) {
                     $out[] = $word;
                 }

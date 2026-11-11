@@ -164,7 +164,10 @@ promotion flash in the field's corner, a barcode at the foot of a widened panel,
 under the ingredients and packed-for in the storage column. In Dhivehi a date's label and its
 figures are set apart, since a date inside a right-to-left line came out in pieces. The preview
 keeps the label on screen until the next one has drawn (`SheetPreview`), and View bigger sits
-under the label.
+under the label. The pack's own QR ("PACK INFO", its page and scan to reprint) stands in the
+field's bottom corner and the allergen pictures under the ingredients, each with its word; the
+strip grows a little for each extra thing it holds and a fuller column takes more of the width,
+so with everything on at 120 × 53 mm nothing is cut short.
 
 Two picks do the work, so a new product needs no new design:
 

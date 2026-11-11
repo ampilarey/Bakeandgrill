@@ -411,7 +411,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
               <Field id="cl-type" label="Label type" hint="Brings the heading, storage, dates wording, shelf life and how-to-use. Anything typed below prints instead.">
                 <div className="flex gap-2">
                   <select id="cl-type" value={d.label_type_id ?? ''} onChange={(e) => set('label_type_id', e.target.value ? Number(e.target.value) : null)} className={fieldClass}>
-                    <option value="">No type: the usual wording for its storage</option>
+                    <option value="">No type (usual wording)</option>
                     {types.map((t) => <option key={t.id} value={t.id}>{t.name}{t.brand_name ? ` · ${t.brand_name}` : ''}</option>)}
                   </select>
                   <NewTypeButton onSaved={(t) => { setTypes((s) => [...s.filter((x) => x.id !== t.id), t]); set('label_type_id', t.id); }} />

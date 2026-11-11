@@ -74,7 +74,7 @@ const TYPES = { label: 'Wording and logos', to: '/labels/types' };
 function typeSelect(ctx: QuickContext, label = 'Label type'): QuickInput {
   return {
     key: 'label_type_id', label, kind: 'select', numeric: true,
-    options: [{ value: '', label: 'No type: the usual wording for its storage' }, ...(ctx.types ?? []).map((t) => ({ value: String(t.id), label: `${t.name}${t.brand_name ? ` · ${t.brand_name}` : ''}` }))],
+    options: [{ value: '', label: 'No type (usual wording)' }, ...(ctx.types ?? []).map((t) => ({ value: String(t.id), label: `${t.name}${t.brand_name ? ` · ${t.brand_name}` : ''}` }))],
   };
 }
 

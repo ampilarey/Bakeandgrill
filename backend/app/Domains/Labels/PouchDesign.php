@@ -80,7 +80,11 @@ final class PouchDesign
         $h = $this->h;
         $bw = 0.9 * $u;
         $gap = 0.5 * $u;
-        $sh = round($h * 0.36, 2);
+        // The strip grows a little for each extra thing it has to hold, so the storage line and the dates are not squeezed.
+        $d = $this->d;
+        $extras = (trim((string) ($d['batch'] ?? '')) !== '' ? 1 : 0) + (trim((string) ($d['packed_for'] ?? '')) !== '' ? 1 : 0)
+            + (!empty($d['icons']) ? 1 : 0) + (!empty($d['nutrition']['line']) ? 1 : 0) + ($this->both ? 2 : 0) + (trim((string) ($d['use_within'] ?? '')) !== '' ? 1 : 0);
+        $sh = round($h * (0.36 + min(0.09, 0.022 * $extras)), 2);
         $topH = $h - 2 * $bw - $sh - $gap;
         // A barcode needs a wider panel to scan.
         $panelW = !empty($this->d['barcode']) ? self::clamp($w * 0.25, 31.0, 40.0) : self::clamp($w * 0.2, 19.0, 36.0);
@@ -204,13 +208,43 @@ final class PouchDesign
             $cy += $logoH + $g;
         }
 
+        // The pack's own QR (its page, and scan to reprint) in the field's bottom corner; the rows beside it give it the room.
+        $rw = $mw;
+        $qTop = null;
+        $batchQr = $d['batch_qr'] ?? null;
+        if (is_string($batchQr) && $batchQr !== '') {
+            $capPt = self::clamp(3.3 * $u, 3.0, 4.0);
+            $capH = $this->lead('j8', $capPt);
+            $q = min(12.0 * $u, $mh * 0.36);
+            if ($q >= 8.0) {
+                $qx = $this->dv ? $x : $x + $mw - $q;
+                $qy = $y + $mh - $q - $capH - 1.4 * $u;
+                $this->p[] = LabelSpots::open('batch_qr');
+                $this->box($qx, $qy, $q, $q, '#FFFFFF', 0.6 * $u);
+                $this->img($qx + 0.4 * $u, $qy + 0.4 * $u, $q - 0.8 * $u, $q - 0.8 * $u, $batchQr);
+                $word = 'PACK INFO';
+                $capPt = LabelText::fitPt($word, 'j8', $q + 2.0, $capPt, 2.8);
+                $this->text($qx - 1.0, $qy + $q + 0.2 * $u + LabelText::ascent('j8') * $capPt * LabelText::PT, $q + 2.0, 'c', 'j8', $capPt, $c['ink'], $word);
+                $this->p[] = LabelSpots::close();
+                $rw = $mw - $q - 2.4 * $u;
+                $qTop = $qy;
+            }
+        }
+        $rx = $this->dv ? $x + $mw - $rw : $x;
+
         // A promotion flash in the field's top corner; the name gives it the room.
         $nw = $mw;
         if ($promo !== null) {
             $fw = min(20.0 * $u, $mw * 0.3);
             $fh = min($nameH * 0.92, $fw * 0.78);
+            $fy = $cy + ($nameH - $fh) / 2;
+            // The pack QR stands under it in the same corner: the flash keeps clear of it.
+            if ($qTop !== null && $fy + $fh > $qTop - 0.8 * $u) {
+                $fy = max($y + 0.8 * $u, min($fy, $qTop - 0.8 * $u - $fh));
+                $fh = min($fh, $qTop - 0.8 * $u - $fy);
+            }
             $this->p[] = LabelSpots::open('promo');
-            array_push($this->p, ...StickerDesign::flash($promo, round($this->dv ? $x : $x + $mw - $fw, 3), round($cy + ($nameH - $fh) / 2, 3), round($fw, 3), round($fh, 3)));
+            array_push($this->p, ...StickerDesign::flash($promo, round($this->dv ? $x : $x + $mw - $fw, 3), round($fy, 3), round($fw, 3), round($fh, 3)));
             $this->p[] = LabelSpots::close();
             $nw = $mw - $fw - 1.6 * $u;
         }
@@ -243,13 +277,13 @@ final class PouchDesign
         if ($tagline !== '') {
             $this->p[] = LabelSpots::open('heading');
             if ($this->dv) {
-                $pt = LabelText::fitPt($tagline, 'dv', $mw, $tagH * 0.75 / LabelText::PT, 4.5);
-                $this->text($x, $this->baseCentred($cy, $tagH, 'dv', $pt), $mw, 'r', 'dv', $pt, $c['accent'], $tagline, 0.6);
+                $pt = LabelText::fitPt($tagline, 'dv', $rw, $tagH * 0.75 / LabelText::PT, 4.5);
+                $this->text($rx, $this->baseCentred($cy, $tagH, 'dv', $pt), $rw, 'r', 'dv', $pt, $c['accent'], $tagline, 0.6);
             } else {
                 $t = mb_strtoupper($tagline);
                 $ls = 0.14;
-                $pt = LabelText::fitPt($t, 'j8', $mw / (1 + $ls * 1.15), $tagH * 0.72 / LabelText::PT, 4.0);
-                $this->text($x, $this->baseCentred($cy, $tagH, 'j8', $pt), $mw, 'l', 'j8', $pt, $c['accent'], $t, 0.0, [], $ls);
+                $pt = LabelText::fitPt($t, 'j8', ($rw - ($rw < $mw ? 1.5 * $u : 0.0)) / (1 + $ls * 1.25), $tagH * 0.72 / LabelText::PT, 4.0);
+                $this->text($x, $this->baseCentred($cy, $tagH, 'j8', $pt), $rw, 'l', 'j8', $pt, $c['accent'], $t, 0.0, [], $ls);
             }
             $this->p[] = LabelSpots::close();
             $cy += $tagH + $g;
@@ -259,6 +293,7 @@ final class PouchDesign
             return;
         }
         // The pill: an icon and the words.
+        $x = $this->dv ? $rx : $x;
         $px = $x;
         if ($pill !== '') {
             $font = $this->dv && $this->cfg['method_text_dv'] !== '' ? 'dv' : 'j8';
@@ -266,7 +301,7 @@ final class PouchDesign
             $ih = $pillH * 0.56;
             $iw = $icon !== null ? $ih * 1.3 : 0.0;
             $inner = $pillH * 0.42;
-            $room = $mw - 2 * $inner - ($icon !== null ? $iw + 1.2 * $u : 0);
+            $room = $rw - 2 * $inner - ($icon !== null ? $iw + 1.2 * $u : 0);
             $pt = LabelText::fitPt($pill, $font, $room, $pillH * 0.5 / LabelText::PT, 4.5);
             $tw = LabelText::widthMm($pill, $pt, $font) * 1.02;
             $pw = 2 * $inner + ($icon !== null ? $iw + 1.2 * $u : 0) + $tw;
@@ -282,9 +317,9 @@ final class PouchDesign
             $px = $x + $pw + 2.4 * $u;
         }
         // Badges beside the pill (the phone prints once, in the strip: audit, 2026-11-11).
-        if ($badges !== [] && $x + $mw - $px > 8.0) {
+        if ($badges !== [] && $x + $rw - $px > 8.0) {
             $bh = $pillH * 0.7;
-            $pills = LabelBadges::pills($badges, $this->dv, round($px, 3), round($cy + ($pillH - $bh) / 2, 3), round($x + $mw - $px, 3), round($bh, 3), 'l');
+            $pills = LabelBadges::pills($badges, $this->dv, round($px, 3), round($cy + ($pillH - $bh) / 2, 3), round($x + $rw - $px, 3), round($bh, 3), 'l');
             if ($pills !== []) {
                 $this->p[] = LabelSpots::open('badges');
                 array_push($this->p, ...$pills);
@@ -529,6 +564,7 @@ final class PouchDesign
             if ($note !== '') {
                 $col['blocks'][] = [rtrim($note, '.') . '.', $dvf ? 'dv' : 'j7', true, [], 'note'];
             }
+            $col['icons'] = is_array($d['icons'] ?? null) ? array_values($d['icons']) : [];
             $nutrition = trim((string) ($d['nutrition']['line'] ?? ''));
             if ($nutrition !== '') {
                 $col['blocks'][] = ['Per 100 ' . ($d['nutrition']['per'] ?? 'g') . ': ' . $nutrition, 'j4', false, [], 'nutrition'];
@@ -578,6 +614,12 @@ final class PouchDesign
             $cols = array_reverse($cols);
         }
 
+        // A column with more to say gets more of the width, within limits, so the fullest one is not the one cut.
+        $amounts = array_map(fn (array $col): float => 18.0 + array_sum(array_map(fn (array $b): float => mb_strlen((string) $b[0] . (string) ($b[6] ?? '')) * ($b[1] === 'dv' ? 1.3 : 1.0) + 8.0, $col['blocks'])), $cols);
+        $mean = array_sum($amounts) / max(1, count($amounts));
+        foreach ($cols as $i => $col) {
+            $cols[$i]['weight'] = self::clamp(sqrt($amounts[$i] / max(1.0, $mean)), 0.78, 1.35);
+        }
         $gap = 3.0 * $u;
         $room = $right - $left - $gap * (count($cols) - 1);
         $weights = array_sum(array_column($cols, 'weight'));
@@ -610,12 +652,21 @@ final class PouchDesign
     private function columnHeight(array $col, float $cw, float $pt): float
     {
         $h = $col['head'] !== '' ? $this->lead($this->dv ? 'dv' : 'j8', $this->headPt($pt)) + 0.5 * $this->u : 0.0;
+        if (!empty($col['icons'])) {
+            $h += $this->iconH($pt) + 0.4 * $this->u;
+        }
         foreach ($col['blocks'] as $b) {
             $size = $b[1] === 'dv' ? $pt * 1.22 : $pt;
             $h += count(LabelText::wrap($b[0], $size, $cw, $b[1])) * $this->lead($b[1], $size) + 0.3 * $this->u;
         }
 
         return $h;
+    }
+
+    /** An allergen pictogram's height beside body text of $pt. */
+    private function iconH(float $pt): float
+    {
+        return 1.9 * $pt * LabelText::PT;
     }
 
     private function headPt(float $pt): float
@@ -695,6 +746,24 @@ final class PouchDesign
                 $this->text($x, $cursor + $i * $lead + LabelText::ascent($font) * $size * LabelText::PT, $cw, $font === 'dv' ? 'r' : ($this->dv ? 'r' : 'l'), $font, $size, $bold ? $c['strip_head'] : $c['strip_ink'], $l, $font === 'dv' ? ($bold ? 0.6 : 0.35) : 0.0, $words);
             }
             $cursor += count($lines) * $lead + 0.3 * $this->u;
+        }
+        // Allergen pictograms, each with its word, when the column has the room.
+        $icons = $col['icons'] ?? [];
+        $ih = $this->iconH($pt);
+        if ($icons !== [] && $bottom - $cursor >= $ih - 0.05) {
+            $mark('icons');
+            $capPt = max(3.0, $pt * 0.78);
+            $ix = $x;
+            foreach ($icons as $icon) {
+                $cap = mb_strtoupper((string) ($icon['caption'] ?? ''));
+                $tw = LabelText::widthMm($cap, $capPt, 'j7');
+                if ($ix + $ih + 0.6 + $tw > $x + $cw + 0.05) {
+                    break;
+                }
+                $this->img($ix, $cursor, $ih, $ih, (string) $icon['src']);
+                $this->text($ix + $ih + 0.6, $this->baseCentred($cursor, $ih, 'j7', $capPt), $tw + 0.3, 'l', 'j7', $capPt, $c['strip_ink'], $cap);
+                $ix += $ih + 0.6 + $tw + 1.8;
+            }
         }
         $mark(null);
     }

@@ -235,11 +235,15 @@ class PouchLabelTest extends TestCase
                 $this->dump("pouch-all-{$lang}-{$w}", $html);
                 $this->assertSame([], $res['summary']['dropped'], "{$lang} {$w}: " . implode(', ', $res['summary']['dropped']));
                 $keys = array_column($res['summary']['spots'], 'key');
-                foreach (['badges', 'promo', 'barcode', 'packed', 'dates', 'batch'] as $key) {
+                foreach (['badges', 'promo', 'barcode', 'packed', 'dates', 'batch', 'icons'] as $key) {
                     $this->assertContains($key, $keys, "{$lang} {$w} × {$h}: {$key}");
                 }
                 $this->assertSame(2, count(array_keys($keys, 'dates')) >= 1 ? 2 : 0);
                 $this->assertStringContainsString('5 901234 123457', $html);
+                $this->assertStringContainsString('PACK INFO', $html, "{$lang} {$w}: the pack's own QR");
+                if ($lang === 'en') {
+                    $this->assertStringNotContainsString('…', $html, "{$w} × {$h}: nothing is cut short, even with everything on");
+                }
                 foreach ($res['summary']['spots'] as $spot) {
                     $this->assertLessThanOrEqual($w + 0.1, $spot['x'] + $spot['w'], "{$lang} {$w}: {$spot['key']} runs off the side");
                     $this->assertLessThanOrEqual($h + 0.1, $spot['y'] + $spot['h'], "{$lang} {$w}: {$spot['key']} runs off the bottom");

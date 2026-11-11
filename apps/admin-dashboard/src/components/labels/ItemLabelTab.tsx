@@ -204,7 +204,7 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
           <label className={labelClass} htmlFor="lbl-type">Label type</label>
           <div className="flex gap-2">
             <select id="lbl-type" value={draft.label_type_id ?? ''} onChange={(e) => { const t = types.find((x) => x.id === Number(e.target.value)); set('label_type_id', t ? t.id : null); if (t) set('label_storage', t.storage); }} className={fieldClass}>
-              <option value="">No type: the usual wording for its storage</option>
+              <option value="">No type (usual wording)</option>
               {types.map((t) => <option key={t.id} value={t.id}>{t.name}{t.brand_name && t.brand_name !== product.defaults.brand ? ` · ${t.brand_name}` : ''}</option>)}
             </select>
             {canManageTypes && <NewTypeButton onSaved={(t) => { setTypes((s) => [...s.filter((x) => x.id !== t.id), t]); set('label_type_id', t.id); set('label_storage', t.storage); }} />}
