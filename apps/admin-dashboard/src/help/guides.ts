@@ -469,7 +469,7 @@ export const GUIDES: Guide[] = [
       'Type the product name. The three sizes are filled in: Small, Medium and Large with their pieces, price and label size. Change any of them.',
       'Keep The momo photo, or tap Pick from Library for another one.',
       'Tap Make the 3 labels. Each size shows with its preview. Tap Print on the one you want.',
-      'Later, print them again from Print labels, under Saved labels.',
+      'Later, print them again from the Saved labels tab.',
     ],
     notes: [
       'What the pouch looks like has five choices: gold, clear or white, brown paper, black, and black and white for a label printer.',
@@ -491,7 +491,8 @@ export const GUIDES: Guide[] = [
       'Step 1: tap Something else, then New custom label.',
       'In Start from pick Theluli Rihaakuru bottle (4 sides). The name, the Amma brand, the photo, the ingredients and the size (215 × 40 mm) fill in.',
       'Check the wording. Type the net weight, and the price if you want it printed. For a barcode, type your number or tap Make one. Then tap Add label.',
-      'Carry on to print. Five labels fit on one A4 sheet, turned sideways.',
+      'The label opens at the bottle\'s size, on Looks right. Tap Next: how many.',
+      'It starts at one full A4 sheet: five labels, turned sideways. Change the number for more sheets, then tap Print or PDF.',
     ],
     notes: [
       'The label is divided into four equal sides: name, picture and price; ingredients with the recycling marks; dates and barcode; then Bake & Grill\'s details with the complaints QR. Each fold lands on a corner of the bottle.',
@@ -501,6 +502,25 @@ export const GUIDES: Guide[] = [
       'Measure round your own bottle before printing a full sheet. If it is not 21.5 cm, type your own size.',
     ],
     words: 'bottle jar wrap rihaakuru amma square sides round label',
+  },
+
+  {
+    id: 'saved-labels',
+    page: '/labels',
+    title: 'Find a label I made, print it again or remove it',
+    open: { to: '/labels/saved', label: 'Open Saved labels' },
+    steps: [
+      'Open Labels and tap the Saved labels tab. Every label you printed or saved is listed, newest first.',
+      'Tap Print to print the same sheet again, or the download icon for the PDF.',
+      'Tap the pencil to change it, the two-pages icon to copy it, or the star to keep it at the top.',
+      'Tap the bin to remove it, then confirm.',
+    ],
+    notes: [
+      'You do not save by hand. Print or PDF on the last step of Make a label saves the sheet here.',
+      'Removing a saved label removes the saved sheet only. The label itself stays under Custom labels, where its own Remove is.',
+      'Tap a saved label\'s name to rename it.',
+    ],
+    words: 'saved labels reprint print again delete remove history',
   },
 
   // ── People and alerts ─────────────────────────────────────────────────────

@@ -138,7 +138,7 @@ describe('CustomLabelModal', () => {
       name: 'Garlic Sauce', brand_id: 2, label_ingredients: 'Garlic, oil', label_shelf_life_days: 14, label_pack_unit: 'ML',
       label_heading: null, label_note: null, label_type_id: null, label_price: 25, label_barcode: '590123412345', label_net_weight: '250 ml', label_allergens: 'garlic',
     });
-    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: 7 })));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: 7 }), expect.objectContaining({ shape: 'rect' })));
     expect(await screen.findByRole('button', { name: /^Print/ })).toBeInTheDocument();
   });
 

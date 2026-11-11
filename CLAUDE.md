@@ -468,7 +468,10 @@ brand and its photo (`product`, `brand`, `photo` on a `BUILTIN` row, as the momo
 `maker` is the business's own side (logo, name, phone, website, address, complaints QR); `label_wrap.exp_label` words the
 expiry box ("Best before"); Make one beside a barcode box gives an in-house EAN starting with 2 (`inHouseBarcode()`). The
 Amma brand's shipped logo is the round "AMMA'S" mark (owner, 2026-11-11).
-`BottleFacesLabelTest`. How to
+`BottleFacesLabelTest`. The wizard comes to a label at the size it is made for (owner, 2026-11-11: a momo label
+made from its template still asked "which label" with the big sticker picked): a new custom label's `onSaved` hands
+over the size its editor showed and the wizard goes straight to Looks right; a pouch label or a bottle with flat sides
+picked from the list has its size picked at step 2 (`sizeMadeFor()` in `MakeLabelWizard.tsx`). How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

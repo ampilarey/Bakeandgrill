@@ -324,6 +324,23 @@ describe('MakeLabelWizard', () => {
     expect(screen.queryByTestId('make-mockup')).toBeNull();
   });
 
+  // Owner, 2026-11-11: a momo label still asked "which label" with the big sticker picked, so Next printed an ordinary sticker.
+  it('comes to the sizes with the pouch size picked for a pouch label', async () => {
+    api.fetchLabelLayouts.mockResolvedValue({ data: [], presets: [...presets, rect('r140x62', 140, 62, 'full', 6)], limits, wrap: { parts: [], marks: [], default_parts: [], default_marks: [], max_pictures: 4 } });
+    api.fetchLabelProducts.mockResolvedValue({ data: [{ id: 9, name: 'Chicken Momo', name_dv: null, label_enabled: true, label_pouch: { look: 'gold', method: 'microwave' } }] });
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /A menu item/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Chicken Momo/ }));
+    await screen.findByTestId('make-step-2');
+    expect(screen.getByRole('button', { name: /Pouch or bag front/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /Big pack sticker/ })).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByTestId('make-next-2'));
+    fireEvent.click(await screen.findByTestId('make-next-3'));
+    // As many as fit one A4 sheet to start with.
+    await screen.findByTestId('make-step-4');
+    expect(screen.getByText(/1 sheet of 6/)).toBeInTheDocument();
+  });
+
   // Label audit, Batch B (2026-10-16): the last step shows the use-by that prints and stops a print the lock refuses.
   it('shows the use-by with the short-life mark, what did not fit, and the wording lock on the last step', async () => {
     const message = 'The wording is locked: Bajiya has legal lines not signed off as they stand. Sign them off on the label first, or turn the lock off under Labels → Settings.';

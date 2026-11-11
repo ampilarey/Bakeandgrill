@@ -111,7 +111,8 @@ function LangChips({ lang, onChange }: { lang: StickerLang; onChange: (l: Sticke
 export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: {
   label: CustomLabel | null;
   onClose: () => void;
-  onSaved: (c: CustomLabel) => void;
+  /** `at` is the size the editor was previewing (a template's own, when it started from one). */
+  onSaved: (c: CustomLabel, at?: SizeChoice) => void;
   /** A template a new label starts from (round 7): its settings fill the boxes before the editor opens. */
   startFrom?: LabelTemplate | null;
 }) {
@@ -246,7 +247,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
       const r = saved ? await updateCustomLabel(saved.id, toPayload(d)) : await createCustomLabel(toPayload(d));
       setSaved(r.data);
       setD(toDraft(r.data));
-      onSaved(r.data);
+      onSaved(r.data, choice);
       setSignoffTick((t) => t + 1);
       toast('success', saved ? 'Custom label saved.' : 'Custom label added.');
       return r.data;

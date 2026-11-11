@@ -18,7 +18,7 @@ import { openLabelsTour } from './LabelsTour';
 import { QuickEditSheet, quickSpec, type QuickContext, type QuickInput, type QuickSpec, type QuickValue } from './QuickEdit';
 import { customDraft, customPayload, itemDraft, itemPayload, nutritionWords, pickKeys, type CustomDraft, type ItemDraft } from './labelDrafts';
 import { SaveAsTemplate } from './StartFrom';
-import { POUCH_FALLBACK, newPouch } from './PouchPicker';
+import { POUCH_FALLBACK, newPouch, pouchFits } from './PouchPicker';
 import { PouchSetModal } from './PouchSetModal';
 import { templateFromCustom, templateFromItem } from './labelTemplates';
 import { ArrangeBar } from './ArrangeBar';
@@ -253,6 +253,16 @@ export function MakeLabelWizard({ canManage = false }: {
   const itemRows = (products ?? []).filter((p) => !needle || p.name.toLowerCase().includes(needle) || (p.name_dv ?? '').includes(query.trim()));
   const customRows = (customs ?? []).filter((c) => !needle || c.name.toLowerCase().includes(needle) || (c.name_dv ?? '').includes(query.trim()));
 
+  // The size a label is made for (owner, 2026-11-11: a momo label made from its template still asked
+  // "which label", with the big sticker picked, so Next printed it as an ordinary sticker): the size the
+  // editor showed, else the pouch size for a pouch label and the bottle size for a bottle with flat sides.
+  const sizeMadeFor = (c: { label_pouch?: unknown; label_wrap?: { faces?: number } | null }, at?: SizeChoice): SizeChoice | null => {
+    if (at) return at;
+    const { w, h } = sizeOf(choice, presets);
+    if (c.label_pouch && !pouchFits(POUCH_FALLBACK, choice.shape, w, h)) return withPreset(choice, 'r140x62', presets);
+    if ((c.label_wrap?.faces ?? 0) > 0 && designFor(choice.shape, w, h) !== 'wrap') return withPreset(choice, 'r215x40', presets);
+    return null;
+  };
   const pickItem = async (p: LabelProduct) => {
     let on = p.label_enabled;
     if (!on) {
@@ -272,12 +282,17 @@ export function MakeLabelWizard({ canManage = false }: {
     setPicked({ kind: 'item', id: p.id, name: p.name, name_dv: p.name_dv, lang: p.name_dv ? 'both' : 'en' });
     setSizeId(null);
     setLang(p.name_dv ? 'both' : 'en');
+    const made = sizeMadeFor(p);
+    if (made) { setChoice({ ...made, on: 'sheet' }); setOwnSize(made.preset === 'custom'); }
     setStep(2);
   };
-  const pickCustom = (c: CustomLabel) => {
+  const pickCustom = (c: CustomLabel, at?: SizeChoice) => {
     setPicked({ kind: 'custom', id: c.id, name: c.name, name_dv: c.name_dv, lang: langOf(c) });
     setLang(langOf(c));
-    setStep(2);
+    const made = sizeMadeFor(c, at);
+    if (made) { setChoice({ ...made, on: 'sheet' }); setOwnSize(made.preset === 'custom'); }
+    // A label just made in the editor has its size already: straight to the look. Back still offers the sizes.
+    setStep(at ? 3 : 2);
   };
 
   // Step 2: the card picked, or a size of your own.
@@ -759,7 +774,7 @@ export function MakeLabelWizard({ canManage = false }: {
       )}
       {pouchSet && <PouchSetModal onClose={() => setPouchSet(false)} onMade={(made) => setCustoms((list) => [...made.map((m) => m.label), ...(list ?? []).filter((x) => !made.some((m) => m.label.id === x.id))])} />}
       {newCustom && (
-        <CustomLabelModal label={null} onClose={() => setNewCustom(false)} onSaved={(c) => { setNewCustom(false); setCustoms((list) => [c, ...(list ?? []).filter((x) => x.id !== c.id)]); pickCustom(c); }} />
+        <CustomLabelModal label={null} onClose={() => setNewCustom(false)} onSaved={(c, at) => { setNewCustom(false); setCustoms((list) => [c, ...(list ?? []).filter((x) => x.id !== c.id)]); pickCustom(c, at); }} />
       )}
       {details && picked?.kind === 'custom' && customs && (
         <CustomLabelModal label={customs.find((c) => c.id === picked.id) ?? null} onClose={() => { setDetails(false); setRedraw((n) => n + 1); }} onSaved={(c) => { setCustoms((list) => (list ?? []).map((x) => (x.id === c.id ? c : x))); setPicked({ kind: 'custom', id: c.id, name: c.name, name_dv: c.name_dv, lang: langOf(c) }); }} />
