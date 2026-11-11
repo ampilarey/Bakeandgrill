@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Bookmark, ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, RefreshCw, Search, Tag, Upload, X } from 'lucide-react';
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelSettings, fetchLabelTypes,
-  previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture,
+  previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture, uploadLabelPicture,
   type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type ShelfLifeSuggestions, type LabelType, type StickerLang, type PouchCatalogue, type WrapCatalogue, type WrapPartKey, type WrapStrips,
 } from '../../api';
 import { FooterPicker } from './FooterPicker';
@@ -286,13 +286,18 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
     });
   };
 
-  // A picture is uploaded to a saved label; a new one is saved first.
+  // A picture goes onto a saved label at once; on a new one it waits in the draft and is kept when the label is saved
+  // (owner, 2026-11-11: the upload answered "Give the label a name" before a name was typed).
   const upload = async (slot: 'photo' | 'title', file: File | null) => {
     if (!file) return;
     setUploading(slot);
     try {
-      const target = saved ?? (await save());
-      if (!target) return;
+      if (!saved) {
+        const p = await uploadLabelPicture(file, slot);
+        setD((s) => ({ ...s, [`label_${slot}_media_id`]: p.data.id, [`label_${slot}_url`]: p.data.url }));
+        return;
+      }
+      const target = saved;
       const r = await uploadCustomLabelPicture(target.id, file, slot);
       setSaved(r.data);
       setD((s) => ({ ...s, [`label_${slot}_media_id`]: r.data[`label_${slot}_media_id`], [`label_${slot}_url`]: r.data[`label_${slot}_url`] }));

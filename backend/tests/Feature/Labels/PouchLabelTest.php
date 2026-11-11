@@ -303,6 +303,26 @@ class PouchLabelTest extends TestCase
         $this->assertSame($before, CustomLabel::query()->count());
     }
 
+    public function test_a_picture_uploads_before_the_label_has_a_name_and_the_momo_template_brings_its_photo(): void
+    {
+        Storage::fake('public');
+        $img = imagecreatetruecolor(40, 30);
+        ob_start();
+        imagepng($img);
+        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('plate.png', (string) ob_get_clean());
+        $res = $this->post('/api/labels/pictures', ['file' => $file, 'slot' => 'photo'], ['Accept' => 'application/json'])->assertCreated();
+        $id = $res->json('data.id');
+        $this->assertNotEmpty($res->json('data.url'));
+        $this->postJson('/api/labels/custom', ['name' => 'Veg Momo', 'label_photo_media_id' => $id])->assertCreated()->assertJsonPath('data.label_photo_media_id', $id);
+        $this->post('/api/labels/pictures', ['file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('notes.png', 'not a picture')], ['Accept' => 'application/json'])->assertStatus(422);
+
+        $builtin = collect($this->getJson('/api/labels/templates')->assertOk()->json('builtin'))->keyBy('id');
+        $this->assertNotEmpty($builtin['momo-pouch']['photo']['id']);
+        $this->assertSame($builtin['momo-pouch']['photo']['id'], $builtin['momo-pouch-steam']['photo']['id'], 'one photo, kept once');
+        $this->assertNull($builtin['pouch-any']['photo']);
+        $this->assertNull($builtin['frozen-pack']['photo']);
+    }
+
     public function test_the_built_in_pouch_templates_are_valid_and_their_size_is_offered(): void
     {
         $ids = array_column(LabelTemplates::BUILTIN, 'id');

@@ -94,6 +94,8 @@ export function applyToCustom(d: CustomDraft, t: LabelTemplate): CustomDraft {
   if (has('label_pouch')) n.label_pouch = f.label_pouch ?? null;
   if (has('label_layout')) n.label_layout = f.label_layout ?? {};
   if (has('label_badges')) n.label_badges = f.label_badges ? [...f.label_badges] : [];
+  // A built-in template's own photo fills an empty picture; one already picked stays.
+  if (t.photo && n.label_photo_media_id == null) { n.label_photo_media_id = t.photo.id; n.label_photo_url = t.photo.url; }
   return n;
 }
 
@@ -124,6 +126,8 @@ export function applyToItem(d: ItemDraft, t: LabelTemplate): ItemDraft {
   if (has('label_pouch')) n.label_pouch = f.label_pouch ?? null;
   if (has('label_layout')) n.label_layout = f.label_layout ?? {};
   if (has('label_badges')) n.label_badges = f.label_badges ? [...f.label_badges] : [];
+  // A built-in template's own photo fills an empty picture; one already picked stays.
+  if (t.photo && n.label_photo_media_id == null) { n.label_photo_media_id = t.photo.id; n.label_photo_url = t.photo.url; }
   return n;
 }
 

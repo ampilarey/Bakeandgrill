@@ -278,8 +278,11 @@ final class LabelTemplates
      */
     public static function presentBuiltin(array $builtin, array $names): array
     {
+        // The momo templates come with their photo (owner, 2026-11-11): kept once in the library, offered to a label that has none.
+        $photo = str_starts_with((string) $builtin['id'], 'momo-') ? PouchSet::momoPhoto() : null;
+
         return self::row($builtin['id'], true, $builtin['name'], $builtin['blurb'], null, self::normaliseFields($builtin['fields']), self::normaliseSize($builtin['size']), $names)
-            + ['created_by' => null, 'created_at' => null];
+            + ['created_by' => null, 'created_at' => null, 'photo' => $photo ? ['id' => (int) $photo->id, 'url' => $photo->url] : null];
     }
 
     /**

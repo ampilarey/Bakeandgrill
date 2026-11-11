@@ -7,6 +7,7 @@ const fetchCustomLabels = vi.fn();
 const createCustomLabel = vi.fn();
 const updateCustomLabel = vi.fn();
 const uploadCustomLabelPicture = vi.fn();
+const uploadLabelPicture = vi.fn();
 const duplicateCustomLabel = vi.fn();
 const deleteCustomLabel = vi.fn();
 const stickerLinks = vi.fn();
@@ -51,6 +52,7 @@ vi.mock('../../api', () => ({
   createCustomLabel: (...a: unknown[]) => createCustomLabel(...a),
   updateCustomLabel: (...a: unknown[]) => updateCustomLabel(...a),
   uploadCustomLabelPicture: (...a: unknown[]) => uploadCustomLabelPicture(...a),
+  uploadLabelPicture: (...a: unknown[]) => uploadLabelPicture(...a),
   duplicateCustomLabel: (...a: unknown[]) => duplicateCustomLabel(...a),
   deleteCustomLabel: (...a: unknown[]) => deleteCustomLabel(...a),
   stickerLinks: (...a: unknown[]) => stickerLinks(...a),
@@ -96,7 +98,7 @@ const LAYOUTS = {
 
 describe('CustomLabelModal', () => {
   beforeEach(() => {
-    [fetchCustomLabels, createCustomLabel, updateCustomLabel, uploadCustomLabelPicture, duplicateCustomLabel, deleteCustomLabel, stickerLinks, previewCustomDraft, fetchLabelLayouts, createLabelFooter, updateLabelFooter, deleteLabelFooter, fetchLabelTemplates, fetchLabelProducts, createLabelTemplate].forEach((f) => f.mockReset());
+    [fetchCustomLabels, createCustomLabel, updateCustomLabel, uploadCustomLabelPicture, uploadLabelPicture, duplicateCustomLabel, deleteCustomLabel, stickerLinks, previewCustomDraft, fetchLabelLayouts, createLabelFooter, updateLabelFooter, deleteLabelFooter, fetchLabelTemplates, fetchLabelProducts, createLabelTemplate].forEach((f) => f.mockReset());
     fetchLabelLayouts.mockResolvedValue(LAYOUTS);
     fetchLabelTemplates.mockResolvedValue({ data: [], builtin: [] });
     fetchLabelProducts.mockResolvedValue({ data: [] });
@@ -357,17 +359,20 @@ describe('CustomLabelModal', () => {
     expect(createCustomLabel).not.toHaveBeenCalled();
   });
 
-  it('saves a new label first when a picture is uploaded', async () => {
-    createCustomLabel.mockResolvedValue({ data: custom(9, 'Gift box') });
-    uploadCustomLabelPicture.mockResolvedValue({ data: custom(9, 'Gift box', { label_photo_media_id: 31, label_photo_url: '/storage/box.png' }) });
+  it('uploads a picture to a new label before it has a name, and keeps it when the label is saved', async () => {
+    uploadLabelPicture.mockResolvedValue({ data: { id: 31, url: '/storage/box.png' } });
+    createCustomLabel.mockResolvedValue({ data: custom(9, 'Gift box', { label_photo_media_id: 31, label_photo_url: '/storage/box.png' }) });
     wrap(<CustomLabelModal label={null} onClose={() => {}} onSaved={() => {}} />);
 
-    fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Gift box' } });
     const file = new File(['png'], 'box.png', { type: 'image/png' });
     fireEvent.change(screen.getByTestId('custom-label-photo-file'), { target: { files: [file] } });
+    await waitFor(() => expect(uploadLabelPicture).toHaveBeenCalledWith(file, 'photo'));
+    expect(createCustomLabel).not.toHaveBeenCalled();
+    expect(uploadCustomLabelPicture).not.toHaveBeenCalled();
 
-    await waitFor(() => expect(uploadCustomLabelPicture).toHaveBeenCalledWith(9, file, 'photo'));
-    expect(createCustomLabel).toHaveBeenCalledTimes(1);
+    fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Gift box' } });
+    fireEvent.click(screen.getByTestId('custom-label-save'));
+    await waitFor(() => expect(createCustomLabel).toHaveBeenCalledWith(expect.objectContaining({ name: 'Gift box', label_photo_media_id: 31 })));
   });
 });
 

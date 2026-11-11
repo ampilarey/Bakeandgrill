@@ -263,7 +263,9 @@ export type LabelTemplate = {
   id: number | string; builtin: boolean; name: string; blurb: string | null;
   /** The label it was saved from. */
   source: string | null;
-  fields: LabelTemplateFields; wrap_pictures: WrapPicture[]; size: LabelTemplateSize | null;
+  fields: LabelTemplateFields; /** A built-in template's own photo (the momo plate), for a label that has none. */
+  photo?: { id: number; url: string | null } | null;
+  wrap_pictures: WrapPicture[]; size: LabelTemplateSize | null;
   /** The names behind the ids, for the list line; `storage` is what its fields or its type say. */
   type_name: string | null; brand_name: string | null; footer_name: string | null; storage: LabelStorage | null;
   created_by: string | null; created_at: string | null;
@@ -643,6 +645,14 @@ export function uploadCustomLabelPicture(id: number, file: File, slot: 'photo' |
   form.append('file', file);
   form.append('slot', slot);
   return req<{ data: CustomLabel }>(`/labels/custom/${id}/picture`, { method: 'POST', body: form });
+}
+
+/** A picture for a label not saved yet: kept in the library, its id goes in the draft. */
+export function uploadLabelPicture(file: File, slot: 'photo' | 'title' = 'photo') {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('slot', slot);
+  return req<{ data: { id: number; url: string | null } }>('/labels/pictures', { method: 'POST', body: form });
 }
 
 export function duplicateCustomLabel(id: number) {

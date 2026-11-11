@@ -1276,6 +1276,23 @@ class LabelsController extends Controller
         return response()->json(['data' => $this->presentCustom($customLabel->refresh())]);
     }
 
+    /**
+     * A picture for a label that is not saved yet (owner, 2026-11-11: a new
+     * custom label refused the upload with "Give the label a name"): kept in
+     * the library as uploaded, and its id goes in the draft.
+     */
+    public function storePicture(Request $request): JsonResponse
+    {
+        $data = $request->validate(['file' => 'required|file|max:4096', 'slot' => 'sometimes|in:photo,title']);
+        try {
+            $media = LabelMedia::storePng((string) file_get_contents($request->file('file')->getRealPath()), 'Label ' . ($data['slot'] ?? 'photo'));
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage(), 'errors' => ['file' => [$e->getMessage()]]], 422);
+        }
+
+        return response()->json(['data' => ['id' => $media->id, 'url' => $media->url]], 201);
+    }
+
     public function duplicateCustomLabel(Request $request, CustomLabel $customLabel): JsonResponse
     {
         $copy = $customLabel->replicate(['created_by']);
