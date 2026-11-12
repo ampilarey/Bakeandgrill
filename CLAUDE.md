@@ -485,7 +485,7 @@ labels and Custom labels rows carry words on their buttons (PDF, Change, Copy, P
 shop's day (`utils/dateHelpers.today()`), never `toISOString()`. `LabelAuditFitTest`. Every expiry box that takes a
 date carries `ExpiryChips` (owner, 2026-11-12: "easy expire date selection. 1 month, 2, 3"): Shelf life (empty, the
 label's own), 1, 2, 3 and 6 calendar months from Made on (`monthsAfter()`), a months pick moving with Made on
-(`expiryForNewMfg()`); a date input on these forms takes `DATE_BOX` so an iPhone keeps it in its column. How to
+(`expiryForNewMfg()`); a date input on these forms takes `DATE_BOX` so an iPhone keeps it in its column. A sheet is saved under a name of its own when one is typed (owner, 2026-11-12: `save_as` on the sticker request, Name in Saved labels (optional) on the wizard's last step and on Print labels; never part of the request's hash, so the same sheet again is the same saved label, renamed). How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

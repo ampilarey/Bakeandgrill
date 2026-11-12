@@ -82,15 +82,15 @@ class LabelsController extends Controller
                     'key' => $key,
                     'label' => $l['label'],
                     'hint' => $l['hint'],
-                    'per_page' => !empty($l['grid']) ? null : $l['cols'] * $l['rows'],
+                    'per_page' => ! empty($l['grid']) ? null : $l['cols'] * $l['rows'],
                     'w' => $l['w'],
                     'h' => $l['h'],
                     'page_w' => $l['page'][0] ?? $l['w'],
                     'page_h' => $l['page'][1] ?? $l['h'],
                     'shape' => $shape,
                     'sized' => $sized,
-                    'grid' => !empty($l['grid']),
-                    'compact' => !$sized && $shape === 'rect' && StickerLayouts::design($shape, $l['w'], $l['h']) !== 'full',
+                    'grid' => ! empty($l['grid']),
+                    'compact' => ! $sized && $shape === 'rect' && StickerLayouts::design($shape, $l['w'], $l['h']) !== 'full',
                 ];
             })->values(),
             'presets' => StickerLayouts::presets(),
@@ -123,16 +123,16 @@ class LabelsController extends Controller
         return [
             'items' => 'required|array|min:1|max:60',
             'items.*.id' => ['required', 'integer', function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
-                $kind = $request->input(substr($attribute, 0, -3) . '.kind', 'item');
+                $kind = $request->input(substr($attribute, 0, -3).'.kind', 'item');
                 $exists = $kind === 'custom'
                     ? CustomLabel::query()->whereKey((int) $value)->exists()
                     : Item::query()->whereKey((int) $value)->exists();
-                if (!$exists) {
+                if (! $exists) {
                     $fail('That product is no longer there. Pick it again.');
                 }
             }],
             'items.*.kind' => 'sometimes|in:item,custom',
-            'items.*.copies' => 'required|integer|min:1|max:' . StickerSheet::MAX_STICKERS,
+            'items.*.copies' => 'required|integer|min:1|max:'.StickerSheet::MAX_STICKERS,
             // A variable run (round 10, 2026-10-13): a row's own batch, quantity, dates and packed-for.
             'items.*.batch' => 'nullable|string|max:30',
             'items.*.qty' => 'nullable|integer|min:1|max:9999',
@@ -160,6 +160,8 @@ class LabelsController extends Controller
             'preview' => 'sometimes|boolean',
             // Save to Saved labels without printing (label audit, 2026-10-16): no print log, no roll counted.
             'save' => 'sometimes|boolean',
+            // The saved label's own name (owner, 2026-11-12: "when saving the label can't we use own name?"); empty names it from what it prints.
+            'save_as' => 'nullable|string|max:80',
             // Packed for, and a promotion flash (2026-10-12).
             'for' => 'nullable|string|max:60',
             'for2' => 'nullable|string|max:60',
@@ -195,13 +197,13 @@ class LabelsController extends Controller
             $req = StickerSheet::normalise($request->all());
             $preview = $request->boolean('preview');
             // A save is drawn as a preview is: nothing printed, logged or counted off a roll until it is printed from Saved labels.
-            $save = !$preview && $request->boolean('save');
+            $save = ! $preview && $request->boolean('save');
             $out = $this->stickerLinks($req, $request->user()?->id, $preview || $save, $request->filled('dpi') ? $request->integer('dpi') : null);
         } catch (InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
-        if (!$preview) {
-            $out['job'] = $this->rememberJob('stickers', array_intersect_key($request->all(), array_flip(self::STICKER_KEYS)), $out['summary'], $request->user()?->id, printed: !$save);
+        if (! $preview) {
+            $out['job'] = $this->rememberJob('stickers', array_intersect_key($request->all(), array_flip(self::STICKER_KEYS)), $out['summary'], $request->user()?->id, printed: ! $save, name: trim((string) $request->input('save_as', '')));
             $out['saved_only'] = $save;
         }
 
@@ -212,7 +214,7 @@ class LabelsController extends Controller
      * The links for a normalised sticker request, and the print log entries
      * unless it is a preview (which prints nothing).
      *
-     * @param array<string, mixed> $req from StickerSheet::normalise()
+     * @param  array<string, mixed>  $req  from StickerSheet::normalise()
      * @return array<string, mixed>
      */
     private function stickerLinks(array $req, ?int $userId, bool $preview = false, ?int $dpi = null): array
@@ -251,12 +253,12 @@ class LabelsController extends Controller
         // The wording lock (round 17): a real print records the sign-off each product prints under, and with the lock on refuses one whose legal lines are not signed off as they stand. A preview still draws and says so ahead (label audit, Batch B).
         $signed = $this->signoffs->forPrint($this->stickers->printProducts($req));
         if ($signed['refused'] !== []) {
-            if (!$preview) {
+            if (! $preview) {
                 throw new InvalidArgumentException(LabelSignoffs::refusalMessage($signed['refused']));
             }
             $summary['wording'] = ['refused' => $signed['refused_products'], 'message' => LabelSignoffs::refusalMessage($signed['refused'])];
         }
-        $promoDetail = $req['promo'] === 'was_now' ? 'now MVR ' . number_format((float) $req['promo_now'], 2) : ($req['promo'] === 'text' ? $req['promo_text'] : null);
+        $promoDetail = $req['promo'] === 'was_now' ? 'now MVR '.number_format((float) $req['promo_now'], 2) : ($req['promo'] === 'text' ? $req['promo_text'] : null);
 
         // Each product's print gets a code the sticker carries as a QR (the
         // pack's page, BatchLink); a preview shows the QR with a code that
@@ -266,7 +268,7 @@ class LabelsController extends Controller
             $code = $preview ? BatchLink::PREVIEW : LabelPrint::newCode();
             $codes[$p['row'] ?? $p['key']] = $code;
             $summary['products'][$i]['code'] = $preview ? null : $code;
-            if (!$preview) {
+            if (! $preview) {
                 LabelPrint::create([
                     'code' => $code,
                     'kind' => match ($req['lang']) {
@@ -284,7 +286,7 @@ class LabelsController extends Controller
                     // Each product's own batch, quantity and packed-for when the run varies (round 10), else the sheet's.
                     'batch_code' => ($p['batch'] ?? '') !== '' ? $p['batch'] : null,
                     'pack_qty' => $p['qty'] ?? null,
-                    'details' => ($details = array_filter(['for' => $p['for'] ?? null, 'for2' => $p['for2'] ?? null, 'promo' => $promoDetail, 'reprint_of' => $req['reprint'] ?? null, 'signoff' => $signed['ids'][$p['key'] . '|' . ($p['size']['id'] ?? '')] ?? null], fn ($v) => $v !== null && $v !== '')) !== [] ? $details : null,
+                    'details' => ($details = array_filter(['for' => $p['for'] ?? null, 'for2' => $p['for2'] ?? null, 'promo' => $promoDetail, 'reprint_of' => $req['reprint'] ?? null, 'signoff' => $signed['ids'][$p['key'].'|'.($p['size']['id'] ?? '')] ?? null], fn ($v) => $v !== null && $v !== '')) !== [] ? $details : null,
                     // The request that made this product's print (round 11): a scan of its code prints it again.
                     'request' => Reprint::of($req, $p),
                     'printed_by' => $userId,
@@ -328,12 +330,12 @@ class LabelsController extends Controller
             'lines' => 'sometimes|array|max:16',
             'lines.*.id' => 'required|integer|exists:items,id',
             'lines.*.qty' => 'nullable|integer|min:0|max:99999',
-            'lines.*.article' => 'nullable|string|max:' . BoxLabel::ARTICLE_MAX,
+            'lines.*.article' => 'nullable|string|max:'.BoxLabel::ARTICLE_MAX,
             'articles' => 'sometimes|boolean',
             'preview' => 'sometimes|boolean',
         ];
         foreach (BoxLabel::FIELDS as $key) {
-            $rules[$key] = $key === 'storage' ? ['nullable', Rule::in(LabelSettings::STORAGES)] : 'nullable|string|max:' . BoxLabel::limit($key);
+            $rules[$key] = $key === 'storage' ? ['nullable', Rule::in(LabelSettings::STORAGES)] : 'nullable|string|max:'.BoxLabel::limit($key);
         }
 
         return $rules;
@@ -351,7 +353,7 @@ class LabelsController extends Controller
         $preview = $request->boolean('preview');
         unset($data['preview']);
         $out = $this->boxLinks($req, $request->user()?->id, $preview);
-        if (!$preview) {
+        if (! $preview) {
             $out['job'] = $this->rememberJob('box', $data, $out['summary'], $request->user()?->id);
         }
 
@@ -359,7 +361,7 @@ class LabelsController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $req from BoxLabel::normalise()
+     * @param  array<string, mixed>  $req  from BoxLabel::normalise()
      * @return array<string, mixed>
      */
     private function boxLinks(array $req, ?int $userId, bool $preview = false): array
@@ -368,12 +370,12 @@ class LabelsController extends Controller
             array_filter($req['fields'], fn ($v) => $v !== ''),
             [
                 'delivery' => $req['delivery'],
-                'lines' => implode(',', array_map(fn ($l) => $l['id'] . ':' . $l['qty'], $req['lines'])),
+                'lines' => implode(',', array_map(fn ($l) => $l['id'].':'.$l['qty'], $req['lines'])),
                 'arts' => BoxLabel::encodeArticles(array_column($req['lines'], 'article')),
                 'articles' => $req['articles'] ? null : 0,
             ],
         );
-        if (!$preview) {
+        if (! $preview) {
             LabelPrint::create([
                 'kind' => 'box_label',
                 'layout' => 'a4',
@@ -406,23 +408,27 @@ class LabelsController extends Controller
      * Keep a prepared print as a saved label. The same request prepared
      * again is the same label printed again, not a second copy.
      *
-     * @param array<string, mixed> $request the request as sent (not normalised), so it can be edited
-     * @param array<string, mixed> $summary
+     * @param  array<string, mixed>  $request  the request as sent (not normalised), so it can be edited
+     * @param  array<string, mixed>  $summary
      * @return array{id: int, name: string}
      */
-    private function rememberJob(string $kind, array $request, array $summary, ?int $userId, bool $printed = true): array
+    private function rememberJob(string $kind, array $request, array $summary, ?int $userId, bool $printed = true, string $name = ''): array
     {
         $hash = LabelJob::hashOf($kind, $request);
         $job = LabelJob::query()->where('request_hash', $hash)->first();
         if ($job === null) {
             $job = LabelJob::query()->create([
                 'kind' => $kind,
-                'name' => $this->jobName($kind, $summary),
+                'name' => $name !== '' ? mb_substr($name, 0, 80) : $this->jobName($kind, $summary),
                 'request' => $request,
                 'summary' => $summary,
                 'request_hash' => $hash,
                 'created_by' => $userId,
             ]);
+        }
+        // The same sheet prepared again under a name of its own takes that name.
+        if ($name !== '' && $job->name !== $name) {
+            $job->name = mb_substr($name, 0, 80);
         }
         // Saved without printing (a custom label's Save): kept, not counted as a print.
         $job->forceFill($printed ? ['print_count' => $job->print_count + 1, 'last_printed_at' => now(), 'summary' => $summary] : ['summary' => $summary])->save();
@@ -436,11 +442,11 @@ class LabelsController extends Controller
         if ($kind === 'box') {
             $who = trim((string) ($summary['customer'] ?? '')) ?: 'blank';
 
-            return mb_substr('Box label · ' . $who . ' · ' . now()->format('j M'), 0, 80);
+            return mb_substr('Box label · '.$who.' · '.now()->format('j M'), 0, 80);
         }
-        $parts = array_map(fn ($p) => $p['name'] . ' ×' . $p['copies'], array_slice($summary['products'] ?? [], 0, 3));
+        $parts = array_map(fn ($p) => $p['name'].' ×'.$p['copies'], array_slice($summary['products'] ?? [], 0, 3));
         $more = count($summary['products'] ?? []) - 3;
-        $name = implode(', ', $parts) . ($more > 0 ? " +{$more}" : '') . ' · ' . ($summary['label'] ?? '') . ' · ' . now()->format('j M');
+        $name = implode(', ', $parts).($more > 0 ? " +{$more}" : '').' · '.($summary['label'] ?? '').' · '.now()->format('j M');
 
         return mb_substr($name, 0, 80);
     }
@@ -450,7 +456,7 @@ class LabelsController extends Controller
         $rows = LabelJob::query()
             ->with('creator:id,name')
             ->when($request->filled('kind'), fn ($q) => $q->where('kind', $request->string('kind')))
-            ->when($request->filled('q'), fn ($q) => $q->where('name', 'like', '%' . $request->string('q') . '%'))
+            ->when($request->filled('q'), fn ($q) => $q->where('name', 'like', '%'.$request->string('q').'%'))
             ->when($request->boolean('pinned'), fn ($q) => $q->where('pinned', true))
             // Pinned (favourite) labels lead, then the last printed (2026-10-12).
             ->orderByDesc('pinned')
@@ -490,7 +496,7 @@ class LabelsController extends Controller
     public function duplicateJob(LabelJob $job): JsonResponse
     {
         $copy = $job->replicate(['print_count', 'last_printed_at']);
-        $copy->forceFill(['name' => mb_substr($job->name . ' (copy)', 0, 80), 'request_hash' => LabelJob::hashOf($job->kind, $job->request + ['copy' => $job->id . ':' . microtime(true)]), 'print_count' => 0, 'last_printed_at' => null, 'created_by' => request()->user()?->id])->save();
+        $copy->forceFill(['name' => mb_substr($job->name.' (copy)', 0, 80), 'request_hash' => LabelJob::hashOf($job->kind, $job->request + ['copy' => $job->id.':'.microtime(true)]), 'print_count' => 0, 'last_printed_at' => null, 'created_by' => request()->user()?->id])->save();
 
         return response()->json(['data' => $this->presentJob($copy->load('creator:id,name')) + ['request' => $copy->request]], 201);
     }
@@ -516,29 +522,29 @@ class LabelsController extends Controller
     {
         $data = $job->request;
         if ($job->kind === 'stickers') {
-            if (!empty($data['fill'])) {
+            if (! empty($data['fill'])) {
                 $today = Carbon::today();
                 $keep = LabelJob::dateMode($data) === 'keep';
                 $data['mfg'] = $today->toDateString();
                 $passed = null;
-                if (!$keep) {
+                if (! $keep) {
                     $data['exp'] = null;
-                } elseif (!empty($data['exp']) && Carbon::parse($data['exp'])->lessThan($today)) {
+                } elseif (! empty($data['exp']) && Carbon::parse($data['exp'])->lessThan($today)) {
                     $passed = Carbon::parse($data['exp']);
                 }
                 foreach (($data['items'] ?? []) as $i => $row) {
-                    if (!is_array($row)) {
+                    if (! is_array($row)) {
                         continue;
                     }
                     $data['items'][$i]['mfg'] = null;
-                    if (!$keep) {
+                    if (! $keep) {
                         $data['items'][$i]['exp'] = null;
-                    } elseif (!empty($row['exp']) && Carbon::parse($row['exp'])->lessThan($today)) {
+                    } elseif (! empty($row['exp']) && Carbon::parse($row['exp'])->lessThan($today)) {
                         $passed ??= Carbon::parse($row['exp']);
                     }
                 }
                 if ($passed !== null) {
-                    return response()->json(['message' => 'This label keeps its use-by date, ' . $passed->format('j M Y') . ', which has passed. Switch it to Shelf life from today, or edit the label with a new date.'], 422);
+                    return response()->json(['message' => 'This label keeps its use-by date, '.$passed->format('j M Y').', which has passed. Switch it to Shelf life from today, or edit the label with a new date.'], 422);
                 }
             }
             try {
@@ -630,10 +636,10 @@ class LabelsController extends Controller
         $rules = [
             'items' => 'present|array|max:16',
             'items.*.id' => 'required|integer|exists:items,id',
-            'items.*.article' => 'nullable|string|max:' . BoxLabel::ARTICLE_MAX,
+            'items.*.article' => 'nullable|string|max:'.BoxLabel::ARTICLE_MAX,
         ];
         foreach (BoxLabel::SHOP_FIELDS as $key) {
-            $rules[$key] = $key === 'storage' ? ['nullable', Rule::in(LabelSettings::STORAGES)] : 'nullable|string|max:' . BoxLabel::limit($key);
+            $rules[$key] = $key === 'storage' ? ['nullable', Rule::in(LabelSettings::STORAGES)] : 'nullable|string|max:'.BoxLabel::limit($key);
         }
         $data = $request->validate($rules);
         BoxLabel::saveForAccount($tradeAccount, $data, $data['items']);
@@ -642,7 +648,7 @@ class LabelsController extends Controller
     }
 
     /**
-     * @param list<array{id: int, qty: int, article: string}> $lines
+     * @param  list<array{id: int, qty: int, article: string}>  $lines
      * @return list<array<string, mixed>>
      */
     private function namedLines(array $lines): array
@@ -690,7 +696,7 @@ class LabelsController extends Controller
             'delivery' => $delivery->id,
             'delivery_number' => $delivery->delivery_number,
             'for' => (string) ($delivery->tradeAccount?->shop_name ?? ''),
-            'for2' => 'Delivery ' . $delivery->delivery_number . ' · ' . $when->format('D, j M Y'),
+            'for2' => 'Delivery '.$delivery->delivery_number.' · '.$when->format('D, j M Y'),
             'items' => $this->stickerItems($sent),
         ]]);
     }
@@ -712,13 +718,13 @@ class LabelsController extends Controller
             'catering' => $cateringRequest->id,
             'reference' => $cateringRequest->reference,
             'for' => trim((string) ($cateringRequest->company ?: $cateringRequest->contact_name)),
-            'for2' => implode(' · ', array_filter([$cateringRequest->reference, $occasion !== '' ? mb_strtoupper(mb_substr($occasion, 0, 1)) . mb_substr($occasion, 1) : null, $date])),
+            'for2' => implode(' · ', array_filter([$cateringRequest->reference, $occasion !== '' ? mb_strtoupper(mb_substr($occasion, 0, 1)).mb_substr($occasion, 1) : null, $date])),
             'items' => $this->stickerItems($wanted),
         ]]);
     }
 
     /**
-     * @param array<int, int> $copies item id → packs
+     * @param  array<int, int>  $copies  item id → packs
      * @return list<array{id: int, name: string, copies: int, label_enabled: bool}>
      */
     private function stickerItems(array $copies): array
@@ -747,7 +753,7 @@ class LabelsController extends Controller
     {
         $data = $request->validate(['en' => 'required|string|max:80', 'dv' => 'required|string|max:160']);
         $entry = LabelGlossaryEntry::query()->firstOrNew(['word' => LabelGlossaryEntry::key($data['en'])]);
-        $created = !$entry->exists;
+        $created = ! $entry->exists;
         $entry->fill(['en' => $data['en'], 'dv' => $data['dv']])->save();
 
         return response()->json(['data' => $this->presentWord($entry->refresh())], $created ? 201 : 200);
@@ -820,7 +826,7 @@ class LabelsController extends Controller
     {
         $rules = [];
         foreach (array_keys(Nutrition::FIELDS) as $key) {
-            $rules[$key] = 'nullable|numeric|min:0|max:' . ($key === 'kcal' ? 900 : 100);
+            $rules[$key] = 'nullable|numeric|min:0|max:'.($key === 'kcal' ? 900 : 100);
         }
         $data = $request->validate($rules);
         $clean = Nutrition::clean($data);
@@ -888,7 +894,7 @@ class LabelsController extends Controller
             ? LabelPrint::query()->stickers()->with(['item:id,name', 'customLabel:id,name', 'printer:id,name'])->where('code', $code)->first()
             : null;
         if ($print === null) {
-            return response()->json(['message' => 'No pack has the code ' . $code . '. A code is eight letters and digits, none of 0, O, 1 or I.'], 404);
+            return response()->json(['message' => 'No pack has the code '.$code.'. A code is eight letters and digits, none of 0, O, 1 or I.'], 404);
         }
 
         return response()->json(['data' => Reprint::present($print)]);
@@ -983,7 +989,7 @@ class LabelsController extends Controller
                 $key === LabelRolls::KITCHEN_LANG_KEY => ['sometimes', 'nullable', Rule::in(['', ...StickerSheet::LANGS])],
                 // My label rolls (round 6): a JSON list, tidied by LabelRolls before it is kept.
                 $key === LabelRolls::KEY => ['sometimes', 'nullable', 'string', 'max:8000', function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($value !== null && trim((string) $value) !== '' && !is_array(json_decode((string) $value, true))) {
+                    if ($value !== null && trim((string) $value) !== '' && ! is_array(json_decode((string) $value, true))) {
                         $fail('The label rolls are not a list.');
                     }
                 }],
@@ -1007,7 +1013,7 @@ class LabelsController extends Controller
     {
         $items = Item::query()
             ->where('is_active', true)
-            ->when(!$request->boolean('all'), fn ($q) => $q->where('label_enabled', true))
+            ->when(! $request->boolean('all'), fn ($q) => $q->where('label_enabled', true))
             ->with(['recipe:id,item_id', 'labelType.brand'])
             ->orderByDesc('label_enabled')
             ->orderBy('name')
@@ -1052,7 +1058,7 @@ class LabelsController extends Controller
             'label_photo_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
         ] + self::wrapRules());
         foreach (['label_title_media_id', 'label_photo_media_id'] as $key) {
-            if (!empty($data[$key]) && Media::query()->whereKey($data[$key])->value('media_type') !== 'image') {
+            if (! empty($data[$key]) && Media::query()->whereKey($data[$key])->value('media_type') !== 'image') {
                 return response()->json(['message' => 'Pick an image for the label.', 'errors' => [$key => ['Pick an image.']]], 422);
             }
         }
@@ -1068,7 +1074,7 @@ class LabelsController extends Controller
     /** A typed barcode that is not an EAN-13 or EAN-8 is refused with the reason. */
     private function barcodeProblem(array $data): ?JsonResponse
     {
-        if (!empty($data['label_barcode']) && ($why = Barcode::problem($data['label_barcode'])) !== null) {
+        if (! empty($data['label_barcode']) && ($why = Barcode::problem($data['label_barcode'])) !== null) {
             return response()->json(['message' => $why, 'errors' => ['label_barcode' => [$why]]], 422);
         }
 
@@ -1105,7 +1111,7 @@ class LabelsController extends Controller
             $pouch = array_key_exists('label_pouch', $data) ? $data['label_pouch'] : request()->input('label_pouch');
             $data['label_pouch'] = is_array($pouch) ? PouchConfig::clean($pouch) : null;
         }
-        if (!array_key_exists('label_wrap', $data)) {
+        if (! array_key_exists('label_wrap', $data)) {
             return null;
         }
         if ($data['label_wrap'] === null) {
@@ -1153,11 +1159,11 @@ class LabelsController extends Controller
         }
         $token = StickerSheet::keepDraft($data);
         try {
-            $req = StickerSheet::normalise(['items' => 'd' . $token . ':1', 'layout' => $size['layout'] ?? 'single-105x148', 'w' => $size['w'] ?? null, 'h' => $size['h'] ?? null, 'lang' => $size['lang'] ?? 'en', 'fill' => true]);
+            $req = StickerSheet::normalise(['items' => 'd'.$token.':1', 'layout' => $size['layout'] ?? 'single-105x148', 'w' => $size['w'] ?? null, 'h' => $size['h'] ?? null, 'lang' => $size['lang'] ?? 'en', 'fill' => true]);
         } catch (InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
-        $query = ['items' => 'd' . $token . ':1', 'lang' => $req['lang'], 'layout' => $req['layout'], 'w' => $req['w'], 'h' => $req['h'], 'fill' => 1, 'preview' => 1];
+        $query = ['items' => 'd'.$token.':1', 'lang' => $req['lang'], 'layout' => $req['layout'], 'w' => $req['w'], 'h' => $req['h'], 'fill' => 1, 'preview' => 1];
         // Where the strips (a wrap-around label) and the parts land (rounds 2 and 3, 2026-10-13), for the editor's touch zones.
         $summary = $this->stickers->summary($req);
 
@@ -1221,7 +1227,7 @@ class LabelsController extends Controller
             // "builtin" is the momo photo that comes with the templates; a number a library picture.
             'photo' => 'sometimes|nullable',
             'on' => ['sometimes', Rule::in(['sheet', 'printer'])],
-            'sizes' => 'required|array|min:1|max:' . PouchSet::MAX_SIZES,
+            'sizes' => 'required|array|min:1|max:'.PouchSet::MAX_SIZES,
             'sizes.*.word' => 'required|string|max:14|distinct:ignore_case',
             'sizes.*.qty' => 'sometimes|nullable|integer|min:1|max:9999',
             'sizes.*.price' => 'sometimes|nullable|numeric|min:0|max:99999999',
@@ -1229,7 +1235,7 @@ class LabelsController extends Controller
         ]);
         foreach ($data['sizes'] as $i => $size) {
             $p = $presets[$size['preset']];
-            if (!PouchConfig::fits($p['shape'], $p['w'], $p['h'])) {
+            if (! PouchConfig::fits($p['shape'], $p['w'], $p['h'])) {
                 return response()->json(['message' => 'Pick a wide label size for a pouch label.', 'errors' => ["sizes.{$i}.preset" => ['Pick a wide size, such as 140 × 62 mm.']]], 422);
             }
         }
@@ -1267,7 +1273,7 @@ class LabelsController extends Controller
     {
         $data = $request->validate(['file' => 'required|file|max:4096', 'slot' => 'sometimes|in:photo,title']);
         try {
-            $media = LabelMedia::storePng((string) file_get_contents($request->file('file')->getRealPath()), "{$customLabel->name} label " . ($data['slot'] ?? 'photo'));
+            $media = LabelMedia::storePng((string) file_get_contents($request->file('file')->getRealPath()), "{$customLabel->name} label ".($data['slot'] ?? 'photo'));
         } catch (InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => ['file' => [$e->getMessage()]]], 422);
         }
@@ -1285,7 +1291,7 @@ class LabelsController extends Controller
     {
         $data = $request->validate(['file' => 'required|file|max:4096', 'slot' => 'sometimes|in:photo,title']);
         try {
-            $media = LabelMedia::storePng((string) file_get_contents($request->file('file')->getRealPath()), 'Label ' . ($data['slot'] ?? 'photo'));
+            $media = LabelMedia::storePng((string) file_get_contents($request->file('file')->getRealPath()), 'Label '.($data['slot'] ?? 'photo'));
         } catch (InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => ['file' => [$e->getMessage()]]], 422);
         }
@@ -1296,7 +1302,7 @@ class LabelsController extends Controller
     public function duplicateCustomLabel(Request $request, CustomLabel $customLabel): JsonResponse
     {
         $copy = $customLabel->replicate(['created_by']);
-        $copy->forceFill(['name' => mb_substr($customLabel->name . ' (copy)', 0, 80), 'created_by' => $request->user()?->id])->save();
+        $copy->forceFill(['name' => mb_substr($customLabel->name.' (copy)', 0, 80), 'created_by' => $request->user()?->id])->save();
 
         return response()->json(['data' => $this->presentCustom($copy->refresh())], 201);
     }
@@ -1313,7 +1319,7 @@ class LabelsController extends Controller
     private function customData(Request $request, ?CustomLabel $label): array|JsonResponse
     {
         $data = $request->validate([
-            'name' => ($label ? 'sometimes' : 'required') . '|string|max:80',
+            'name' => ($label ? 'sometimes' : 'required').'|string|max:80',
             'name_dv' => 'sometimes|nullable|string|max:80',
             'brand_id' => 'sometimes|nullable|integer|exists:label_brands,id',
             'label_type_id' => 'sometimes|nullable|integer|exists:label_types,id',
@@ -1347,7 +1353,7 @@ class LabelsController extends Controller
             'label_title_media_id' => 'sometimes|nullable|integer|exists:media_assets,id',
         ] + self::wrapRules());
         foreach (['label_title_media_id', 'label_photo_media_id'] as $key) {
-            if (!empty($data[$key]) && Media::query()->whereKey($data[$key])->value('media_type') !== 'image') {
+            if (! empty($data[$key]) && Media::query()->whereKey($data[$key])->value('media_type') !== 'image') {
                 return response()->json(['message' => 'Pick an image for the label.', 'errors' => [$key => ['Pick an image.']]], 422);
             }
         }
@@ -1496,10 +1502,10 @@ class LabelsController extends Controller
     private function templateData(Request $request, bool $new): array|JsonResponse
     {
         $data = $request->validate([
-            'name' => ($new ? 'required' : 'sometimes') . '|string|max:' . LabelTemplates::NAME_MAX,
-            'source' => 'sometimes|nullable|string|max:' . LabelTemplates::SOURCE_MAX,
+            'name' => ($new ? 'required' : 'sometimes').'|string|max:'.LabelTemplates::NAME_MAX,
+            'source' => 'sometimes|nullable|string|max:'.LabelTemplates::SOURCE_MAX,
             // Present, possibly empty: a template may carry a size and nothing else.
-            'fields' => ($new ? 'present' : 'sometimes') . '|array',
+            'fields' => ($new ? 'present' : 'sometimes').'|array',
             'size' => 'sometimes|nullable|array',
         ] + LabelTemplates::rules());
         if (array_key_exists('name', $data)) {
@@ -1559,7 +1565,7 @@ class LabelsController extends Controller
         }
         $n = $type->items()->count();
         if ($n > 0) {
-            return response()->json(['message' => "{$n} " . ($n === 1 ? 'item uses' : 'items use') . ' this type. Move them to another type first.'], 422);
+            return response()->json(['message' => "{$n} ".($n === 1 ? 'item uses' : 'items use').' this type. Move them to another type first.'], 422);
         }
         $type->delete();
 
@@ -1634,7 +1640,7 @@ class LabelsController extends Controller
     private function footerData(Request $request, LabelFooter $footer): array
     {
         $data = $request->validate([
-            'name' => ($footer->exists ? 'sometimes' : 'required') . '|string|max:60',
+            'name' => ($footer->exists ? 'sometimes' : 'required').'|string|max:60',
             'style' => ['sometimes', Rule::in(LabelFooter::STYLES)],
             'heading' => 'sometimes|nullable|string|max:60',
             'heading_dv' => 'sometimes|nullable|string|max:60',
@@ -1711,7 +1717,7 @@ class LabelsController extends Controller
         }
         $n = $brand->types()->count();
         if ($n > 0) {
-            return response()->json(['message' => "{$n} label " . ($n === 1 ? 'type uses' : 'types use') . ' this brand. Move them to another brand first.'], 422);
+            return response()->json(['message' => "{$n} label ".($n === 1 ? 'type uses' : 'types use').' this brand. Move them to another brand first.'], 422);
         }
         $brand->delete();
 
@@ -1722,7 +1728,7 @@ class LabelsController extends Controller
     private function brandData(Request $request, LabelBrand $brand): array
     {
         return $request->validate([
-            'name' => ($brand->exists ? 'sometimes' : 'required') . '|string|max:60',
+            'name' => ($brand->exists ? 'sometimes' : 'required').'|string|max:60',
             'name_dv' => 'sometimes|nullable|string|max:60',
             'tagline' => 'sometimes|nullable|string|max:80',
             'tagline_dv' => 'sometimes|nullable|string|max:80',

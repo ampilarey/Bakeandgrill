@@ -110,4 +110,19 @@ class LabelAuditFitTest extends TestCase
         $this->assertLessThanOrEqual(14.0, LabelText::widthMm($lines[1], 6, 'j4'));
         $this->assertSame(['one', 'two'], LabelText::cut(['one', 'two'], 2, 6, 14, 'j4'));
     }
+
+    /** Owner, 2026-11-12: "When saving the label can't we use own name?" */
+    public function test_a_sheet_is_saved_under_the_name_typed_for_it(): void
+    {
+        $id = $this->label();
+        $body = ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 2]], 'layout' => 'a4-4', 'lang' => 'en', 'fill' => true];
+        $this->postJson('/api/labels/stickers/url', $body + ['save_as' => '  Bajiya for the shop  '])->assertOk()->assertJsonPath('job.name', 'Bajiya for the shop');
+        // The same sheet again with no name keeps the name it has; with another name it takes that one.
+        $this->postJson('/api/labels/stickers/url', $body)->assertOk()->assertJsonPath('job.name', 'Bajiya for the shop');
+        $this->postJson('/api/labels/stickers/url', $body + ['save_as' => 'Bajiya, big sticker'])->assertOk()->assertJsonPath('job.name', 'Bajiya, big sticker');
+        $this->assertSame(1, \App\Models\LabelJob::query()->count(), 'one saved label, renamed, not three');
+        // No name at all: named from what it prints.
+        $auto = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 1]], 'layout' => 'a4-4', 'lang' => 'dv', 'fill' => true])->assertOk()->json('job.name');
+        $this->assertStringContainsString('Chicken Kulhi Bajiya', $auto);
+    }
 }

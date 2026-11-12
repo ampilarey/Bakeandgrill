@@ -536,6 +536,7 @@ export const GUIDES: Guide[] = [
     ],
     notes: [
       'You do not save by hand. Print or PDF on the last step of Make a label saves the sheet here.',
+      'To give it your own name, type it in Name in Saved labels (optional) before you print, on the last step of Make a label or on Print labels.',
       'Removing a saved label removes the saved sheet only. The label itself stays under Custom labels, where its own Remove is.',
       'Tap a saved label\'s name to rename it.',
     ],

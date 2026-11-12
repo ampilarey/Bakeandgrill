@@ -177,6 +177,8 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const [fill, setFill] = useState(defaults?.fill ?? Boolean(productionItemId));
   const [mfg, setMfg] = useState(defaults?.mfg ?? today());
   const [exp, setExp] = useState(defaults?.exp ?? '');
+  // The saved label's own name (owner, 2026-11-12); empty names it from what it prints.
+  const [saveAs, setSaveAs] = useState('');
   const [batch, setBatch] = useState(defaults?.batch ?? '');
   const [qty, setQty] = useState(defaults?.qty ? String(defaults.qty) : '');
   const [busy, setBusy] = useState(false);
@@ -508,7 +510,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const prepare = async () => {
     setBusy(true); setError(null); setResult(null); setSent(null);
     try {
-      const r = await stickerLinks(request());
+      const r = await stickerLinks({ ...request(), ...(saveAs.trim() ? { save_as: saveAs.trim() } : {}) });
       rememberSize(choice, onRoll?.id ?? null);
       setResult(r);
       // On a phone the summary lands below the fold; bring it up.
@@ -924,6 +926,13 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
         </div>
       )}
 
+      {!result && !fixedItems && (
+        <section>
+          <label className={labelClass} htmlFor="label-save-as">Name in Saved labels (optional)</label>
+          <input id="label-save-as" value={saveAs} maxLength={80} onChange={(e) => setSaveAs(e.target.value)} placeholder="Frozen Momo, medium pack" className={fieldClass} data-testid="label-save-as" />
+          <p className="text-xs text-[var(--color-text-muted)] mt-1">Your own name for this sheet. Empty: named from the products, the count and the size.</p>
+        </section>
+      )}
       {result ? (
         <section ref={summaryRef} className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] space-y-3" data-testid="sticker-summary">
           <p className="text-sm font-semibold text-[var(--color-text)]">

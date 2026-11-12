@@ -363,6 +363,8 @@ export type StickerRequest = {
   preview?: boolean;
   /** Keep it under Saved labels without printing: nothing logged or counted off a roll (label audit, 2026-10-16). */
   save?: boolean;
+  /** The saved label's own name; empty names it from what it prints. */
+  save_as?: string;
   /** Packed for (2026-10-12): who the packs are for, and a second line (the delivery, the date). */
   for?: string | null;
   for2?: string | null;

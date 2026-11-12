@@ -192,6 +192,8 @@ export function MakeLabelWizard({ canManage = false }: {
   const [mfg, setMfg] = useState(today());
   // A use-by for this print only (label audit, 2026-10-16); empty follows the shelf life.
   const [exp, setExp] = useState('');
+  // The saved label's own name; empty names it from what it prints.
+  const [saveAs, setSaveAs] = useState('');
   // The size a sized item's sticker is for: its price and recipe follow it.
   const [sizeId, setSizeId] = useState<number | null>(null);
   const [qty, setQty] = useState('');
@@ -389,7 +391,7 @@ export function MakeLabelWizard({ canManage = false }: {
     if (!picked) return;
     setPrinting(how); setError(null);
     try {
-      const r = await stickerLinks(request(copies, false));
+      const r = await stickerLinks({ ...request(copies, false), ...(saveAs.trim() ? { save_as: saveAs.trim() } : {}) });
       rememberSize(choice, rollPicked?.id ?? null);
       setResult(r);
       if (how === 'print') openLabelSheet(r.url, r.pdf_url);
@@ -402,7 +404,7 @@ export function MakeLabelWizard({ canManage = false }: {
   };
 
   const startAgain = () => {
-    setStep(1); setKind(null); setPicked(null); setResult(null); setError(null); setPreview(null); setOwnSize(false); setQuery(''); setSizeId(null); setExp('');
+    setStep(1); setKind(null); setPicked(null); setResult(null); setError(null); setPreview(null); setOwnSize(false); setQuery(''); setSizeId(null); setExp(''); setSaveAs('');
     setSpots([]); setQuick(null); setQuickDraft(null); setBatch(''); setPackedFor(''); setPackedFor2('');
   };
 
@@ -740,6 +742,13 @@ export function MakeLabelWizard({ canManage = false }: {
               {stock && stock.on !== 'printer' && stock.perPage > 0 && <p className="text-xs text-[var(--color-text-muted)] mt-1">{Math.ceil(copies / stock.perPage)} {Math.ceil(copies / stock.perPage) === 1 ? 'sheet' : 'sheets'} of {stock.perPage}.</p>}
             </div>
           </div>
+          {!result && (
+            <div>
+              <label className={labelClass} htmlFor="make-save-as">Name in Saved labels (optional)</label>
+              <input id="make-save-as" value={saveAs} maxLength={80} onChange={(e) => setSaveAs(e.target.value)} placeholder={`${picked.name} ×${copies}`} className={fieldClass} data-testid="make-save-as" />
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">Empty: named from the product, the count and the size.</p>
+            </div>
+          )}
           <p className="text-xs text-[var(--color-text-muted)]">{picked.name} · {sizeLine}.</p>
           {checked && <UseByLine exp={checked.products[0]?.exp} shelf={checked.products[0]?.shelf_life_days} fill={fill} />}
           <DroppedNote dropped={checked?.dropped} />
