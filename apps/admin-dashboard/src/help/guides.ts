@@ -506,6 +506,24 @@ export const GUIDES: Guide[] = [
   },
 
   {
+    id: 'label-expiry',
+    page: '/labels',
+    title: 'Set the expiry date on a label in one tap',
+    open: { to: '/labels/stickers', label: 'Open Print labels' },
+    steps: [
+      'Open Labels, then Print labels (or Make a label, on the Looks right step).',
+      'Keep Fill in the dates ticked. Made on starts as today.',
+      'Under Expiry (Use by in Make a label) tap 1 month, 2 months, 3 months or 6 months. The date is worked out from Made on.',
+      'Tap Shelf life to go back to the label\'s own shelf life.',
+    ],
+    notes: [
+      'The months are for this print only. The label\'s own shelf life is not changed.',
+      'Change Made on afterwards and a months pick moves with it. A date you typed yourself stays as typed.',
+      'On Print labels each ticked product shows the expiry it will print, as EXP and the date.',
+    ],
+    words: 'expiry expire date use by best before month shelf life',
+  },
+  {
     id: 'saved-labels',
     page: '/labels',
     title: 'Find a label I made, print it again or remove it',

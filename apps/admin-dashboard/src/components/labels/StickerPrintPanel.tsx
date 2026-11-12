@@ -1,3 +1,4 @@
+import { DATE_BOX, ExpiryChips, expiryForNewMfg } from './ExpiryChips';
 import { POUCH_FALLBACK, pouchFits } from './PouchPicker';
 import { today as localToday } from '../../utils/dateHelpers';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -805,12 +806,13 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           </span>
         </label>
         {fill && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div><label className={labelClass} htmlFor="label-mfg">Made on</label><input id="label-mfg" type="date" value={mfg} onChange={(e) => setMfg(e.target.value)} className={fieldClass} /></div>
+          <div className="grid gap-3 sm:grid-cols-2 [&>div]:min-w-0">
+            <div><label className={labelClass} htmlFor="label-mfg">Made on</label><input id="label-mfg" type="date" value={mfg} onChange={(e) => { setExp((x) => expiryForNewMfg(mfg, e.target.value, x)); setMfg(e.target.value); }} className={`${fieldClass} ${DATE_BOX}`} /></div>
             <div>
               <label className={labelClass} htmlFor="label-exp">Expiry</label>
-              <input id="label-exp" type="date" value={exp} onChange={(e) => setExp(e.target.value)} className={fieldClass} />
-              <p className="text-xs text-[var(--color-text-muted)] mt-1">Leave empty to use each product's shelf life{fixedItems ? '' : '; each picked product shows its expiry above'}.</p>
+              <input id="label-exp" type="date" value={exp} onChange={(e) => setExp(e.target.value)} className={`${fieldClass} ${DATE_BOX}`} />
+              <ExpiryChips mfg={mfg} value={exp} onChange={setExp} idPrefix="label-exp" />
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">Shelf life uses each product's own{fixedItems ? '' : '; each picked product shows its expiry above'}.</p>
             </div>
           </div>
         )}

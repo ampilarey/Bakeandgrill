@@ -482,7 +482,10 @@ a narrow compact sticker (50 to 66 mm) breaks its storage line at the bullet and
 holds; `dropped()` reports "Part of the ingredients" when the list was cut. On screen: Print labels says when a picked
 pouch or flat-sided bottle label is at a size that cannot draw it, with one tap to its size (`size-made-for`); Saved
 labels and Custom labels rows carry words on their buttons (PDF, Change, Copy, Pin, Remove); the made-on date is the
-shop's day (`utils/dateHelpers.today()`), never `toISOString()`. `LabelAuditFitTest`. How to
+shop's day (`utils/dateHelpers.today()`), never `toISOString()`. `LabelAuditFitTest`. Every expiry box that takes a
+date carries `ExpiryChips` (owner, 2026-11-12: "easy expire date selection. 1 month, 2, 3"): Shelf life (empty, the
+label's own), 1, 2, 3 and 6 calendar months from Made on (`monthsAfter()`), a months pick moving with Made on
+(`expiryForNewMfg()`); a date input on these forms takes `DATE_BOX` so an iPhone keeps it in its column. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

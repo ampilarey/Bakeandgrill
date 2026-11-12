@@ -1,3 +1,4 @@
+import { DATE_BOX, ExpiryChips, expiryForNewMfg } from './ExpiryChips';
 import { today as localToday } from '../../utils/dateHelpers';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -682,11 +683,12 @@ export function MakeLabelWizard({ canManage = false }: {
               {fill && (
                 <div>
                   <label className={labelClass} htmlFor="make-mfg">Made on</label>
-                  <input id="make-mfg" type="date" value={mfg} onChange={(e) => setMfg(e.target.value)} className={fieldClass} />
+                  <input id="make-mfg" type="date" value={mfg} onChange={(e) => { setExp((x) => expiryForNewMfg(mfg, e.target.value, x)); setMfg(e.target.value); }} className={`${fieldClass} ${DATE_BOX}`} />
                   <label className={`${labelClass} mt-3`} htmlFor="make-exp">Use by</label>
-                  <input id="make-exp" type="date" value={exp} min={mfg} onChange={(e) => setExp(e.target.value)} className={fieldClass} data-testid="make-exp" />
+                  <input id="make-exp" type="date" value={exp} min={mfg} onChange={(e) => setExp(e.target.value)} className={`${fieldClass} ${DATE_BOX}`} data-testid="make-exp" />
+              <ExpiryChips mfg={mfg} value={exp} onChange={setExp} idPrefix="make-exp" />
                   <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                    {exp ? 'For this print only. The product\'s shelf life stays as it is.' : 'Empty: worked out from its shelf life.'}
+                    {exp ? 'For this print only. The product\'s shelf life stays as it is.' : 'Shelf life: worked out from the label\'s own.'}
                   </p>
                 </div>
               )}
