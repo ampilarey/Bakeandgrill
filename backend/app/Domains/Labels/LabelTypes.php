@@ -157,7 +157,9 @@ final class LabelTypes
         // when there is one (public/brand/<name>-logo.png, e.g. Amma), else
         // the main logo.
         if ($logo === null && !$isDefault) {
-            $logo = LabelImage::fromPublic('brand/' . self::slug($brand->name) . '-logo.png', 600);
+            $logo = LabelImage::fromPublic('brand/' . self::slug($brand->name) . '-logo.png', 600)
+                // However the name was typed: "Amma’s" prints the shipped Amma mark.
+                ?? LabelImage::fromPublic('brand/' . LabelBrand::key((string) $brand->name) . '-logo.png', 600);
         }
         $logo ??= LabelImage::fromPublic('brand/logo-light.png', 500);
 
@@ -171,6 +173,18 @@ final class LabelTypes
             'logo_ratio' => LabelImage::ratio($logo),
             'is_default' => $isDefault,
         ];
+    }
+
+    /** The address of the logo shipped for a brand's name, however it was typed ("Amma’s" is Amma). */
+    private static function shippedLogo(string $name): ?string
+    {
+        foreach (array_unique([self::slug($name), LabelBrand::key($name)]) as $slug) {
+            if ($slug !== '' && is_file(public_path("brand/{$slug}-logo.png"))) {
+                return "/brand/{$slug}-logo.png";
+            }
+        }
+
+        return null;
     }
 
     private static function slug(string $name): string
@@ -224,7 +238,7 @@ final class LabelTypes
             'tagline' => $brand->is_default ? ($brand->tagline ?: $contact['tagline']) : $brand->tagline,
             'tagline_dv' => $brand->tagline_dv,
             'logo_media_id' => $brand->logo_media_id,
-            'logo_url' => $brand->logo?->original_url ?? $brand->logo?->url ?? ($brand->is_default ? '/brand/logo-light.png' : (is_file(public_path('brand/' . self::slug($brand->name) . '-logo.png')) ? '/brand/' . self::slug($brand->name) . '-logo.png' : null)),
+            'logo_url' => $brand->logo?->original_url ?? $brand->logo?->url ?? ($brand->is_default ? '/brand/logo-light.png' : self::shippedLogo((string) $brand->name)),
             'is_default' => (bool) $brand->is_default,
             'sort' => $brand->sort,
             'types_count' => $brand->types_count ?? null,

@@ -296,7 +296,7 @@ final class LabelTemplates
         // name the brand it prints under and the product it is for (owner, 2026-11-11: the momo plate, Amma's rihaakuru).
         $photo = self::builtinPhoto($builtin);
         $fields = self::normaliseFields($builtin['fields']);
-        if (isset($builtin['brand']) && ($brandId = LabelBrand::query()->where('name', $builtin['brand'])->value('id'))) {
+        if (isset($builtin['brand']) && ($brandId = LabelBrand::named($builtin['brand'])?->id)) {
             $fields['brand_id'] = (int) $brandId;
             $names['brands'] = $names['brands']->union(LabelBrand::query()->whereKey($brandId)->pluck('name', 'id'));
         }

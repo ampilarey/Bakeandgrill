@@ -154,4 +154,22 @@ class BottleFacesLabelTest extends TestCase
             $this->assertArrayHasKey($b['size']['preset'], array_column(StickerLayouts::PRESETS, null, 'id'));
         }
     }
+
+    /** Owner, 2026-11-12: the brand typed as "Amma’s" was not picked by the template, and picked by hand it printed Bake & Grill's logo. */
+    public function test_a_brand_typed_with_a_possessive_is_the_shipped_brand(): void
+    {
+        $this->assertSame('amma', LabelBrand::key('Amma’s'));
+        $this->assertSame('amma', LabelBrand::key("AMMA'S"));
+        $this->assertSame('bake-grill', LabelBrand::key('Bake & Grill'));
+        LabelBrand::query()->where('name', 'Amma')->update(['name' => 'Amma’s']);
+        $brand = LabelBrand::named('Amma');
+        $this->assertNotNull($brand);
+
+        $t = collect($this->getJson('/api/labels/templates')->assertOk()->json('builtin'))->keyBy('id')['rihaakuru-bottle'];
+        $this->assertSame($brand->id, $t['fields']['brand_id'], 'the template still picks it');
+        $row = collect($this->getJson('/api/labels/brands')->assertOk()->json('data'))->firstWhere('id', $brand->id);
+        $this->assertSame('/brand/amma-logo.png', $row['logo_url'], 'and its shipped logo shows');
+        $drawn = app(\App\Domains\Labels\LabelTypes::class)->brand($brand);
+        $this->assertSame(\App\Domains\Labels\LabelImage::fromPublic('brand/amma-logo.png', 600), $drawn['logo'], 'on the label too, not the business logo');
+    }
 }

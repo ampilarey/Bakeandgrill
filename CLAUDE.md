@@ -467,7 +467,7 @@ never crosses a part, with `label_wrap.corner` mm (3 by default, Room at each co
 brand and its photo (`product`, `brand`, `photo` on a `BUILTIN` row, as the momo ones bring their plate). The wrap part
 `maker` is the business's own side (logo, name, phone, website, address, complaints QR); `label_wrap.exp_label` words the
 expiry box ("Best before"); Make one beside a barcode box gives an in-house EAN starting with 2 (`inHouseBarcode()`). The
-Amma brand's shipped logo is the round "AMMA'S" mark (owner, 2026-11-11).
+Amma brand's shipped logo is the round "AMMA'S" mark (owner, 2026-11-11). A brand is matched by `LabelBrand::key()` (lower case, no possessive: "Amma’s" is "amma"; owner, 2026-11-12: the brand typed as Amma’s was not picked by the template and printed the business logo), so a built-in template's `brand` goes through `LabelBrand::named()` and a shipped logo is found by that key too; never match a brand by its exact name.
 `BottleFacesLabelTest`. The wizard comes to a label at the size it is made for (owner, 2026-11-11: a momo label
 made from its template still asked "which label" with the big sticker picked): a new custom label's `onSaved` hands
 over the size its editor showed and the wizard goes straight to Looks right; a pouch label or a bottle with flat sides
