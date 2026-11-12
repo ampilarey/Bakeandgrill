@@ -1155,7 +1155,8 @@ class LabelsController extends Controller
             'lang' => ['sometimes', Rule::in(StickerSheet::LANGS)],
         ]);
         if (($data['name'] ?? '') === '') {
-            $data['name'] = 'Untitled';
+            // Reads as a blank to fill (owner, 2026-11-12: "Untitled" in the preview looked like a name that would not change).
+            $data['name'] = 'Product name';
         }
         $token = StickerSheet::keepDraft($data);
         try {
