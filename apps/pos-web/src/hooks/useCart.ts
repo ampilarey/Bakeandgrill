@@ -14,7 +14,7 @@ import {
 } from "@shared/utils/serviceCharge";
 import { discountedSubtotalLaar as calcDiscountedSubtotalLaar } from "@shared/utils/effectiveDiscount";
 import { effectiveLineTaxRatePercent, packagingTaxLaar } from "../utils/posCartTotals";
-import { fetchPublicSiteSettings, fetchGstBootstrap } from "../api";
+import { fetchPublicSiteSettingsStrict, fetchGstBootstrap } from "../api";
 import { previewGiftCardDiscount } from "../utils/giftCardPreview";
 import {
   loadCachedGstBootstrap,
@@ -220,15 +220,17 @@ export function useCart(posOrderType: PosOrderType | null = "Takeaway") {
   useEffect(() => {
     let alive = true;
 
-    (async () => {
+    // The service charge follows Admin the way the GST rate does (till totals audit, 2026-11-12): asked again every
+    // minute and when the till comes back to the front. A failed ask used to read as "no service charge" and was
+    // saved as the offline copy; now it keeps what the cart has, and only the first load falls back to the saved copy.
+    const loadServiceCharge = async (first: boolean) => {
       try {
-        const settings = await fetchPublicSiteSettings();
+        const settings = await fetchPublicSiteSettingsStrict();
         if (!alive) return;
         setServiceChargeConfig(parseServiceChargePublicSettings(settings));
         void saveCachedServiceChargeSettings(settings as Record<string, unknown>);
       } catch {
-        // Live fetch failed — hydrate from IndexedDB BEFORE falling back
-        // to hardcoded defaults so offline math still matches settings.
+        if (!first) return;
         const cached = await loadCachedServiceChargeSettings();
         if (!alive) return;
         if (cached) {
@@ -241,7 +243,8 @@ export function useCart(posOrderType: PosOrderType | null = "Takeaway") {
           setServiceChargeConfig(null);
         }
       }
-    })();
+    };
+    void loadServiceCharge(true);
 
     // `first`: the load at start, which falls back to the saved copy. A later refresh that fails keeps what the cart has.
     const loadGst = async (first: boolean) => {
@@ -277,8 +280,8 @@ export function useCart(posOrderType: PosOrderType | null = "Takeaway") {
     void loadGst(true);
     // The rate follows Admin while the till stays open: asked again every minute and when the till comes back to the front,
     // so the cart and the saved ticket never differ by the GST (owner, 2026-11-12).
-    const gstTimer = window.setInterval(() => void loadGst(false), 60_000);
-    const onFront = () => { if (document.visibilityState === 'visible') void loadGst(false); };
+    const gstTimer = window.setInterval(() => { void loadGst(false); void loadServiceCharge(false); }, 60_000);
+    const onFront = () => { if (document.visibilityState === 'visible') { void loadGst(false); void loadServiceCharge(false); } };
     document.addEventListener('visibilitychange', onFront);
 
     return () => {

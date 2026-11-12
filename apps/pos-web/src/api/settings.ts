@@ -1,11 +1,16 @@
 import { request } from "./client";
 
+/** The public settings, or an error: a failed ask is never an answer. */
+export async function fetchPublicSiteSettingsStrict(): Promise<Record<string, string | null>> {
+  const data = await request<{ settings: Record<string, string | null> }>(
+    "/site-settings/public",
+  );
+  return data.settings ?? {};
+}
+
 export async function fetchPublicSiteSettings(): Promise<Record<string, string | null>> {
   try {
-    const data = await request<{ settings: Record<string, string | null> }>(
-      "/site-settings/public",
-    );
-    return data.settings ?? {};
+    return await fetchPublicSiteSettingsStrict();
   } catch {
     return {};
   }

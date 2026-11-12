@@ -777,6 +777,35 @@ export function usePosApp() {
 
   clearPendingPaymentRef.current = order.clearPendingPayment;
 
+  /**
+   * A saved ticket opened and not changed (and no reward staged on it since) is charged at
+   * the server's total, so the cart shows the server's figures, never the till's own sums
+   * (owner, 2026-11-12: the cart said 419 and Charge asked 400).
+   */
+  const rewardStaged =
+    (cart.appliedPromo != null && !cart.appliedPromo.serverApplied)
+    || (cart.appliedLoyalty != null && !cart.appliedLoyalty.serverApplied)
+    || (cart.appliedGiftCard != null && !cart.appliedGiftCard.serverApplied);
+  const savedTotal = order.savedTicket?.total ?? null;
+  const savedFigures = order.savedTicket?.figures ?? null;
+  const savedTicket = useMemo(
+    () => (savedTotal != null && !rewardStaged ? { total: savedTotal, figures: savedFigures } : null),
+    [savedTotal, savedFigures, rewardStaged],
+  );
+
+  /** The money lines the cart and the Charge screen show: the saved order's own when there is one. */
+  const shown = useMemo(() => {
+    const f = savedTicket?.figures ?? null;
+    const gift = cart.appliedGiftCard?.discount ?? 0;
+    return {
+      tax: f ? f.tax : cart.cartTax,
+      serviceCharge: f ? f.serviceCharge : cart.cartServiceCharge,
+      packaging: f ? f.packaging : cart.cartPackagingFee,
+      grandTotal: savedTicket ? savedTicket.total : cart.cartGrandTotal,
+      total: savedTicket ? Math.round(Math.max(0, savedTicket.total - gift) * 100) / 100 : cart.cartTotal,
+    };
+  }, [savedTicket, cart.cartTax, cart.cartServiceCharge, cart.cartPackagingFee, cart.cartGrandTotal, cart.cartTotal, cart.appliedGiftCard?.discount]);
+
   const chargeTotal = useMemo(() => {
     // Retry mode: pin Charge to the failed settle's due amount — but never
     // let a stuck 0.00 snapshot hide a live cart the cashier is ringing.
@@ -799,8 +828,14 @@ export function usePosApp() {
     }
     // A delivery fee on its own is not a sale: with Delivery selected and
     // nothing in the cart, the bar used to show the fee as the total.
+    // A saved ticket with nothing changed: Charge takes the server's total, so show that.
+    if (savedTicket) {
+      const gift = cart.appliedGiftCard?.discount ?? 0;
+      return Math.round(Math.max(0, savedTicket.total - gift) * 100) / 100;
+    }
     return withDeliveryFee(cart.cartTotal, cart.cartItems.length, orderType, deliveryFeeEst);
   }, [
+    savedTicket,
     order.pendingPaymentForOrderId,
     order.pendingPaymentTotalDue,
     order.resumedOrderId,
@@ -1477,7 +1512,7 @@ export function usePosApp() {
     smsNotifications, discountControls, notePickerKey, setNotePickerKey, shift, canUseNonOrderFeatures,
     canEnterPosShell, shiftOpen, menu, cart, applyPosDeliveryAddress, handleClearCart,
     deliveryFeeEst, ops, refreshOfflineCounts, filteredItems, refreshOpenTickets, order,
-    chargeTotal, handleAttachCustomer, handleDetachCustomer, posUpdate, refreshTables,
+    chargeTotal, shown, handleAttachCustomer, handleDetachCustomer, posUpdate, refreshTables,
     refreshQuickNotes, isRefreshingAll, refreshAll, checkDeviceStatus, handleLogin, handlePasswordLogin,
     handleLogout, handleOpenShift, handleCloseShift, handleCountAttempt, handleSaveTicketSubmit, handleUnlock,
     lockScreen, drawerItems, paneAllowed, persistDeviceDbId,

@@ -187,6 +187,9 @@ export async function getOrder(orderId: number): Promise<{
     total?: number;
     subtotal?: number;
     tax_amount?: number;
+    /** The saved order's own service charge and packaging, shown on a saved ticket in place of the till's sums. */
+    service_charge_amount?: number | string | null;
+    packaging_fee_laar?: number | null;
     status?: string;
     /** Ringing channel ("dine_in" | "takeaway" | "online_pickup" | ...).
      *  Surfaced here so handleResumeTicket can restore the cashier's
@@ -416,6 +419,8 @@ export async function updateOrderItems(
     total: number;
     subtotal: number;
     tax_amount: number;
+    service_charge_amount?: number | string | null;
+    packaging_fee_laar?: number | null;
     type?: string;
     restaurant_table_id?: number | null;
     delivery_address_line1?: string | null;

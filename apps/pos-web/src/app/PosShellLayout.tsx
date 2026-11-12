@@ -152,7 +152,7 @@ export function PosShellLayout() {
     customerAddresses, selectedDeliveryAddressId, setSelectedDeliveryAddressId, applyPosDeliveryAddress, tables,
     selectedTableId, setSelectedTableId, quickNotes, smsNotifications, discountControls, notePickerKey,
     setNotePickerKey, menu, cart, deliveryFeeEst, ops, filteredItems, refreshOpenTickets,
-    order, chargeTotal, handleAttachCustomer, handleDetachCustomer, posUpdate, refreshAll,
+    order, chargeTotal, shown, handleAttachCustomer, handleDetachCustomer, posUpdate, refreshAll,
     refreshTables, isRefreshingAll, openTicketsCount, openTicketsCritical, kitchenHandoverSettings, handleClearCart,
     handleLogout, lockScreen, handleOpenShift, handleCloseShift, handleCountAttempt, handleSaveTicketSubmit,
     refreshOfflineCounts, drawerItems, showPreferences, setShowPreferences,
@@ -568,12 +568,12 @@ export function PosShellLayout() {
               cartItems={cart.cartItems}
               setCartItems={cart.setCartItems}
               cartSubtotal={cart.cartSubtotal}
-              cartTax={cart.cartTax}
-              cartServiceCharge={cart.cartServiceCharge}
+              cartTax={shown.tax}
+              cartServiceCharge={shown.serviceCharge}
               serviceChargeLabel={cart.serviceChargeLabel}
-              cartPackagingFee={cart.cartPackagingFee}
-              cartGrandTotal={cart.cartGrandTotal}
-              cartTotal={cart.cartTotal}
+              cartPackagingFee={shown.packaging}
+              cartGrandTotal={shown.grandTotal}
+              cartTotal={shown.total}
               chargeTotal={chargeTotal}
               taxableSubtotal={Math.max(
                 0,
@@ -1104,10 +1104,10 @@ export function PosShellLayout() {
           // still itemises them so the cashier always knows where the
           // money went.
           discount={cart.discountValue + cart.rewardsDiscount}
-          tax={cart.cartTax}
-          serviceCharge={cart.cartServiceCharge}
+          tax={shown.tax}
+          serviceCharge={shown.serviceCharge}
           serviceChargeLabel={cart.serviceChargeLabel}
-          packagingFee={cart.cartPackagingFee}
+          packagingFee={shown.packaging}
           deliveryFee={
             orderType === "Delivery" && order.resumedOrderId === null
               ? deliveryFeeEst

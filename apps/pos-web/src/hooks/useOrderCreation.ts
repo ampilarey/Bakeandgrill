@@ -314,6 +314,23 @@ function childrenFromCartItem(item: CartItem): PosOrderLineChild[] | undefined {
   }));
 }
 
+/** A saved order's own money lines, as the server keeps them. */
+export type SavedFigures = { tax: number; serviceCharge: number; packaging: number };
+type FiguresSource = {
+  tax_amount?: number | string | null;
+  service_charge_amount?: number | string | null;
+  packaging_fee_laar?: number | null;
+};
+function figuresOf(order: FiguresSource): SavedFigures | null {
+  if (order.tax_amount == null && order.service_charge_amount == null && order.packaging_fee_laar == null) return null;
+  const n = (v: unknown) => { const x = Number(v ?? 0); return Number.isFinite(x) ? x : 0; };
+  return {
+    tax: n(order.tax_amount),
+    serviceCharge: n(order.service_charge_amount),
+    packaging: n(order.packaging_fee_laar) / 100,
+  };
+}
+
 export function useOrderCreation(params: Params) {
   const [statusMessage, setStatusMessage] = useState("");
   const statusTimerRef = useRef<number | null>(null);
@@ -382,7 +399,18 @@ export function useOrderCreation(params: Params) {
    * between hold time and resume time, and we don't want to overcharge
    * (or undercharge) the customer based on a stale local total.
    */
-  const [resumedOrderTotal, setResumedOrderTotal] = useState<number | null>(null);
+  const [resumedOrderTotalState, setResumedOrderTotalState] = useState<number | null>(null);
+  /**
+   * The saved order's own GST, service charge and packaging (owner, 2026-11-12: the cart of a
+   * saved ticket showed the till's sums, 419, and Charge asked the server's 400). Null when the
+   * total came from somewhere that did not carry them; the cart then keeps its own lines.
+   */
+  const [resumedFigures, setResumedFigures] = useState<SavedFigures | null>(null);
+  const resumedOrderTotal = resumedOrderTotalState;
+  const setResumedOrderTotal = (total: number | null, from?: FiguresSource | null) => {
+    setResumedOrderTotalState(total);
+    setResumedFigures(total != null && from ? figuresOf(from) : null);
+  };
   // Fingerprint of the cart contents at the moment a ticket was
   // resumed for editing. Used in handleSaveActiveChanges to decide
   // whether the kitchen actually needs a reprint, vs the cashier
@@ -1530,7 +1558,8 @@ export function useOrderCreation(params: Params) {
         price: Number(m.modifier_price ?? 0),
       })) ?? [],
       tax_rate: item.tax_rate != null ? Number(item.tax_rate) : 0,
-      tax_code: item.tax_code ?? (Number(item.tax_rate) > 0 ? "standard_8" : "out_of_scope"),
+      // A line with no tax code is taxed at the standard rate by the server (GstTaxCalculator), so here too.
+      tax_code: item.tax_code ?? "standard_8",
       notes: typeof item.notes === "string" && item.notes.trim().length > 0
         ? item.notes.split(" · ").map((s) => s.trim()).filter(Boolean)
         : [],
@@ -1602,6 +1631,7 @@ export function useOrderCreation(params: Params) {
       setResumedOrderId(orderId);
       setResumedOrderTotal(
         preflight.order.total != null ? Number(preflight.order.total) : null,
+        preflight.order,
       );
       setResumedItemsFingerprint(cartFingerprint(restoredItems));
       setResumedIsPaid(true);
@@ -1632,7 +1662,7 @@ export function useOrderCreation(params: Params) {
     setResumedTableId(response.order.restaurant_table_id ?? null);
     setResumedDeliveryFingerprint(deliveryFingerprint(deliveryDetailsFromOrder(response.order)));
     setResumedStaffUserId(staffUserIdFromOrder(response.order));
-    setResumedOrderTotal(response.order.total != null ? Number(response.order.total) : null);
+    setResumedOrderTotal(response.order.total != null ? Number(response.order.total) : null, response.order);
     setResumedItemsFingerprint(cartFingerprint(restoredItems));
     // Active tickets open editable — Save appears only when dirty.
     setIsEditingActive(true);
@@ -1803,7 +1833,7 @@ export function useOrderCreation(params: Params) {
         setIsSubmitting(true);
       }
 
-      setResumedOrderTotal(freshTotal);
+      setResumedOrderTotal(freshTotal, freshTotal === Number(res.order.total) ? res.order : null);
       setResumedItemsFingerprint(currentFp);
       setResumedOrderType(res.order.type ?? nextType);
       setResumedTableId(
@@ -1970,6 +2000,10 @@ export function useOrderCreation(params: Params) {
     rewardWarning,
     resumedOrderId,
     resumedOrderTotal,
+    /** A saved ticket with nothing changed since: the server's total and lines, which is what Charge takes. */
+    savedTicket: resumedOrderId !== null && !hasUnsavedTicketChanges && resumedOrderTotal != null
+      ? { total: resumedOrderTotal, figures: resumedFigures }
+      : null,
     resumedFromStatus,
     isEditingActive,
     setIsEditingActive,

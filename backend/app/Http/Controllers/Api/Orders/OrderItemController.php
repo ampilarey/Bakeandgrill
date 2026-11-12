@@ -306,6 +306,9 @@ class OrderItemController extends Controller
                 'total' => (float) $fresh->total,
                 'subtotal' => (float) $fresh->subtotal,
                 'tax_amount' => (float) $fresh->tax_amount,
+                // The till shows a saved ticket's own figures, not its own sums.
+                'service_charge_amount' => (float) ($fresh->service_charge_amount ?? 0),
+                'packaging_fee_laar' => (int) ($fresh->packaging_fee_laar ?? 0),
                 'type' => $fresh->type,
                 'restaurant_table_id' => $fresh->restaurant_table_id,
                 'promo_discount_laar' => (int) ($fresh->promo_discount_laar ?? 0),

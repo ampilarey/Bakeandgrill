@@ -15,7 +15,7 @@ vi.mock("../api", async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
-    fetchPublicSiteSettings: vi.fn(async () => {
+    fetchPublicSiteSettingsStrict: vi.fn(async () => {
       throw new Error("offline");
     }),
     fetchGstBootstrap: vi.fn(async () => {
