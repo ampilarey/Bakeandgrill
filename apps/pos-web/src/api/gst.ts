@@ -11,25 +11,18 @@ export type GstBootstrap = {
   packaging_fee_taxable?: boolean;
 };
 
-let _gstBootstrapCache: GstBootstrap | null = null;
-
-/** Authoritative GST rate for cart preview — server still calculates on order create. */
+/**
+ * The GST rate the cart previews with; the server still works the order out.
+ *
+ * Asked fresh each time and failing loudly (owner, 2026-11-12: a cashier saved a
+ * ticket and Charge asked for less than the cart showed). It used to be kept
+ * for the whole session, so a till open while Charge GST on sales was switched
+ * off went on adding 8% to the cart, and a failed request answered a made-up
+ * 8% that was then saved as the till's offline copy. The caller keeps its own
+ * last good answer for when this throws.
+ */
 export async function fetchGstBootstrap(): Promise<GstBootstrap> {
-  if (_gstBootstrapCache) return _gstBootstrapCache;
-  try {
-    const data = await request<GstBootstrap>("/gst/bootstrap");
-    _gstBootstrapCache = data;
-    return data;
-  } catch {
-    return {
-      default_tax_rate_bp: 800,
-      tax_rate_percent: 8,
-      tax_inclusive: false,
-      gst_registered: false,
-      currency: "MVR",
-      packaging_fee_taxable: true,
-    };
-  }
+  return request<GstBootstrap>("/gst/bootstrap");
 }
 
 /**

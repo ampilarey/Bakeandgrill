@@ -243,7 +243,8 @@ export function useCart(posOrderType: PosOrderType | null = "Takeaway") {
       }
     })();
 
-    (async () => {
+    // `first`: the load at start, which falls back to the saved copy. A later refresh that fails keeps what the cart has.
+    const loadGst = async (first: boolean) => {
       try {
         const b = await fetchGstBootstrap();
         if (!alive) return;
@@ -256,6 +257,7 @@ export function useCart(posOrderType: PosOrderType | null = "Takeaway") {
           packaging_fee_taxable: b.packaging_fee_taxable !== false,
         });
       } catch {
+        if (!first) return;
         const cached = await loadCachedGstBootstrap();
         if (!alive) return;
         if (cached) {
@@ -271,10 +273,18 @@ export function useCart(posOrderType: PosOrderType | null = "Takeaway") {
           setPackagingFeeTaxable(true);
         }
       }
-    })();
+    };
+    void loadGst(true);
+    // The rate follows Admin while the till stays open: asked again every minute and when the till comes back to the front,
+    // so the cart and the saved ticket never differ by the GST (owner, 2026-11-12).
+    const gstTimer = window.setInterval(() => void loadGst(false), 60_000);
+    const onFront = () => { if (document.visibilityState === 'visible') void loadGst(false); };
+    document.addEventListener('visibilitychange', onFront);
 
     return () => {
       alive = false;
+      window.clearInterval(gstTimer);
+      document.removeEventListener('visibilitychange', onFront);
     };
   }, []);
 

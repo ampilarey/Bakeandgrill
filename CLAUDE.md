@@ -1103,7 +1103,7 @@ is 0, and `GstTaxCalculator`, the fees, the service charge, wholesale invoices a
 order app read (`default_tax_rate_bp`, `tax_rate_percent`, the fee flags) all follow it; the stored rate and each
 dish's tax code are kept. A new place that taxes a sale reads `salesTaxRateBp()` or `GstTaxCalculator`, never
 `defaultTaxRateBp()` (that one is the stored rate, for supplier bills and the ledger). "GST registered" is about
-filing and tax invoices, not about charging. `FeeGstTest::test_the_one_switch_turns_every_gst_off`.
+filing and tax invoices, not about charging. `FeeGstTest::test_the_one_switch_turns_every_gst_off`. The till asks `/gst/bootstrap` again every minute and when it comes back to the front, and a failed ask keeps the last good answer (owner, 2026-11-12: a cashier saved a ticket and Charge asked for less than the cart showed; the till had kept the rate from when it opened, and a failed request answered a made-up 8% that was saved as the offline copy). `fetchGstBootstrap()` in the till throws; never give it a hard-coded rate to fall back on. `useCart.gstRefresh.test.ts`.
 
 ## QR and card payments are checked by hand
 

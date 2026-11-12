@@ -504,16 +504,21 @@ export type GstBootstrap = {
   delivery_fee_taxable?: boolean;
 };
 
+// Kept for a minute, not the whole visit: the shop can switch GST off while the app is open (2026-11-12).
 let gstBootstrapCache: GstBootstrap | null = null;
+let gstBootstrapAt = 0;
 
 /** Authoritative GST rate for checkout preview — order create is server-calculated. */
 export async function fetchGstBootstrap(): Promise<GstBootstrap> {
-  if (gstBootstrapCache) return gstBootstrapCache;
+  if (gstBootstrapCache && Date.now() - gstBootstrapAt < 60_000) return gstBootstrapCache;
   try {
     const data = await request<GstBootstrap>('/gst/bootstrap');
     gstBootstrapCache = data;
+    gstBootstrapAt = Date.now();
     return data;
   } catch {
+    // The last answer from the server before a made-up 8%.
+    if (gstBootstrapCache) return gstBootstrapCache;
     return {
       default_tax_rate_bp: 800,
       tax_rate_percent: 8,
