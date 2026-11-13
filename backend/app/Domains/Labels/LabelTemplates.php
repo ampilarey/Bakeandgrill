@@ -41,6 +41,13 @@ final class LabelTemplates
     public const SOURCE_MAX = 80;
 
     /**
+     * The kitchen's own momo recipe (owner, 2026-11-13), heaviest first: 1 kg flour, 600 g boneless chicken,
+     * 600 g onion, 80 ml oil, 20 g coriander, 15 to 18 g salt, 10 g ginger, 10 g ajinomoto; and the sauce packed
+     * with it: 500 g tomato, 100 g dry chilli, 80 g white sesame seeds, 50 g garlic, 20 g coriander, salt, ajinomoto.
+     */
+    public const MOMO_INGREDIENTS = 'Wheat flour, chicken, onion, vegetable oil, coriander, salt, ginger, MSG (E621). Sauce: tomato, dried chilli, sesame seeds, garlic, coriander, salt, MSG (E621).';
+
+    /**
      * The templates that come with the system, in everyday words. Each sets
      * the storage, a heading, how to use and a note where the kind of food
      * asks for one, the shelf life, the pack unit and a size; the storage
@@ -95,9 +102,9 @@ final class LabelTemplates
             'photo' => PouchSet::MOMO_PHOTO, 'id' => 'momo-pouch', 'name' => 'Frozen momo pouch (microwave)', 'blurb' => 'A zip pouch of steamed, frozen momo to microwave: the pouch label with photo, pieces and price. 30 days, as a zip pouch is not airtight.',
             'fields' => [
                 'label_storage' => 'frozen', 'label_heading' => 'FROZEN MOMO',
-                'label_ingredients' => 'Chicken, wheat flour, onion, coriander, ginger, vegetable oil, salt, MSG (E621).', 'label_allergens' => 'Wheat',
+                'label_ingredients' => self::MOMO_INGREDIENTS, 'label_allergens' => 'Wheat, Sesame',
                 'label_how_to_use' => 'Open the zip slightly. Microwave from frozen for 2 to 3 minutes until steaming hot. Rest 1 minute before eating.',
-                'label_note' => 'Best within 1 month of production.', 'label_shelf_life_days' => 30, 'label_pack_unit' => 'PCS', 'label_pack_qty' => 8,
+                'label_shelf_life_days' => 30, 'label_pack_unit' => 'PCS', 'label_pack_qty' => 8,
                 'label_show_price' => true, 'label_lang' => 'en',
                 'label_pouch' => ['look' => 'gold', 'method' => 'microwave', 'tagline' => 'Steamed · Frozen · Handmade', 'size_word' => 'Medium'],
             ],
@@ -107,7 +114,7 @@ final class LabelTemplates
             'photo' => PouchSet::MOMO_PHOTO, 'id' => 'momo-pouch-steam', 'name' => 'Frozen momo pouch (steam)', 'blurb' => 'The same pouch label for raw frozen momo to steam at home.',
             'fields' => [
                 'label_storage' => 'frozen', 'label_heading' => 'FROZEN MOMO',
-                'label_ingredients' => 'Chicken, wheat flour, onion, coriander, ginger, vegetable oil, salt, MSG (E621).', 'label_allergens' => 'Wheat',
+                'label_ingredients' => self::MOMO_INGREDIENTS, 'label_allergens' => 'Wheat, Sesame',
                 'label_note' => 'Cook thoroughly before eating.', 'label_shelf_life_days' => 30, 'label_pack_unit' => 'PCS', 'label_pack_qty' => 8,
                 'label_show_price' => true, 'label_lang' => 'en',
                 'label_pouch' => ['look' => 'gold', 'method' => 'steam', 'tagline' => 'Frozen · Handmade', 'size_word' => 'Medium'],
@@ -118,7 +125,7 @@ final class LabelTemplates
             'photo' => PouchSet::MOMO_PHOTO, 'id' => 'momo-pouch-fry', 'name' => 'Frozen momo pouch (fry)', 'blurb' => 'The same pouch label for frozen momo to pan fry.',
             'fields' => [
                 'label_storage' => 'frozen', 'label_heading' => 'FROZEN MOMO',
-                'label_ingredients' => 'Chicken, wheat flour, onion, coriander, ginger, vegetable oil, salt, MSG (E621).', 'label_allergens' => 'Wheat',
+                'label_ingredients' => self::MOMO_INGREDIENTS, 'label_allergens' => 'Wheat, Sesame',
                 'label_note' => 'Cook thoroughly before eating.', 'label_shelf_life_days' => 30, 'label_pack_unit' => 'PCS', 'label_pack_qty' => 8,
                 'label_show_price' => true, 'label_lang' => 'en',
                 'label_pouch' => ['look' => 'gold', 'method' => 'pan_fry', 'tagline' => 'Frozen · Handmade', 'size_word' => 'Medium'],

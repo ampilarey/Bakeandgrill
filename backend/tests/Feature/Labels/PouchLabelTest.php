@@ -43,9 +43,8 @@ class PouchLabelTest extends TestCase
         $this->momo = $this->postJson('/api/labels/custom', [
             'name' => 'Chicken Momo',
             'label_storage' => 'frozen',
-            'label_ingredients' => 'Chicken, wheat flour, onion, coriander, ginger, vegetable oil, salt, MSG (E621).',
-            'label_allergens' => 'Wheat',
-            'label_note' => 'Best within 1 month of production.',
+            'label_ingredients' => LabelTemplates::MOMO_INGREDIENTS,
+            'label_allergens' => 'Wheat, Sesame',
             'label_shelf_life_days' => 30,
             'label_pack_qty' => 8,
             'label_pack_unit' => 'PCS',
@@ -92,7 +91,8 @@ class PouchLabelTest extends TestCase
             '>PIECES<' => 'the unit in full',
             '>MVR 45.00<' => 'the price',
             '>INGREDIENTS<' => 'the ingredients heading',
-            '<span class="f-j7">wheat</span> flour' => 'the allergen bold in the ingredients',
+            '<span class="f-j7">Wheat</span> flour' => 'the allergen bold in the ingredients',
+            '<span class="f-j7">sesame</span>' => 'the sauce\'s allergen bold too',
             'Open the zip slightly.' => 'the method\'s how to use, as the label typed none',
             '>STORAGE<' => 'the storage heading',
             'Mfg date: ' => 'the made-on date',
@@ -150,7 +150,7 @@ class PouchLabelTest extends TestCase
         // The body text on the smallest pouch label stays at a readable size.
         $label->label_pouch = ['look' => 'gold', 'method' => 'microwave'];
         $data = $sheets->stickerData($label, ['batch' => '', 'qty' => '', 'mfg' => '', 'exp' => '', 'for' => '', 'for2' => '', 'codes' => [], 'lang' => 'en', 'fill' => false, 'size' => null], $sheets->common());
-        $body = array_filter(PouchDesign::pouch($data, false, 120.0, 53.0), fn ($p) => $p['t'] === 'text' && str_starts_with((string) $p['text'], 'Chicken, wheat'));
+        $body = array_filter(PouchDesign::pouch($data, false, 120.0, 53.0), fn ($p) => $p['t'] === 'text' && str_starts_with((string) $p['text'], 'Wheat flour, chicken'));
         $this->assertNotEmpty($body);
         $this->assertGreaterThanOrEqual(4.2, array_values($body)[0]['pt']);
     }
@@ -233,9 +233,12 @@ class PouchLabelTest extends TestCase
             foreach ([[140, 62], [120, 53], [160, 70]] as [$w, $h]) {
                 [$html, $res] = $this->sheet(['lang' => $lang, 'for' => 'NH Kuda Rah', 'promo' => 'text', 'promo_text' => 'New', 'batch' => 'B-1101'], ['w' => $w, 'h' => $h]);
                 $this->dump("pouch-all-{$lang}-{$w}", $html);
-                $this->assertSame([], $res['summary']['dropped'], "{$lang} {$w}: " . implode(', ', $res['summary']['dropped']));
+                // The momo's list names its sauce too (owner, 2026-11-13): with every extra on, the smallest pouch
+                // gives up the allergen pictures before a word of the ingredients, and says so.
+                $tight = $w === 120 ? ['Allergen pictures'] : [];
+                $this->assertSame([], array_values(array_diff($res['summary']['dropped'], $tight)), "{$lang} {$w}: " . implode(', ', $res['summary']['dropped']));
                 $keys = array_column($res['summary']['spots'], 'key');
-                foreach (['badges', 'promo', 'barcode', 'packed', 'dates', 'batch', 'icons'] as $key) {
+                foreach (array_merge(['badges', 'promo', 'barcode', 'packed', 'dates', 'batch'], $w === 120 ? [] : ['icons']) as $key) {
                     $this->assertContains($key, $keys, "{$lang} {$w} × {$h}: {$key}");
                 }
                 $this->assertSame(2, count(array_keys($keys, 'dates')) >= 1 ? 2 : 0);
