@@ -41,11 +41,12 @@ final class LabelTemplates
     public const SOURCE_MAX = 80;
 
     /**
-     * The kitchen's own momo recipe (owner, 2026-11-13), heaviest first: 1 kg flour, 600 g boneless chicken,
-     * 600 g onion, 80 ml oil, 20 g coriander, 15 to 18 g salt, 10 g ginger, 10 g ajinomoto; and the sauce packed
-     * with it: 500 g tomato, 100 g dry chilli, 80 g white sesame seeds, 50 g garlic, 20 g coriander, salt, ajinomoto.
+     * The momo and its sauce as one list, in the owner's words (2026-11-13: "U can change the order"), heaviest
+     * first by the kitchen's recipe: 1 kg flour, 600 g chicken, 600 g onion, 500 g tomato, 100 g dry chilli, 80 ml
+     * oil, 80 g sesame seeds, 50 g garlic, 40 g coriander, about 30 g salt, 10 g ginger. The owner's list leaves
+     * the recipe's ajinomoto (MSG) out.
      */
-    public const MOMO_INGREDIENTS = 'Wheat flour, chicken, onion, vegetable oil, coriander, salt, ginger, MSG (E621). Sauce: tomato, dried chilli, sesame seeds, garlic, coriander, salt, MSG (E621).';
+    public const MOMO_INGREDIENTS = 'Wheat flour, chicken, onion, tomato, dried chilli, vegetable oil, sesame seeds, garlic, coriander, salt, ginger.';
 
     /**
      * The templates that come with the system, in everyday words. Each sets
