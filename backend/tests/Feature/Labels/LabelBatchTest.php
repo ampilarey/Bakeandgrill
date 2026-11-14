@@ -192,4 +192,24 @@ class LabelBatchTest extends TestCase
         $this->get('/B/' . $code)->assertOk()->assertSee($this->bajiya->name);
         $this->get('/b/' . strtolower($code))->assertOk();
     }
+
+    // Owner, 2026-11-14: "enhance the qr info page with bake and grill branding".
+    public function test_the_pack_page_wears_the_brand_and_says_who_made_it(): void
+    {
+        $custom = $this->postJson('/api/labels/custom', ['name' => 'Frozen Momo', 'label_storage' => 'frozen', 'label_price' => 65, 'label_pack_qty' => 8, 'label_pack_unit' => 'PCS'])->assertCreated()->json('data.id');
+        $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $custom, 'kind' => 'custom', 'copies' => 1]], 'layout' => 'a4-4'])->assertOk();
+        $code = (string) LabelPrint::query()->latest('id')->value('code');
+
+        $page = $this->get('/b/' . $code)->assertOk();
+        $page->assertSee('class="lp-hero"', false)->assertSee('brand/flame-pattern.svg', false)->assertSee('brand/logo-dark.png', false)
+            ->assertSee('Fresh Baked, Fire Grilled')
+            // The pack's own price and count, as on the label.
+            ->assertSee('MVR 65.00')->assertSee('8 PCS')
+            // Who made it, and how to reach them or order more.
+            ->assertSee('Made by')->assertSee('tel:+9609120011', false)->assertSee('Order online')->assertSee(url('/order/'), false)
+            ->assertSee('Something wrong with this pack? Tell us');
+
+        // A code nobody printed gets the same brand, and no pack.
+        $this->get('/b/ZZZZ2345')->assertNotFound()->assertSee('class="lp-hero"', false)->assertSee('We could not find this pack')->assertSee('Made by');
+    }
 }

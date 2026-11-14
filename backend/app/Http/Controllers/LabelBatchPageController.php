@@ -12,6 +12,7 @@ use App\Domains\Labels\Reprint;
 use App\Domains\Labels\StickerSheet;
 use App\Models\Item;
 use App\Models\LabelPrint;
+use App\Models\Media;
 use App\Support\ComplaintBoxLink;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -40,6 +41,7 @@ class LabelBatchPageController extends Controller
             'siteName' => $site,
             'complainUrl' => ComplaintBoxLink::url('label', 'Pack ' . $code),
             'menuUrl' => url('/menu'),
+            'maker' => $this->maker(),
         ];
         if ($print === null) {
             return response()->view('labels.batch', $shared + ['pack' => null], 404);
@@ -61,7 +63,8 @@ class LabelBatchPageController extends Controller
             'days_left' => $left,
             'status' => Reprint::status($left),
             'batch' => (string) ($print->batch_code ?? ''),
-            'qty' => $print->pack_qty,
+            // The count typed for this print, else the label's own pack quantity, as the sticker prints it.
+            'qty' => $print->pack_qty ?? ($product?->label_pack_qty ?: null),
             'unit' => $product !== null && trim((string) $product->label_pack_unit) !== '' ? mb_strtoupper(trim((string) $product->label_pack_unit)) : 'PCS',
             'printed' => LabelSettings::formatDate($print->created_at?->toDateString()),
         ];
@@ -85,10 +88,33 @@ class LabelBatchPageController extends Controller
                 'allergens' => $allergens,
                 'icons' => array_map(fn (string $key) => ['key' => $key, 'caption' => AllergenIcons::caption($key), 'svg' => AllergenIcons::svg($key, 44)], AllergenIcons::keys($allergens, $spicy)),
                 'net_weight' => trim((string) $product->label_net_weight),
+                // The label's own picture and price, as the pack shows them.
+                'photo' => $product->label_photo_media_id ? Media::query()->find($product->label_photo_media_id)?->url : null,
+                'price' => $this->stickers->price($product),
             ];
         }
 
+        // A product since removed has neither picture nor price to show.
+        $pack += ['photo' => null, 'price' => ''];
+
         return view('labels.batch', $shared + ['pack' => $pack]);
+    }
+
+    /**
+     * Who made it, for the page's brand hero and its Made by card (owner, 2026-11-14: "enhance the qr info page
+     * with bake and grill branding"): always the business, whatever food brand is on the pack, as on the label's
+     * footer. The logo is the one for dark surfaces, since both stand on the brand's dark brown.
+     *
+     * @return array<string, string>
+     */
+    private function maker(): array
+    {
+        $dark = trim((string) content('logo_dark', ''));
+
+        return LabelSettings::contact() + [
+            'logo' => $dark !== '' ? $dark : asset('brand/logo-dark.png'),
+            'order_url' => url('/order/'),
+        ];
     }
 
     /**

@@ -67,6 +67,11 @@ The pack code is drawn coarse so a phone reads it (owner, 2026-11-14: "too small
 its address is written in capitals, which a QR packs into 25 squares a side instead of 29, and the pouch label
 draws it up to 15 mm, as big as the feedback code beside it. `/B/CODE` opens the same page as `/b/CODE`.
 
+Both pages wear the brand (owner, 2026-11-14): a dark hero with the flame pattern, the logo, the name and the
+tagline, the pack's photo in a ring, and its state, price and count as chips; and a Made by card with the phone
+(tap to call), the address, Order online and See the menu. The Made by card is always Bake & Grill's, whatever
+food brand is on the pack.
+
 **Batches** (the fifth tab, `/labels/batches`) lists every lot of stickers and every box label printed, newest
 first: what it is, how many, the batch number, the dates with "Past its date" or the days left, who printed it and
 when, and its code as a link to its page. The search box takes a code, a batch number, a product or a shop; chips
