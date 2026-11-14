@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { SeeAlso } from '../components/SeeAlso';
 import { Search, Printer, FileDown, Pencil, Copy, Tag, ChevronDown, ChevronUp, Star, Clock } from 'lucide-react';
 import { HubPage, hubPermissions, type HubTab } from '../components/HubPage';
@@ -7,7 +7,7 @@ import { MakeLabelWizard } from '../components/labels/MakeLabelWizard';
 import { StickerPrintPanel } from '../components/labels/StickerPrintPanel';
 import { BoxLabelPanel } from '../components/labels/BoxLabelPanel';
 import { TypesAndBrands } from '../components/labels/TypesAndBrands';
-import { CustomLabelsTab } from '../components/labels/CustomLabels';
+import { MyLabelsTab } from '../components/labels/MyLabels';
 import { InlineRename } from '../components/labels/InlineRename';
 import { ExpiringStock } from '../components/labels/ExpiringStock';
 import { IngredientGlossary } from '../components/labels/IngredientGlossary';
@@ -17,7 +17,7 @@ import { LabelsTour } from '../components/labels/LabelsTour';
 import { LabelRollsCard } from '../components/labels/LabelRollsCard';
 import { ShelfLifeHint } from '../components/labels/ShelfLifeHint';
 import { WordingLockCard } from '../components/labels/WordingLockCard';
-import { Btn, Switch } from '../components/SharedUI';
+import { Btn, Switch, TabScrollRow } from '../components/SharedUI';
 import { Button, Card, useToast } from '../components/ui';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -560,19 +560,45 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
   );
 }
 
-function SettingsTabWithPermission() {
+/** My labels: every label, each with Print and Edit; the sheets printed before fold beneath (owner, 2026-11-14). */
+function MyLabelsWithPermission({ openPrinted = false }: { openPrinted?: boolean }) {
   const { can } = useCurrentUserPermissions();
-  return <SettingsTab canManage={can('labels.manage')} />;
+  return <MyLabelsTab canManage={can('labels.manage')} printedBefore={<SavedLabelsTab />} openPrinted={openPrinted} />;
 }
 
-function CustomTabWithPermission() {
-  const { can } = useCurrentUserPermissions();
-  return <CustomLabelsTab canManage={can('labels.manage')} />;
+/** The full Print labels form: several products on one sheet, with every option. It has no tab of its own any more. */
+function PrintSeveral() {
+  const navigate = useNavigate();
+  return (
+    <>
+      <p className="text-sm text-[var(--color-text-secondary)] mb-3" data-testid="print-several-note">
+        <strong className="text-[var(--color-text)]">Print labels.</strong> Several products on one sheet, with every option. For one label, <button type="button" className="underline font-semibold text-[var(--color-text)]" onClick={() => navigate('/labels/mine')}>go back to My labels</button> and tap Print on its row.
+      </p>
+      <ExpiringStock />
+      <Card padding="sm" className="labels-sticky"><StickerPrintPanel /></Card>
+    </>
+  );
 }
 
-function TypesTabWithPermission() {
+/**
+ * Setup (owner, 2026-11-14: seven tabs to four): Wording and logos and Settings on one tab, as two parts. Each
+ * part keeps its old address, so a link to /labels/types or /labels/settings opens it.
+ */
+function SetupTab({ part }: { part: 'types' | 'settings' }) {
+  const navigate = useNavigate();
+  const { search } = useLocation();
   const { can } = useCurrentUserPermissions();
-  return <TypesAndBrands canManage={can('labels.manage')} />;
+  const canManage = can('labels.manage');
+  const chip = (on: boolean) => ['h-8 px-3 rounded-full border text-sm font-semibold whitespace-nowrap', on ? 'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]'].join(' ');
+  return (
+    <div className="space-y-4" data-testid="labels-setup">
+      <TabScrollRow role="group" aria-label="Setup" style={{ gap: 8 }}>
+        <button type="button" aria-pressed={part === 'types'} className={chip(part === 'types')} onClick={() => navigate(`/labels/types${search}`)} data-testid="setup-types">Wording and logos</button>
+        <button type="button" aria-pressed={part === 'settings'} className={chip(part === 'settings')} onClick={() => navigate(`/labels/settings${search}`)} data-testid="setup-settings">Settings: rolls, printer and rules</button>
+      </TabScrollRow>
+      {part === 'types' ? <TypesAndBrands canManage={canManage} /> : <SettingsTab canManage={canManage} />}
+    </div>
+  );
 }
 
 function MakeTabWithPermission() {
@@ -587,18 +613,26 @@ function MakeTabWithPermission() {
   );
 }
 
+const LP = ['labels.print', 'labels.manage'] as const;
+
+/*
+ * Four tabs (owner, 2026-11-14: "saving, printing ect of labels are confusing"; seven tabs until then). My
+ * labels is every label with Print and Edit; New label is the wizard; Setup is the wording, the logos and the
+ * settings. The screens that lost their tab keep their address (`under` names the tab shown as picked), so every
+ * old link and bookmark still opens what it did.
+ */
 export const LABELS_TABS: HubTab[] = [
-  // Owner, 2026-10-13 ("Still its v confusing and not user friendly"): the way in
-  // for everyone, four steps; the other tabs stay for those who know them.
-  { id: 'make', label: 'Make a label', permissions: ['labels.print', 'labels.manage'], desc: 'Four steps: what it is for, which label, a look at it, how many to print', render: () => <MakeTabWithPermission /> },
-  // Round 4 (owner, 2026-10-13: plain words everywhere): Print labels was Pack stickers, Wording and logos was Types & brands; the paths stay.
-  { id: 'stickers', label: 'Print labels', permissions: ['labels.print', 'labels.manage'], desc: 'Print stickers for packs, in English or Dhivehi, on any size: A4 sheets, label printers, round', render: () => <><ExpiringStock /><Card padding="sm" className="labels-sticky"><StickerPrintPanel /></Card></> },
-  // Owner, 2026-10-11: "Add option to add custom labels using different brands logos and other details. Not only from the menu list".
-  { id: 'custom', label: 'Custom labels', permissions: ['labels.print', 'labels.manage'], desc: 'Stickers for things that are not on the menu, with any brand, logo and details', render: () => <CustomTabWithPermission /> },
-  { id: 'box', label: 'Box labels', permissions: ['labels.print', 'labels.manage'], desc: 'A4 label for a delivery box, blank or from a wholesale delivery', render: () => <Card padding="sm" className="labels-sticky"><BoxLabelPanel /></Card> },
-  { id: 'types', label: 'Wording and logos', permissions: ['labels.print', 'labels.manage'], desc: 'The wording each kind of food gets, the brands and logos on the header, the bottom strip, and the templates a new label starts from', render: () => <TypesTabWithPermission /> },
-  { id: 'saved', label: 'Saved labels', permissions: ['labels.print', 'labels.manage'], desc: 'Every label prepared, to print again, download, change, copy or rename; the print log beneath', render: () => <SavedLabelsTab /> },
-  { id: 'settings', label: 'Settings', permissions: ['labels.print', 'labels.manage'], desc: 'Which products print, shelf life, storage, the label wording, the ingredient glossary, nutrition and the label printer', render: () => <SettingsTabWithPermission /> },
+  { id: 'mine', label: 'My labels', permissions: LP, desc: 'Every label you have: tap Print for how many and the dates, Edit to change it', render: () => <MyLabelsWithPermission /> },
+  // Owner, 2026-10-13 ("Still its v confusing and not user friendly"): four steps to a new label.
+  { id: 'make', label: 'New label', permissions: LP, desc: 'Four steps: what it is for, which label, a look at it, how many to print', render: () => <MakeTabWithPermission /> },
+  { id: 'box', label: 'Box labels', permissions: LP, desc: 'A4 label for a delivery box, blank or from a wholesale delivery', render: () => <Card padding="sm" className="labels-sticky"><BoxLabelPanel /></Card> },
+  { id: 'setup', label: 'Setup', permissions: LP, desc: 'The wording and logos, the bottom strips and templates, your rolls and printer, and the rules for what prints', render: () => <SetupTab part="types" /> },
+  // No tab of their own; each opens on its old address.
+  { id: 'stickers', label: 'Print labels', under: 'mine', permissions: LP, desc: 'Several products on one sheet, in English or Dhivehi, on any size, with every option', render: () => <PrintSeveral /> },
+  { id: 'custom', label: 'My labels', under: 'mine', permissions: LP, desc: 'Every label you have: tap Print for how many and the dates, Edit to change it', render: () => <MyLabelsWithPermission /> },
+  { id: 'saved', label: 'Sheets printed before', under: 'mine', permissions: LP, desc: 'Every sheet printed, to print again, download, change, copy or rename; the print log beneath', render: () => <MyLabelsWithPermission openPrinted /> },
+  { id: 'types', label: 'Wording and logos', under: 'setup', permissions: LP, desc: 'The wording each kind of food gets, the brands and logos on the header, the bottom strip, and the templates a new label starts from', render: () => <SetupTab part="types" /> },
+  { id: 'settings', label: 'Settings', under: 'setup', permissions: LP, desc: 'Which products print, shelf life, storage, the label wording, the ingredient glossary, nutrition and the label printer', render: () => <SetupTab part="settings" /> },
 ];
 
 export const LABELS_HUB_PERMISSIONS = hubPermissions(LABELS_TABS);
@@ -612,7 +646,7 @@ export function LabelsHub() {
   return (
     <>
       <HubPage base="/labels" section="Manage" title="Labels" tabs={LABELS_TABS} aliases={LABELS_ALIASES} />
-      {/* Four cards on the first visit in this browser, and from How it works on Make a label (round 5). */}
+      {/* Four cards on the first visit in this browser, and from How it works on New label (round 5). */}
       <LabelsTour />
     </>
   );

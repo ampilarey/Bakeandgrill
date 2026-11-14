@@ -928,7 +928,7 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
 
       {!result && !fixedItems && (
         <section>
-          <label className={labelClass} htmlFor="label-save-as">Name in Saved labels (optional)</label>
+          <label className={labelClass} htmlFor="label-save-as">Name for this sheet (optional)</label>
           <input id="label-save-as" value={saveAs} maxLength={80} onChange={(e) => setSaveAs(e.target.value)} placeholder="Frozen Momo, medium pack" className={fieldClass} data-testid="label-save-as" />
           <p className="text-xs text-[var(--color-text-muted)] mt-1">Your own name for this sheet. Empty: named from the products, the count and the size.</p>
         </section>
@@ -959,9 +959,9 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
           )}
           {result.job && (
             <div className="text-xs text-[var(--color-text-secondary)] flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span>Saved as</span>
+              <span>Kept as</span>
               <InlineRename name={result.job.name} onSave={(n) => rename(result.job!, n)} buttonClassName="font-bold text-[var(--color-text)]" className="flex-1 min-w-[200px]" />
-              <span>on the Saved labels tab, to print again or change later.</span>
+              <span>under My labels, in Sheets printed before, to print again or change later.</span>
             </div>
           )}
           <p className="text-xs text-[var(--color-text-muted)]">{printsViaPdf() ? 'Print opens the PDF: use Share → Print, and keep the scale at 100%, not "fit".' : 'Print at actual size (100%).'} These links work for {result.expires_in_minutes} minutes.</p>

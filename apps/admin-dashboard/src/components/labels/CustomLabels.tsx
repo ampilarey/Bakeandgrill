@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Bookmark, ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, RefreshCw, Search, Tag, Upload, X } from 'lucide-react';
+import { ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, RefreshCw, Search, Tag, Upload, X } from 'lucide-react';
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelSettings, fetchLabelTypes,
-  previewCustomDraft, stickerLinks, updateCustomLabel, uploadCustomLabelPicture, uploadLabelPicture,
+  previewCustomDraft, updateCustomLabel, uploadCustomLabelPicture, uploadLabelPicture,
   type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type ShelfLifeSuggestions, type LabelType, type StickerLang, type PouchCatalogue, type WrapCatalogue, type WrapPartKey, type WrapStrips,
 } from '../../api';
 import { FooterPicker } from './FooterPicker';
@@ -22,7 +21,7 @@ import { ShelfLifeHint } from './ShelfLifeHint';
 import { WordingSignoff } from './WordingSignoff';
 import { QuickEditSheet, quickSpec } from './QuickEdit';
 import { customDraft as toDraft, customPayload as toPayload, inHouseBarcode, type CustomDraft as Draft } from './labelDrafts';
-import { DEFAULT_CHOICE, rememberedRoll, rememberedSize, requestFor, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
+import { DEFAULT_CHOICE, rememberedSize, requestFor, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
 import { Btn, ConfirmDialog, Modal, ModalActions, useConfirmDialog } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
 import { MediaPicker } from '../MediaPicker';
@@ -62,14 +61,6 @@ const DV_FONT_NAMES: Record<string, string> = { noto: 'Noto Sans Thaana', faruma
 
 /** The language a label usually prints in: what it says, else both when it has a Dhivehi name. */
 export const langOf = (c: Pick<CustomLabel, 'label_lang' | 'name_dv'>): StickerLang => c.label_lang ?? (c.name_dv ? 'both' : 'en');
-
-/** What a custom label prepares at one tap: the remembered size, a full sheet of it. */
-function savedSheetRequest(presets: LabelPreset[]): { layout: string; w: number | null; h: number | null; copies: number; roll: string | null } {
-  const choice = rememberedSize() ?? DEFAULT_CHOICE;
-  if (presets.length === 0) return { layout: 'a4-4', w: null, h: null, copies: 4, roll: null };
-  // The roll Print labels last printed this size on, so the count comes off the right one (label audit, Batch C).
-  return { ...requestFor(choice, presets), copies: Math.max(1, stockOf(choice, presets).perPage), roll: rememberedRoll() };
-}
 
 const WORDING_KEYS: (keyof Draft)[] = ['label_heading', 'label_heading_dv', 'label_storage_line', 'label_storage_line_dv', 'label_note', 'label_note_dv', 'label_how_to_use', 'label_how_to_use_dv'];
 
@@ -595,10 +586,9 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   );
 }
 
-/** Labels → Custom labels: every custom label, to print, save a sheet of, change, copy or remove. */
+/** My labels → Custom labels: every custom label, to print, edit, copy or remove. A label is printed from its row; a sheet is no longer saved by hand (owner, 2026-11-14). */
 export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [rows, setRows] = useState<CustomLabel[] | null>(null);
   const [edit, setEdit] = useState<CustomLabel | null | 'new'>(null);
   const [pouchSet, setPouchSet] = useState(false);
@@ -614,31 +604,6 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
     if (!window.confirm(`Remove the custom label "${c.name}"? Prints already made stay in the log.`)) return;
     try { await deleteCustomLabel(c.id); await load(); toast('success', 'Custom label removed.'); } catch (e) { toast('error', e instanceof Error ? e.message : 'Could not remove it.'); }
   };
-  // Owner, 2026-10-12: "no option to send to saved labels". One tap prepares
-  // a full sheet of this label at the size Print labels last printed (full
-  // stickers, four to an A4 page, until a size is picked there), in the
-  // language the label says, and lands on Saved labels, where it can be
-  // printed again, pinned or changed.
-  const [savingId, setSavingId] = useState<number | null>(null);
-  const [presets, setPresets] = useState<LabelPreset[]>([]);
-  useEffect(() => {
-    fetchLabelLayouts().then((r) => setPresets(r.presets)).catch(() => setPresets([]));
-  }, []);
-  const saveToSaved = async (c: CustomLabel) => {
-    setSavingId(c.id);
-    try {
-      const { copies, ...sized } = savedSheetRequest(presets);
-      // save: kept under Saved labels, not printed, so nothing comes off a roll until it is printed (label audit, 2026-10-16).
-      const r = await stickerLinks({ items: [{ id: c.id, copies, kind: 'custom' }], ...sized, lang: langOf(c), fill: true, save: true });
-      toast('success', r.job ? `Saved as “${r.job.name}”.` : 'Saved to Saved labels.');
-      navigate('/labels/saved');
-    } catch (e) {
-      toast('error', e instanceof Error ? e.message : 'Could not save it.');
-    } finally {
-      setSavingId(null);
-    }
-  };
-
   const needle = query.trim().toLowerCase();
   const shown = (rows ?? []).filter((c) => !needle || c.name.toLowerCase().includes(needle) || (c.name_dv ?? '').includes(query.trim()) || c.brand_name.toLowerCase().includes(needle) || (c.label_type_name ?? '').toLowerCase().includes(needle));
 
@@ -651,7 +616,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex-1 min-w-[200px]">
                 <h3 className="font-bold text-[var(--color-text)]">Custom labels</h3>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">Stickers for things that are not on the menu, with any brand and logo, wording and picture. They print from Print labels, on any size, beside the menu items.</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">Labels for things that are not on the menu, with any brand and logo, wording and picture. Print opens the dates and the paper; Edit opens the label.</p>
               </div>
               {canManage && (
                 <div className="flex flex-wrap gap-2">
@@ -689,10 +654,9 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
               </div>
               <div className="flex flex-wrap items-center gap-1 ml-auto">
                 <Button size="sm" icon={<Printer size={14} />} onClick={() => setPrint(c)} aria-label={`Print ${c.name}`} data-testid={`custom-print-${c.id}`}>Print</Button>
-                <Button size="sm" variant="secondary" icon={<Bookmark size={14} />} loading={savingId === c.id} onClick={() => void saveToSaved(c)} aria-label={`Save ${c.name} to Saved labels`} data-testid={`custom-save-${c.id}`}>Save</Button>
                 {canManage && (
                   <>
-                    <Button size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setEdit(c)} aria-label={`Edit ${c.name}`}>Change</Button>
+                    <Button size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setEdit(c)} aria-label={`Edit ${c.name}`}>Edit</Button>
                     <Button size="sm" variant="ghost" icon={<Copy size={14} />} onClick={() => void copy(c)} aria-label={`Copy ${c.name}`}>Copy</Button>
                     <Btn variant="danger-outline" small onClick={() => void remove(c)} aria-label={`Remove ${c.name}`}>Remove</Btn>
                   </>

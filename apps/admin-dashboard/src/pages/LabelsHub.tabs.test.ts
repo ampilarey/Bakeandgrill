@@ -8,7 +8,7 @@ vi.mock('../components/labels/MakeLabelWizard', () => ({ MakeLabelWizard: () => 
 vi.mock('../components/labels/StickerPrintPanel', () => ({ StickerPrintPanel: () => null }));
 vi.mock('../components/labels/BoxLabelPanel', () => ({ BoxLabelPanel: () => null }));
 vi.mock('../components/labels/TypesAndBrands', () => ({ TypesAndBrands: () => null }));
-vi.mock('../components/labels/CustomLabels', () => ({ CustomLabelsTab: () => null }));
+vi.mock('../components/labels/MyLabels', () => ({ MyLabelsTab: () => null }));
 vi.mock('../components/labels/ExpiringStock', () => ({ ExpiringStock: () => null }));
 vi.mock('../components/labels/IngredientGlossary', () => ({ IngredientGlossary: () => null }));
 vi.mock('../components/labels/NutritionCard', () => ({ NutritionCard: () => null }));
@@ -17,11 +17,13 @@ vi.mock('../components/labels/LabelPrinterCard', () => ({ LabelPrinterCard: () =
 import { LABELS_HUB_PATHS, LABELS_TABS } from './LabelsHub';
 
 describe('Labels hub tabs', () => {
-  it('names the tabs in plain words and keeps their addresses', () => {
-    const byId = Object.fromEntries(LABELS_TABS.map((t) => [t.id, t.label]));
-    expect(byId).toMatchObject({ make: 'Make a label', stickers: 'Print labels', custom: 'Custom labels', box: 'Box labels', types: 'Wording and logos', saved: 'Saved labels', settings: 'Settings' });
-    expect(LABELS_TABS.map((t) => t.label)).not.toContain('Pack stickers');
-    expect(LABELS_TABS.map((t) => t.label)).not.toContain('Types & brands');
-    expect(LABELS_HUB_PATHS).toEqual(expect.arrayContaining(['labels', 'labels/make', 'labels/stickers', 'labels/types', 'labels/saved', 'labels/history']));
+  // Owner, 2026-11-14: seven tabs became four; every screen keeps its address.
+  it('shows four tabs and keeps every old address open under one of them', () => {
+    const strip = LABELS_TABS.filter((t) => !t.under);
+    expect(strip.map((t) => t.label)).toEqual(['My labels', 'New label', 'Box labels', 'Setup']);
+    const under = Object.fromEntries(LABELS_TABS.filter((t) => t.under).map((t) => [t.id, t.under]));
+    expect(under).toEqual({ stickers: 'mine', custom: 'mine', saved: 'mine', types: 'setup', settings: 'setup' });
+    for (const t of LABELS_TABS) if (t.under) expect(strip.map((x) => x.id)).toContain(t.under);
+    expect(LABELS_HUB_PATHS).toEqual(expect.arrayContaining(['labels', 'labels/mine', 'labels/make', 'labels/stickers', 'labels/custom', 'labels/box', 'labels/types', 'labels/saved', 'labels/settings', 'labels/setup', 'labels/history']));
   });
 });

@@ -11,7 +11,7 @@ describe('LabelsTour', () => {
 
   it('shows four cards on the first visit, then stays away until asked for', () => {
     const { unmount } = render(<LabelsTour />);
-    expect(screen.getByRole('dialog')).toHaveTextContent('Make a label in four steps');
+    expect(screen.getByRole('dialog')).toHaveTextContent('A new label in four steps');
     expect(screen.getByTestId('labels-tour')).toHaveAttribute('data-step', '1');
     expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
     fireEvent.click(screen.getByTestId('labels-tour-next'));
@@ -20,7 +20,7 @@ describe('LabelsTour', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('Any size, any shape');
     fireEvent.click(screen.getByTestId('labels-tour-next'));
     expect(screen.getByRole('dialog')).toHaveTextContent('Where things live');
-    expect(screen.getByRole('dialog')).toHaveTextContent('Print labels prints. Custom labels is for things not on the menu.');
+    expect(screen.getByRole('dialog')).toHaveTextContent('My labels lists every label: tap Print for how many and the dates, Edit to change it.');
     expect(screen.queryByTestId('labels-tour-next')).toBeNull();
     fireEvent.click(screen.getByTestId('labels-tour-done'));
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -31,7 +31,7 @@ describe('LabelsTour', () => {
     render(<LabelsTour />);
     expect(screen.queryByRole('dialog')).toBeNull();
     act(() => { openLabelsTour(); });
-    expect(screen.getByRole('dialog')).toHaveTextContent('Make a label in four steps');
+    expect(screen.getByRole('dialog')).toHaveTextContent('A new label in four steps');
     // Closing with the X counts as seen too.
     fireEvent.click(screen.getByTestId('shared-modal-close'));
     expect(screen.queryByRole('dialog')).toBeNull();

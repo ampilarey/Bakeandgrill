@@ -111,7 +111,7 @@ describe('MakeLabelWizard', () => {
     await waitFor(() => expect(api.openLabelSheet).toHaveBeenCalledWith('/labels/stickers?print=1&signature=x', '/labels/stickers.pdf?signature=x'));
     expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ items: [{ id: 7, copies: 18, kind: 'item' }], layout: 'a4-custom', lang: 'en' }));
     expect(api.stickerLinks.mock.calls[api.stickerLinks.mock.calls.length - 1]?.[0]).not.toHaveProperty('preview', true);
-    expect(screen.getByTestId('make-done')).toHaveTextContent('Saved as "Bajiya · 60 × 40 mm" under Saved labels');
+    expect(screen.getByTestId('make-done')).toHaveTextContent('Kept as "Bajiya · 60 × 40 mm" under My labels');
     expect(JSON.parse(window.localStorage.getItem('labels.lastSize') ?? '{}')).toMatchObject({ preset: 'r60x40' });
   });
 

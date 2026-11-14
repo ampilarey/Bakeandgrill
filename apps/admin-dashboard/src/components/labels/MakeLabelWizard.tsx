@@ -744,7 +744,7 @@ export function MakeLabelWizard({ canManage = false }: {
           </div>
           {!result && (
             <div>
-              <label className={labelClass} htmlFor="make-save-as">Name in Saved labels (optional)</label>
+              <label className={labelClass} htmlFor="make-save-as">Name for this sheet (optional)</label>
               <input id="make-save-as" value={saveAs} maxLength={80} onChange={(e) => setSaveAs(e.target.value)} placeholder={`${picked.name} ×${copies}`} className={fieldClass} data-testid="make-save-as" />
               <p className="text-xs text-[var(--color-text-muted)] mt-1">Empty: named from the product, the count and the size.</p>
             </div>
@@ -756,7 +756,7 @@ export function MakeLabelWizard({ canManage = false }: {
           {error && <p role="alert" className="text-sm text-[var(--color-danger-strong)]">{error}</p>}
           {result ? (
             <div className="rounded-xl border border-[var(--color-tone-rust-border)] bg-[var(--color-tone-rust-bg)] p-3 space-y-2" data-testid="make-done">
-              <p className="text-sm font-semibold text-[var(--color-text)]"><Check size={14} className="inline mr-1" />{result.job ? `Saved as "${result.job.name}" under Saved labels.` : 'Ready.'} {copies} {copies === 1 ? 'label' : 'labels'} prepared.</p>
+              <p className="text-sm font-semibold text-[var(--color-text)]"><Check size={14} className="inline mr-1" />{result.job ? `Kept as "${result.job.name}" under My labels, in Sheets printed before.` : 'Ready.'} {copies} {copies === 1 ? 'label' : 'labels'} prepared.</p>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" icon={<Printer size={14} />} onClick={() => openLabelSheet(result.url, result.pdf_url)}>Print again</Button>
                 <Button size="sm" variant="secondary" icon={<FileDown size={14} />} onClick={() => downloadLabelSheet(result.pdf_url)}>Download PDF</Button>
@@ -773,7 +773,7 @@ export function MakeLabelWizard({ canManage = false }: {
             </div>
           )}
           {!result && <LinkLifeNote />}
-          <p className="text-xs text-[var(--color-text-muted)]">On a phone, print the PDF. Every print is kept under Saved labels to print again.</p>
+          <p className="text-xs text-[var(--color-text-muted)]">On a phone, print the PDF. Every print is kept under My labels to print again.</p>
         </div>
       )}
 

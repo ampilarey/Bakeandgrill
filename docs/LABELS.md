@@ -11,6 +11,36 @@ recommendations): price and barcode, net weight, allergens in bold, both languag
 one sticker, a draft previewed as it is typed, pinned saved labels, and stickers from
 the kitchen screen (§ For the shop till and after).
 
+## Four tabs, and one Print (2026-11-14)
+
+Owner: "Still i feel saving, printing ect of labels are confusing", then "It should be dated before printing"
+and "dont delete any features". Save meant three things, there were two kinds of saved label, printing took
+Prepare and then Print, and the hub had seven tabs. Now:
+
+| Tab | What it is | Address |
+|---|---|---|
+| **My labels** | Every label, one row each, with Print and Edit: the custom labels, then the menu items that print labels. Scan to reprint and Sheets printed before (the old Saved labels, with the print log) fold beneath. | `/labels/mine` |
+| **New label** | The four-step wizard (was Make a label). | `/labels/make` |
+| **Box labels** | Unchanged. | `/labels/box` |
+| **Setup** | Wording and logos, and Settings, as two parts of one tab. | `/labels/setup` |
+
+**Print** on a row (and Print… in the custom label editor) opens `PrintLabelModal`: how many, Made on, Use by
+with the months chips, the paper (the size picker behind Change), the language, and the label drawn with those
+dates. Nothing prints until Print or PDF is pressed; there is no Prepare. It opens at the size that label printed
+at last time (`rememberedSizeFor()` in `labelSize.ts`, kept in the browser), else the size made for it (a pouch
+label, a bottle with flat sides), else the size printed last. More holds the size of a sized item, Fill in the
+dates, quantity per pack, batch and packed-for; a promotion flash, pack numbers, cut marks, a mock-up and several
+products on one sheet stay on the full Print labels form, one link away.
+
+**Save** appears only in an editor and keeps the label's changes. A custom label's row no longer has Save (it
+made a sheet without printing); every print is kept under Sheets printed before.
+
+Every screen that lost its tab keeps its address: `/labels/stickers` (the full Print labels form, reached from
+Print several on one sheet), `/labels/custom`, `/labels/saved` (opens with the fold open), `/labels/history`,
+`/labels/types` and `/labels/settings`. A `HubTab` with `under` has no tab of its own and shows the named tab as
+picked. Elsewhere in this document "Make a label", "Custom labels", "Saved labels", "Wording and logos" and
+"Settings" name those screens, which are now where this table says.
+
 ## Seeing a preview bigger
 
 Owner, 2026-10-26: every label preview (Make a label, Print labels, a custom label, a menu

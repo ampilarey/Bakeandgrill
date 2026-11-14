@@ -485,7 +485,19 @@ labels and Custom labels rows carry words on their buttons (PDF, Change, Copy, P
 shop's day (`utils/dateHelpers.today()`), never `toISOString()`. `LabelAuditFitTest`. Every expiry box that takes a
 date carries `ExpiryChips` (owner, 2026-11-12: "easy expire date selection. 1 month, 2, 3"): Shelf life (empty, the
 label's own), 1, 2, 3 and 6 calendar months from Made on (`monthsAfter()`), a months pick moving with Made on
-(`expiryForNewMfg()`); a date input on these forms takes `DATE_BOX` so an iPhone keeps it in its column. A sheet is saved under a name of its own when one is typed (owner, 2026-11-12: `save_as` on the sticker request, Name in Saved labels (optional) on the wizard's last step and on Print labels; never part of the request's hash, so the same sheet again is the same saved label, renamed). How to
+(`expiryForNewMfg()`); a date input on these forms takes `DATE_BOX` so an iPhone keeps it in its column. A sheet is saved under a name of its own when one is typed (owner, 2026-11-12: `save_as` on the sticker request, Name in Saved labels (optional) on the wizard's last step and on Print labels; never part of the request's hash, so the same sheet again is the same saved label, renamed). **Four tabs and one Print** (owner, 2026-11-14: "Still i feel saving, printing ect of labels are
+confusing"; "It should be dated before printing"; "dont delete any features"): the hub is My labels (`/labels/mine`, `MyLabelsTab`: every
+custom label and every menu item on labels, one row each with Print and Edit; Scan to reprint and Sheets printed before, the old Saved
+labels with the print log, fold beneath), New label (the wizard), Box labels and Setup (Wording and logos and Settings as two parts,
+`SetupTab`). Print on a row, and Print… in the custom label editor, open `PrintLabelModal`: how many, Made on, Use by with the months
+chips, the paper, the language and the label drawn with those dates; nothing prints until Print, and there is no Prepare. It opens at
+the size that label printed at last (`rememberedSizeFor()`), else the size made for it. **Save is only ever "keep this label's
+changes"**: never add a button that saves a sheet by hand, and a new way to print one label goes through `PrintLabelModal`. A screen
+that lost its tab keeps its address through `under` on its `HubTab` (`/labels/stickers`, the full Print labels form for several
+products on one sheet; `/labels/custom`, `/labels/saved`, `/labels/types`, `/labels/settings`): never drop one, links from deliveries,
+catering, the pack page and the print log land there. Where this section says Make a label, Custom labels, Saved labels, Wording and
+logos or Settings, it names those screens, now inside the four tabs. `PrintLabelModal.test.tsx`, `MyLabels.test.tsx`,
+`LabelsHub.tabs.test.ts`. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

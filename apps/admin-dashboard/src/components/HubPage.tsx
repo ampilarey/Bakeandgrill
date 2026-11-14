@@ -32,6 +32,11 @@ export interface HubTab {
   desc?: string;
   /** Optional first-level grouping. Tabs of one group must sit together. */
   group?: string;
+  /**
+   * A page that answers on its own address but has no tab of its own: the strip shows the tab named here as
+   * picked (Labels, 2026-11-14: seven tabs became four, and every old address still opens its screen).
+   */
+  under?: string;
   render: () => ReactNode;
 }
 
@@ -123,7 +128,7 @@ export function HubPage({ base, section, title, subtitle, tabs, aliases = {}, no
       return;
     }
     if (current === null && visible.length > 0) {
-      navigate(`${base}/${visible[0].id}${search}`, { replace: true });
+      navigate(`${base}/${(visible.find((t) => !t.under) ?? visible[0]).id}${search}`, { replace: true });
     }
   }, [loading, alias, current, visible, base, search, navigate]);
 
@@ -131,7 +136,8 @@ export function HubPage({ base, section, title, subtitle, tabs, aliases = {}, no
 
   const groups = hubGroups(visible);
   const grouped = groups.length > 1;
-  const siblings = grouped ? visible.filter((t) => t.group === current.group) : visible;
+  const siblings = (grouped ? visible.filter((t) => t.group === current.group) : visible).filter((t) => !t.under);
+  const pickedId = current.under ?? current.id;
 
   return (
     <PageShell className="hub-page">
@@ -163,9 +169,9 @@ export function HubPage({ base, section, title, subtitle, tabs, aliases = {}, no
               <button
                 key={t.id}
                 role="tab"
-                aria-selected={current.id === t.id}
+                aria-selected={pickedId === t.id}
                 onClick={() => navigate(`${base}/${t.id}`)}
-                style={tabStyle(current.id === t.id)}
+                style={tabStyle(pickedId === t.id)}
               >
                 {t.label}
               </button>

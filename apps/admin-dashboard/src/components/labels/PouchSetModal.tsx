@@ -85,7 +85,7 @@ export function PouchSetModal({ onClose, onMade }: { onClose: () => void; onMade
       });
       setMade(r.data);
       onMade?.(r.data);
-      toast('success', `${r.data.length} ${r.data.length === 1 ? 'label' : 'labels'} made and kept under Saved labels.`);
+      toast('success', `${r.data.length} ${r.data.length === 1 ? 'label' : 'labels'} made. They are in My labels.`);
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Could not make the labels.');
     } finally {
@@ -111,7 +111,7 @@ export function PouchSetModal({ onClose, onMade }: { onClose: () => void; onMade
   if (made) {
     return (
       <Modal title="Your pouch labels" onClose={onClose} maxWidth={760}>
-        <p className="text-sm text-[var(--color-text-secondary)] mb-3">Each size is a custom label of its own and is kept under Saved labels. Print one now, or change its wording under Custom labels.</p>
+        <p className="text-sm text-[var(--color-text-secondary)] mb-3">Each size is a label of its own, in My labels. Print one now, or tap Edit on it there to change its wording.</p>
         <ul className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))' }} data-testid="pouch-set-made">
           {made.map((row) => (
             <li key={row.job.id} className="rounded-xl border border-[var(--color-border)] p-3 min-w-0">
