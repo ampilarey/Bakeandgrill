@@ -42,6 +42,16 @@ Print several on one sheet), `/labels/custom`, `/labels/saved` (opens with the f
 picked. Elsewhere in this document "Make a label", "Custom labels", "Saved labels", "Wording and logos" and
 "Settings" name those screens, which are now where this table says.
 
+## A custom label keeps its size (2026-11-14)
+
+Owner: "When in my label edit is clicked, its not opening the saved label exactly like size and everything." The
+size lived in the browser, so Edit opened at whatever printed last. Now the label keeps it
+(`custom_labels.label_size`): the shape, the one-tap size or the typed millimetres, what it prints on and rounded
+corners. It is saved with every Save in the editor, by Pouch labels in every size, and by a label's first print
+when it had none. Edit, View and Print open on it, on any phone or computer. A label made before this opens at the
+size this device last printed it at, else at the size made for it (a pouch label, a bottle with flat sides), and
+keeps the size the next time it is saved or printed. A menu item's label still remembers its size per device.
+
 ## The pack's code on every label, and Batches (2026-11-14)
 
 Owner: the momo pouch had its PACK INFO code and the Theluli Rihaakuru bottle had none; "Can make that for all,

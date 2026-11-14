@@ -105,6 +105,8 @@ final class PouchSet
                 'label_pack_qty' => !empty($size['qty']) ? (int) $size['qty'] : null,
                 'label_price' => isset($size['price']) && (float) $size['price'] > 0 ? (float) $size['price'] : null,
                 'label_pouch' => ['size_word' => $word] + $pouch,
+                // Each size opens at its own label size, on any device.
+                'label_size' => StickerLayouts::sizeOfPreset((string) $size['preset']),
                 'label_photo_media_id' => $in['photo_media_id'] ?? null,
                 'created_by' => $userId,
             ]);

@@ -375,4 +375,48 @@ final class StickerLayouts
     {
         return rtrim(rtrim(number_format($n, 1, '.', ''), '0'), '.');
     }
+
+    /**
+     * The size a custom label keeps (owner, 2026-11-14: Edit opened at whatever printed last, not at the label's
+     * own size): the picker's choice as the Admin holds it, `{shape, preset, on, w, h, rounded}`, tidied. A preset
+     * the server no longer has becomes a typed size of the same millimetres, so an old label still opens.
+     *
+     * @return array{shape: string, preset: string, on: string, w: float, h: float, rounded: bool}|null
+     */
+    public static function cleanSize(mixed $in): ?array
+    {
+        if (!is_array($in)) {
+            return null;
+        }
+        $shape = ($in['shape'] ?? '') === 'circle' ? 'circle' : 'rect';
+        $w = round((float) ($in['w'] ?? 0), 1);
+        $h = round((float) ($in['h'] ?? 0), 1);
+        $preset = (string) ($in['preset'] ?? 'custom');
+        $known = collect(self::PRESETS)->firstWhere('id', $preset);
+        if ($known !== null) {
+            $shape = (string) $known['shape'];
+        } else {
+            $preset = 'custom';
+            if ($w < 10 || $h < 10 || $w > 420 || $h > 420) {
+                return null;
+            }
+        }
+
+        return [
+            'shape' => $shape,
+            'preset' => $preset,
+            'on' => is_string($in['on'] ?? null) && isset(self::STOCKS[$in['on']]) ? (string) $in['on'] : 'sheet',
+            'w' => $w > 0 ? $w : (float) ($known['w'] ?? 0),
+            'h' => $h > 0 ? $h : (float) ($known['h'] ?? 0),
+            'rounded' => filter_var($in['rounded'] ?? false, FILTER_VALIDATE_BOOLEAN),
+        ];
+    }
+
+    /** The size of a one-tap preset on an A4 sheet, as a label keeps it; null for one the server does not have. */
+    public static function sizeOfPreset(string $preset): ?array
+    {
+        $known = collect(self::PRESETS)->firstWhere('id', $preset);
+
+        return $known === null ? null : self::cleanSize(['shape' => $known['shape'], 'preset' => $preset, 'on' => 'sheet', 'w' => $known['w'], 'h' => $known['h']]);
+    }
 }

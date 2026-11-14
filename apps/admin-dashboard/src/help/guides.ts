@@ -451,6 +451,7 @@ export const GUIDES: Guide[] = [
       'Tap View on a row to see the label without printing it. The row also says its pack size, count, price and barcode.',
       'Tap Edit on a row to change the label itself: its wording, picture, size and layout.',
       'To rename a label, tap Edit and change Product name, then Save.',
+      'A label opens at the size it was saved at. To change its size, tap Edit, pick the size under Shape and size, then Save.',
       'Tap New label for a new one, in four steps.',
       'Batches lists every lot printed, with the code on its QR. Box labels is for delivery boxes. Setup holds the wording, logos, bottom strips, templates, your rolls, the printer and which menu items get labels.',
     ],

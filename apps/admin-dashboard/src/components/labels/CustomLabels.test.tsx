@@ -205,6 +205,19 @@ describe('CustomLabelModal', () => {
     expect(stickerLinks.mock.calls.every(([body]) => (body as { preview?: boolean }).preview === true)).toBe(true);
   });
 
+  // Owner, 2026-11-14: "When in my label edit is clicked, its not opening the saved label exactly like size and everything".
+  it('opens a label at the size it was saved at, not the size printed last, and saves the size with it', async () => {
+    localStorage.setItem('labels.lastSize', JSON.stringify({ shape: 'rect', preset: 'r105x148', on: 'sheet', w: 105, h: 148 }));
+    const label = custom(7, 'Garlic Sauce', { label_size: { shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60, rounded: false } });
+    updateCustomLabel.mockResolvedValue({ data: label });
+    wrap(<CustomLabelModal label={label} onClose={() => {}} onSaved={() => {}} />);
+    expect(await screen.findByText(/40 × 60 mm · A4 sheet/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Garlic Sauce 2' } });
+    fireEvent.click(within(screen.getByTestId('modal-footer')).getByRole('button', { name: /^Save/ }));
+    await waitFor(() => expect(updateCustomLabel).toHaveBeenCalledTimes(1));
+    expect((updateCustomLabel.mock.calls[0][1] as { label_size: unknown }).label_size).toEqual({ shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60, rounded: false });
+  });
+
   it('asks before closing with unsaved changes, and closes at once without any', async () => {
     const onClose = vi.fn();
     wrap(<CustomLabelModal label={custom(7, 'Garlic Sauce')} onClose={onClose} onSaved={() => {}} />);

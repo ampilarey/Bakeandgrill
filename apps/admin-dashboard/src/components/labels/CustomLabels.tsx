@@ -21,7 +21,7 @@ import { ShelfLifeHint } from './ShelfLifeHint';
 import { WordingSignoff } from './WordingSignoff';
 import { QuickEditSheet, quickSpec } from './QuickEdit';
 import { customDraft as toDraft, customPayload as toPayload, inHouseBarcode, type CustomDraft as Draft } from './labelDrafts';
-import { DEFAULT_CHOICE, rememberedSize, requestFor, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
+import { DEFAULT_CHOICE, designFor, rememberedSize, rememberedSizeFor, requestFor, withPreset, sizeName, sizeOf, stockOf, type SizeChoice } from './labelSize';
 import { Btn, ConfirmDialog, Modal, ModalActions, useConfirmDialog } from '../SharedUI';
 import { Button, Card, useToast } from '../ui';
 import { MediaPicker } from '../MediaPicker';
@@ -46,7 +46,7 @@ export function packLine(c: Pick<CustomLabel, 'label_pouch' | 'label_pack_qty' |
 }
 
 /** A custom label as the Print pop-up needs it. */
-export const printTargetOf = (c: CustomLabel): PrintTarget => ({ kind: 'custom', id: c.id, name: c.name, lang: langOf(c), pouch: Boolean(c.label_pouch), faces: c.label_wrap?.faces ?? 0, ownQty: c.label_pack_qty ?? null });
+export const printTargetOf = (c: CustomLabel): PrintTarget => ({ kind: 'custom', id: c.id, name: c.name, lang: langOf(c), pouch: Boolean(c.label_pouch), faces: c.label_wrap?.faces ?? 0, ownQty: c.label_pack_qty ?? null, size: c.label_size ?? null });
 
 /*
  * Custom labels (owner, 2026-10-11: "Add option to add custom labels using
@@ -164,10 +164,17 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   const [shelfLife, setShelfLife] = useState<ShelfLifeSuggestions | null>(null);
   // The wording lock (round 17): read the legal lines again after each save.
   const [signoffTick, setSignoffTick] = useState(0);
-  const [choice, setChoice] = useState<SizeChoice>(() => (label === null && startFrom ? templateSize(startFrom) : null) ?? rememberedSize() ?? DEFAULT_CHOICE);
-  const [rounded, setRounded] = useState(false);
+  // The label's own size first (owner, 2026-11-14: "edit is clicked, its not opening the saved label exactly like
+  // size and everything"), then the size this device printed it at, then the one last printed. A pouch label or a
+  // bottle with flat sides that has no size yet is put on the size made for it once the sizes have loaded.
+  const ownSize = label?.label_size ?? null;
+  const [choice, setChoice] = useState<SizeChoice>(() => {
+    if (ownSize) { const { rounded: _r, ...own } = ownSize; void _r; return { ...DEFAULT_CHOICE, ...own }; }
+    return (label === null && startFrom ? templateSize(startFrom) : null) ?? (label ? rememberedSizeFor(`c${label.id}`)?.choice : null) ?? rememberedSize() ?? DEFAULT_CHOICE;
+  });
+  const [rounded, setRounded] = useState(Boolean(ownSize?.rounded));
   // Whether the size is this label's own (a template brought it, or it was picked here) or only the one last printed.
-  const sizeIsOwn = useRef(label === null && startFrom !== null && templateSize(startFrom) !== null);
+  const sizeIsOwn = useRef(ownSize !== null || (label === null && startFrom !== null && templateSize(startFrom) !== null));
   const pickSize = (c: SizeChoice) => { sizeIsOwn.current = true; setChoice(c); };
   const previewSeq = useRef(0);
   const files = { photo: useRef<HTMLInputElement>(null), title: useRef<HTMLInputElement>(null) };
@@ -184,7 +191,17 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
     fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === label?.label_type_id))).catch(() => setTypes([]));
   }, [label?.label_type_id]);
   useEffect(() => {
-    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); setCatalogue(r.wrap ?? null); setPouchCatalogue(r.pouch ?? null); setRolls(r.rolls ?? []); setBadges(r.badges ?? []); setShelfLife(r.shelf_life ?? null); }).catch(() => setPresets([]));
+    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); setCatalogue(r.wrap ?? null); setPouchCatalogue(r.pouch ?? null); setRolls(r.rolls ?? []); setBadges(r.badges ?? []); setShelfLife(r.shelf_life ?? null);
+      // A label saved before sizes were kept: a pouch label or a flat-sided bottle opens at the size made for it.
+      if (label && !label.label_size) {
+        setChoice((c) => {
+          const { w, h } = sizeOf(c, r.presets);
+          if (label.label_pouch && !pouchFits(POUCH_FALLBACK, c.shape, w, h)) return { ...withPreset(c, 'r140x62', r.presets), on: 'sheet' };
+          if ((label.label_wrap?.faces ?? 0) > 0 && designFor(c.shape, w, h) !== 'wrap') return { ...withPreset(c, 'r215x40', r.presets), on: 'sheet' };
+          return c;
+        });
+      }
+    }).catch(() => setPresets([]));
     fetchLabelFooters().then((r) => setFooters(r.data)).catch(() => setFooters([]));
     fetchLabelSettings().then((r) => setDvFont(r.data.label_dhivehi_font || 'noto')).catch(() => setDvFont(null));
   }, []);
@@ -194,7 +211,10 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   const lang: StickerLang = d.label_lang || (d.name_dv.trim() ? 'both' : 'en');
   // Unsaved changes: the draft against what the label holds.
   const baseline = useMemo(() => JSON.stringify(toPayload(toDraft(saved))), [saved]);
-  const dirty = JSON.stringify(toPayload(d)) !== baseline;
+  // The size is part of the label: a different one is an unsaved change, once the label has a size of its own.
+  const sizeNow = JSON.stringify({ ...choice, rounded });
+  const sizeKept = useMemo(() => (saved?.label_size ? JSON.stringify({ ...DEFAULT_CHOICE, ...saved.label_size, rounded: Boolean(saved.label_size.rounded) }) : null), [saved]);
+  const dirty = JSON.stringify(toPayload(d)) !== baseline || (sizeKept !== null && sizeNow !== sizeKept);
 
   // The preview is the first sticker of the sheet Print labels would print
   // at this size, so what is seen here is what comes out.
@@ -254,7 +274,9 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
     if (!d.name.trim()) { toast('error', 'Give the label a name.'); return null; }
     setSaving(true);
     try {
-      const r = saved ? await updateCustomLabel(saved.id, toPayload(d)) : await createCustomLabel(toPayload(d));
+      // The size shown here is saved with the label, so Edit, View and Print open on it from any device.
+      const body = { ...toPayload(d), label_size: { ...choice, rounded } };
+      const r = saved ? await updateCustomLabel(saved.id, body) : await createCustomLabel(body);
       setSaved(r.data);
       setD(toDraft(r.data));
       onSaved(r.data, sizeIsOwn.current ? choice : undefined);

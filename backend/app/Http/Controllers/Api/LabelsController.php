@@ -1364,6 +1364,14 @@ class LabelsController extends Controller
             'footer_id' => 'sometimes|nullable|integer|exists:label_footers,id',
             'label_show_qr' => 'sometimes|nullable|boolean',
             'label_lang' => ['sometimes', 'nullable', Rule::in(StickerSheet::LANGS)],
+            // The size the label is made at (2026-11-14), so Edit, View and Print open on it from any device.
+            'label_size' => 'sometimes|nullable|array',
+            'label_size.shape' => ['sometimes', Rule::in(['rect', 'circle'])],
+            'label_size.preset' => 'sometimes|string|max:40',
+            'label_size.on' => ['sometimes', Rule::in(array_keys(StickerLayouts::STOCKS))],
+            'label_size.w' => 'sometimes|numeric|min:0|max:420',
+            'label_size.h' => 'sometimes|numeric|min:0|max:420',
+            'label_size.rounded' => 'sometimes|boolean',
             'label_shelf_life_days' => 'sometimes|nullable|integer|min:1|max:730',
             'label_pack_qty' => 'sometimes|nullable|integer|min:1|max:9999',
             'label_pack_unit' => 'sometimes|nullable|string|max:10',
@@ -1395,6 +1403,9 @@ class LabelsController extends Controller
         }
         if (array_key_exists('label_show_qr', $data) && $data['label_show_qr'] !== null) {
             $data['label_show_qr'] = filter_var($data['label_show_qr'], FILTER_VALIDATE_BOOLEAN);
+        }
+        if (array_key_exists('label_size', $data)) {
+            $data['label_size'] = StickerLayouts::cleanSize($data['label_size']);
         }
 
         return $data;
@@ -1436,6 +1447,7 @@ class LabelsController extends Controller
             'footer_name' => $c->footer?->name,
             'label_show_qr' => $c->label_show_qr === null ? null : (bool) $c->label_show_qr,
             'label_lang' => in_array($c->label_lang, StickerSheet::LANGS, true) ? $c->label_lang : null,
+            'label_size' => StickerLayouts::cleanSize($c->label_size),
             // Printed how often, from the print log (the list loads these; a fresh save answers 0).
             'print_count' => (int) ($c->prints_count ?? 0),
             'last_printed_at' => $c->prints_max_created_at ? \Carbon\CarbonImmutable::parse((string) $c->prints_max_created_at)->toIso8601String() : null,

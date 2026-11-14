@@ -391,4 +391,30 @@ class PouchLabelTest extends TestCase
         $this->assertSame(array_keys(PouchConfig::LOOKS), array_column($layouts->json('pouch.looks'), 'key'));
         $this->assertSame(array_keys(PouchConfig::METHODS), array_column($layouts->json('pouch.methods'), 'key'));
     }
+
+    // Owner, 2026-11-14: "When in my label edit is clicked, its not opening the saved label exactly like size and everything".
+    public function test_a_label_keeps_the_size_it_is_made_at(): void
+    {
+        $this->getJson('/api/labels/custom')->assertOk()->assertJsonPath('data.0.label_size', null);
+
+        // Saved from the editor at the pouch size, with rounded corners off.
+        $kept = $this->putJson("/api/labels/custom/{$this->momo}", ['name' => 'Chicken Momo', 'label_size' => ['shape' => 'rect', 'preset' => 'r140x62', 'on' => 'sheet', 'w' => 140, 'h' => 62, 'rounded' => false, 'nonsense' => 1]])
+            ->assertOk()->json('data.label_size');
+        $this->assertSame(['shape' => 'rect', 'preset' => 'r140x62', 'on' => 'sheet', 'w' => 140, 'h' => 62, 'rounded' => false], array_map(fn ($v) => is_float($v) ? (int) $v : $v, $kept));
+        $this->assertSame('r140x62', $this->getJson('/api/labels/custom')->json('data.0.label_size.preset'), 'the list carries it, for Edit, View and Print');
+
+        // A typed size is kept as typed; a preset the server does not know becomes a typed size; rubbish clears it.
+        $typed = $this->putJson("/api/labels/custom/{$this->momo}", ['name' => 'Chicken Momo', 'label_size' => ['shape' => 'rect', 'preset' => 'r999x9', 'on' => 'printer', 'w' => 80, 'h' => 50, 'rounded' => true]])->assertOk()->json('data.label_size');
+        $this->assertSame(['custom', 'printer', true], [$typed['preset'], $typed['on'], $typed['rounded']]);
+        $this->assertSame([80, 50], [(int) $typed['w'], (int) $typed['h']]);
+        $this->putJson("/api/labels/custom/{$this->momo}", ['name' => 'Chicken Momo', 'label_size' => ['shape' => 'rect', 'preset' => 'custom', 'w' => 2, 'h' => 2]])->assertOk()->assertJsonPath('data.label_size', null);
+
+        // A change that does not mention the size leaves it alone.
+        $this->putJson("/api/labels/custom/{$this->momo}", ['name' => 'Chicken Momo', 'label_size' => ['shape' => 'rect', 'preset' => 'r120x53', 'on' => 'sheet', 'w' => 120, 'h' => 53]])->assertOk();
+        $this->putJson("/api/labels/custom/{$this->momo}", ['name' => 'Chicken Momo', 'label_note' => 'Keep frozen'])->assertOk()->assertJsonPath('data.label_size.preset', 'r120x53');
+
+        // Pouch labels in every size: each label is made at its own size.
+        $made = $this->postJson('/api/labels/pouch-set', ['name' => 'Veg Momo', 'sizes' => [['word' => 'Small', 'qty' => 6, 'price' => 35, 'preset' => 'r120x53'], ['word' => 'Large', 'qty' => 12, 'price' => 65, 'preset' => 'r160x70']]])->assertCreated()->json('data');
+        $this->assertSame(['r120x53', 'r160x70'], array_map(fn ($m) => $m['label']['label_size']['preset'], $made));
+    }
 }

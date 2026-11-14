@@ -12,12 +12,14 @@ const stickerLinks = vi.fn();
 const fetchLabelLayouts = vi.fn();
 const openLabelSheet = vi.fn();
 const downloadLabelSheet = vi.fn();
+const updateCustomLabel = vi.fn();
 
 vi.mock('../../api', () => ({
   stickerLinks: (...a: unknown[]) => stickerLinks(...a),
   fetchLabelLayouts: (...a: unknown[]) => fetchLabelLayouts(...a),
   openLabelSheet: (...a: unknown[]) => openLabelSheet(...a),
   downloadLabelSheet: (...a: unknown[]) => downloadLabelSheet(...a),
+  updateCustomLabel: (...a: unknown[]) => updateCustomLabel(...a),
   signOffLabel: vi.fn(),
   fetchLabelSignoff: vi.fn(),
 }));
@@ -40,6 +42,7 @@ describe('PrintLabelModal', () => {
     vi.clearAllMocks();
     localStorage.clear();
     fetchLabelLayouts.mockResolvedValue(LAYOUTS);
+    updateCustomLabel.mockResolvedValue({ data: {} });
     stickerLinks.mockResolvedValue({ url: '/labels/stickers?s=1', one_url: '/labels/stickers?one=1', view_url: '/v', pdf_url: '/x.pdf', expires_in_minutes: 30, summary: summary() });
   });
 
@@ -96,6 +99,24 @@ describe('PrintLabelModal', () => {
     localStorage.setItem('labels.sizeFor', JSON.stringify({ c9: { shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60, roll: null } }));
     show({ kind: 'custom', id: 9, name: 'Garlic Sauce', lang: 'en' });
     expect(await screen.findByTestId('print-paper')).toHaveTextContent('40 × 60 mm');
+  });
+
+  it('opens at the size the label itself keeps, before anything this device remembers', async () => {
+    localStorage.setItem('labels.sizeFor', JSON.stringify({ c9: { shape: 'rect', preset: 'r105x148', on: 'sheet', w: 105, h: 148, roll: null } }));
+    show({ kind: 'custom', id: 9, name: 'Garlic Sauce', lang: 'en', size: { shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60 } });
+    expect(await screen.findByTestId('print-paper')).toHaveTextContent('40 × 60 mm');
+    await previewed();
+    fireEvent.click(screen.getByTestId('print-go'));
+    await waitFor(() => expect(openLabelSheet).toHaveBeenCalled());
+    // It has a size of its own, so a print does not rewrite it.
+    expect(updateCustomLabel).not.toHaveBeenCalled();
+  });
+
+  it('a label with no size of its own keeps the size of its first print', async () => {
+    show();
+    await previewed();
+    fireEvent.click(await screen.findByTestId('print-go'));
+    await waitFor(() => expect(updateCustomLabel).toHaveBeenCalledWith(7, { label_size: expect.objectContaining({ preset: 'r140x62', rounded: false }) }));
   });
 
   it('keeps Print off while the wording lock refuses the label', async () => {

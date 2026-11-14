@@ -303,6 +303,8 @@ export type CustomLabel = {
   label_show_qr: boolean | null;
   /** The language it usually prints in; null means English, or both when it has a Dhivehi name. */
   label_lang: StickerLang | null;
+  /** The size the label is made at (2026-11-14): Edit, View and Print open on it, on any device. Null until it is saved or printed once. */
+  label_size?: LabelSizeKept | null;
   /** From the print log; the list carries them. */
   print_count: number; last_printed_at: string | null;
   label_shelf_life_days: number | null; label_pack_qty: number | null; label_pack_unit: string | null;
@@ -327,13 +329,16 @@ export type CustomLabel = {
   created_by: string | null; updated_at: string | null;
 };
 
+/** A label's own size, as the size picker holds it. */
+export type LabelSizeKept = { shape: 'rect' | 'circle'; preset: string; on: LabelStock; w: number; h: number; rounded?: boolean };
+
 export type CustomLabelPayload = Partial<Pick<CustomLabel,
   'name' | 'name_dv' | 'brand_id' | 'label_type_id' | 'label_storage' | 'label_heading' | 'label_heading_dv'
   | 'label_storage_line' | 'label_storage_line_dv' | 'label_ingredients' | 'label_ingredients_dv'
   | 'label_how_to_use' | 'label_how_to_use_dv' | 'label_note' | 'label_note_dv'
   | 'footer_id' | 'label_show_qr' | 'label_lang'
   | 'label_shelf_life_days' | 'label_pack_qty' | 'label_pack_unit' | 'label_photo_media_id' | 'label_title_media_id'
-  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition' | 'label_nutrition_per' | 'label_wrap'>> & { label_pouch?: LabelPouch | null; label_layout?: LabelArrangement | null; label_badges?: string[] | null };
+  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition' | 'label_nutrition_per' | 'label_wrap'>> & { label_size?: LabelSizeKept | null; label_pouch?: LabelPouch | null; label_layout?: LabelArrangement | null; label_badges?: string[] | null };
 
 /** The sticker's languages: English, Dhivehi, or both on one sticker (2026-10-12). */
 export type StickerLang = 'en' | 'dv' | 'both';

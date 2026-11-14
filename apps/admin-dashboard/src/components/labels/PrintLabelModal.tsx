@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, ChevronDown, FileDown, Printer } from 'lucide-react';
 import {
-  downloadLabelSheet, fetchLabelLayouts, openLabelSheet, stickerLinks,
-  type LabelLimits, type LabelPreset, type LabelRoll, type SheetLinks, type StickerLang, type StickerSummary,
+  downloadLabelSheet, fetchLabelLayouts, openLabelSheet, stickerLinks, updateCustomLabel,
+  type LabelLimits, type LabelPreset, type LabelRoll, type LabelSizeKept, type SheetLinks, type StickerLang, type StickerSummary,
 } from '../../api';
 import { Button } from '../ui';
 import { Modal, ModalActions, TabScrollRow } from '../SharedUI';
@@ -42,6 +42,8 @@ export type PrintTarget = {
   sizes?: { id: number; name: string; price: number }[];
   /** The label's own quantity per pack, shown as the box's hint. */
   ownQty?: number | null;
+  /** The size the label itself keeps (a custom label's `label_size`): it opens there on any device. */
+  size?: LabelSizeKept | null;
 };
 
 const fieldClass = 'h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] w-full';
@@ -51,6 +53,11 @@ const chip = (on: boolean) => ['h-8 px-3 rounded-full border text-sm font-semibo
 /** The size a label opens at: the one it last printed at, else the one made for it, else the last size printed. */
 export function startingSize(target: PrintTarget, presets: LabelPreset[], rolls: LabelRoll[], at?: SizeChoice): { choice: SizeChoice; roll: string | null } {
   if (at) return { choice: at, roll: null };
+  if (target.size) {
+    const { rounded: _r, ...own } = target.size;
+    void _r;
+    return { choice: { ...DEFAULT_CHOICE, ...own }, roll: rememberedSizeFor(`${target.kind === 'custom' ? 'c' : 'i'}${target.id}`)?.roll ?? null };
+  }
   const own = rememberedSizeFor(`${target.kind === 'custom' ? 'c' : 'i'}${target.id}`);
   if (own) return own;
   let choice = rememberedSize() ?? (rolls.length > 0 ? rollChoice(rolls[0]) : DEFAULT_CHOICE);
@@ -108,6 +115,7 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
       const start = startingSize(target, r.presets, owned, at);
       setPresets(r.presets); setLimits(r.limits); setRolls(owned);
       setChoice(start.choice); setRollId(start.roll);
+      if (!at && target.size?.rounded) setRounded(true);
       setReady(true);
     }).catch(() => { if (alive) { setPresets([]); setLimits(null); setReady(true); } });
     return () => { alive = false; };
@@ -172,6 +180,10 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
       const r = await stickerLinks(request(copies, false));
       rememberSize(choice, picked.roll?.id ?? null);
       rememberSizeFor(`${target.kind === 'custom' ? 'c' : 'i'}${target.id}`, choice, picked.roll?.id ?? null);
+      // A label printed before it had a size of its own keeps this one, so it opens here on every device.
+      if (target.kind === 'custom' && !target.size) {
+        try { void updateCustomLabel(target.id, { label_size: { ...choice, rounded } }).catch(() => undefined); } catch { /* someone who may print but not change labels */ }
+      }
       setResult(r);
       onPrinted?.(r);
       if (how === 'print') openLabelSheet(r.url, r.pdf_url);
