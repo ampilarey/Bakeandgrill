@@ -7232,7 +7232,15 @@ table.is-table.is-table { display: none; }
 /* Social Hub → Make a post (2026-11-14). Phone first: the picture, then the steps in one
    column; from 1024px the picture stands on the right, pinned, while the steps scroll. */
 .sp-layout { display: grid; gap: 12px; }
-.sp-preview, .sp-form { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.sp-form { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+/* Phone: the preview column dissolves so the picture can pin to the screen for the whole page. */
+.sp-preview { display: contents; }
+.sp-pin { position: sticky; top: 56px; z-index: 12; margin: 0 -4px; padding: 6px 4px 4px; background: var(--color-bg); border-bottom: 1px solid var(--color-border-light); }
+.sp-pin .sp-stage { min-height: 0; padding: 4px; background: none; }
+.sp-pin .sp-stage .sp-canvas { max-height: 34vh; }
+.sp-pin .sp-empty { padding: 12px 16px; }
+.sp-pin.is-shut .sp-stage { display: none; }
+.sp-pin-toggle { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; min-height: 32px; padding: 0; border: none; background: none; font-size: 12px; font-weight: 600; color: var(--color-text-secondary); cursor: pointer; }
 .sp-stage { display: flex; align-items: center; justify-content: center; background: var(--color-bg); border-radius: 12px; padding: 8px; min-height: 180px; }
 .sp-stage .sp-canvas { width: auto; max-width: 100%; height: auto; max-height: 62vh; aspect-ratio: var(--sp-ratio); border-radius: 8px; box-shadow: 0 6px 24px rgba(28, 20, 8, 0.18); }
 .sp-canvas { display: block; width: 100%; height: auto; }
@@ -7262,5 +7270,10 @@ table.is-table.is-table { display: none; }
 .sp-offscreen { position: absolute; width: 0; height: 0; overflow: hidden; }
 @media (min-width: 1024px) {
   .sp-layout { grid-template-columns: minmax(0, 1fr) minmax(340px, 440px); gap: 20px; align-items: start; }
-  .sp-preview { order: 2; position: sticky; top: 72px; }
+  .sp-preview { display: flex; flex-direction: column; gap: 12px; min-width: 0; order: 2; position: sticky; top: 72px; }
+  .sp-pin { position: static; margin: 0; padding: 0; background: none; border-bottom: none; }
+  .sp-pin .sp-stage { min-height: 180px; padding: 8px; background: var(--color-bg); }
+  .sp-pin .sp-stage .sp-canvas { max-height: 62vh; }
+  .sp-pin.is-shut .sp-stage { display: flex; }
+  .sp-pin-toggle { display: none; }
 }

@@ -944,6 +944,7 @@ export const GUIDES: Guide[] = [
     notes: [
       'Feed post suits Instagram and Facebook, Square suits Viber and Telegram, Story suits stories, WhatsApp status and TikTok, Wide suits a Facebook link.',
       'For two buttons, switch on Second button and type its words, such as Call us. Button style changes how the main button looks: Filled, Outline or Highlight.',
+      'On a phone the picture stays at the top of the screen while you scroll, so you see each change as you make it. Hide the picture folds it away; Show the picture brings it back.',
       'Post it opens the composer with the picture and a caption ready, to send to your connected channels.',
       'On a phone, Share sends the picture straight to another app, such as WhatsApp or Instagram.',
       'Open a saved post, change the price or the design, and tap Save changes. Save as a new post keeps the old one too.',

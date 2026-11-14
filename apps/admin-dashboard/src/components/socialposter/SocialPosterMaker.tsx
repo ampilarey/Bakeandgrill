@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, ImagePlus, Save, Send, Share2, Shuffle, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, ImagePlus, Save, Send, Share2, Shuffle, Trash2 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import {
   createSocialPoster, deleteSocialPoster, fetchSocialItemPreview, fetchSocialPosters, updateSocialPoster, uploadSocialPosterPicture,
@@ -116,6 +116,7 @@ export function SocialPosterMaker({ canCompose, onSend }: {
   const [picking, setPicking] = useState(false);
   const [qr, setQr] = useState<HTMLCanvasElement | null>(null);
   const [qrVersion, setQrVersion] = useState(0);
+  const [pinOpen, setPinOpen] = useState(true);
   const dialog = useConfirmDialog();
 
   const size = sizeOf(sizeKey);
@@ -312,13 +313,20 @@ export function SocialPosterMaker({ canCompose, onSend }: {
       {notice && <p role="status" className="sp-notice">{notice}</p>}
       <div className="sp-layout">
         <div className="sp-preview">
-          <Card>
+          {/* On a phone the picture stays pinned under the top bar while the steps scroll beneath it
+              (owner, 2026-11-15: "When I change the content, I have to scroll up to see the change"). */}
+          <div className={`sp-pin${pinOpen ? '' : ' is-shut'}`} data-testid="sp-pin">
             <div className="sp-stage" style={{ '--sp-ratio': `${size.w} / ${size.h}` } as React.CSSProperties}>
               {empty
                 ? <p className="sp-empty">Pick a dish or type a headline, and the post appears here.</p>
                 : <PostCanvas spec={spec} layout={layout} palette={palette} size={size} assets={assets} px={size.w >= 1200 ? 900 : 720} version={qrVersion + (ready ? 1000 : 0)} label={`${spec.headline}, ${size.name}`} />}
             </div>
-            <TabScrollRow fit style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+            <button type="button" className="sp-pin-toggle" aria-expanded={pinOpen} onClick={() => setPinOpen((o) => !o)}>
+              {pinOpen ? <><ChevronUp size={14} aria-hidden /> Hide the picture</> : <><ChevronDown size={14} aria-hidden /> Show the picture</>}
+            </button>
+          </div>
+          <Card>
+            <TabScrollRow fit style={{ display: 'flex', gap: 6 }}>
               {SIZES.map((s) => (
                 <Btn key={s.key} small variant={s.key === sizeKey ? 'primary' : 'secondary'} aria-pressed={s.key === sizeKey} onClick={() => setSizeKey(s.key)} title={s.hint}>{s.name}</Btn>
               ))}
