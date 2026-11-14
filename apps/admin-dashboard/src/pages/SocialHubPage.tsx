@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import {
   cancelSocialPost, checkSocialChannel, createSocialChannel, deleteSocialChannel,
   deleteSocialVideo, fetchMetaPending, fetchSocialAutomation, fetchSocialBestTimes, fetchSocialChannelOptions, fetchSocialChannels,
-  fetchSocialPost, fetchSocialPosts, fetchSocialTopShares, fetchSocialVideos, finishMetaConnect, generateSocialVideo,
+  fetchSocialPost, fetchSocialPosts, fetchSocialTopShares, fetchAllSocialVideos, fetchSocialVideos, finishMetaConnect, generateSocialVideo,
   publishSocialPostNow, refreshSocialInsights, retrySocialDelivery, testSocialChannel,
   updateSocialAutomation, updateSocialChannel,
   startMetaConnect, updateItem,
@@ -22,7 +22,7 @@ import { CommentsTab } from './social/CommentsTab';
 import { ComposeModal } from './social/ComposeModal';
 import { SocialPosterMaker } from '../components/socialposter/SocialPosterMaker';
 import { PLATFORM_LABELS, bestTimesHint, navigateTo } from './social/composer';
-import { Heart, MessageCircle, MousePointerClick, Share2, ShoppingBag } from 'lucide-react';
+import { Download, Heart, MessageCircle, MousePointerClick, Play, Share2, ShoppingBag } from 'lucide-react';
 import { inputFont } from '../utils/cssVars';
 
 const STATUS_OPTIONS = [
@@ -852,6 +852,14 @@ const FORMAT_LABELS: Record<string, string> = {
   landscape: 'Landscape 16:9 (FB · Telegram)',
 };
 
+/** A clip's state in the screen's words. */
+const VIDEO_STATUS: Record<string, string> = {
+  queued: 'Waiting to render',
+  processing: 'Rendering…',
+  ready: 'Ready',
+  failed: 'Failed',
+};
+
 function VideoStudio({ canGenerate }: { canGenerate: boolean }) {
   const [pick, setPick] = useState<MenuItemSelection | null>(null);
   const [loadedItemId, setLoadedItemId] = useState<number | null>(null);
@@ -861,9 +869,21 @@ function VideoStudio({ canGenerate }: { canGenerate: boolean }) {
   const [renditions, setRenditions] = useState<SocialVideoRenditionRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Every clip made, whatever the dish (owner, 2026-11-15: the tab showed none until a dish was picked).
+  const [all, setAll] = useState<Array<SocialVideoRenditionRow & { item_name: string }>>([]);
+  const [watching, setWatching] = useState<{ title: string; url: string; poster: string | null } | null>(null);
 
-  const load = async (id: number) => {
-    setBusy(true);
+  const loadAll = useCallback(async () => {
+    try {
+      setAll((await fetchAllSocialVideos()).data);
+    } catch {
+      // The list is a convenience: the picker below still works without it.
+    }
+  }, []);
+  useEffect(() => { void loadAll(); }, [loadAll]);
+
+  const load = async (id: number, quiet = false) => {
+    if (!quiet) setBusy(true);
     setError('');
     try {
       const res = await fetchSocialVideos(id);
@@ -872,12 +892,25 @@ function VideoStudio({ canGenerate }: { canGenerate: boolean }) {
       setHasPhotos(res.has_photos);
       setFormats(res.formats);
       setRenditions(res.renditions);
+      void loadAll();
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
   };
+
+  // While a clip is waiting or rendering, look again by itself: nobody should have to tap Refresh.
+  const waiting = all.some((r) => r.status === 'queued' || r.status === 'processing')
+    || renditions.some((r) => r.status === 'queued' || r.status === 'processing');
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setInterval(() => {
+      if (loadedItemId !== null) void load(loadedItemId, true); else void loadAll();
+    }, 10000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waiting, loadedItemId, loadAll]);
 
   const generate = async (format: string) => {
     if (loadedItemId === null) return;
@@ -894,8 +927,37 @@ function VideoStudio({ canGenerate }: { canGenerate: boolean }) {
 
   return (
     <div style={{ display: 'grid', gap: 12, maxWidth: 680 }}>
+      {loadedItemId === null && all.length > 0 && (
+        <Card style={{ padding: '16px 18px' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>Videos you have made</div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {all.map((r) => (
+              <div key={r.id} data-testid="made-video" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 10 }}>
+                {r.poster_url && <img src={r.poster_url} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8 }} />}
+                <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, overflowWrap: 'anywhere' }}>{r.item_name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                    {FORMAT_LABELS[r.format] ?? r.format} · {VIDEO_STATUS[r.status] ?? r.status}
+                    {r.error_message && r.status === 'failed' ? `: ${r.error_message}` : ''}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {r.status === 'ready' && r.url && (
+                    <>
+                      <Btn small variant="secondary" onClick={() => setWatching({ title: `${r.item_name} · ${FORMAT_LABELS[r.format] ?? r.format}`, url: r.url as string, poster: r.poster_url })}><Play size={14} aria-hidden /> Play</Btn>
+                      <a href={r.url} download className="social-video-link"><Download size={14} aria-hidden /> Download</a>
+                    </>
+                  )}
+                  <Btn small variant="secondary" onClick={() => { setPick(null); void load(r.item_id); }}>Open</Btn>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <Card style={{ padding: '16px 18px' }}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Item videos</div>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{all.length > 0 ? 'Make a new video' : 'Item videos'}</div>
         <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 12px', lineHeight: 1.5 }}>
           Builds a short silent clip from an item's real photos (slow zoom, crossfades,
           closing card with name and price). Renders run on their own background queue.
@@ -948,22 +1010,19 @@ function VideoStudio({ canGenerate }: { canGenerate: boolean }) {
                     <div style={{ fontSize: 13, fontWeight: 700 }}>{FORMAT_LABELS[format] ?? format}</div>
                     {rendition && (
                       <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
-                        {rendition.status}
+                        {VIDEO_STATUS[rendition.status] ?? rendition.status}
                         {rendition.stale && ' · outdated (photos/price changed)'}
                         {rendition.bytes != null && ` · ${(rendition.bytes / 1048576).toFixed(1)} MB`}
                         {rendition.error_message && ` — ${rendition.error_message}`}
                       </div>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {rendition?.status === 'ready' && rendition.url && (
-                      <a
-                        href={rendition.url}
-                        download
-                        style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', alignSelf: 'center' }}
-                      >
-                        Download
-                      </a>
+                      <>
+                        <Btn small variant="secondary" onClick={() => setWatching({ title: FORMAT_LABELS[format] ?? format, url: rendition.url as string, poster: rendition.poster_url })}><Play size={14} aria-hidden /> Play</Btn>
+                        <a href={rendition.url} download className="social-video-link"><Download size={14} aria-hidden /> Download</a>
+                      </>
                     )}
                     {canGenerate && (
                       <Btn
@@ -982,7 +1041,7 @@ function VideoStudio({ canGenerate }: { canGenerate: boolean }) {
                     {canGenerate && rendition?.status === 'ready' && (
                       <Btn
                         small
-                        variant="danger"
+                        variant="danger-outline"
                         disabled={busy}
                         onClick={() => { void (async () => { await deleteSocialVideo(rendition.id); await load(loadedItemId); })(); }}
                       >
@@ -994,10 +1053,30 @@ function VideoStudio({ canGenerate }: { canGenerate: boolean }) {
               );
             })}
           </div>
-          <div style={{ marginTop: 10 }}>
+          <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Btn small variant="secondary" disabled={busy} onClick={() => { void load(loadedItemId); }}>Refresh status</Btn>
+            <Btn small variant="secondary" onClick={() => { setPick(null); setLoadedItemId(null); void loadAll(); }}>All videos</Btn>
           </div>
         </Card>
+      )}
+
+      {watching && (
+        <Modal title={watching.title} onClose={() => setWatching(null)} maxWidth={520}>
+          <video
+            src={watching.url}
+            poster={watching.poster ?? undefined}
+            controls
+            autoPlay
+            loop
+            muted
+            playsInline
+            style={{ display: 'block', width: '100%', maxHeight: '70vh', borderRadius: 10, background: 'var(--color-backdrop)' }}
+          />
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setWatching(null)}>Close</Btn>
+            <a href={watching.url} download className="social-video-link"><Download size={14} aria-hidden /> Download</a>
+          </ModalActions>
+        </Modal>
       )}
     </div>
   );

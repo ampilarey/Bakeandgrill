@@ -68,6 +68,7 @@ if (routes_domain_section_is('social', 'admin') && !routes_domain_loaded('social
         Route::put('/automation', [SocialPostController::class, 'updateAutomationSettings']);
         // Video renditions: list with social.view; generate/delete check
         // social.compose in-controller.
+        Route::get('/videos', [App\Http\Controllers\Api\SocialVideoController::class, 'all']);
         Route::get('/items/{id}/videos', [App\Http\Controllers\Api\SocialVideoController::class, 'index']);
         Route::post('/items/{id}/videos', [App\Http\Controllers\Api\SocialVideoController::class, 'store']);
         Route::delete('/videos/{renditionId}', [App\Http\Controllers\Api\SocialVideoController::class, 'destroy']);

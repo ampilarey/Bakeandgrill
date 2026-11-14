@@ -405,6 +405,11 @@ export async function fetchSocialVideos(itemId: number): Promise<{
   return req(`/admin/social/items/${itemId}/videos`);
 }
 
+/** Every clip made or being made, newest first, each with its dish's name. */
+export async function fetchAllSocialVideos(): Promise<{ data: Array<SocialVideoRenditionRow & { item_name: string }> }> {
+  return req('/admin/social/videos');
+}
+
 export async function generateSocialVideo(
   itemId: number,
   format: string,

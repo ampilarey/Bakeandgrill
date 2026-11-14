@@ -219,4 +219,21 @@ class SocialVideoTest extends TestCase
         // A clip already claimed is left to whoever claimed it.
         $this->assertFalse(RenderSocialVideoJob::claim($waiting->id));
     }
+
+    /** Owner, 2026-11-15: "when I click video, it doesn't show created videos. I have to select the item." */
+    public function test_every_clip_made_is_listed_with_its_dish_without_picking_one(): void
+    {
+        Queue::fake();
+        $this->fakeFfmpegAvailable();
+        $item = $this->itemWithPhoto();
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $this->getJson('/api/admin/social/videos')->assertOk()->assertJsonCount(0, 'data');
+
+        $this->postJson("/api/admin/social/items/{$item->id}/videos", ['format' => 'vertical'])->assertStatus(202);
+        $this->postJson("/api/admin/social/items/{$item->id}/videos", ['format' => 'square'])->assertStatus(202);
+
+        $list = $this->getJson('/api/admin/social/videos')->assertOk()->assertJsonCount(2, 'data');
+        $list->assertJsonPath('data.0.item_name', $item->name)->assertJsonPath('data.0.item_id', $item->id);
+        $this->assertEqualsCanonicalizing(['vertical', 'square'], array_column($list->json('data'), 'format'));
+    }
 }

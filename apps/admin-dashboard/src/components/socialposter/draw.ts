@@ -257,11 +257,16 @@ function photo(ctx: Ctx, box: Rect, spec: PostSpec, A: PostAssets, st: PhotoStyl
     ctx.shadowColor = 'rgba(0,0,0,0.38)';
     ctx.shadowBlur = 4 * u;
     ctx.shadowOffsetY = 2 * u;
-    const grow = st.shape === 'circle' ? 1.08 : 1;
-    const side = st.shape === 'circle' ? d : 0;
-    contain(ctx, img, st.shape === 'circle'
-      ? { x: cx - (side * grow) / 2, y: cy - (side * grow) / 2, w: side * grow, h: side * grow }
-      : { x: box.x + box.w * 0.03, y: box.y + box.h * 0.03, w: box.w * 0.94, h: box.h * 0.94 });
+    if (st.shape === 'circle') {
+      // Inside the circle whatever its shape (owner, 2026-11-15: a tall can ran over the ring
+      // and the price sticker): the picture's corners may pass the ring a little, as a round
+      // plate's empty corners do, but neither its width nor its height ever does.
+      const [iw, ih] = sizeOfImg(img);
+      const k = Math.min((1.1 * d) / Math.hypot(iw, ih), (0.9 * d) / Math.max(iw, ih));
+      ctx.drawImage(img, cx - (iw * k) / 2, cy - (ih * k) / 2, iw * k, ih * k);
+    } else {
+      contain(ctx, img, { x: box.x + box.w * 0.03, y: box.y + box.h * 0.03, w: box.w * 0.94, h: box.h * 0.94 });
+    }
     ctx.restore();
   } else {
     ctx.save();

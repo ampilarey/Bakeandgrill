@@ -929,6 +929,25 @@ export const GUIDES: Guide[] = [
     words: 'facebook instagram telegram viber post social share',
   },
   {
+    id: 'social-videos',
+    page: '/social',
+    title: 'Make a short video of a dish, watch it and download it',
+    steps: [
+      'Open Social Hub and tap the Videos tab. Videos you have made are listed first, newest at the top.',
+      'To make one, pick a Category or search for the dish, then tap Generate beside the shape you want.',
+      'The row says Waiting to render, then Rendering, then Ready. It updates by itself.',
+      'Tap Play to watch it. Tap Download to save it.',
+    ],
+    notes: [
+      'Vertical suits Reels, Stories and TikTok. Square suits the feed. Landscape suits Facebook and Telegram.',
+      'The video is built from the dish\'s own photos, with a closing card showing its name and price. It has no sound.',
+      'Open on a listed video shows that dish\'s three shapes. All videos goes back to the list.',
+      'To post one, tap + New post, pick the dish and choose Video. For TikTok, download the Vertical one and post it from your phone.',
+      'If a video says Failed, tap Generate again.',
+    ],
+    words: 'video clip reel tiktok story render play preview download watch',
+  },
+  {
     id: 'social-make-post',
     page: '/social',
     title: 'Make a picture for Instagram, Facebook, stories and WhatsApp status',

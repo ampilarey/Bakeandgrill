@@ -42,6 +42,22 @@ class SocialVideoController extends Controller
         ]);
     }
 
+    /**
+     * GET /admin/social/videos: every clip made or being made, newest first, with its dish's
+     * name (owner, 2026-11-15: "when I click video, it doesn't show created videos. I have to
+     * select the item").
+     */
+    public function all(): JsonResponse
+    {
+        $rows = SocialVideoRendition::query()->with('item:id,name')->latest('updated_at')->limit(120)->get();
+
+        return response()->json([
+            'data' => $rows->map(fn (SocialVideoRendition $r) => $this->payload($r, null) + [
+                'item_name' => (string) ($r->item?->name ?? 'A dish no longer on the menu'),
+            ])->values(),
+        ]);
+    }
+
     /** POST /admin/social/items/{id}/videos — queue (or refresh) one format. */
     public function store(Request $request, int $id): JsonResponse
     {

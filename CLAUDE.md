@@ -1526,7 +1526,7 @@ The post is a `PostSpec` (`types.ts`), drawn in the browser on a canvas by `rend
 `LAYOUTS` (20) in any of `PALETTES` (20) at any of `SIZES` (feed 1080 × 1350, square 1080 × 1080, story 1080 × 1920,
 wide 1200 × 630), so **a design is a pair of keys, never a copy of the words**. Every length is a share of the
 picture (`u`), each layout places its parts by the picture's shape (`wide`, `tall`), never by cropping, and the word
-stack (`stack()`) shrinks as one until it fits, so nothing is cut. A cut-out photo is drawn whole; a story keeps its
+stack (`stack()`) shrinks as one until it fits, so nothing is cut. A cut-out photo is drawn whole and, in a circle, inside it whatever its shape (owner, 2026-11-15: a tall can ran over the ring and the price sticker; `photo()` fits it so neither its width nor its height passes the ring); a story keeps its
 top and bottom clear. A new design is a function in `LAYOUT_DRAW` and a row in `LAYOUTS`; a new colour is a row in
 `PALETTES`; neither needs anything on the server (`layout` and `palette` are kept as plain keys). Saved posts are
 `social_posters` (`SocialPosterController`, `/api/admin/social/posters`, read with `social.view`, writes check
@@ -1546,7 +1546,7 @@ background) renders waiting clips itself, with no worker: one clip at a time (it
 `processing`), claimed first (`RenderSocialVideoJob::claim()`, queued → processing in one update, which the job uses
 too, so a worker and the command never render one clip twice), and a clip left at `processing` for 30 minutes by a
 killed run is marked failed so the screen offers Generate again. A new background render of any kind is picked up by a
-scheduled command like this one, never by a worker that only a deploy starts. `SocialVideoTest`.
+scheduled command like this one, never by a worker that only a deploy starts. `SocialVideoTest`. The Videos tab (`VideoStudio` in `SocialHubPage.tsx`) opens on Videos you have made (owner, 2026-11-15: "when I click video, it doesn't show created videos"; `GET /admin/social/videos`, every clip with its dish's name, newest first), each with Play (a pop-up `<video>`; "there is no video preview option"), Download and Open; a dish's own rows have Play too, the states read in plain words (`VIDEO_STATUS`), and the tab looks again every ten seconds while a clip is waiting or rendering.
 
 ## Help: short guides inside the admin
 
