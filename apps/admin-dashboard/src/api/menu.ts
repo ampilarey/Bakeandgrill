@@ -380,6 +380,8 @@ export type AdminItemSort = 'menu' | 'name' | 'name_desc' | 'price' | 'price_des
 
 export async function fetchAdminItems(params?: {
   category_id?: number;
+  /** With `category_id`: the category's sub-categories too (a main category keeps its dishes in them). */
+  with_subcategories?: boolean;
   search?: string;
   page?: number;
   per_page?: number;
@@ -387,6 +389,7 @@ export async function fetchAdminItems(params?: {
 }): Promise<{ data: MenuItem[]; meta?: { total: number; last_page: number; current_page: number } }> {
   const qs = new URLSearchParams({ admin: '1' });
   if (params?.category_id) qs.set('category_id', String(params.category_id));
+  if (params?.category_id && params.with_subcategories) qs.set('with_subcategories', '1');
   if (params?.search) qs.set('search', params.search);
   if (params?.sort && params.sort !== 'menu') qs.set('sort', params.sort);
   if (params?.page) qs.set('page', String(params.page));

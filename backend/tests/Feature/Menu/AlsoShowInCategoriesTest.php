@@ -131,4 +131,21 @@ class AlsoShowInCategoriesTest extends TestCase
         $this->assertNotNull($bajiya->fresh());
         $this->assertSame([], $bajiya->fresh()->extraCategoryIds());
     }
+
+    /** Owner, 2026-11-15: Social Hub → Videos, the main category Hedhika picked, "No items found": its dishes sit in its sub-categories. */
+    public function test_a_picker_asking_for_a_main_category_gets_its_sub_categories_dishes(): void
+    {
+        $this->actingAsStaff();
+        $this->categories();
+        $bajiya = $this->bajiya();
+
+        $exact = $this->getJson("/api/items?admin=1&category_id={$this->hedhikaa->id}")->assertOk()->json('data');
+        $this->assertSame([], array_column($exact, 'id'), 'the menu grid still filters on the category itself');
+
+        $with = $this->getJson("/api/items?admin=1&category_id={$this->hedhikaa->id}&with_subcategories=1")->assertOk()->json('data');
+        $this->assertSame([$bajiya->id], array_column($with, 'id'));
+
+        $other = $this->getJson("/api/items?admin=1&category_id={$this->eveningTea->id}&with_subcategories=1")->assertOk()->json('data');
+        $this->assertSame([], array_column($other, 'id'));
+    }
 }

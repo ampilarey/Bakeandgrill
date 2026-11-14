@@ -104,6 +104,8 @@ export function ItemSearch(props: Props) {
           const res = await fetchAdminItems({
             search: trimmed || undefined,
             category_id: hasCategory ? Number(nextCategoryId) : undefined,
+            // A main category's dishes sit in its sub-categories.
+            with_subcategories: hasCategory ? true : undefined,
             page: 1,
             per_page: hasCategory && !trimmed ? 50 : 15,
           });

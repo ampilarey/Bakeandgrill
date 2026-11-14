@@ -163,7 +163,15 @@ class ItemController extends Controller
 
         // Filter by category
         if ($request->has('category_id')) {
-            $query->where('category_id', $request->category_id);
+            if ($request->boolean('with_subcategories')) {
+                // A main category holds its dishes in its sub-categories (owner, 2026-11-15:
+                // Social Hub → Videos, Hedhika picked, "No items found").
+                $ids = Category::query()->where('parent_id', (int) $request->category_id)->pluck('id')
+                    ->push((int) $request->category_id)->all();
+                $query->whereIn('category_id', $ids);
+            } else {
+                $query->where('category_id', $request->category_id);
+            }
         }
 
         // Search by name or SKU (capped at 100 characters to prevent LIKE abuse)
