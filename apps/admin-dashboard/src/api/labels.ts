@@ -85,6 +85,8 @@ export type LabelWrap = {
   /** Recycling marks (keys from the layouts catalogue) and pictures from the media library, in the marks part. */
   marks: string[];
   pictures: number[];
+  /** A thin rust line round the whole label; missing is on. */
+  border?: boolean;
   /** A bottle with flat sides: the label in this many equal faces, a fold on each corner. 0 or missing is a round bottle. */
   faces?: number;
   /** The room kept clear each side of a fold, in mm: a bottle's corners are rounded. */

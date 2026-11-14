@@ -52,6 +52,13 @@ when it had none. Edit, View and Print open on it, on any phone or computer. A l
 size this device last printed it at, else at the size made for it (a pouch label, a bottle with flat sides), and
 keeps the size the next time it is saved or printed. A menu item's label still remembers its size per device.
 
+## A border on wrap-around labels (2026-11-14)
+
+Owner: "There is no boarder in teluli Rihaakuru." A wrap-around label (a bottle or jar label) now prints a thin rust
+line just inside its edge, so each one is easy to cut out of an A4 sheet and looks finished on the bottle. It is on
+for every wrap-around label, old ones too; switch it off under the label's strips, Border around the label
+(`label_wrap.border`).
+
 ## The pack's code on every label, and Batches (2026-11-14)
 
 Owner: the momo pouch had its PACK INFO code and the Theluli Rihaakuru bottle had none; "Can make that for all,

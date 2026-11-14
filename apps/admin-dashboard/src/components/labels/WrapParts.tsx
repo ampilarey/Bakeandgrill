@@ -123,6 +123,13 @@ export function WrapParts({ value, onChange, catalogue, pictures, onAddPicture, 
           <p className="text-xs text-[var(--color-text-muted)] mt-1">With flat sides the label is divided into equal sides, one strip to a side, so each fold lands on a corner and never through the words. Strips after the last side share it.</p>
         </div>
         <label className="flex items-start gap-3 min-h-[44px] cursor-pointer">
+          <input type="checkbox" checked={value.border !== false} onChange={(e) => set('border', e.target.checked)} className="mt-0.5 w-5 h-5 shrink-0 accent-[var(--color-primary)]" data-testid="wrap-border" />
+          <span>
+            <span className="block text-sm font-semibold text-[var(--color-text)]">Border around the label</span>
+            <span className="block text-xs text-[var(--color-text-muted)]">A thin rust line just inside the edge, so each label is easy to cut out and looks finished on the bottle.</span>
+          </span>
+        </label>
+        <label className="flex items-start gap-3 min-h-[44px] cursor-pointer">
           <input type="checkbox" checked={value.band} onChange={(e) => set('band', e.target.checked)} className="mt-0.5 w-5 h-5 shrink-0 accent-[var(--color-primary)]" data-testid="wrap-band" />
           <span>
             <span className="block text-sm font-semibold text-[var(--color-text)]">Flavour band along the bottom</span>

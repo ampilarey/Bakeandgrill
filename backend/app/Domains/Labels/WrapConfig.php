@@ -112,6 +112,8 @@ final class WrapConfig
         return [
             'parts' => $parts,
             'band' => $in === null || !array_key_exists('band', $in) ? true : filter_var($in['band'], FILTER_VALIDATE_BOOL),
+            // A thin rust line round the whole label (owner, 2026-11-14: "There is no border"); on unless switched off.
+            'border' => $in === null || !array_key_exists('border', $in) ? true : filter_var($in['border'], FILTER_VALIDATE_BOOL),
             'band_text' => $text('band_text', 60),
             'band_text_dv' => $text('band_text_dv', 60),
             'marks' => $marks,
@@ -140,6 +142,7 @@ final class WrapConfig
             "$key.parts" => 'sometimes|array|max:' . count(self::PARTS),
             "$key.parts.*" => ['string', Rule::in(self::PARTS)],
             "$key.band" => 'sometimes|boolean',
+            "$key.border" => 'sometimes|boolean',
             "$key.band_text" => 'sometimes|nullable|string|max:60',
             "$key.band_text_dv" => 'sometimes|nullable|string|max:60',
             "$key.marks" => 'sometimes|array|max:' . count(LabelMarks::KEYS),

@@ -248,6 +248,15 @@ final class WrapDesign
         ['widths' => $widths, 'gap' => $gap, 'top' => $top, 'ph' => $ph, 'pad' => $pad, 'iw' => $iw, 'band' => $band, 'bh' => $bh] = $l;
         $this->parts = $l['parts'];
 
+        // The border: a thin rust line just inside the cut, as two filled
+        // boxes (the label printer draws a rounded outline square).
+        if (!empty($this->d['wrap']['border'])) {
+            $in = min(0.5, $pad * 0.35);
+            $sw = min(0.4, $pad * 0.3);
+            $this->box($in, $in, $this->w - 2 * $in, $this->h - 2 * $in, StickerDesign::PRIMARY, 1.6);
+            $this->box($in + $sw, $in + $sw, $this->w - 2 * ($in + $sw), $this->h - 2 * ($in + $sw), '#FFFFFF', max(0.0, 1.6 - $sw));
+        }
+
         foreach ($l['order'] as $i => $part) {
             $pw = $widths[$part];
             $x = $l['x'][$part];

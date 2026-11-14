@@ -160,6 +160,25 @@ class BottleFacesLabelTest extends TestCase
         }
     }
 
+    /** Owner, 2026-11-14: "There is no border" on the Theluli Rihaakuru label, where the momo pouch has a frame. */
+    public function test_a_wrap_label_has_a_border_unless_it_is_switched_off(): void
+    {
+        $this->assertTrue(WrapConfig::clean(null)['border']);
+        $this->assertTrue(WrapConfig::clean(['faces' => 4])['border'], 'a label kept before the switch existed has it');
+        $this->assertFalse(WrapConfig::clean(['border' => false])['border']);
+
+        $id = $this->postJson('/api/labels/custom', ['name' => 'Chilli Sauce', 'label_ingredients' => 'Chilli, vinegar, garlic, salt', 'label_wrap' => ['parts' => ['brand', 'legal', 'dates'], 'faces' => 4]])->assertCreated()->json('data.id');
+        $html = fn (): string => (string) $this->get($this->postJson('/api/labels/stickers/url', ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 1]], 'layout' => 'single-custom', 'w' => 215, 'h' => 40, 'fill' => true, 'preview' => true])->assertOk()->json('view_url'))->assertOk()->getContent();
+        // The line is the label less half a millimetre each side, filled rust, with white inside it.
+        $line = 'width:214mm;height:39mm';
+        $with = $html();
+        $this->dump('bottle-border', $with);
+        $this->assertStringContainsString($line, $with);
+
+        $this->putJson("/api/labels/custom/{$id}", ['name' => 'Chilli Sauce', 'label_wrap' => ['parts' => ['brand', 'legal', 'dates'], 'faces' => 4, 'border' => false]])->assertOk()->assertJsonPath('data.label_wrap.border', false);
+        $this->assertStringNotContainsString($line, $html());
+    }
+
     /** Owner, 2026-11-12: the brand typed as "Amma’s" was not picked by the template, and picked by hand it printed Bake & Grill's logo. */
     public function test_a_brand_typed_with_a_possessive_is_the_shipped_brand(): void
     {
