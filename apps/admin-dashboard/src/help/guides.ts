@@ -935,13 +935,15 @@ export const GUIDES: Guide[] = [
     steps: [
       'Open Social Hub and tap the Make a post tab.',
       'Under What is it for?, search the menu and pick the dish. Its name, price and photo fill in. Or type a Headline and a Price yourself.',
-      'Under Pick a design, tap a design, then a colour. The words stay the same. Surprise me picks one for you.',
-      'Under Add or remove parts, switch on what you want: Price, Old price, Sticker, Order button, Phone number, Website, Logo, QR code.',
+      'Under Pick a design, tap a ready-made post such as New dish, Today\'s offer or Free delivery. It sets the design, the colour, the parts and the usual words in one tap.',
+      'Or tap any design, then any colour. The words stay the same. Surprise me picks one for you.',
+      'Under Add or remove parts, switch on what you want: Price, Old price, Sticker, Order button, Second button, Phone number, Website, Logo, QR code.',
       'Tap Feed post, Square, Story or Wide to see each shape. Tap Download for the one on screen, or All 4 sizes.',
       'To keep it, type a Name under Save it for later and tap Save. It appears under Saved posts.',
     ],
     notes: [
       'Feed post suits Instagram and Facebook, Square suits Viber and Telegram, Story suits stories, WhatsApp status and TikTok, Wide suits a Facebook link.',
+      'For two buttons, switch on Second button and type its words, such as Call us. Button style changes how the main button looks: Filled, Outline or Highlight.',
       'Post it opens the composer with the picture and a caption ready, to send to your connected channels.',
       'On a phone, Share sends the picture straight to another app, such as WhatsApp or Instagram.',
       'Open a saved post, change the price or the design, and tap Save changes. Save as a new post keeps the old one too.',

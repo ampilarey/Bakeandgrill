@@ -1521,9 +1521,9 @@ automatically makes poster for different platforms"; "many different designs… 
 layout but information remains same"). Social Hub → **Make a post** (`components/socialposter/SocialPosterMaker.tsx`,
 a tab of `SocialHubPage`): pick a dish (name, price, offer price and photo fill in from `GET /admin/social/item-preview`,
 which now carries `cutout_url` and `photo_url`) or type the words, tap a design and a colour, switch parts on and off
-(`PART_ORDER`: price, old price, sticker, order button, phone, website, logo, QR code, small line above, line below).
+(`PART_ORDER`: price, old price, sticker, order button, second button, phone, website, logo, QR code, small line above, line below).
 The post is a `PostSpec` (`types.ts`), drawn in the browser on a canvas by `renderPost()` (`draw.ts`) with any of
-`LAYOUTS` (10) in any of `PALETTES` (10) at any of `SIZES` (feed 1080 × 1350, square 1080 × 1080, story 1080 × 1920,
+`LAYOUTS` (20) in any of `PALETTES` (20) at any of `SIZES` (feed 1080 × 1350, square 1080 × 1080, story 1080 × 1920,
 wide 1200 × 630), so **a design is a pair of keys, never a copy of the words**. Every length is a share of the
 picture (`u`), each layout places its parts by the picture's shape (`wide`, `tall`), never by cropping, and the word
 stack (`stack()`) shrinks as one until it fits, so nothing is cut. A cut-out photo is drawn whole; a story keeps its
@@ -1534,7 +1534,7 @@ top and bottom clear. A new design is a function in `LAYOUT_DRAW` and a row in `
 sheet, and Post it sends the feed shape as a JPEG (`POST /admin/social/posters/picture`, redrawn by GD, kept under
 `storage/social-posters/`) and opens `ComposeModal` with the picture and `captionOf()` (`initial.imageUrl`,
 `initial.caption`). Fonts are the site's own (`/fonts/`: Lobster, Anton, Fraunces, Plus Jakarta, Noto Sans Thaana),
-loaded once by `assets.ts`. It is separate from Posters (print and TV, drawn on the server). `SocialPosterTest`,
+loaded once by `assets.ts`. More of everything (owner, 2026-11-15: "more designs, colors templates and more than one button option"): ready-made posts (`TEMPLATES`, `withTemplate()`: a design, a colour, which parts show and the usual words, never the headline, price or photo), a second button (`cta2`, the part `cta2`, drawn beside the first in the other look, on a row of its own when the two do not fit) and Button style (`ctaStyle`: `auto` the design's own, `solid`, `outline`, `pop`; `BUTTON_STYLES`, mirrored in the controller). A new ready-made post is a row in `TEMPLATES` and must name a real layout and colour (the test holds it). It is separate from Posters (print and TV, drawn on the server). `SocialPosterTest`,
 `socialposter.test.tsx`.
 
 ## Help: short guides inside the admin

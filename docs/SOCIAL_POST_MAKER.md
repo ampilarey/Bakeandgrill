@@ -9,10 +9,14 @@ design and layout but information remains same".
 
 1. **What is it for?** Search the menu and pick a dish: its name, price and photo fill in (an offer price brings the
    old price too). Or type a Headline and a Price. Pick a photo opens the Media Library.
-2. **Pick a design.** Ten designs in ten colours, a hundred looks. Tap one; the words stay. Surprise me picks a
-   design and a colour; the arrows step through the designs.
-3. **Add or remove parts.** Switches for Price, Old price, Sticker, Order button, Phone number, Website, Logo, QR
-   code, Small line above and Line below. A part's box shows only while it is on. Sticker and button words have
+2. **Pick a design.** Start from a ready-made post (New dish, Today's offer, Price drop, Best seller, Back in stock,
+   Free delivery, Call to order, Scan to order, Weekend special, Frozen pack, Limited time, Simple and clean): one tap
+   sets the design, the colour, the parts and the usual words, and leaves your headline, price and photo alone. Or
+   tap any of the twenty designs and twenty colours, four hundred looks. Surprise me picks a design and a colour; the
+   arrows step through the designs.
+3. **Add or remove parts.** Switches for Price, Old price, Sticker, Order button, Second button, Phone number,
+   Website, Logo, QR code, Small line above and Line below. Two buttons sit side by side ("Order now" and "Call us");
+   Button style draws the main one Filled, Outline or in the Highlight colour, or leaves it as the design has it. A part's box shows only while it is on. Sticker and button words have
    one-tap suggestions.
 4. **Save it for later.** A saved post keeps its words, photo and design. Open it next week, change the price, save.
 
@@ -46,6 +50,7 @@ app. **Post it** opens the Social Hub composer with the picture and a caption re
 
 - A design: a function in `LAYOUT_DRAW` (`draw.ts`) and a row in `LAYOUTS`. Draw for `wide` and for the rest; check
   all four shapes with a long headline and with every part on.
+- A ready-made post: a row in `TEMPLATES` (a real layout key and colour key, the parts to switch, the usual words).
 - A colour: a row in `PALETTES` (ground and its ink, second colour and its ink, highlight and its ink).
 - A part: a key in `PartKey`, `PART_NAMES`, `PART_ORDER`, `blankSpec()`, the controller's `PARTS`, and where it draws.
 

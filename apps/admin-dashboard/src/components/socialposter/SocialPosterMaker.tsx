@@ -11,8 +11,8 @@ import { Btn, Card, ConfirmDialog, ErrorMsg, Input, Spinner, Switch, TabScrollRo
 import { usePostAssets } from './assets';
 import { renderPost, type PostAssets } from './draw';
 import {
-  BADGE_PRESETS, CTA_PRESETS, LAYOUTS, PALETTES, PART_NAMES, PART_ORDER, SIZES,
-  blankSpec, captionOf, fullSpec, paletteOf, sizeOf, type PartKey, type PostSize, type PostSpec,
+  BADGE_PRESETS, BUTTON_STYLES, CTA2_PRESETS, CTA_PRESETS, LAYOUTS, PALETTES, PART_NAMES, PART_ORDER, SIZES, TEMPLATES,
+  blankSpec, captionOf, fullSpec, paletteOf, sizeOf, withTemplate, type PartKey, type PostSize, type PostSpec, type PostTemplate,
 } from './types';
 
 /**
@@ -193,6 +193,13 @@ export function SocialPosterMaker({ canCompose, onSend }: {
     setPalette(pick(PALETTES.map((p) => p.key), palette));
   };
 
+  const useTemplate = (t: PostTemplate) => {
+    setSpec((s) => withTemplate(s, t));
+    setLayout(t.layout);
+    setPalette(t.palette);
+    setNotice('');
+  };
+
   const startNew = () => {
     setSpec(blankSpec(brand ?? undefined));
     setName('');
@@ -354,6 +361,12 @@ export function SocialPosterMaker({ canCompose, onSend }: {
 
           <Card>
             <h3 className="sp-h">2. Pick a design</h3>
+            <h4 className="sp-h4" style={{ marginTop: 0 }}>Ready-made posts</h4>
+            <div className="sp-presets">
+              {TEMPLATES.map((t) => <Btn key={t.key} small variant="secondary" onClick={() => useTemplate(t)}>{t.name}</Btn>)}
+            </div>
+            <p className="sp-hint">One tap sets the design, the colour, the parts and the usual words. Your headline, price and photo stay.</p>
+            <h4 className="sp-h4">Designs</h4>
             <div className="sp-thumbs">
               {LAYOUTS.map((l) => (
                 <button key={l.key} type="button" className={`sp-thumb${l.key === layout ? ' is-on' : ''}`} aria-pressed={l.key === layout} onClick={() => setLayout(l.key)} title={l.name}>
@@ -399,6 +412,24 @@ export function SocialPosterMaker({ canCompose, onSend }: {
                   <Input label="Button words" value={spec.cta} maxLength={30} onChange={(v) => patch({ cta: v })} placeholder="Order now" />
                   <div className="sp-presets">
                     {CTA_PRESETS.map((c) => <Btn key={c} small variant="secondary" onClick={() => patch({ cta: c })}>{c}</Btn>)}
+                  </div>
+                </div>
+              )}
+              {spec.show.cta2 && (
+                <div>
+                  <Input label="Second button words" value={spec.cta2} maxLength={30} onChange={(v) => patch({ cta2: v })} placeholder="Call us" />
+                  <div className="sp-presets">
+                    {CTA2_PRESETS.map((c) => <Btn key={c} small variant="secondary" onClick={() => patch({ cta2: c })}>{c}</Btn>)}
+                  </div>
+                </div>
+              )}
+              {(spec.show.cta || spec.show.cta2) && (
+                <div>
+                  <div className="sp-label">Button style</div>
+                  <div className="sp-presets" role="group" aria-label="Button style">
+                    {BUTTON_STYLES.map((b) => (
+                      <Btn key={b.key} small variant={spec.ctaStyle === b.key ? 'primary' : 'secondary'} aria-pressed={spec.ctaStyle === b.key} onClick={() => patch({ ctaStyle: b.key })}>{b.name}</Btn>
+                    ))}
                   </div>
                 </div>
               )}

@@ -38,9 +38,9 @@ class SocialPosterTest extends TestCase
             'palette' => 'bee',
             'spec' => [
                 'headline' => 'Frozen Momo', 'kicker' => 'New', 'tagline' => 'Steamed, frozen, handmade', 'price' => '45.00', 'was' => '',
-                'badge' => 'Microwave & Eat', 'cta' => 'Order now', 'phone' => '9120011', 'website' => 'bakeandgrill.mv',
+                'badge' => 'Microwave & Eat', 'cta' => 'Order now', 'cta2' => 'Call us', 'ctaStyle' => 'pop', 'phone' => '9120011', 'website' => 'bakeandgrill.mv',
                 'link' => 'https://example.test/order', 'photo' => '/brand/photos/momo/momo-plate.png', 'cutout' => true, 'itemId' => null,
-                'show' => ['price' => true, 'badge' => true, 'cta' => true, 'phone' => true, 'logo' => true, 'qr' => false],
+                'show' => ['price' => true, 'badge' => true, 'cta' => true, 'cta2' => true, 'phone' => true, 'logo' => true, 'qr' => false],
                 'something_else' => 'left out',
             ],
         ];
@@ -51,6 +51,9 @@ class SocialPosterTest extends TestCase
         $id = $this->postJson('/api/admin/social/posters', $this->body())->assertCreated()
             ->assertJsonPath('data.spec.headline', 'Frozen Momo')
             ->assertJsonPath('data.spec.cutout', true)
+            ->assertJsonPath('data.spec.cta2', 'Call us')
+            ->assertJsonPath('data.spec.ctaStyle', 'pop')
+            ->assertJsonPath('data.spec.show.cta2', true)
             ->assertJsonPath('data.spec.show.price', true)
             ->assertJsonPath('data.spec.show.qr', false)
             ->assertJsonPath('data.spec.show.website', false)
@@ -68,8 +71,11 @@ class SocialPosterTest extends TestCase
         $this->assertStringEndsWith('/order', (string) $list->json('brand.order_url'));
 
         $this->postJson('/api/admin/social/posters', $this->body(['layout' => 'Not A Key!']))->assertStatus(422);
+        $odd = $this->body();
+        $odd['spec']['ctaStyle'] = 'sparkly';
+        $this->postJson('/api/admin/social/posters', $odd)->assertCreated()->assertJsonPath('data.spec.ctaStyle', 'auto');
         $this->deleteJson("/api/admin/social/posters/{$id}")->assertOk();
-        $this->assertSame(0, SocialPoster::query()->count());
+        $this->assertSame(1, SocialPoster::query()->count());
     }
 
     public function test_a_finished_picture_is_kept_as_a_jpeg(): void

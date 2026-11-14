@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LAYOUT_DRAW } from './draw';
-import { LAYOUTS, PALETTES, SIZES, blankSpec, captionOf, fullSpec, priceWords } from './types';
+import { LAYOUTS, PALETTES, SIZES, TEMPLATES, blankSpec, captionOf, fullSpec, priceWords, withTemplate } from './types';
 
 const api = vi.hoisted(() => ({
   fetchSocialPosters: vi.fn(),
@@ -22,10 +22,24 @@ const BRAND = { name: 'Bake & Grill', tagline: 'Fresh Baked, Fire Grilled', phon
 
 describe('the social post designs', () => {
   it('offers many looks: every layout is drawn, in every colour', () => {
-    expect(LAYOUTS.length * PALETTES.length).toBeGreaterThanOrEqual(100);
+    expect(LAYOUTS.length).toBeGreaterThanOrEqual(20);
+    expect(PALETTES.length).toBeGreaterThanOrEqual(20);
     for (const l of LAYOUTS) expect(LAYOUT_DRAW[l.key], l.key).toBeTypeOf('function');
     expect(new Set(LAYOUTS.map((l) => l.key)).size).toBe(LAYOUTS.length);
     expect(new Set(PALETTES.map((p) => p.key)).size).toBe(PALETTES.length);
+  });
+
+  it('has ready-made posts that use real designs and never touch the dish', () => {
+    expect(TEMPLATES.length).toBeGreaterThanOrEqual(10);
+    for (const t of TEMPLATES) {
+      expect(LAYOUT_DRAW[t.layout], t.key).toBeTypeOf('function');
+      expect(PALETTES.some((p) => p.key === t.palette), t.key).toBe(true);
+    }
+    const spec = { ...blankSpec(BRAND), headline: 'Bajiya', price: '5', photo: '/x.png' };
+    const made = withTemplate(spec, TEMPLATES.find((t) => t.key === 'free-delivery')!);
+    expect(made).toMatchObject({ headline: 'Bajiya', price: '5', photo: '/x.png', badge: 'Free delivery', cta2: 'Call us' });
+    expect(made.show.cta2).toBe(true);
+    expect(made.show.logo).toBe(true);
   });
 
   it('makes the shapes the platforms take', () => {
@@ -93,6 +107,21 @@ describe('Make a post', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Sticker' }));
     fireEvent.click(screen.getByRole('button', { name: 'Today only' }));
     expect((screen.getByLabelText('Sticker words') as HTMLInputElement).value).toBe('Today only');
+  });
+
+  it('takes a ready-made post in one tap, and a second button with its own style', async () => {
+    render(<SocialPosterMaker canCompose onSend={() => {}} />);
+    fireEvent.change(await screen.findByLabelText('Headline'), { target: { value: 'Bajiya' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Free delivery' }));
+    expect((screen.getByLabelText('Headline') as HTMLInputElement).value).toBe('Bajiya');
+    expect(screen.getByTitle('Half and half').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTitle('Night').getAttribute('aria-pressed')).toBe('true');
+    expect((screen.getByLabelText('Second button words') as HTMLInputElement).value).toBe('Call us');
+    fireEvent.click(screen.getByRole('button', { name: 'See the menu' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Highlight' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(api.createSocialPoster).toHaveBeenCalled());
+    expect(api.createSocialPoster.mock.calls[0][0].spec).toMatchObject({ cta2: 'See the menu', ctaStyle: 'pop', badge: 'Free delivery' });
   });
 
   it('leaves saving and posting out for someone who may only look', async () => {

@@ -26,10 +26,13 @@ use Illuminate\Support\Str;
 class SocialPosterController extends Controller
 {
     /** The words a post may carry, and the longest each may be. */
-    private const TEXT = ['headline' => 80, 'kicker' => 40, 'tagline' => 120, 'price' => 12, 'was' => 12, 'badge' => 40, 'cta' => 30, 'phone' => 30, 'website' => 80, 'link' => 500, 'photo' => 500, 'brand' => 60];
+    private const TEXT = ['headline' => 80, 'kicker' => 40, 'tagline' => 120, 'price' => 12, 'was' => 12, 'badge' => 40, 'cta' => 30, 'cta2' => 30, 'phone' => 30, 'website' => 80, 'link' => 500, 'photo' => 500, 'brand' => 60];
 
     /** The parts that can be shown or hidden. */
-    private const PARTS = ['kicker', 'tagline', 'price', 'was', 'badge', 'cta', 'phone', 'website', 'logo', 'qr'];
+    private const PARTS = ['kicker', 'tagline', 'price', 'was', 'badge', 'cta', 'cta2', 'phone', 'website', 'logo', 'qr'];
+
+    /** How the main button is drawn; anything else is the design's own way. */
+    private const BUTTON_STYLES = ['auto', 'solid', 'outline', 'pop'];
 
     public function index(): JsonResponse
     {
@@ -124,6 +127,7 @@ class SocialPosterController extends Controller
         foreach (self::TEXT as $key => $max) {
             $spec[$key] = mb_substr(trim((string) (is_scalar($in[$key] ?? null) ? $in[$key] : '')), 0, $max);
         }
+        $spec['ctaStyle'] = in_array($in['ctaStyle'] ?? null, self::BUTTON_STYLES, true) ? $in['ctaStyle'] : 'auto';
         $spec['cutout'] = filter_var($in['cutout'] ?? false, FILTER_VALIDATE_BOOL);
         $spec['itemId'] = is_numeric($in['itemId'] ?? null) && (int) $in['itemId'] > 0 ? (int) $in['itemId'] : null;
         $spec['show'] = [];

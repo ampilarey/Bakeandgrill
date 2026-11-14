@@ -7244,6 +7244,7 @@ table.is-table.is-table { display: none; }
 .sp-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
 .sp-fields { display: grid; gap: 10px; margin-top: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
 .sp-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.sp-label { font-size: 13px; font-weight: 600; color: var(--color-text-secondary); }
 .sp-parts { display: grid; gap: 4px 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
 .sp-switch { display: flex; align-items: center; gap: 8px; min-height: 36px; font-size: 13px; color: var(--color-text); cursor: pointer; }
 .sp-thumbs { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
