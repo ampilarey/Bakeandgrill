@@ -303,3 +303,30 @@ export function pickRoll(rolls: LabelRoll[], choice: SizeChoice, presets: LabelP
   const roll = matches.find((r) => r.id === picked) ?? (matches.length === 1 ? matches[0] : null);
   return { roll, matches };
 }
+
+const SIZE_FOR_KEY = 'labels.sizeFor';
+
+/**
+ * The size and roll a label was last printed at, kept per label in the browser (owner, 2026-11-14: Print on a
+ * label's row opens at the size that label prints, not the size of whatever printed last). `key` is "c7" for a
+ * custom label, "i12" for a menu item.
+ */
+export function rememberedSizeFor(key: string): { choice: SizeChoice; roll: string | null } | null {
+  try {
+    const all = JSON.parse(localStorage.getItem(SIZE_FOR_KEY) ?? '{}') as Record<string, (Partial<SizeChoice> & { roll?: unknown }) | undefined>;
+    const v = all[key];
+    if (v && (v.shape === 'rect' || v.shape === 'circle') && typeof v.preset === 'string' && typeof v.on === 'string') {
+      const { roll, ...choice } = v;
+      return { choice: { ...DEFAULT_CHOICE, ...choice } as SizeChoice, roll: typeof roll === 'string' && roll ? roll : null };
+    }
+  } catch { /* private window, or a value from an older version */ }
+  return null;
+}
+
+export function rememberSizeFor(key: string, choice: SizeChoice, roll: string | null = null): void {
+  try {
+    const all = JSON.parse(localStorage.getItem(SIZE_FOR_KEY) ?? '{}') as Record<string, unknown>;
+    all[key] = { ...choice, roll };
+    localStorage.setItem(SIZE_FOR_KEY, JSON.stringify(all));
+  } catch { /* private window */ }
+}

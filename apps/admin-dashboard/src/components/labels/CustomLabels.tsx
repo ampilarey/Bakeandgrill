@@ -31,6 +31,10 @@ import { PhonePreviewBar } from './PhonePreviewBar';
 import { LabelSizePicker } from './LabelSizePicker';
 import { BrandModal, NewTypeButton } from './TypesAndBrands';
 import { useIsBelowDesktop } from '../../hooks/useIsMobile';
+import { PrintLabelModal, type PrintTarget } from './PrintLabelModal';
+
+/** A custom label as the Print pop-up needs it. */
+export const printTargetOf = (c: CustomLabel): PrintTarget => ({ kind: 'custom', id: c.id, name: c.name, lang: langOf(c), pouch: Boolean(c.label_pouch), faces: c.label_wrap?.faces ?? 0, ownQty: c.label_pack_qty ?? null });
 
 /*
  * Custom labels (owner, 2026-10-11: "Add option to add custom labels using
@@ -117,7 +121,6 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   startFrom?: LabelTemplate | null;
 }) {
   const { toast } = useToast();
-  const navigate = useNavigate();
   const stacked = useIsBelowDesktop();
   const dialog = useConfirmDialog();
   const [saved, setSaved] = useState<CustomLabel | null>(label);
@@ -262,18 +265,14 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
     }
   };
 
-  // Print…: Print labels opens on this label at the size and language
-  // previewed here. A changed or new label is saved first.
+  // Print…: the Print pop-up opens on this label at the size previewed here (owner, 2026-11-14: one pop-up
+  // with the dates and one Print button, not a jump to another tab). A changed or new label is saved first.
+  const [printOf, setPrintOf] = useState<CustomLabel | null>(null);
   const printIt = async () => {
     setPrinting(true);
     try {
       const target = saved && !dirty ? saved : await save();
-      if (!target) return;
-      const q = new URLSearchParams({ custom: String(target.id), layout: sized.layout, lang });
-      if (sized.w != null) q.set('w', String(sized.w));
-      if (sized.h != null) q.set('h', String(sized.h));
-      if (rounded) q.set('rounded', '1');
-      navigate(`/labels/stickers?${q.toString()}`);
+      if (target) setPrintOf(target);
     } finally {
       setPrinting(false);
     }
@@ -576,6 +575,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
           onSaved={(b) => { setBrands((s) => [...s.filter((x) => x.id !== b.id), b]); set('brand_id', b.id); }}
         />
       )}
+      {printOf && <PrintLabelModal target={{ ...printTargetOf(printOf), lang }} at={choice} canManage onClose={() => setPrintOf(null)} />}
       <MediaPicker
         open={picker !== null}
         onClose={() => setPicker(null)}
@@ -602,6 +602,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
   const [rows, setRows] = useState<CustomLabel[] | null>(null);
   const [edit, setEdit] = useState<CustomLabel | null | 'new'>(null);
   const [pouchSet, setPouchSet] = useState(false);
+  const [print, setPrint] = useState<CustomLabel | null>(null);
   const [query, setQuery] = useState('');
   const load = () => fetchCustomLabels().then((r) => setRows(r.data)).catch(() => setRows([]));
   useEffect(() => { void load(); }, []);
@@ -687,7 +688,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-1 ml-auto">
-                <Button size="sm" icon={<Printer size={14} />} onClick={() => navigate(`/labels/stickers?custom=${c.id}&lang=${langOf(c)}`)} aria-label={`Print ${c.name}`}>Print</Button>
+                <Button size="sm" icon={<Printer size={14} />} onClick={() => setPrint(c)} aria-label={`Print ${c.name}`} data-testid={`custom-print-${c.id}`}>Print</Button>
                 <Button size="sm" variant="secondary" icon={<Bookmark size={14} />} loading={savingId === c.id} onClick={() => void saveToSaved(c)} aria-label={`Save ${c.name} to Saved labels`} data-testid={`custom-save-${c.id}`}>Save</Button>
                 {canManage && (
                   <>
@@ -707,6 +708,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
           )}
         </ul>
       </Card>
+      {print && <PrintLabelModal target={printTargetOf(print)} canManage={canManage} onClose={() => { setPrint(null); void load(); }} />}
       {pouchSet && <PouchSetModal onClose={() => { setPouchSet(false); void load(); }} />}
       {edit !== null && <CustomLabelModal label={edit === 'new' ? null : edit} onClose={() => setEdit(null)} onSaved={() => void load()} />}
     </div>

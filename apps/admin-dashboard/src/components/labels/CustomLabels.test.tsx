@@ -56,6 +56,8 @@ vi.mock('../../api', () => ({
   duplicateCustomLabel: (...a: unknown[]) => duplicateCustomLabel(...a),
   deleteCustomLabel: (...a: unknown[]) => deleteCustomLabel(...a),
   stickerLinks: (...a: unknown[]) => stickerLinks(...a),
+  openLabelSheet: vi.fn(),
+  downloadLabelSheet: vi.fn(),
   previewCustomDraft: (...a: unknown[]) => previewCustomDraft(...a),
   fetchLabelLayouts: (...a: unknown[]) => fetchLabelLayouts(...a),
   fetchLabelTemplates: (...a: unknown[]) => fetchLabelTemplates(...a),
@@ -188,25 +190,19 @@ describe('CustomLabelModal', () => {
     await waitFor(() => expect(previewCustomDraft.mock.calls.length).toBeGreaterThan(drawn), { timeout: 3000 });
   });
 
-  it('Print… saves first and opens Print labels on the same size and language', async () => {
+  it('Print… saves first and opens the Print pop-up at the size shown, with nothing printed yet', async () => {
     createCustomLabel.mockResolvedValue({ data: custom(9, 'Gift Box') });
     localStorage.setItem('labels.lastSize', JSON.stringify({ shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60 }));
-    render(
-      <MemoryRouter initialEntries={['/labels/custom']}>
-        <ToastProvider>
-          <Routes>
-            <Route path="/labels/custom" element={<CustomLabelModal label={null} onClose={() => {}} onSaved={() => {}} />} />
-            <Route path="/labels/stickers" element={<div data-testid="stickers-tab">{window.location.search}</div>} />
-          </Routes>
-        </ToastProvider>
-      </MemoryRouter>,
-    );
+    wrap(<CustomLabelModal label={null} onClose={() => {}} onSaved={() => {}} />);
     await waitFor(() => expect(fetchLabelLayouts).toHaveBeenCalled());
     fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Gift Box' } });
     expect(await screen.findByText(/40 × 60 mm · A4 sheet/)).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('custom-label-print'));
     await waitFor(() => expect(createCustomLabel).toHaveBeenCalledTimes(1));
-    expect(await screen.findByTestId('stickers-tab')).toBeInTheDocument();
+    expect(await screen.findByTestId('print-label')).toBeInTheDocument();
+    expect(await screen.findByTestId('print-paper')).toHaveTextContent('40 × 60 mm');
+    // Only previews so far: nothing is printed until Print is pressed.
+    expect(stickerLinks.mock.calls.every(([body]) => (body as { preview?: boolean }).preview === true)).toBe(true);
   });
 
   it('asks before closing with unsaved changes, and closes at once without any', async () => {

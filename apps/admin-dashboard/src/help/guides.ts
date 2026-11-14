@@ -524,6 +524,26 @@ export const GUIDES: Guide[] = [
     words: 'expiry expire date use by best before month shelf life',
   },
   {
+    id: 'print-a-label',
+    page: '/labels',
+    title: 'Print a label I already made',
+    open: { to: '/labels/custom', label: 'Open Custom labels' },
+    steps: [
+      'Open Labels, then Custom labels, and tap Print on the label\'s row. A pop-up opens. Nothing prints yet.',
+      'Set How many labels. It starts at one full sheet.',
+      'Check Made on. For the expiry, leave Shelf life, tap 1, 2, 3 or 6 months, or type a date in Use by.',
+      'Look at the dates on the picture of the label.',
+      'Tap Print, or PDF on a phone.',
+    ],
+    notes: [
+      'Paper shows the size and sheet it will print on. Tap Change to pick another size or one of your rolls. The label opens at the same size next time.',
+      'More holds the batch number, Packed for, Quantity per pack and Fill in the dates.',
+      'For a promotion flash, pack numbers, cut marks or several products on one sheet, tap open every option under More.',
+      'Print stays off while the use-by date has passed or the wording lock refuses the label.',
+    ],
+    words: 'print label sticker dates expiry how many paper sheet',
+  },
+  {
     id: 'saved-labels',
     page: '/labels',
     title: 'Find a label I made, print it again or remove it',
