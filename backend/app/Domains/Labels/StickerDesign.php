@@ -573,6 +573,25 @@ final class StickerDesign
     }
 
     /**
+     * The pack's own code in the label's one QR place (owner, 2026-11-14: the momo pouch had its PACK INFO code,
+     * the bottle and the small labels had none; "Can make that for all"). A design with room for a single QR
+     * prints the pack's: its page carries the dates, the batch and the ingredients, and the way to tell us about
+     * a problem with that very pack, so nothing the complaints code did is lost.
+     *
+     * @param array<string, mixed> $d
+     * @return array<string, mixed>
+     */
+    public static function packQr(array $d): array
+    {
+        if (!empty($d['batch_qr'])) {
+            $d['qr'] = $d['batch_qr'];
+            $d['show_qr'] = true;
+        }
+
+        return $d;
+    }
+
+    /**
      * The compact sticker for small labels: fixed type, stacked to fit.
      *
      * @param array<string, mixed> $d
@@ -623,6 +642,11 @@ final class StickerDesign
             $p[] = ['t' => 'img', 'x' => $X($pad + $iw - 1.2 - $bq, $bq), 'y' => $pad + ($hb - $bq) / 2, 'w' => $bq, 'h' => $bq, 'src' => $d['batch_qr']];
             $p[] = LabelSpots::open('brand');
             $tw -= $bq + 3.6;
+        }
+        // No room for a pack code of its own (a narrow or short label, or a flash in its place): the one QR the
+        // label has is the pack's (owner, 2026-11-14: "Can make that for all").
+        if ($bq <= 0) {
+            $d = self::packQr($d);
         }
         $headBase = $tall ? $pad + 8.2 : $pad + 4.4;
         $nameBase = $tall ? $pad + $hb - 2.6 : $pad + 10.6;
@@ -955,6 +979,7 @@ final class StickerDesign
      */
     public static function round(array $d, bool $dv, float $D): array
     {
+        $d = self::packQr($d);
         // Under 45 mm the rows below shrink past reading; the small round
         // sticker drops the ingredients and keeps the name and dates big.
         if ($D < 45) {

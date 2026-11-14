@@ -127,12 +127,22 @@ class LabelBatchTest extends TestCase
         $code = explode(':', $query['b'])[1];
         $this->assertStringContainsString(BatchLink::qr($code), $html, 'the 99 × 70 mm compact sticker carries it in its band');
         [$html, $query] = $this->sheetWithQuery(['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => 'a4-12']);
-        $this->assertStringNotContainsString(BatchLink::qr(explode(':', $query['b'])[1]), $html, 'the 66 mm one has no room beside the heading');
+        // Owner, 2026-11-14 ("Can make that for all"): a label with room for one QR prints the pack's own.
+        $this->assertStringContainsString(BatchLink::qr(explode(':', $query['b'])[1]), $html, 'the 66 mm one carries it in its footer, where the complaints code stood');
+        // A label with a place for a QR that scans carries it; one too small for that says the code was left out.
+        $made = 2;
+        foreach ([['single-custom', 40, 60, true], ['single-round-70', null, null, true], ['single-custom', 50, 30, false], ['single-round-50', null, null, false]] as [$layout, $w, $h, $fits]) {
+            $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => $layout] + ($w ? ['w' => $w, 'h' => $h] : []))->assertOk();
+            $made++;
+            $code = LabelPrint::query()->latest('id')->value('code');
+            $this->assertSame($fits, str_contains((string) $this->get($res->json('view_url'))->assertOk()->getContent(), BatchLink::qr((string) $code)), "{$layout} {$w} × {$h}");
+            $this->assertSame(!$fits, in_array('Pack QR code', $res->json('summary.dropped'), true), "{$layout} {$w} × {$h}: says when the code is left out");
+        }
 
         $this->putJson('/api/labels/settings', ['label_batch_qr' => '0'])->assertOk()->assertJsonPath('data.label_batch_qr', '0');
         [$html, $query] = $this->sheetWithQuery(['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => 'a4-4']);
         $this->assertStringNotContainsString(BatchLink::qr(explode(':', $query['b'])[1]), $html, 'off: the print is still logged with a code, the sticker just does not carry it');
-        $this->assertSame(3, LabelPrint::query()->whereNotNull('code')->count());
+        $this->assertSame($made + 1, LabelPrint::query()->whereNotNull('code')->count());
     }
 
     public function test_the_print_log_lists_the_code_with_its_page_and_a_reprint_is_a_new_code(): void
@@ -148,5 +158,22 @@ class LabelBatchTest extends TestCase
         $again = $this->postJson('/api/labels/jobs/' . $res->json('job.id') . '/print')->assertOk();
         $this->assertNotSame($code, $again->json('summary.products.0.code'), 'a label printed again is a new batch');
         $this->assertSame(2, LabelPrint::query()->count());
+    }
+
+    // Owner, 2026-11-14: "add a page to view all". The Batches page reads the print log, found by what is typed.
+    public function test_the_batches_page_finds_a_print_by_its_code_batch_number_or_product_and_splits_boxes_from_stickers(): void
+    {
+        $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 2]], 'layout' => 'a4-4', 'batch' => 'B-1411'])->assertOk();
+        $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 2]], 'layout' => 'a4-4', 'batch' => 'B-1511'])->assertOk();
+        $box = (string) $this->postJson('/api/labels/box/url', ['customer' => 'NH Kuda Rah'])->assertOk()->json('code');
+        $code = (string) LabelPrint::query()->where('batch_code', 'B-1411')->value('code');
+
+        $this->getJson('/api/labels/prints')->assertOk()->assertJsonPath('total', 3);
+        $this->getJson('/api/labels/prints?q=B-1411')->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.code', $code);
+        $this->getJson('/api/labels/prints?q=' . strtolower($code))->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.batch_code', 'B-1411');
+        $this->getJson('/api/labels/prints?q=' . urlencode(mb_substr((string) $this->bajiya->name, 0, 4)))->assertOk()->assertJsonPath('total', 2);
+        $this->getJson('/api/labels/prints?q=Kuda')->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.code', $box)->assertJsonPath('data.0.customer', 'NH Kuda Rah');
+        $this->getJson('/api/labels/prints?group=boxes')->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.kind', 'box_label');
+        $this->getJson('/api/labels/prints?group=stickers')->assertOk()->assertJsonPath('total', 2);
     }
 }

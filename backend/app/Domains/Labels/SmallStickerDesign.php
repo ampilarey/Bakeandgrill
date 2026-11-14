@@ -33,7 +33,7 @@ final class SmallStickerDesign
      */
     public static function rect(array $d, bool $dv, float $w, float $h): array
     {
-        $s = new self($d, $dv, $w);
+        $s = new self(StickerDesign::packQr($d), $dv, $w);
         if ($h < 24) {
             $s->tiny($h);
         } elseif ($w >= 1.2 * $h) {
@@ -54,7 +54,7 @@ final class SmallStickerDesign
      */
     public static function round(array $d, bool $dv, float $D): array
     {
-        $s = new self($d, $dv, $D);
+        $s = new self(StickerDesign::packQr($d), $dv, $D);
         $s->circle($D);
 
         return $s->p;

@@ -497,7 +497,18 @@ that lost its tab keeps its address through `under` on its `HubTab` (`/labels/st
 products on one sheet; `/labels/custom`, `/labels/saved`, `/labels/types`, `/labels/settings`): never drop one, links from deliveries,
 catering, the pack page and the print log land there. Where this section says Make a label, Custom labels, Saved labels, Wording and
 logos or Settings, it names those screens, now inside the four tabs. `PrintLabelModal.test.tsx`, `MyLabels.test.tsx`,
-`LabelsHub.tabs.test.ts`. A custom label's row says what tells it from the next (owner, 2026-11-14: "How do i knoe the size from the label? Do i need to open every time. Is there any view option"): `packLine()` (the pouch's pack word, the count, the net weight, the price, the barcode), and View (`ViewLabelModal`, the thumbnail too) draws the label at its own size without printing; Batch number sits in plain view in the Print pop-up, not under More. How to
+`LabelsHub.tabs.test.ts`. A custom label's row says what tells it from the next (owner, 2026-11-14: "How do i knoe the size from the label? Do i need to open every time. Is there any view option"): `packLine()` (the pouch's pack word, the count, the net weight, the price, the barcode), and View (`ViewLabelModal`, the thumbnail too) draws the label at its own size without printing; Batch number sits in plain view in the Print pop-up, not under More. **The pack's code on every label, and Batches** (owner, 2026-11-14: the momo pouch had its PACK INFO code, the Theluli
+Rihaakuru bottle had none; "Can make that for all, including box labels. And add a page to view all"): a wrap-around label draws the
+pack's QR in its dates part, beside the barcode, when no `qr` part prints it (`WrapDesign::dates()`); a design with one QR place (the
+compact sticker with no room in its band, the small upright ones, the round ones from 70 mm) prints the pack's code there in place of
+the complaints code, whose job the pack page does too (`StickerDesign::packQr()`); a label too small for a QR that scans leaves it out
+and `dropped()` says "Pack QR code" once (the summary is measured with `BatchLink::PREVIEW` on it). A box label has a code of its own
+(`label_prints.code`, `b` on the box link, `BoxLabel::pieces()` draws it top right of Deliver to as SCAN FOR BOX INFO) and `/b/{code}`
+answers with `labels/box-page.blade.php`: the shop, the boat, the delivery, the PO, the box number and the contents, never the
+contact's name or number, since anyone who scans the box opens it. The fifth tab, **Batches** (`/labels/batches`, `BatchesTab`), lists
+every print with its code, batch number, dates and state, found by code, batch number, product or shop (`q` and `group` on
+`GET /labels/prints`). A new design draws the pack's code or leaves it to `dropped()`; never a second code per print.
+`LabelBatchTest`, `BoxLabelTest`, `BatchesTab.test.tsx`. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

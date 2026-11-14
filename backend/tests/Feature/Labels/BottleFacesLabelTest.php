@@ -76,6 +76,11 @@ class BottleFacesLabelTest extends TestCase
         $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
         $this->dump('bottle-rihaakuru', $html);
         $this->assertSame('wrap', $res->json('summary.design'));
+        // Owner, 2026-11-14: the bottle carries the pack's own code beside its barcode, as the momo pouch does.
+        $code = (string) \App\Models\LabelPrint::query()->latest('id')->value('code');
+        $this->assertStringContainsString(\App\Domains\Labels\BatchLink::qr($code), $html, 'the pack code is on the dates side');
+        $this->assertStringContainsString('>PACK INFO<', $html);
+        $this->assertNotContains('Pack QR code', $res->json('summary.dropped'));
         $this->assertStringNotContainsString('EXP DATE', $html, 'the label says Best before');
         $this->assertStringNotContainsString('Made by', $html, 'the business has a side of its own, so no small line as well');
         $this->assertStringNotContainsString('QTY:', $html, 'no blank count on a bottle');

@@ -18,12 +18,12 @@ import { LABELS_HUB_PATHS, LABELS_TABS } from './LabelsHub';
 
 describe('Labels hub tabs', () => {
   // Owner, 2026-11-14: seven tabs became four; every screen keeps its address.
-  it('shows four tabs and keeps every old address open under one of them', () => {
+  it('shows five tabs and keeps every old address open under one of them', () => {
     const strip = LABELS_TABS.filter((t) => !t.under);
-    expect(strip.map((t) => t.label)).toEqual(['My labels', 'New label', 'Box labels', 'Setup']);
+    expect(strip.map((t) => t.label)).toEqual(['My labels', 'New label', 'Batches', 'Box labels', 'Setup']);
     const under = Object.fromEntries(LABELS_TABS.filter((t) => t.under).map((t) => [t.id, t.under]));
     expect(under).toEqual({ stickers: 'mine', custom: 'mine', saved: 'mine', types: 'setup', settings: 'setup' });
     for (const t of LABELS_TABS) if (t.under) expect(strip.map((x) => x.id)).toContain(t.under);
-    expect(LABELS_HUB_PATHS).toEqual(expect.arrayContaining(['labels', 'labels/mine', 'labels/make', 'labels/stickers', 'labels/custom', 'labels/box', 'labels/types', 'labels/saved', 'labels/settings', 'labels/setup', 'labels/history']));
+    expect(LABELS_HUB_PATHS).toEqual(expect.arrayContaining(['labels', 'labels/mine', 'labels/make', 'labels/batches', 'labels/stickers', 'labels/custom', 'labels/box', 'labels/types', 'labels/saved', 'labels/settings', 'labels/setup', 'labels/history']));
   });
 });

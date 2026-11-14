@@ -556,6 +556,9 @@ export type LabelPrintRow = {
   custom?: boolean;
   item: string | null;
   delivery: string | null;
+  /** A box label's shop and how many lines it lists. */
+  customer?: string | null;
+  box_lines?: number | null;
   copies: number;
   mfg_date: string | null;
   exp_date: string | null;
@@ -787,10 +790,12 @@ export function deleteLabelJob(id: number) {
   return req<{ ok: true }>(`/labels/jobs/${id}`, { method: 'DELETE' });
 }
 
-export function fetchLabelPrints(params: { page?: number; kind?: string } = {}) {
+export function fetchLabelPrints(params: { page?: number; kind?: string; /** Stickers or box labels only (the Batches page). */ group?: 'stickers' | 'boxes'; /** A code, a batch number, a product or a shop. */ q?: string } = {}) {
   const qs = new URLSearchParams();
   if (params.page) qs.set('page', String(params.page));
   if (params.kind) qs.set('kind', params.kind);
+  if (params.group) qs.set('group', params.group);
+  if (params.q) qs.set('q', params.q);
   return req<{ data: LabelPrintRow[]; current_page: number; last_page: number; total: number }>(`/labels/prints${qs.toString() ? `?${qs}` : ''}`);
 }
 

@@ -83,7 +83,7 @@ final class BoxLabel
 
     /**
      * @param array<string, mixed> $in
-     * @return array{delivery: ?int, lines: list<array{id: int, qty: int, article: string}>, fields: array<string, string>, articles: bool}
+     * @return array{delivery: ?int, lines: list<array{id: int, qty: int, article: string}>, fields: array<string, string>, articles: bool, code: ?string}
      */
     public static function normalise(array $in): array
     {
@@ -104,11 +104,15 @@ final class BoxLabel
             throw new InvalidArgumentException('A box label lists up to 16 lines; split the order across boxes.');
         }
 
+        // The box's own code (owner, 2026-11-14: "including box labels"): `b` on the signed sheet link, drawn as a QR.
+        $code = mb_strtoupper(trim((string) ($in['b'] ?? '')));
+
         return [
             'delivery' => isset($in['delivery']) && $in['delivery'] !== '' ? (int) $in['delivery'] : null,
             'lines' => $lines,
             'fields' => $fields,
             'articles' => filter_var($in['articles'] ?? true, FILTER_VALIDATE_BOOL),
+            'code' => BatchLink::valid($code) ? $code : null,
         ];
     }
 
@@ -243,13 +247,23 @@ final class BoxLabel
         $p[] = $text($R - 50, 25, 44, 'c', 'j8', LabelText::fitPt($badge, 'j8', 40, 11, 7), StickerDesign::CREAM, $badge);
         $p[] = $text($R - 50, 34.5, 44, 'c', 'j8', LabelText::fitPt($badge2, 'j8', 40, 20, 10), StickerDesign::CREAM, $badge2);
 
+        // The box's own code, top right of Deliver to: it opens the page that lists what this box holds.
+        $code = ($req['code'] ?? null) !== null && LabelSettings::on('label_batch_qr') ? (string) $req['code'] : null;
+        $nameW = $IW;
+        if ($code !== null) {
+            $side = 19.0;
+            $p[] = ['t' => 'img', 'x' => $R - $side, 'y' => 49.5, 'w' => $side, 'h' => $side, 'src' => BatchLink::qr($code)];
+            $p[] = $text($R - $side - 3, 72.2, $side + 6, 'c', 'j7', 6.5, StickerDesign::MUTED, 'SCAN FOR BOX INFO');
+            $nameW = $IW - $side - 5;
+        }
+
         // Deliver to.
         $p[] = $text($L, 57, 80, 'l', 'j7', 10, $P, 'D E L I V E R   T O');
         if ($f['customer'] !== '') {
-            $p[] = $text($L - 0.35, 76, $IW, 'l', 'ds', LabelText::fitPt($f['customer'], 'ds', $IW, 54, 26), $D, $f['customer']);
+            $p[] = $text($L - 0.35, 76, $nameW, 'l', 'ds', LabelText::fitPt($f['customer'], 'ds', $nameW, 54, 26), $D, $f['customer']);
             $p[] = ['t' => 'rect', 'x' => $L, 'y' => 79.1, 'w' => 30, 'h' => 1.4, 'fill' => $P];
         } else {
-            $p[] = $line($L, $R, 77, $D, 0.49);
+            $p[] = $line($L, $L + $nameW, 77, $D, 0.49);
         }
         if ($f['attn'] !== '' || $f['contact'] !== '') {
             $p[] = $text($L, 88, $IW, 'l', 'j7', 12, StickerDesign::TEXT, 'Attn: ' . ($f['attn'] !== '' ? $f['attn'] : '______________'));

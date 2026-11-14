@@ -603,7 +603,13 @@ final class StickerSheet
         if ($products !== []) {
             $first = $found[$products[0]['key']];
             $dv = $req['lang'] === 'dv';
-            $data = $this->stickerData($first, self::rowRequest($req, $req['items'][0]), $this->common() + ['both' => $req['lang'] === 'both'], $production);
+            // Measured with a pack code on it, as the sheet prints (a preview carries PREVIEW), so the summary can say
+            // when a label too small for a QR leaves the code out.
+            $rowReq = self::rowRequest($req, $req['items'][0]);
+            if (empty($rowReq['codes'])) {
+                $rowReq['codes'] = [$products[0]['key'] => BatchLink::PREVIEW];
+            }
+            $data = $this->stickerData($first, $rowReq, $this->common() + ['both' => $req['lang'] === 'both'], $production);
             // The first product's own design: a pouch label where the product is one.
             $summary['design'] = $design = self::designOf($sheet, $data);
             if ($design === 'wrap') {
@@ -825,6 +831,7 @@ final class StickerSheet
         $all = ' ' . implode(' ', $texts) . ' ';
         $has = fn (string $word): bool => $word !== '' && str_contains($all, $word);
         $out = [];
+        $packMissing = !empty($data['batch_qr']) && !in_array((string) $data['batch_qr'], $imgs, true);
         if (self::designOf($sheet, $data) === 'wrap') {
             foreach (array_keys(array_filter($leftOut, fn ($why) => $why === 'narrow')) as $part) {
                 $out[] = WrapConfig::PART_WORDS[$part][0] ?? ucfirst(str_replace('_', ' ', (string) $part));
@@ -849,14 +856,21 @@ final class StickerSheet
             if (!empty($data['photo']) && !isset($spots['photo'])) {
                 $out[] = 'Photo';
             }
-            $qrs = array_filter([$data['qr'] ?? null, $data['qr_branded'] ?? null]);
-            if (!empty($data['show_qr']) && $qrs !== [] && array_intersect($qrs, $imgs) === []) {
+            // The pack's code stands in the one QR place of a small label (StickerDesign::packQr).
+            $qrs = array_filter([$data['qr'] ?? null, $data['qr_branded'] ?? null, $data['batch_qr'] ?? null]);
+            // The pack's own code on every design (owner, 2026-11-14): a label too small for a QR that scans says so, once.
+            if ($packMissing) {
+                $out[] = 'Pack QR code';
+            } elseif (!empty($data['show_qr']) && $qrs !== [] && array_intersect($qrs, $imgs) === []) {
                 $out[] = 'QR code';
             }
         }
+        if ($packMissing && self::designOf($sheet, $data) === 'wrap') {
+            $out[] = 'Pack QR code';
+        }
         // A pouch label has no place for these (2026-11-11).
         if (self::designOf($sheet, $data) === 'pouch') {
-            foreach ([['barcode', 'barcode', 'Barcode'], ['promo', 'promo', 'Promotion flash'], ['packed_for', 'packed', 'Packed for'], ['nutrition', 'nutrition', 'Nutrition'], ['batch_qr', 'batch_qr', 'Pack QR code'], ['icons', 'icons', 'Allergen pictures']] as [$key, $spot, $word]) {
+            foreach ([['barcode', 'barcode', 'Barcode'], ['promo', 'promo', 'Promotion flash'], ['packed_for', 'packed', 'Packed for'], ['nutrition', 'nutrition', 'Nutrition'], ['icons', 'icons', 'Allergen pictures']] as [$key, $spot, $word]) {
                 if (!empty($data[$key]) && !isset($spots[$spot])) {
                     $out[] = $word;
                 }

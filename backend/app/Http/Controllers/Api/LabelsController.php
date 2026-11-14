@@ -375,8 +375,13 @@ class LabelsController extends Controller
                 'articles' => $req['articles'] ? null : 0,
             ],
         );
+        // Every box label has a code of its own, as every sticker print has (owner, 2026-11-14): its QR opens the
+        // page that says who the box is for and what it holds. A preview carries PREVIEW and logs nothing.
+        $code = $preview ? BatchLink::PREVIEW : LabelPrint::newCode();
+        $query['b'] = $code;
         if (! $preview) {
             LabelPrint::create([
+                'code' => $code,
                 'kind' => 'box_label',
                 'layout' => 'a4',
                 'trade_delivery_id' => $req['delivery'],
@@ -393,6 +398,7 @@ class LabelsController extends Controller
             'view_url' => LabelSheetController::link('labels.box', $query),
             'pdf_url' => LabelSheetController::link('labels.box.pdf', $query),
             'expires_in_minutes' => LabelSheetController::LINK_MINUTES,
+            'code' => $preview ? null : $code,
             'summary' => [
                 'label' => 'Box label',
                 'customer' => $req['fields']['customer'],
@@ -854,6 +860,20 @@ class LabelsController extends Controller
             ->when($request->filled('code'), fn ($q) => $q->where('code', mb_strtoupper(trim((string) $request->string('code')))))
             ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->string('from')))
             ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->string('to')))
+            // The Batches page (owner, 2026-11-14: "add a page to view all"): stickers or box labels, and one box
+            // that finds a batch by its code, its batch number, the product or the shop the box went to.
+            ->when($request->string('group')->toString() === 'stickers', fn ($q) => $q->stickers())
+            ->when($request->string('group')->toString() === 'boxes', fn ($q) => $q->where('kind', 'box_label'))
+            ->when(trim((string) $request->string('q')) !== '', function ($q) use ($request) {
+                $needle = trim((string) $request->string('q'));
+                $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $needle) . '%';
+                $q->where(fn ($w) => $w
+                    ->where('code', mb_strtoupper($needle))
+                    ->orWhere('batch_code', 'like', $like)
+                    ->orWhere('details', 'like', $like)
+                    ->orWhereHas('item', fn ($i) => $i->where('name', 'like', $like))
+                    ->orWhereHas('customLabel', fn ($c) => $c->where('name', 'like', $like)));
+            })
             ->orderByDesc('id')
             ->paginate(min(100, max(10, $request->integer('per_page', 30))));
 
@@ -865,6 +885,9 @@ class LabelsController extends Controller
             'item' => $p->item?->name ?? $p->customLabel?->name,
             'custom' => $p->custom_label_id !== null,
             'delivery' => $p->delivery?->delivery_number,
+            // A box label's shop and how many lines it lists, for the Batches page.
+            'customer' => $p->kind === 'box_label' ? (string) ($p->details['fields']['customer'] ?? '') : null,
+            'box_lines' => $p->kind === 'box_label' ? count($p->details['lines'] ?? []) : null,
             'copies' => $p->copies,
             'mfg_date' => $p->mfg_date?->toDateString(),
             'exp_date' => $p->exp_date?->toDateString(),

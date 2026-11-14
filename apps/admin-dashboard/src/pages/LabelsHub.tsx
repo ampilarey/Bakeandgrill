@@ -8,6 +8,7 @@ import { StickerPrintPanel } from '../components/labels/StickerPrintPanel';
 import { BoxLabelPanel } from '../components/labels/BoxLabelPanel';
 import { TypesAndBrands } from '../components/labels/TypesAndBrands';
 import { MyLabelsTab } from '../components/labels/MyLabels';
+import { BatchesTab } from '../components/labels/BatchesTab';
 import { InlineRename } from '../components/labels/InlineRename';
 import { ExpiringStock } from '../components/labels/ExpiringStock';
 import { IngredientGlossary } from '../components/labels/IngredientGlossary';
@@ -530,7 +531,7 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
         <h4 className="text-sm font-bold text-[var(--color-text)] mt-5 mb-1">On the sticker</h4>
         <div className="max-w-2xl" data-testid="label-sticker-switches">
           {([
-            ['label_batch_qr', 'Batch QR in the header', 'Every print gets a code; the QR opens the pack\'s page with its dates, batch, ingredients and allergens. On the full sticker and the 99 mm compact one.'],
+            ['label_batch_qr', 'Pack code (QR) on labels', 'Every print gets a code; its QR opens the pack\'s page with its dates, batch, ingredients and allergens. On every label with room for a QR that scans, and on box labels (the box\'s contents). Batches lists them all.'],
             ['label_allergen_icons', 'Allergen pictograms', 'Symbols with the word beneath, above the note on the full sticker; a chilli for a spicy item. The "Contains …" note stays either way.'],
           ] as const).map(([k, l, h]) => (
             <div key={k} className="flex items-start justify-between gap-3 py-2.5 border-b border-[var(--color-border-light)]">
@@ -616,7 +617,7 @@ function MakeTabWithPermission() {
 const LP = ['labels.print', 'labels.manage'] as const;
 
 /*
- * Four tabs (owner, 2026-11-14: "saving, printing ect of labels are confusing"; seven tabs until then). My
+ * Five tabs (owner, 2026-11-14: "saving, printing ect of labels are confusing"; seven tabs until then). My
  * labels is every label with Print and Edit; New label is the wizard; Setup is the wording, the logos and the
  * settings. The screens that lost their tab keep their address (`under` names the tab shown as picked), so every
  * old link and bookmark still opens what it did.
@@ -625,6 +626,8 @@ export const LABELS_TABS: HubTab[] = [
   { id: 'mine', label: 'My labels', permissions: LP, desc: 'Every label you have: tap Print for how many and the dates, Edit to change it', render: () => <MyLabelsWithPermission /> },
   // Owner, 2026-10-13 ("Still its v confusing and not user friendly"): four steps to a new label.
   { id: 'make', label: 'New label', permissions: LP, desc: 'Four steps: what it is for, which label, a look at it, how many to print', render: () => <MakeTabWithPermission /> },
+  // Owner, 2026-11-14 ("add a page to view all"): every lot printed and every box label, with the code on its QR.
+  { id: 'batches', label: 'Batches', permissions: LP, desc: 'Every lot of stickers and every box label printed, with its code, dates and batch number', render: () => <BatchesTab /> },
   { id: 'box', label: 'Box labels', permissions: LP, desc: 'A4 label for a delivery box, blank or from a wholesale delivery', render: () => <Card padding="sm" className="labels-sticky"><BoxLabelPanel /></Card> },
   { id: 'setup', label: 'Setup', permissions: LP, desc: 'The wording and logos, the bottom strips and templates, your rolls and printer, and the rules for what prints', render: () => <SetupTab part="types" /> },
   // No tab of their own; each opens on its old address.

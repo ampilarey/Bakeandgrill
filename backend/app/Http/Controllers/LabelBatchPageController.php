@@ -32,7 +32,7 @@ class LabelBatchPageController extends Controller
     {
         $code = mb_strtoupper(trim($code));
         $print = BatchLink::valid($code) && $code !== BatchLink::PREVIEW
-            ? LabelPrint::query()->stickers()->with(['item.labelType.brand', 'customLabel.labelType.brand', 'customLabel.brand'])->where('code', $code)->first()
+            ? LabelPrint::query()->with(['item.labelType.brand', 'customLabel.labelType.brand', 'customLabel.brand'])->where('code', $code)->first()
             : null;
         $site = (string) content('site_name', 'Bake & Grill');
         $shared = [
@@ -43,6 +43,9 @@ class LabelBatchPageController extends Controller
         ];
         if ($print === null) {
             return response()->view('labels.batch', $shared + ['pack' => null], 404);
+        }
+        if ($print->kind === 'box_label') {
+            return view('labels.box-page', $shared + ['box' => $this->box($print), 'complainUrl' => ComplaintBoxLink::url('label', 'Box ' . $code)]);
         }
 
         $product = $print->item ?? $print->customLabel;
@@ -86,5 +89,41 @@ class LabelBatchPageController extends Controller
         }
 
         return view('labels.batch', $shared + ['pack' => $pack]);
+    }
+
+    /**
+     * A box label's page (owner, 2026-11-14: a code for every batch, "including box labels"): who the box is for,
+     * when it travels and what it holds, as the label printed it. The contact's name and number stay off: the
+     * page opens for anyone who scans the box.
+     *
+     * @return array<string, mixed>
+     */
+    private function box(LabelPrint $print): array
+    {
+        $fields = is_array($print->details['fields'] ?? null) ? $print->details['fields'] : [];
+        $rows = is_array($print->details['lines'] ?? null) ? $print->details['lines'] : [];
+        $names = Item::query()->whereIn('id', array_column($rows, 'id'))->pluck('name', 'id');
+        $lines = [];
+        foreach ($rows as $row) {
+            $name = (string) ($names[$row['id'] ?? 0] ?? '');
+            if ($name !== '') {
+                $lines[] = ['name' => $name, 'article' => (string) ($row['article'] ?? ''), 'qty' => (int) ($row['qty'] ?? 0)];
+            }
+        }
+        $get = fn (string $key): string => trim((string) ($fields[$key] ?? ''));
+
+        return [
+            'customer' => $get('customer'),
+            'boat' => trim($get('boat') . ' ' . $get('boat2')),
+            'pickup' => trim($get('pickup') . ' ' . $get('pickup2')),
+            'when' => trim($get('when') . ' ' . $get('when2')),
+            'po' => $get('po'),
+            'box' => $get('box'),
+            'of' => $get('of'),
+            'storage' => LabelSettings::boxStrip(LabelSettings::storage($get('storage'))),
+            'lines' => $lines,
+            'total' => array_sum(array_column($lines, 'qty')),
+            'printed' => LabelSettings::formatDate($print->created_at?->toDateString()),
+        ];
     }
 }

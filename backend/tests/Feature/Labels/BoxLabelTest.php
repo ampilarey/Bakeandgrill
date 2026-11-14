@@ -249,4 +249,44 @@ class BoxLabelTest extends TestCase
         $this->assertStringNotContainsString('data-print', $html);
         $this->assertStringContainsString('scale(', $html);
     }
+
+    // Owner, 2026-11-14: a code for every batch, "including box labels".
+    public function test_a_box_label_carries_a_code_of_its_own_that_opens_what_the_box_holds(): void
+    {
+        [$delivery, $bajiya, $patties] = $this->delivery();
+        $res = $this->postJson('/api/labels/box/url', [
+            'delivery' => $delivery->id,
+            'lines' => [['id' => $bajiya->id, 'qty' => 40], ['id' => $patties->id, 'qty' => 20]],
+            'customer' => 'NH Kuda Rah', 'attn' => 'Adam Firash', 'contact' => '+960 911 9368',
+            'boat' => 'MGH 14', 'when' => '12 Oct 2026', 'po' => 'PO-77', 'box' => '1', 'of' => '2',
+        ])->assertOk();
+        $code = (string) $res->json('code');
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]{8}$/', $code);
+        $print = LabelPrint::query()->where('code', $code)->firstOrFail();
+        $this->assertSame('box_label', $print->kind);
+
+        $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
+        $this->assertStringContainsString(\App\Domains\Labels\BatchLink::qr($code), $html, 'the label draws the code');
+        $this->assertStringContainsString('SCAN FOR BOX INFO', $html);
+        $this->get($res->json('pdf_url'))->assertOk()->assertHeader('content-type', 'application/pdf');
+
+        $page = $this->get("/b/{$code}")->assertOk()
+            ->assertSee('NH Kuda Rah')->assertSee('MGH 14')->assertSee('PO-77')->assertSee('1 of 2')
+            ->assertSee($bajiya->name)->assertSee('40 pcs')->assertSee('60 pcs')
+            ->assertSee('Something wrong with this box?');
+        // The page opens for anyone who scans the box: the contact's name and number stay off it.
+        $page->assertDontSee('Adam Firash')->assertDontSee('911 9368');
+
+        // A second print of the same label is another box with a code of its own; a preview carries none.
+        $again = $this->postJson('/api/labels/box/url', ['customer' => 'NH Kuda Rah'])->assertOk()->json('code');
+        $this->assertNotSame($code, $again);
+        $preview = $this->postJson('/api/labels/box/url', ['customer' => 'NH Kuda Rah', 'preview' => true])->assertOk();
+        $this->assertNull($preview->json('code'));
+        $this->get('/b/PREVIEW')->assertNotFound();
+
+        // Switched off under Labels, Settings: still logged with its code, not drawn.
+        $this->putJson('/api/labels/settings', ['label_batch_qr' => '0'])->assertOk();
+        $off = $this->postJson('/api/labels/box/url', ['customer' => 'NH Kuda Rah'])->assertOk();
+        $this->assertStringNotContainsString('SCAN FOR BOX INFO', (string) $this->get($off->json('view_url'))->assertOk()->getContent());
+    }
 }

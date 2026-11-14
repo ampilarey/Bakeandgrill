@@ -28,7 +28,7 @@ export const TOUR_CARDS: { title: string; text: string; icon: ReactNode }[] = [
   { title: 'A new label in four steps', text: 'What it is for, which label, a look at it, how many to print. A menu item not yet on labels is switched on the moment you pick it.', icon: <ListChecks size={26} /> },
   { title: 'Tap the label to change it', text: 'On the preview, tap the name, the dates or the logo and a small sheet opens with just those boxes. All details has the rest.', icon: <MousePointerClick size={26} /> },
   { title: 'Any size, any shape', text: 'Picture cards for the usual labels: big pack sticker, jar or tub, price tag, round lid, bottle wrap, or a size of your own. The size decides the look.', icon: <Ruler size={26} /> },
-  { title: 'Where things live', text: 'My labels lists every label: tap Print for how many and the dates, Edit to change it. New label makes one. Box labels is for delivery boxes. Setup holds the wording, logos, bottom strips, templates, your rolls and which items get labels.', icon: <Map size={26} /> },
+  { title: 'Where things live', text: 'My labels lists every label: tap Print for how many and the dates, Edit to change it. New label makes one. Batches lists every lot printed, with the code on its QR. Box labels is for delivery boxes. Setup holds the wording, logos, bottom strips, templates, your rolls and which items get labels.', icon: <Map size={26} /> },
 ];
 
 export function LabelsTour() {

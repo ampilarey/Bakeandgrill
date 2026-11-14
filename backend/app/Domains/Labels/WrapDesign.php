@@ -721,9 +721,29 @@ final class WrapDesign
             $this->text($x, $this->baseCentred($cursor, $line, $font, $pt), $pw, $this->a('l'), $font, $pt, StickerDesign::TEXT, $t, $this->dv ? 0.5 : 0.0);
             $cursor += $line + 0.2;
         }
-        // The barcode in what is left, when no Barcode part prints it and there is the height.
-        if (!empty($d['barcode']) && !in_array('barcode', $this->parts, true) && $y + $ph - $cursor >= 8.0) {
-            $this->ean($x, $cursor + 0.2, $pw, $y + $ph - $cursor - 0.2);
+        // What is left under the lines: the pack's own code when no QR part prints it (owner, 2026-11-14: the
+        // bottle label had no PACK INFO code, the momo pouch had), and the barcode beside it.
+        $left = $y + $ph - $cursor;
+        $bars = !empty($d['barcode']) && !in_array('barcode', $this->parts, true);
+        $packQr = !empty($d['batch_qr']) && !in_array('qr', $this->parts, true) && $left >= 8.0;
+        $qw = 0.0;
+        if ($packQr) {
+            $capPt = self::clamp(2.6 * $k, 2.4, 3.2);
+            $capH = $this->lead('j7', $capPt);
+            $side = min($left - $capH - 0.8, $bars ? $pw * 0.34 : $pw, 15.0);
+            if ($side >= 7.0) {
+                $qw = $side + 1.6;
+                $qx = $this->dv ? $x + 0.4 : $x + $pw - $side - 0.4;
+                $qy = $cursor + 0.2 + max(0.0, ($left - 0.2 - $side - $capH - 0.6) / 2);
+                $this->p[] = LabelSpots::open('batch_qr');
+                $this->p[] = ['t' => 'rect', 'x' => $qx - 0.4, 'y' => $qy - 0.4, 'w' => $side + 0.8, 'h' => $side + 0.8, 'fill' => StickerDesign::CREAM, 'r' => 0.6];
+                $this->img($qx, $qy, $side, $side, $d['batch_qr']);
+                $this->text($qx - 1.0, $qy + $side + 0.6 + LabelText::ascent('j7') * $capPt * LabelText::PT, $side + 2.0, 'c', 'j7', LabelText::fitPt('PACK INFO', 'j7', $side + 2.0, $capPt, 2.2), StickerDesign::MUTED, 'PACK INFO');
+                $this->p[] = LabelSpots::close();
+            }
+        }
+        if ($bars && $left >= 8.0) {
+            $this->ean($this->dv ? $x + $qw : $x, $cursor + 0.2, $pw - $qw, $left - 0.2);
         }
     }
 

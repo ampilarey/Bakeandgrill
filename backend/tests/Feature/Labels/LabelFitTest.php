@@ -44,7 +44,7 @@ class LabelFitTest extends TestCase
 
         // 30 × 20 mm leaves out the ingredients, the QR and the badges, and says so in plain words.
         $tiny = $this->dropped(['layout' => 'a4-custom', 'w' => 30, 'h' => 20]);
-        $this->assertSame(['Ingredients', 'QR code', 'Badge Halal', 'Badge Spicy', 'Badge Homemade', 'Badge Best seller'], $tiny);
+        $this->assertSame(['Ingredients', 'Pack QR code', 'Badge Halal', 'Badge Spicy', 'Badge Homemade', 'Badge Best seller'], $tiny);
 
         // A real print's summary carries the same list.
         $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => 'a4-4'])->assertOk()->assertJsonPath('summary.dropped', []);

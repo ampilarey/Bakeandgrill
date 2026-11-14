@@ -21,6 +21,7 @@ Prepare and then Print, and the hub had seven tabs. Now:
 |---|---|---|
 | **My labels** | Every label, one row each, with Print and Edit: the custom labels, then the menu items that print labels. Scan to reprint and Sheets printed before (the old Saved labels, with the print log) fold beneath. | `/labels/mine` |
 | **New label** | The four-step wizard (was Make a label). | `/labels/make` |
+| **Batches** | Every lot printed and every box label, with its code (below). | `/labels/batches` |
 | **Box labels** | Unchanged. | `/labels/box` |
 | **Setup** | Wording and logos, and Settings, as two parts of one tab. | `/labels/setup` |
 
@@ -40,6 +41,33 @@ Print several on one sheet), `/labels/custom`, `/labels/saved` (opens with the f
 `/labels/types` and `/labels/settings`. A `HubTab` with `under` has no tab of its own and shows the named tab as
 picked. Elsewhere in this document "Make a label", "Custom labels", "Saved labels", "Wording and logos" and
 "Settings" name those screens, which are now where this table says.
+
+## The pack's code on every label, and Batches (2026-11-14)
+
+Owner: the momo pouch had its PACK INFO code and the Theluli Rihaakuru bottle had none; "Can make that for all,
+including box labels. And add a page to view all."
+
+| Label | Where the pack's code prints |
+|---|---|
+| Big sticker, pouch label | Its own place, as before. |
+| Bottle and other wrap-around labels | In the dates part, beside the barcode, captioned PACK INFO (unless a QR part already prints it). |
+| Compact sticker | In its band on the 99 mm one; in the footer on the narrower ones, where the complaints code stood. |
+| Small upright labels (40 × 60 mm and kin), round from 70 mm | In their one QR place, instead of the complaints code. |
+| Small landscape labels, round under 70 mm, price tags | Left out: no room for a QR that scans. The preview says "Pack QR code" under what was left out. |
+| Box label | Top right of Deliver to, captioned SCAN FOR BOX INFO. |
+
+Where the pack's code takes the complaints code's place nothing is lost: the pack page has "Something wrong with
+this pack? Tell us", and that complaint carries the pack's code.
+
+A box label's page (`/b/{code}`) lists the shop, the boat, the pick-up point, the delivery, the PO, the box number
+and the contents with quantities. The contact's name and number are not on it: the page opens for anyone who scans
+the box.
+
+**Batches** (the fifth tab, `/labels/batches`) lists every lot of stickers and every box label printed, newest
+first: what it is, how many, the batch number, the dates with "Past its date" or the days left, who printed it and
+when, and its code as a link to its page. The search box takes a code, a batch number, a product or a shop; chips
+show stickers or box labels alone; Print again opens the full form on that print. Labels → Setup → Settings →
+"Pack code (QR) on labels" switches the code off the paper; prints still get their code and their row here.
 
 ## Seeing a preview bigger
 

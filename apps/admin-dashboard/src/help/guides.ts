@@ -452,7 +452,7 @@ export const GUIDES: Guide[] = [
       'Tap Edit on a row to change the label itself: its wording, picture, size and layout.',
       'To rename a label, tap Edit and change Product name, then Save.',
       'Tap New label for a new one, in four steps.',
-      'Box labels is for delivery boxes. Setup holds the wording, logos, bottom strips, templates, your rolls, the printer and which menu items get labels.',
+      'Batches lists every lot printed, with the code on its QR. Box labels is for delivery boxes. Setup holds the wording, logos, bottom strips, templates, your rolls, the printer and which menu items get labels.',
     ],
     notes: [
       'Save appears only while editing a label, and it keeps your changes. A printed sheet is not saved by hand: every print is kept under Sheets printed before, at the bottom of My labels.',
@@ -564,6 +564,27 @@ export const GUIDES: Guide[] = [
       'Print stays off while the use-by date has passed or the wording lock refuses the label.',
     ],
     words: 'print label sticker dates expiry how many paper sheet',
+  },
+  {
+    id: 'label-batches',
+    page: '/labels',
+    title: 'See every batch I printed, and find one by its code',
+    open: { to: '/labels/batches', label: 'Open Batches' },
+    steps: [
+      'Open Labels and tap the Batches tab. Every lot of stickers and every box label printed is listed, newest first.',
+      'Each row shows the product or the shop, how many, the batch number, the dates and whether it is past its date.',
+      'To find one, type its code, its batch number, the product or the shop in the search box.',
+      'Tap the code to open the page a customer sees when they scan the QR.',
+      'Tap Print again on a sticker row to print that sticker once more.',
+    ],
+    notes: [
+      'Every print has a code of its own. The QR marked PACK INFO on a label opens its page: dates, batch, ingredients and a way to tell you about a problem with that pack.',
+      'The code prints on the big sticker, the pouch label, the bottle label (beside the barcode) and the compact, upright small and large round ones. A label too small for a QR that scans leaves it out, and the preview says so.',
+      'A box label carries SCAN FOR BOX INFO. Its page lists who the box is for and what it holds, without the contact\'s name or number.',
+      'Type a Batch number when you print to tell one lot from the next.',
+      'Labels, Setup, Settings has the switch for the code if you do not want it printed.',
+    ],
+    words: 'batch batches code qr pack info box all list view find',
   },
   {
     id: 'saved-labels',
