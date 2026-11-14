@@ -20,6 +20,7 @@ import { AnnouncementModal } from './social/AnnouncementModal';
 import { CalendarTab } from './social/CalendarTab';
 import { CommentsTab } from './social/CommentsTab';
 import { ComposeModal } from './social/ComposeModal';
+import { SocialPosterMaker } from '../components/socialposter/SocialPosterMaker';
 import { PLATFORM_LABELS, bestTimesHint, navigateTo } from './social/composer';
 import { Heart, MessageCircle, MousePointerClick, Share2, ShoppingBag } from 'lucide-react';
 import { inputFont } from '../utils/cssVars';
@@ -81,7 +82,9 @@ export function SocialHubPage() {
   const canCompose = can('social.compose');
   const canChannels = can('social.channels.manage');
 
-  const [tab, setTab] = useState<'posts' | 'calendar' | 'comments' | 'automation' | 'videos' | 'channels'>('posts');
+  const [tab, setTab] = useState<'posts' | 'make' | 'calendar' | 'comments' | 'automation' | 'videos' | 'channels'>('posts');
+  // A picture made under Make a post, on its way to the composer.
+  const [madePost, setMadePost] = useState<{ imageUrl: string; caption: string } | null>(null);
   const [channels, setChannels] = useState<SocialChannelRow[]>([]);
   const [platforms, setPlatforms] = useState<Record<string, SocialPlatformCaps>>({});
   const [posts, setPosts] = useState<SocialPostRow[]>([]);
@@ -169,6 +172,7 @@ export function SocialHubPage() {
           "Videos" and "Channels" were cut off and out of reach (phone sweep 2026-10-08). */}
       <TabScrollRow fit style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <Btn small aria-current={tab === 'posts' ? 'page' : undefined} variant={tab === 'posts' ? 'primary' : 'secondary'} onClick={() => setTab('posts')}>Posts</Btn>
+        <Btn small aria-current={tab === 'make' ? 'page' : undefined} variant={tab === 'make' ? 'primary' : 'secondary'} onClick={() => setTab('make')}>Make a post</Btn>
         <Btn small aria-current={tab === 'calendar' ? 'page' : undefined} variant={tab === 'calendar' ? 'primary' : 'secondary'} onClick={() => setTab('calendar')}>Calendar</Btn>
         <Btn small aria-current={tab === 'comments' ? 'page' : undefined} variant={tab === 'comments' ? 'primary' : 'secondary'} onClick={() => setTab('comments')}>Comments</Btn>
         <Btn small aria-current={tab === 'automation' ? 'page' : undefined} variant={tab === 'automation' ? 'primary' : 'secondary'} onClick={() => setTab('automation')}>
@@ -197,6 +201,11 @@ export function SocialHubPage() {
           onFilters={(patch) => setFilters((f) => ({ ...f, ...patch }))}
           onChanged={load}
           onEdit={canCompose ? (p) => setComposing(p) : undefined}
+        />
+      ) : tab === 'make' ? (
+        <SocialPosterMaker
+          canCompose={canCompose}
+          onSend={(post) => { setMadePost(post); setComposing('new'); }}
         />
       ) : tab === 'calendar' ? (
         <CalendarTab
@@ -234,9 +243,9 @@ export function SocialHubPage() {
       {composing && (
         <ComposeModal
           post={composing === 'new' ? null : composing}
-          initial={composing === 'new' ? composeInitial : null}
-          onClose={() => { setComposing(null); clearComposeParam(); }}
-          onSaved={() => { setComposing(null); clearComposeParam(); void load(); }}
+          initial={composing === 'new' ? (madePost ?? composeInitial) : null}
+          onClose={() => { setComposing(null); setMadePost(null); clearComposeParam(); }}
+          onSaved={() => { setComposing(null); clearComposeParam(); if (madePost) { setMadePost(null); setTab('posts'); } void load(); }}
           canCompose={canCompose}
           canPublish={can('social.publish')}
           canSchedule={can('social.schedule')}

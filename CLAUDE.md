@@ -1514,6 +1514,29 @@ are in `components/posters/` and `PostersPage.tsx`. Saved templates keep `sizes`
 `docs/poster-themes/generator-source/` (`POSTER_VARIANT=tv|tvp python3 build_tv.py`, then
 `merge_tv.py`; handoff § 6). Audit and recommendations: `docs/POSTER_AUDIT_2026-10.md`.
 
+## Social posts: one set of words, every design and shape
+
+Owner, 2026-11-14 ("a separate poster maker for social media… It should be easy. One click… From 1 poster
+automatically makes poster for different platforms"; "many different designs… saved for later… change the design and
+layout but information remains same"). Social Hub → **Make a post** (`components/socialposter/SocialPosterMaker.tsx`,
+a tab of `SocialHubPage`): pick a dish (name, price, offer price and photo fill in from `GET /admin/social/item-preview`,
+which now carries `cutout_url` and `photo_url`) or type the words, tap a design and a colour, switch parts on and off
+(`PART_ORDER`: price, old price, sticker, order button, phone, website, logo, QR code, small line above, line below).
+The post is a `PostSpec` (`types.ts`), drawn in the browser on a canvas by `renderPost()` (`draw.ts`) with any of
+`LAYOUTS` (10) in any of `PALETTES` (10) at any of `SIZES` (feed 1080 × 1350, square 1080 × 1080, story 1080 × 1920,
+wide 1200 × 630), so **a design is a pair of keys, never a copy of the words**. Every length is a share of the
+picture (`u`), each layout places its parts by the picture's shape (`wide`, `tall`), never by cropping, and the word
+stack (`stack()`) shrinks as one until it fits, so nothing is cut. A cut-out photo is drawn whole; a story keeps its
+top and bottom clear. A new design is a function in `LAYOUT_DRAW` and a row in `LAYOUTS`; a new colour is a row in
+`PALETTES`; neither needs anything on the server (`layout` and `palette` are kept as plain keys). Saved posts are
+`social_posters` (`SocialPosterController`, `/api/admin/social/posters`, read with `social.view`, writes check
+`social.compose` in the controller, as the composer does); Download makes a PNG per size, Share uses the phone's share
+sheet, and Post it sends the feed shape as a JPEG (`POST /admin/social/posters/picture`, redrawn by GD, kept under
+`storage/social-posters/`) and opens `ComposeModal` with the picture and `captionOf()` (`initial.imageUrl`,
+`initial.caption`). Fonts are the site's own (`/fonts/`: Lobster, Anton, Fraunces, Plus Jakarta, Noto Sans Thaana),
+loaded once by `assets.ts`. It is separate from Posters (print and TV, drawn on the server). `SocialPosterTest`,
+`socialposter.test.tsx`.
+
 ## Help: short guides inside the admin
 
 Owner, 2026-11-10 ("there are lots of different features that I don't know how to use"). Team →

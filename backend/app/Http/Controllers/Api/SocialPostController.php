@@ -199,6 +199,9 @@ class SocialPostController extends Controller
             'price' => round((float) $resolved->unitPrice, 2),
             'base_price' => round((float) $item->base_price, 2),
             'image_url' => $hasRealPhoto ? $preview['url'] : null,
+            // Make a post: the dish cut out of its photo, when there is one, and the photo at full size.
+            'cutout_url' => trim((string) ($item->cutout_url ?? '')) ?: null,
+            'photo_url' => trim((string) ($item->image_original_url ?: $item->image_url ?: '')) ?: null,
             'link_url' => url('/menu/' . $item->id),
             'is_sellable' => (bool) $item->is_active && (bool) $item->is_available,
             'special' => $special ? [

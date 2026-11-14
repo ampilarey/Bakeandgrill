@@ -102,6 +102,9 @@ export interface SocialItemPreview {
   base_price: number;
   /** The item's shareable photo, or null when it has none (never the site logo). */
   image_url: string | null;
+  /** Make a post: the dish cut out of its photo, and the photo at full size. */
+  cutout_url?: string | null;
+  photo_url?: string | null;
   link_url: string;
   is_sellable: boolean;
   /** Present when the preview was asked for by special: the offer's badge and last day. */

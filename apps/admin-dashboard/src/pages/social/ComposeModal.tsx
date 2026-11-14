@@ -27,7 +27,8 @@ type Action = 'draft' | 'schedule' | 'now' | 'save';
 export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canPublish, canSchedule }: {
   post?: SocialPostRow | null;
   /** "Share" from the menu or a special: open on this item, caption suggested. */
-  initial?: { itemId?: number; specialId?: number } | null;
+  /** Or from Make a post: the finished picture and a caption written from its words. */
+  initial?: { itemId?: number; specialId?: number; imageUrl?: string; caption?: string } | null;
   onClose: () => void;
   onSaved: () => void;
   canCompose: boolean;
@@ -43,9 +44,9 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
   const [selected, setSelected] = useState<number[]>(
     () => (editing?.deliveries ?? []).map((d) => d.channel?.id).filter((id): id is number => typeof id === 'number'),
   );
-  const [caption, setCaption] = useState(editing?.snapshot.caption ?? '');
+  const [caption, setCaption] = useState(editing?.snapshot.caption ?? initial?.caption ?? '');
   const [captionDv, setCaptionDv] = useState(editing?.snapshot.caption_dv ?? '');
-  const [imageUrl, setImageUrl] = useState(editing?.snapshot.image_url ?? '');
+  const [imageUrl, setImageUrl] = useState(editing?.snapshot.image_url ?? initial?.imageUrl ?? '');
   const [item, setItem] = useState<SocialItemPreview | null>(null);
   const [itemLoading, setItemLoading] = useState(Boolean(editing?.snapshot.item_id || initial?.itemId || initial?.specialId));
   const [pickerOpen, setPickerOpen] = useState(false);

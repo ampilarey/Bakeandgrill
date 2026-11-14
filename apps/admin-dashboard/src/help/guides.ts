@@ -929,6 +929,28 @@ export const GUIDES: Guide[] = [
     words: 'facebook instagram telegram viber post social share',
   },
   {
+    id: 'social-make-post',
+    page: '/social',
+    title: 'Make a picture for Instagram, Facebook, stories and WhatsApp status',
+    steps: [
+      'Open Social Hub and tap the Make a post tab.',
+      'Under What is it for?, search the menu and pick the dish. Its name, price and photo fill in. Or type a Headline and a Price yourself.',
+      'Under Pick a design, tap a design, then a colour. The words stay the same. Surprise me picks one for you.',
+      'Under Add or remove parts, switch on what you want: Price, Old price, Sticker, Order button, Phone number, Website, Logo, QR code.',
+      'Tap Feed post, Square, Story or Wide to see each shape. Tap Download for the one on screen, or All 4 sizes.',
+      'To keep it, type a Name under Save it for later and tap Save. It appears under Saved posts.',
+    ],
+    notes: [
+      'Feed post suits Instagram and Facebook, Square suits Viber and Telegram, Story suits stories, WhatsApp status and TikTok, Wide suits a Facebook link.',
+      'Post it opens the composer with the picture and a caption ready, to send to your connected channels.',
+      'On a phone, Share sends the picture straight to another app, such as WhatsApp or Instagram.',
+      'Open a saved post, change the price or the design, and tap Save changes. Save as a new post keeps the old one too.',
+      'A dish with a cut-out photo looks best. Pick a photo opens the Media Library for any other picture.',
+      'TikTok and WhatsApp status cannot be posted to from here: download the Story size and post it from your phone.',
+    ],
+    words: 'poster picture design instagram facebook story status whatsapp tiktok viber download template social',
+  },
+  {
     id: 'signage-playlist',
     page: '/signage',
     title: 'Change what the TV screens show',

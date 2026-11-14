@@ -71,6 +71,13 @@ if (routes_domain_section_is('social', 'admin') && !routes_domain_loaded('social
         Route::get('/items/{id}/videos', [App\Http\Controllers\Api\SocialVideoController::class, 'index']);
         Route::post('/items/{id}/videos', [App\Http\Controllers\Api\SocialVideoController::class, 'store']);
         Route::delete('/videos/{renditionId}', [App\Http\Controllers\Api\SocialVideoController::class, 'destroy']);
+        // Make a post: saved posts and the finished picture. Writes check
+        // social.compose in-controller.
+        Route::get('/posters', [App\Http\Controllers\Api\SocialPosterController::class, 'index']);
+        Route::post('/posters', [App\Http\Controllers\Api\SocialPosterController::class, 'store']);
+        Route::post('/posters/picture', [App\Http\Controllers\Api\SocialPosterController::class, 'picture']);
+        Route::put('/posters/{id}', [App\Http\Controllers\Api\SocialPosterController::class, 'update'])->whereNumber('id');
+        Route::delete('/posters/{id}', [App\Http\Controllers\Api\SocialPosterController::class, 'destroy'])->whereNumber('id');
     });
 
     Route::middleware('permission:social.channels.manage')->prefix('admin/social')->group(function () {
