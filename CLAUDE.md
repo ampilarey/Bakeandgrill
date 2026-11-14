@@ -497,7 +497,7 @@ that lost its tab keeps its address through `under` on its `HubTab` (`/labels/st
 products on one sheet; `/labels/custom`, `/labels/saved`, `/labels/types`, `/labels/settings`): never drop one, links from deliveries,
 catering, the pack page and the print log land there. Where this section says Make a label, Custom labels, Saved labels, Wording and
 logos or Settings, it names those screens, now inside the four tabs. `PrintLabelModal.test.tsx`, `MyLabels.test.tsx`,
-`LabelsHub.tabs.test.ts`. How to
+`LabelsHub.tabs.test.ts`. A custom label's row says what tells it from the next (owner, 2026-11-14: "How do i knoe the size from the label? Do i need to open every time. Is there any view option"): `packLine()` (the pouch's pack word, the count, the net weight, the price, the barcode), and View (`ViewLabelModal`, the thumbnail too) draws the label at its own size without printing; Batch number sits in plain view in the Print pop-up, not under More. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

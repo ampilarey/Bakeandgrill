@@ -80,6 +80,17 @@ describe('PrintLabelModal', () => {
     expect(screen.getByTestId('print-go')).toBeDisabled();
   });
 
+  it('a batch number typed in plain view goes on the print', async () => {
+    show();
+    await previewed();
+    fireEvent.change(screen.getByTestId('print-batch'), { target: { value: 'B-1411' } });
+    await waitFor(() => expect(lastBody().batch).toBe('B-1411'), { timeout: 3000 });
+    fireEvent.click(screen.getByTestId('print-go'));
+    await waitFor(() => expect(openLabelSheet).toHaveBeenCalled());
+    expect(lastBody().batch).toBe('B-1411');
+    expect(lastBody().preview).toBeUndefined();
+  });
+
   it('opens at the size this label printed at last time, not the size of whatever printed last', async () => {
     localStorage.setItem('labels.lastSize', JSON.stringify({ shape: 'rect', preset: 'r105x148', on: 'sheet', w: 105, h: 148 }));
     localStorage.setItem('labels.sizeFor', JSON.stringify({ c9: { shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60, roll: null } }));

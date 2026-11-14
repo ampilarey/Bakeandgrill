@@ -31,6 +31,19 @@ import { LabelSizePicker } from './LabelSizePicker';
 import { BrandModal, NewTypeButton } from './TypesAndBrands';
 import { useIsBelowDesktop } from '../../hooks/useIsMobile';
 import { PrintLabelModal, type PrintTarget } from './PrintLabelModal';
+import { ViewLabelModal } from './ViewLabelModal';
+
+/** What tells one label from the next on its row: the pack size, the count, the price and the barcode (owner, 2026-11-14: "How do i knoe the size from the label?"). */
+export function packLine(c: Pick<CustomLabel, 'label_pouch' | 'label_pack_qty' | 'label_pack_unit' | 'label_net_weight' | 'label_price' | 'label_barcode'>): string {
+  const word = (c.label_pouch?.size_word ?? '').trim();
+  return [
+    word ? `${word} pack` : '',
+    c.label_pack_qty ? `${c.label_pack_qty} ${(c.label_pack_unit ?? 'PCS').toLowerCase()}` : '',
+    c.label_net_weight ?? '',
+    c.label_price != null ? `MVR ${Number(c.label_price).toFixed(2)}` : '',
+    c.label_barcode ? `barcode ${c.label_barcode}` : '',
+  ].filter(Boolean).join(' · ');
+}
 
 /** A custom label as the Print pop-up needs it. */
 export const printTargetOf = (c: CustomLabel): PrintTarget => ({ kind: 'custom', id: c.id, name: c.name, lang: langOf(c), pouch: Boolean(c.label_pouch), faces: c.label_wrap?.faces ?? 0, ownQty: c.label_pack_qty ?? null });
@@ -593,6 +606,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
   const [edit, setEdit] = useState<CustomLabel | null | 'new'>(null);
   const [pouchSet, setPouchSet] = useState(false);
   const [print, setPrint] = useState<CustomLabel | null>(null);
+  const [view, setView] = useState<CustomLabel | null>(null);
   const [query, setQuery] = useState('');
   const load = () => fetchCustomLabels().then((r) => setRows(r.data)).catch(() => setRows([]));
   useEffect(() => { void load(); }, []);
@@ -637,11 +651,12 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
         <ul className="divide-y divide-[var(--color-border-light)]">
           {shown.map((c) => (
             <li key={c.id} className="px-4 py-3 flex flex-wrap items-center gap-3">
-              <div className="w-12 h-12 shrink-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] flex items-center justify-center overflow-hidden">
+              <button type="button" onClick={() => setView(c)} aria-label={`View ${c.name}`} className="w-12 h-12 shrink-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] flex items-center justify-center overflow-hidden">
                 {c.label_photo_url || c.brand_logo_url ? <img src={c.label_photo_url ?? c.brand_logo_url ?? ''} alt="" className="max-w-full max-h-full object-contain" /> : <Tag size={18} className="text-[var(--color-text-muted)]" />}
-              </div>
+              </button>
               <div className="flex-1 min-w-[160px]">
                 <div className="text-sm font-semibold text-[var(--color-text)]">{c.name}{c.name_dv ? <span className="ml-2 font-normal text-[var(--color-text-muted)]" dir="rtl">{c.name_dv}</span> : null}</div>
+                {packLine(c) && <div className="text-xs font-semibold text-[var(--color-text-secondary)]" data-testid={`custom-pack-${c.id}`}>{packLine(c)}</div>}
                 <div className="text-xs text-[var(--color-text-muted)]">
                   {c.brand_name} · {c.label_type_name ?? 'No type'} · {STORAGE_NAMES[c.storage]}
                   {c.label_shelf_life_days || c.defaults.shelf_life_days ? ` · keeps ${c.label_shelf_life_days ?? c.defaults.shelf_life_days} days` : ''}
@@ -654,6 +669,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
               </div>
               <div className="flex flex-wrap items-center gap-1 ml-auto">
                 <Button size="sm" icon={<Printer size={14} />} onClick={() => setPrint(c)} aria-label={`Print ${c.name}`} data-testid={`custom-print-${c.id}`}>Print</Button>
+                <Button size="sm" variant="ghost" icon={<Eye size={14} />} onClick={() => setView(c)} data-testid={`custom-view-${c.id}`}>View</Button>
                 {canManage && (
                   <>
                     <Button size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setEdit(c)} aria-label={`Edit ${c.name}`}>Edit</Button>
@@ -672,6 +688,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
           )}
         </ul>
       </Card>
+      {view && <ViewLabelModal target={printTargetOf(view)} onClose={() => setView(null)} onPrint={() => { setPrint(view); setView(null); }} />}
       {print && <PrintLabelModal target={printTargetOf(print)} canManage={canManage} onClose={() => { setPrint(null); void load(); }} />}
       {pouchSet && <PouchSetModal onClose={() => { setPouchSet(false); void load(); }} />}
       {edit !== null && <CustomLabelModal label={edit === 'new' ? null : edit} onClose={() => setEdit(null)} onSaved={() => void load()} />}

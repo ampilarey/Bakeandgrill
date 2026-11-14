@@ -448,7 +448,9 @@ export const GUIDES: Guide[] = [
     steps: [
       'Open Labels. It opens on My labels: every label you have, one row each.',
       'Tap Print on a row to set how many and the dates, then print.',
+      'Tap View on a row to see the label without printing it. The row also says its pack size, count, price and barcode.',
       'Tap Edit on a row to change the label itself: its wording, picture, size and layout.',
+      'To rename a label, tap Edit and change Product name, then Save.',
       'Tap New label for a new one, in four steps.',
       'Box labels is for delivery boxes. Setup holds the wording, logos, bottom strips, templates, your rolls, the printer and which menu items get labels.',
     ],
@@ -556,7 +558,8 @@ export const GUIDES: Guide[] = [
     ],
     notes: [
       'Paper shows the size and sheet it will print on. Tap Change to pick another size or one of your rolls. The label opens at the same size next time.',
-      'More holds the batch number, Packed for, Quantity per pack and Fill in the dates.',
+      'Type a Batch number to tell this lot from the next. It prints on every label and is kept in the print log.',
+      'More holds Packed for, Quantity per pack and Fill in the dates.',
       'For a promotion flash, pack numbers, cut marks or several products on one sheet, tap open every option under More.',
       'Print stays off while the use-by date has passed or the wording lock refuses the label.',
     ],

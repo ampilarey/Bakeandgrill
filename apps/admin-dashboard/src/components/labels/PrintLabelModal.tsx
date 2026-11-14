@@ -49,7 +49,7 @@ const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary
 const chip = (on: boolean) => ['h-8 px-3 rounded-full border text-sm font-semibold whitespace-nowrap', on ? 'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]'].join(' ');
 
 /** The size a label opens at: the one it last printed at, else the one made for it, else the last size printed. */
-function startingSize(target: PrintTarget, presets: LabelPreset[], rolls: LabelRoll[], at?: SizeChoice): { choice: SizeChoice; roll: string | null } {
+export function startingSize(target: PrintTarget, presets: LabelPreset[], rolls: LabelRoll[], at?: SizeChoice): { choice: SizeChoice; roll: string | null } {
   if (at) return { choice: at, roll: null };
   const own = rememberedSizeFor(`${target.kind === 'custom' ? 'c' : 'i'}${target.id}`);
   if (own) return own;
@@ -226,6 +226,12 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
           {checked && <UseByLine exp={checked.products[0]?.exp} shelf={checked.products[0]?.shelf_life_days} fill={fill} />}
 
           <div>
+            <label className={labelClass} htmlFor="print-batch">Batch number (optional)</label>
+            <input id="print-batch" value={batch} maxLength={30} onChange={(e) => setBatch(e.target.value)} placeholder="B-1411, or your own" className={fieldClass} data-testid="print-batch" />
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">Printed on every label and kept in the print log, so you can tell this lot from the next.</p>
+          </div>
+
+          <div>
             <span className={labelClass}>Paper</span>
             <button type="button" onClick={() => setPaperOpen((o) => !o)} aria-expanded={paperOpen} className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-left text-sm text-[var(--color-text)] flex items-center justify-between gap-2" data-testid="print-paper">
               <span className="min-w-0">{paperLine || 'Choose the paper'}</span>
@@ -275,10 +281,6 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
               <div>
                 <label className={labelClass} htmlFor="print-qty">Quantity per pack</label>
                 <input id="print-qty" type="number" inputMode="numeric" min={1} value={qty} onChange={(e) => setQty(e.target.value)} placeholder={target.ownQty ? `${target.ownQty}, the label's own` : 'Blank: the label\'s own'} className={fieldClass} />
-              </div>
-              <div>
-                <label className={labelClass} htmlFor="print-batch">Batch number</label>
-                <input id="print-batch" value={batch} maxLength={30} onChange={(e) => setBatch(e.target.value)} placeholder="Blank: written by hand" className={fieldClass} />
               </div>
               <div>
                 <label className={labelClass} htmlFor="print-for">Packed for</label>

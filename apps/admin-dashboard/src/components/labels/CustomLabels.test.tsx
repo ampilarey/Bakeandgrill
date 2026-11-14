@@ -409,6 +409,24 @@ describe('CustomLabelsTab', () => {
     expect(stickerLinks.mock.calls.every(([body]) => (body as { preview?: boolean }).preview === true)).toBe(true);
   });
 
+  // Owner, 2026-11-14: "How do i knoe the size from the label? Do i need to open every time. Is there any view option".
+  it('says each label\'s pack size, count, price and barcode on its row, and View shows the label without printing', async () => {
+    fetchCustomLabels.mockResolvedValue({ data: [
+      custom(7, 'Frozen Momo (Medium)', { label_pack_qty: 8, label_pack_unit: 'PCS', label_price: 45, label_barcode: '2000000000015', label_pouch: { look: 'gold', method: 'microwave', method_text: '', method_text_dv: '', tagline: '', tagline_dv: '', size_word: 'Medium' } }),
+      custom(8, 'Garlic Sauce'),
+    ] });
+    wrap(<CustomLabelsTab canManage={false} />);
+    expect(await screen.findByTestId('custom-pack-7')).toHaveTextContent('Medium pack · 8 pcs · MVR 45.00 · barcode 2000000000015');
+    expect(screen.queryByTestId('custom-pack-8')).toBeNull();
+    fireEvent.click(screen.getByTestId('custom-view-7'));
+    expect(await screen.findByTestId('view-label')).toBeInTheDocument();
+    await waitFor(() => expect(stickerLinks).toHaveBeenCalled());
+    expect((stickerLinks.mock.calls[0][0] as { preview?: boolean }).preview).toBe(true);
+    // Print from the view opens the pop-up with the dates.
+    fireEvent.click(screen.getByTestId('view-label-print'));
+    expect(await screen.findByTestId('print-label')).toBeInTheDocument();
+  });
+
   it('says how often each label was printed, in which language, and finds one by name, brand or type', async () => {
     fetchCustomLabels.mockResolvedValue({ data: [
       custom(1, 'Garlic Sauce', { print_count: 3, last_printed_at: '2026-10-12T08:00:00Z' }),
