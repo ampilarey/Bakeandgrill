@@ -179,6 +179,26 @@ class BottleFacesLabelTest extends TestCase
         $this->assertStringNotContainsString($line, $html());
     }
 
+    /** Owner, 2026-11-14: a colour laser printed the label "little low" in quality: dark browns are four toners, black is one. */
+    public function test_words_print_in_pure_black_and_fills_keep_their_colour(): void
+    {
+        $out = \App\Domains\Labels\StickerSheet::crispInk([
+            ['t' => 'text', 'pt' => 8.0, 'color' => '#2A1E0C', 'text' => 'Ingredients'],
+            ['t' => 'text', 'pt' => 8.0, 'color' => '#1C1408', 'text' => '+960'],
+            ['t' => 'text', 'pt' => 3.2, 'color' => '#8B7355', 'text' => 'PACK INFO'],
+            ['t' => 'text', 'pt' => 7.0, 'color' => '#8B7355', 'text' => 'By Bake & Grill'],
+            ['t' => 'text', 'pt' => 9.0, 'color' => '#B74B0C', 'text' => 'Contains fish'],
+            ['t' => 'rect', 'fill' => '#1C1408'],
+        ]);
+        $this->assertSame(['#000000', '#000000', '#000000', '#8B7355', '#B74B0C'], array_column(array_slice($out, 0, 5), 'color'));
+        $this->assertSame('#1C1408', $out[5]['fill']);
+
+        $id = $this->postJson('/api/labels/custom', ['name' => 'Chilli Sauce', 'label_ingredients' => 'Chilli, vinegar, garlic, salt', 'label_wrap' => ['parts' => ['brand', 'legal', 'dates'], 'faces' => 4]])->assertCreated()->json('data.id');
+        $html = (string) $this->get($this->postJson('/api/labels/stickers/url', ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 1]], 'layout' => 'single-custom', 'w' => 215, 'h' => 40, 'fill' => true, 'preview' => true])->assertOk()->json('view_url'))->assertOk()->getContent();
+        $this->assertStringNotContainsString('color:#2A1E0C', $html);
+        $this->assertStringContainsString('color:#000000', $html);
+    }
+
     /** Owner, 2026-11-12: the brand typed as "Amma’s" was not picked by the template, and picked by hand it printed Bake & Grill's logo. */
     public function test_a_brand_typed_with_a_possessive_is_the_shipped_brand(): void
     {

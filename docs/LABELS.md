@@ -59,6 +59,15 @@ line just inside its edge, so each one is easy to cut out of an A4 sheet and loo
 for every wrap-around label, old ones too; switch it off under the label's strips, Border around the label
 (`label_wrap.border`).
 
+## Sharper print on a colour printer (2026-11-14)
+
+Owner: printed on a colour laser, "its quality is little low". The words were set in the brand's dark browns, which a
+colour printer builds from dots of four toners, so small type came out soft. Words now print in pure black, which is
+one toner and sharp (`StickerSheet::crispInk()`); the rust, the dark boxes and the photo keep their colour. On the
+printer: print the PDF at Actual size (100%, never Fit to page), pick the best quality or 600 dpi, and set the paper
+type to Labels or Thick so the toner fuses on sticker paper. Printing from a computer's driver is usually sharper
+than from a phone, which sends the page as a picture.
+
 ## The pack's code on every label, and Batches (2026-11-14)
 
 Owner: the momo pouch had its PACK INFO code and the Theluli Rihaakuru bottle had none; "Can make that for all,

@@ -564,8 +564,9 @@ export const GUIDES: Guide[] = [
       'More holds Packed for, Quantity per pack and Fill in the dates.',
       'For a promotion flash, pack numbers, cut marks or several products on one sheet, tap open every option under More.',
       'Print stays off while the use-by date has passed or the wording lock refuses the label.',
+      'For a sharp print on a colour printer: print at Actual size (100%), not Fit to page, choose the best quality, and set the paper type to Labels or Thick. A computer usually prints sharper than a phone.',
     ],
-    words: 'print label sticker dates expiry how many paper sheet',
+    words: 'print label sticker dates expiry how many paper sheet quality sharp blurry',
   },
   {
     id: 'label-batches',

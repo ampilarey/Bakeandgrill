@@ -390,7 +390,34 @@ final class StickerSheet
         };
 
         // The parts moved or resized by hand on this design (the drag designer, round 8, 2026-10-13).
-        return LabelLayout::apply($pieces, $data['layout'][self::designOf($sheet, $data)] ?? []);
+        return self::crispInk(LabelLayout::apply($pieces, $data['layout'][self::designOf($sheet, $data)] ?? []));
+    }
+
+    /**
+     * Words in pure black (owner, 2026-11-14: a colour laser printed the
+     * label "little low" in quality). A colour printer builds the brand's
+     * near-black browns from dots of four toners, which leaves small type
+     * soft at the edges; pure black is one toner and prints sharp. So the
+     * dark text inks become black, and the muted brown too below 6 pt, where
+     * a tint is too thin to read. Fills, rules and the rust keep their colour.
+     *
+     * @param list<array<string, mixed>> $pieces
+     * @return list<array<string, mixed>>
+     */
+    public static function crispInk(array $pieces): array
+    {
+        foreach ($pieces as &$p) {
+            if (($p['t'] ?? '') !== 'text' || !is_string($p['color'] ?? null)) {
+                continue;
+            }
+            $c = strtoupper($p['color']);
+            if ($c === StickerDesign::TEXT || $c === StickerDesign::DARK || ($c === StickerDesign::MUTED && (float) ($p['pt'] ?? 0) < 6.0)) {
+                $p['color'] = '#000000';
+            }
+        }
+        unset($p);
+
+        return $pieces;
     }
 
     /**

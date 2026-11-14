@@ -370,6 +370,6 @@ final class BoxLabel
         $p[] = $text($R - 86, 275, 80, 'r', 'j7', 7.5, StickerDesign::ON_DARK, LabelSettings::get('label_contact_ways'));
         $p[] = $text($R - 86, 280.7, 80, 'r', 'dsi', 13, StickerDesign::CREAM, $c['website']);
 
-        return $p;
+        return StickerSheet::crispInk($p);
     }
 }
