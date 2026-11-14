@@ -37,12 +37,14 @@ class RenderSocialVideoJob implements ShouldQueue
 
     public function handle(SocialVideoRenderer $renderer): void
     {
-        $rendition = SocialVideoRendition::find($this->renditionId);
-        if ($rendition === null || $rendition->status === SocialVideoRendition::STATUS_READY) {
+        // Someone else has it (the scheduler's social:render-waiting), or it is done or gone.
+        if (!self::claim($this->renditionId)) {
             return;
         }
-
-        $rendition->forceFill(['status' => SocialVideoRendition::STATUS_PROCESSING])->save();
+        $rendition = SocialVideoRendition::find($this->renditionId);
+        if ($rendition === null) {
+            return;
+        }
 
         try {
             $renderer->render($rendition);
@@ -54,6 +56,15 @@ class RenderSocialVideoJob implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    /** Take a waiting clip to render it: true for the one caller that gets it. */
+    public static function claim(int $renditionId): bool
+    {
+        return SocialVideoRendition::query()
+            ->where('id', $renditionId)
+            ->where('status', SocialVideoRendition::STATUS_QUEUED)
+            ->update(['status' => SocialVideoRendition::STATUS_PROCESSING, 'updated_at' => now()]) === 1;
     }
 
     public function failed(): void

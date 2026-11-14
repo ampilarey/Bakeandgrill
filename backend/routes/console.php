@@ -292,6 +292,16 @@ Schedule::command('service-availability:activate-scheduled')
     ->onFailure($alertOnFailure('service-availability:activate-scheduled'))
     ->after($trackSuccess('service-availability:activate-scheduled'));
 
+// Social Hub: render the item videos that are waiting. The `social` queue's worker leaves
+// after an hour and nothing brought it back, so a clip sat at "queued" (owner, 2026-11-15).
+// In the background, so a long render never holds up the minute's other tasks. A render can
+// outlast the lock; the command itself starts nothing while a clip is rendering.
+Schedule::command('social:render-waiting')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onFailure($alertOnFailure('social:render-waiting'));
+
 // Social Hub: queue scheduled social posts whose time has come
 Schedule::command('social:publish-due')
     ->everyMinute()

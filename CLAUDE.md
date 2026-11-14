@@ -1537,6 +1537,17 @@ sheet, and Post it sends the feed shape as a JPEG (`POST /admin/social/posters/p
 loaded once by `assets.ts`. More of everything (owner, 2026-11-15: "more designs, colors templates and more than one button option"): ready-made posts (`TEMPLATES`, `withTemplate()`: a design, a colour, which parts show and the usual words, never the headline, price or photo), a second button (`cta2`, the part `cta2`, drawn beside the first in the other look, on a row of its own when the two do not fit) and Button style (`ctaStyle`: `auto` the design's own, `solid`, `outline`, `pop`; `BUTTON_STYLES`, mirrored in the controller). A new ready-made post is a row in `TEMPLATES` and must name a real layout and colour (the test holds it). It is separate from Posters (print and TV, drawn on the server). `SocialPosterTest`,
 `socialposter.test.tsx`.
 
+## Item videos render from the scheduler
+
+Owner, 2026-11-15 ("Long time now video doesn't render": a clip sat at "queued"). Social Hub → Videos puts
+`RenderSocialVideoJob` on the `social` queue, whose worker the deploy starts with `--max-time=3600`; after the hour
+nothing brought it back, so a render asked for later waited for ever. `social:render-waiting` (every minute, in the
+background) renders waiting clips itself, with no worker: one clip at a time (it starts nothing while any clip is
+`processing`), claimed first (`RenderSocialVideoJob::claim()`, queued → processing in one update, which the job uses
+too, so a worker and the command never render one clip twice), and a clip left at `processing` for 30 minutes by a
+killed run is marked failed so the screen offers Generate again. A new background render of any kind is picked up by a
+scheduled command like this one, never by a worker that only a deploy starts. `SocialVideoTest`.
+
 ## Help: short guides inside the admin
 
 Owner, 2026-11-10 ("there are lots of different features that I don't know how to use"). Team →

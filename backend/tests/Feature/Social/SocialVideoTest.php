@@ -166,4 +166,57 @@ class SocialVideoTest extends TestCase
         Storage::disk('public')->assertMissing('social-videos/1/v.jpg');
         $this->assertSame(0, SocialVideoRendition::count());
     }
+
+    /** Owner, 2026-11-15: "Long time now video doesn't render": the queue's worker had gone, and the clip sat at "queued". */
+    public function test_the_scheduler_renders_a_waiting_clip_without_a_worker_and_never_twice(): void
+    {
+        Queue::fake();
+        $this->fakeFfmpegAvailable();
+        $item = $this->itemWithPhoto();
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $this->postJson("/api/admin/social/items/{$item->id}/videos", ['format' => 'vertical'])->assertStatus(202);
+        $waiting = SocialVideoRendition::firstOrFail();
+
+        // One left at "processing" by a run that was killed long ago.
+        $stuck = $waiting->replicate();
+        $stuck->format = 'square';
+        $stuck->status = SocialVideoRendition::STATUS_PROCESSING;
+        $stuck->save();
+        SocialVideoRendition::query()->where('id', $stuck->id)->update(['updated_at' => now()->subHours(2)]);
+
+        $rendered = [];
+        $this->mock(SocialVideoRenderer::class, function ($mock) use (&$rendered): void {
+            $mock->shouldReceive('render')->andReturnUsing(function (SocialVideoRendition $r) use (&$rendered): void {
+                $rendered[] = $r->id;
+                $r->forceFill(['status' => SocialVideoRendition::STATUS_READY])->save();
+            });
+        });
+
+        $this->artisan('social:render-waiting')->assertSuccessful();
+        $this->assertSame([$waiting->id], $rendered);
+        $this->assertSame(SocialVideoRendition::STATUS_READY, $waiting->fresh()->status);
+        $this->assertSame(SocialVideoRendition::STATUS_FAILED, $stuck->fresh()->status);
+        $this->assertStringContainsString('Generate', (string) $stuck->fresh()->error_message);
+
+        // The queued job arriving late, and a second run, find nothing to do.
+        (new RenderSocialVideoJob($waiting->id))->handle(app(SocialVideoRenderer::class));
+        $this->artisan('social:render-waiting')->assertSuccessful();
+        $this->assertSame([$waiting->id], $rendered);
+
+        // While one clip is rendering, the next waits its turn.
+        $busy = $waiting->replicate();
+        $busy->format = 'landscape';
+        $busy->status = SocialVideoRendition::STATUS_PROCESSING;
+        $busy->save();
+        $next = $stuck->fresh();
+        $next->forceFill(['status' => SocialVideoRendition::STATUS_QUEUED])->save();
+        $this->artisan('social:render-waiting')->assertSuccessful();
+        $this->assertSame(SocialVideoRendition::STATUS_QUEUED, $next->fresh()->status);
+        $busy->delete();
+        $this->artisan('social:render-waiting')->assertSuccessful();
+        $this->assertSame(SocialVideoRendition::STATUS_READY, $next->fresh()->status);
+
+        // A clip already claimed is left to whoever claimed it.
+        $this->assertFalse(RenderSocialVideoJob::claim($waiting->id));
+    }
 }
