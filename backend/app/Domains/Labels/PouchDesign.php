@@ -215,7 +215,8 @@ final class PouchDesign
         if (is_string($batchQr) && $batchQr !== '') {
             $capPt = self::clamp(3.3 * $u, 3.0, 4.0);
             $capH = $this->lead('j8', $capPt);
-            $q = min(12.0 * $u, $mh * 0.36);
+            // Big enough for a phone at arm's length (owner, 2026-11-14: "too small … difficult to scan").
+            $q = min(15.0 * $u, $mh * 0.46);
             if ($q >= 8.0) {
                 $qx = $this->dv ? $x : $x + $mw - $q;
                 $qy = $y + $mh - $q - $capH - 1.4 * $u;

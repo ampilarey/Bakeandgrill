@@ -35,9 +35,16 @@ final class BatchLink
         return preg_match('/^[A-Z0-9]{4,12}$/', $code) === 1;
     }
 
-    /** The bare code as an SVG data URI; it prints at 13 mm, so no logo. */
+    /**
+     * The bare code as an SVG data URI; it prints small, so no logo.
+     *
+     * The address goes in capitals (owner, 2026-11-14: "too small and denser difficult to scan"): a QR packs
+     * capitals, digits and ./: far tighter than mixed case, so the same address needs 25 squares a side, not 29,
+     * and each square prints a sixth bigger. A phone opens HTTPS://…/B/CODE as it opens the lower-case one, and
+     * the site answers on /B/ too.
+     */
     public static function qr(string $code): string
     {
-        return QrSvg::dataUri(self::url($code), 160);
+        return QrSvg::dataUri(mb_strtoupper(self::url($code)), 160);
     }
 }

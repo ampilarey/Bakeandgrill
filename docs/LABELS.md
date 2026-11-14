@@ -63,6 +63,10 @@ A box label's page (`/b/{code}`) lists the shop, the boat, the pick-up point, th
 and the contents with quantities. The contact's name and number are not on it: the page opens for anyone who scans
 the box.
 
+The pack code is drawn coarse so a phone reads it (owner, 2026-11-14: "too small and denser difficult to scan"):
+its address is written in capitals, which a QR packs into 25 squares a side instead of 29, and the pouch label
+draws it up to 15 mm, as big as the feedback code beside it. `/B/CODE` opens the same page as `/b/CODE`.
+
 **Batches** (the fifth tab, `/labels/batches`) lists every lot of stickers and every box label printed, newest
 first: what it is, how many, the batch number, the dates with "Past its date" or the days left, who printed it and
 when, and its code as a link to its page. The search box takes a code, a batch number, a product or a shop; chips

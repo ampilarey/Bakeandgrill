@@ -508,7 +508,7 @@ answers with `labels/box-page.blade.php`: the shop, the boat, the delivery, the 
 contact's name or number, since anyone who scans the box opens it. The fifth tab, **Batches** (`/labels/batches`, `BatchesTab`), lists
 every print with its code, batch number, dates and state, found by code, batch number, product or shop (`q` and `group` on
 `GET /labels/prints`). A new design draws the pack's code or leaves it to `dropped()`; never a second code per print.
-`LabelBatchTest`, `BoxLabelTest`, `BatchesTab.test.tsx`. How to
+`LabelBatchTest`, `BoxLabelTest`, `BatchesTab.test.tsx`. The pack code is a coarse QR (owner, 2026-11-14: "too small and denser difficult to scan though phone"): `BatchLink::qr()` encodes the address in capitals (`HTTPS://…/B/CODE`), which a QR packs as 25 squares a side instead of 29, the site answers on `/B/{code}` as on `/b/{code}`, and the pouch draws it up to 15 mm (the wrap label up to 17); never put lower case or a longer path into that address, and never shrink the code below 8 mm. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

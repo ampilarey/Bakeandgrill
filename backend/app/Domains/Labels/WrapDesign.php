@@ -730,7 +730,7 @@ final class WrapDesign
         if ($packQr) {
             $capPt = self::clamp(2.6 * $k, 2.4, 3.2);
             $capH = $this->lead('j7', $capPt);
-            $side = min($left - $capH - 0.8, $bars ? $pw * 0.34 : $pw, 15.0);
+            $side = min($left - $capH - 0.8, $bars ? $pw * 0.4 : $pw, 17.0);
             if ($side >= 7.0) {
                 $qw = $side + 1.6;
                 $qx = $this->dv ? $x + 0.4 : $x + $pw - $side - 0.4;

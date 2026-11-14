@@ -126,6 +126,9 @@ Route::middleware(['content.locale', 'service.banner'])->group(function () {
     // about who printed it.
     Route::get('/b/{code}', [App\Http\Controllers\LabelBatchPageController::class, 'show'])
         ->where('code', '[A-Za-z0-9]{1,16}')->middleware('throttle:60,1')->name('labels.batch');
+    // The QR on a label carries the address in capitals, which makes a coarser code that scans easier.
+    Route::get('/B/{code}', [App\Http\Controllers\LabelBatchPageController::class, 'show'])
+        ->where('code', '[A-Za-z0-9]{1,16}')->middleware('throttle:60,1');
     // The small code on a printed poster. Counts the scan, then opens the dish or offer.
     Route::get('/p/{code}', [App\Http\Controllers\PosterScanPageController::class, 'show'])
         ->where('code', '[A-Za-z0-9]{1,16}')->middleware('throttle:60,1')->name('posters.scan');

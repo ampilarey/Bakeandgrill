@@ -176,4 +176,20 @@ class LabelBatchTest extends TestCase
         $this->getJson('/api/labels/prints?group=boxes')->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.kind', 'box_label');
         $this->getJson('/api/labels/prints?group=stickers')->assertOk()->assertJsonPath('total', 2);
     }
+
+    // Owner, 2026-11-14: "Pack info qr is too small and denser difficult to scan though phone".
+    public function test_the_pack_code_is_a_coarse_qr_and_its_capital_address_opens_the_page(): void
+    {
+        $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => 'a4-4', 'batch' => 'B-1'])->assertOk();
+        $code = (string) LabelPrint::query()->latest('id')->value('code');
+
+        // 25 squares a side with one of margin each side: the address in capitals packs tighter than mixed case (29).
+        $svg = (string) base64_decode(explode(',', BatchLink::qr($code), 2)[1]);
+        $this->assertSame(1, preg_match('/scale\(([0-9.]+)\)/', $svg, $m));
+        $this->assertSame(27, (int) round(160 / (float) $m[1]), 'squares across, margin included');
+
+        // What the code says, as a phone opens it.
+        $this->get('/B/' . $code)->assertOk()->assertSee($this->bajiya->name);
+        $this->get('/b/' . strtolower($code))->assertOk();
+    }
 }
