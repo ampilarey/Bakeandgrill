@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, ImagePlus, Save, Send, Share2, Shuffle, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clapperboard, Download, Play, ImagePlus, Save, Send, Share2, Shuffle, Trash2 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import {
-  createSocialPoster, deleteSocialPoster, fetchSocialItemPreview, fetchSocialPosters, updateSocialPoster, uploadSocialPosterPicture,
+  createSocialPoster, deleteSocialPoster, fetchSocialItemPreview, fetchSocialPosters, updateSocialPoster, uploadSocialPosterPicture, uploadSocialPosterVideo,
   type MediaAsset, type SavedSocialPoster, type SocialPosterBrand,
 } from '../../api';
 import { ItemSearch, type MenuItemSelection } from '../ItemSearch';
 import { MediaPicker } from '../MediaPicker';
-import { Btn, Card, ConfirmDialog, ErrorMsg, Input, Spinner, Switch, TabScrollRow, useConfirmDialog } from '../SharedUI';
+import { Btn, Card, ConfirmDialog, ErrorMsg, Input, Modal, ModalActions, Spinner, Switch, TabScrollRow, useConfirmDialog } from '../SharedUI';
 import { usePostAssets } from './assets';
 import { renderPost, type PostAssets } from './draw';
+import { canRecord, recordPost } from './record';
 import {
-  BADGE_PRESETS, BUTTON_STYLES, CTA2_PRESETS, CTA_PRESETS, LAYOUTS, PALETTES, PART_NAMES, PART_ORDER, SIZES, TEMPLATES,
+  BADGE_PRESETS, BUTTON_STYLES, CTA2_PRESETS, CTA_PRESETS, LAYOUTS, MOTIONS, MOTION_SECONDS, PALETTES, PART_NAMES, PART_ORDER, SIZES, TEMPLATES,
   blankSpec, captionOf, fullSpec, paletteOf, sizeOf, withTemplate, type PartKey, type PostSize, type PostSpec, type PostTemplate,
 } from './types';
 
@@ -25,18 +26,37 @@ import {
  */
 
 /** One post drawn on a canvas `px` wide in the shape of `size`. */
-export function PostCanvas({ spec, layout, palette, size, assets, px, version = 0, label }: {
+export function PostCanvas({ spec, layout, palette, size, assets, px, version = 0, label, play }: {
   spec: PostSpec; layout: string; palette: string; size: PostSize; assets: PostAssets; px: number; version?: number;
   /** What the picture is, for a screen reader; without it the canvas is decoration beside its own caption. */
   label?: string;
+  /** Play the post's motion once, each time `key` changes; without it the canvas shows the still picture. */
+  play?: { key: number; seconds: number };
 }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
   const h = Math.round((px * size.h) / size.w);
+  const playKey = play?.key ?? 0;
+  const seconds = play?.seconds ?? 6;
   useEffect(() => {
     const ctx = ref.current?.getContext('2d');
     if (!ctx) return;
-    renderPost(ctx, px, h, spec, layout, paletteOf(palette), assets);
-  }, [spec, layout, palette, assets.photo, assets.logoLight, assets.logoDark, assets.flame, assets.qr, px, h, version]); // eslint-disable-line react-hooks/exhaustive-deps
+    const P = paletteOf(palette);
+    if (playKey === 0 || !spec.motion || typeof requestAnimationFrame !== 'function') {
+      renderPost(ctx, px, h, spec, layout, P, assets);
+      return;
+    }
+    let live = true;
+    const began = performance.now();
+    const tick = () => {
+      if (!live) return;
+      const t = (performance.now() - began) / 1000;
+      if (t >= seconds) { renderPost(ctx, px, h, spec, layout, P, assets); return; }
+      renderPost(ctx, px, h, spec, layout, P, assets, { motion: spec.motion, t, dur: seconds });
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    return () => { live = false; };
+  }, [spec, layout, palette, assets.photo, assets.logoLight, assets.logoDark, assets.flame, assets.qr, px, h, version, playKey, seconds]); // eslint-disable-line react-hooks/exhaustive-deps
   return label
     ? <canvas ref={ref} width={px} height={h} role="img" aria-label={label} className="sp-canvas" />
     : <canvas ref={ref} width={px} height={h} aria-hidden className="sp-canvas" />;
@@ -117,6 +137,11 @@ export function SocialPosterMaker({ canCompose, onSend }: {
   const [qr, setQr] = useState<HTMLCanvasElement | null>(null);
   const [qrVersion, setQrVersion] = useState(0);
   const [pinOpen, setPinOpen] = useState(true);
+  // The motion plays once on the picture each time this changes.
+  const [playKey, setPlayKey] = useState(0);
+  const [seconds, setSeconds] = useState(6);
+  const [recorded, setRecorded] = useState(0);
+  const [video, setVideo] = useState<string | null>(null);
   const dialog = useConfirmDialog();
 
   const size = sizeOf(sizeKey);
@@ -192,6 +217,27 @@ export function SocialPosterMaker({ canCompose, onSend }: {
     };
     setLayout(pick(LAYOUTS.map((l) => l.key), layout));
     setPalette(pick(PALETTES.map((p) => p.key), palette));
+  };
+
+  const pickMotion = (key: string) => {
+    patch({ motion: key });
+    if (key) { setPinOpen(true); setPlayKey((k) => k + 1); }
+  };
+
+  const makeVideo = async () => {
+    setBusy('video');
+    setRecorded(0);
+    try {
+      const blob = await recordPost(spec, layout, palette, size, assets, spec.motion, seconds, setRecorded);
+      setBusy('convert');
+      const { url } = await uploadSocialPosterVideo(blob);
+      setVideo(url);
+      setError('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'The video could not be made.');
+    } finally {
+      setBusy('');
+    }
   };
 
   const useTemplate = (t: PostTemplate) => {
@@ -319,7 +365,7 @@ export function SocialPosterMaker({ canCompose, onSend }: {
             <div className="sp-stage" style={{ '--sp-ratio': `${size.w} / ${size.h}` } as React.CSSProperties}>
               {empty
                 ? <p className="sp-empty">Pick a dish or type a headline, and the post appears here.</p>
-                : <PostCanvas spec={spec} layout={layout} palette={palette} size={size} assets={assets} px={size.w >= 1200 ? 900 : 720} version={qrVersion + (ready ? 1000 : 0)} label={`${spec.headline}, ${size.name}`} />}
+                : <PostCanvas spec={spec} layout={layout} palette={palette} size={size} assets={assets} px={size.w >= 1200 ? 900 : 720} version={qrVersion + (ready ? 1000 : 0)} label={`${spec.headline}, ${size.name}`} play={{ key: playKey, seconds }} />}
             </div>
             <button type="button" className="sp-pin-toggle" aria-expanded={pinOpen} onClick={() => setPinOpen((o) => !o)}>
               {pinOpen ? <><ChevronUp size={14} aria-hidden /> Hide the picture</> : <><ChevronDown size={14} aria-hidden /> Show the picture</>}
@@ -449,9 +495,43 @@ export function SocialPosterMaker({ canCompose, onSend }: {
             </div>
           </Card>
 
+          <Card>
+            <h3 className="sp-h">4. Make it move</h3>
+            <p className="sp-hint" style={{ marginTop: 0 }}>Pick a motion and the post plays on the picture. Still picture leaves it as it is.</p>
+            <div className="sp-presets" role="group" aria-label="Motion">
+              <Btn small variant={spec.motion === '' ? 'primary' : 'secondary'} aria-pressed={spec.motion === ''} onClick={() => pickMotion('')}>Still picture</Btn>
+              {MOTIONS.map((m) => (
+                <Btn key={m.key} small variant={spec.motion === m.key ? 'primary' : 'secondary'} aria-pressed={spec.motion === m.key} onClick={() => pickMotion(m.key)}>{m.name}</Btn>
+              ))}
+            </div>
+            {spec.motion !== '' && (
+              <>
+                <div className="sp-label" style={{ marginTop: 12 }}>How long</div>
+                <div className="sp-presets" role="group" aria-label="How long">
+                  {MOTION_SECONDS.map((n) => (
+                    <Btn key={n} small variant={seconds === n ? 'primary' : 'secondary'} aria-pressed={seconds === n} onClick={() => { setSeconds(n); setPlayKey((k) => k + 1); }}>{n} seconds</Btn>
+                  ))}
+                </div>
+                <div className="sp-row">
+                  <Btn small variant="secondary" onClick={() => { setPinOpen(true); setPlayKey((k) => k + 1); }} disabled={empty}><Play size={14} aria-hidden /> Play again</Btn>
+                  {canCompose && (
+                    <Btn small onClick={() => void makeVideo()} disabled={empty || busy !== '' || !canRecord()}>
+                      <Clapperboard size={14} aria-hidden /> {busy === 'video' ? `Recording… ${Math.round(recorded * 100)}%` : busy === 'convert' ? 'Finishing the video…' : `Make the video (${size.name})`}
+                    </Btn>
+                  )}
+                </div>
+                <p className="sp-hint">
+                  {canRecord()
+                    ? `The video is made in the shape on screen (${size.name}) and takes about ${seconds + 10} seconds. Keep this page open while it records. It has no sound.`
+                    : 'This browser cannot record a video. Open this page in Chrome or Safari.'}
+                </p>
+              </>
+            )}
+          </Card>
+
           {canCompose && (
             <Card>
-              <h3 className="sp-h">4. Save it for later</h3>
+              <h3 className="sp-h">5. Save it for later</h3>
               <div className="sp-fields">
                 <Input label="Name" value={name} maxLength={120} onChange={setName} placeholder={spec.headline || 'Frozen Momo offer'} />
               </div>
@@ -480,6 +560,15 @@ export function SocialPosterMaker({ canCompose, onSend }: {
       <div aria-hidden className="sp-offscreen">
         <QRCodeCanvas ref={setQr} value={link || 'https://'} size={480} marginSize={0} />
       </div>
+      {video && (
+        <Modal title="Your video" onClose={() => setVideo(null)} maxWidth={520}>
+          <video src={video} controls autoPlay loop muted playsInline style={{ display: 'block', width: '100%', maxHeight: '70vh', borderRadius: 10, background: 'var(--color-backdrop)' }} />
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setVideo(null)}>Close</Btn>
+            <a href={video} download={fileName(spec, name, size).replace(/\.png$/, '.mp4')} className="social-video-link"><Download size={14} aria-hidden /> Download</a>
+          </ModalActions>
+        </Modal>
+      )}
       <MediaPicker open={picking} onClose={() => setPicking(false)} onPick={pickPhoto} mediaType="image" title="Pick a photo for the post" />
       <ConfirmDialog state={dialog.state} close={dialog.close} />
     </div>

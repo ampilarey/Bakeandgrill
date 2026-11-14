@@ -38,7 +38,7 @@ class SocialPosterTest extends TestCase
             'palette' => 'bee',
             'spec' => [
                 'headline' => 'Frozen Momo', 'kicker' => 'New', 'tagline' => 'Steamed, frozen, handmade', 'price' => '45.00', 'was' => '',
-                'badge' => 'Microwave & Eat', 'cta' => 'Order now', 'cta2' => 'Call us', 'ctaStyle' => 'pop', 'phone' => '9120011', 'website' => 'bakeandgrill.mv',
+                'badge' => 'Microwave & Eat', 'cta' => 'Order now', 'cta2' => 'Call us', 'ctaStyle' => 'pop', 'motion' => 'rise', 'phone' => '9120011', 'website' => 'bakeandgrill.mv',
                 'link' => 'https://example.test/order', 'photo' => '/brand/photos/momo/momo-plate.png', 'cutout' => true, 'itemId' => null,
                 'show' => ['price' => true, 'badge' => true, 'cta' => true, 'cta2' => true, 'phone' => true, 'logo' => true, 'qr' => false],
                 'something_else' => 'left out',
@@ -53,6 +53,7 @@ class SocialPosterTest extends TestCase
             ->assertJsonPath('data.spec.cutout', true)
             ->assertJsonPath('data.spec.cta2', 'Call us')
             ->assertJsonPath('data.spec.ctaStyle', 'pop')
+            ->assertJsonPath('data.spec.motion', 'rise')
             ->assertJsonPath('data.spec.show.cta2', true)
             ->assertJsonPath('data.spec.show.price', true)
             ->assertJsonPath('data.spec.show.qr', false)
@@ -89,6 +90,22 @@ class SocialPosterTest extends TestCase
 
         $this->post('/api/admin/social/posters/picture', ['picture' => UploadedFile::fake()->image('tiny.png', 50, 50)], ['Accept' => 'application/json'])->assertStatus(422);
         $this->post('/api/admin/social/posters/picture', ['picture' => UploadedFile::fake()->create('notes.pdf', 10, 'application/pdf')], ['Accept' => 'application/json'])->assertStatus(422);
+    }
+
+    /** Owner, 2026-11-15: "advanced animations": the browser films the post and the server makes it an MP4. */
+    public function test_a_recorded_video_is_kept_as_an_mp4_and_a_webm_is_refused_without_ffmpeg(): void
+    {
+        config(['media.ffmpeg_disabled' => true]);
+        $res = $this->post('/api/admin/social/posters/video', ['video' => UploadedFile::fake()->create('post.mp4', 300, 'video/mp4')], ['Accept' => 'application/json'])->assertOk();
+        $this->assertFalse($res->json('converted'));
+        $this->assertStringEndsWith('.mp4', (string) $res->json('url'));
+        $this->assertCount(1, Storage::disk('public')->allFiles('social-posters/video'));
+
+        $this->post('/api/admin/social/posters/video', ['video' => UploadedFile::fake()->create('post.webm', 300, 'video/webm')], ['Accept' => 'application/json'])
+            ->assertStatus(422);
+        $this->post('/api/admin/social/posters/video', ['video' => UploadedFile::fake()->create('notes.pdf', 10, 'application/pdf')], ['Accept' => 'application/json'])
+            ->assertStatus(422);
+        $this->assertCount(1, Storage::disk('public')->allFiles('social-posters/video'));
     }
 
     public function test_someone_who_may_only_look_cannot_save(): void

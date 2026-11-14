@@ -1,4 +1,4 @@
-import { priceWords, type Palette, type PostSpec } from './types';
+import { motionOf, priceWords, type Fx, type Motion, type Palette, type PostSpec } from './types';
 
 /**
  * The drawing of a social post on a canvas. Every length is a share of the
@@ -87,6 +87,100 @@ function rr(ctx: Ctx, x: number, y: number, w: number, h: number, r: number): vo
 
 function spacing(ctx: Ctx, em: number, size: number): void {
   if ('letterSpacing' in ctx) (ctx as Ctx & { letterSpacing: string }).letterSpacing = `${(em * size).toFixed(2)}px`;
+}
+
+// ── Motion ──────────────────────────────────────────────────────────────────
+
+type Role = 'photo' | 'text' | 'sticker' | 'price' | 'footer';
+
+/**
+ * The moment being drawn, when the post is animated; null draws the still
+ * picture. Set by `renderPost` for the length of one frame: the helpers that
+ * draw a part (the photo, each row of words, a sticker, the footer) read it
+ * to arrive, and then to keep moving, by the motion template's rules. A
+ * layout knows nothing of it, so every design animates with every motion.
+ */
+let ANIM: { t: number; dur: number; m: Motion; u: number; W: number; H: number; rows: number } | null = null;
+
+/** When each part starts to arrive, in seconds, and how long the arrival takes. */
+const STARTS: Record<Role, number> = { photo: 0.15, text: 0.4, price: 1.05, sticker: 1.3, footer: 1.55 };
+const ARRIVE = 0.65;
+
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+const easeOut = (p: number) => 1 - (1 - p) ** 3;
+const easeBack = (p: number) => 1 + 2.7 * (p - 1) ** 3 + 1.7 * (p - 1) ** 2;
+function bounce(p: number): number {
+  const n = 7.5625;
+  const d = 2.75;
+  if (p < 1 / d) return n * p * p;
+  if (p < 2 / d) return n * (p - 1.5 / d) ** 2 + 0.75;
+  if (p < 2.5 / d) return n * (p - 2.25 / d) ** 2 + 0.9375;
+  return n * (p - 2.625 / d) ** 2 + 0.984375;
+}
+
+/**
+ * Draw one part as the motion has it at this moment: not yet (nothing is
+ * drawn), arriving (faded, moved, scaled, turned or wiped in about its own
+ * centre), or arrived and idling (floating, breathing, wiggling, pulsing).
+ */
+function moved(ctx: Ctx, role: Role, index: number, cx: number, cy: number, box: Rect | null, pulse: boolean, draw: () => void): void {
+  const a = ANIM;
+  if (!a) { draw(); return; }
+  const fx: Fx = a.m[role];
+  const start = STARTS[role] * a.m.pace + (role === 'text' ? index * a.m.stagger : 0);
+  const p = fx === 'none' ? 1 : clamp01((a.t - start) / (ARRIVE * a.m.pace));
+  if (p <= 0) return;
+  const { u, W, H } = a;
+  const e = easeOut(p);
+  ctx.save();
+  const about = (scale: number, turn = 0) => {
+    ctx.translate(cx, cy);
+    if (turn) ctx.rotate(turn);
+    ctx.scale(scale, scale);
+    ctx.translate(-cx, -cy);
+  };
+  if (p < 1) {
+    switch (fx) {
+      case 'fade': ctx.globalAlpha *= e; break;
+      case 'up': ctx.globalAlpha *= e; ctx.translate(0, (1 - e) * 9 * u); break;
+      case 'down': ctx.globalAlpha *= e; ctx.translate(0, -(1 - e) * 9 * u); break;
+      case 'left': ctx.globalAlpha *= e; ctx.translate(-(1 - e) * W * 0.5, 0); break;
+      case 'right': ctx.globalAlpha *= e; ctx.translate((1 - e) * W * 0.5, 0); break;
+      case 'zoom': ctx.globalAlpha *= e; about(0.55 + 0.45 * e); break;
+      case 'shrink': ctx.globalAlpha *= e; about(1.7 - 0.7 * e); break;
+      case 'pop': ctx.globalAlpha *= clamp01(p * 3); about(Math.max(0.01, easeBack(p))); break;
+      case 'spin': ctx.globalAlpha *= e; about(Math.max(0.01, e), (1 - e) * -2.4); break;
+      case 'drop': ctx.translate(0, -(1 - bounce(p)) * H * 0.7); break;
+      case 'swing': ctx.globalAlpha *= clamp01(p * 2.5); about(1, Math.sin(p * Math.PI * 3) * (1 - p) * 0.5); break;
+      case 'flip': ctx.globalAlpha *= clamp01(p * 2); ctx.translate(cx, cy); ctx.scale(Math.max(0.02, Math.sin((p * Math.PI) / 2)), 1); ctx.translate(-cx, -cy); break;
+      case 'wipe':
+        if (box) {
+          ctx.beginPath();
+          ctx.rect(box.x - 2 * u, box.y - 3 * u, (box.w + 4 * u) * e, box.h + 6 * u);
+          ctx.clip();
+        } else {
+          ctx.globalAlpha *= e;
+        }
+        break;
+      default: break;
+    }
+  } else {
+    // Arrived: the idle movement, eased in so nothing jumps as the arrival ends.
+    const since = a.t - start - ARRIVE * a.m.pace;
+    const k = clamp01(since / 0.6);
+    if (role === 'photo') {
+      if (a.m.idle === 'float') ctx.translate(0, Math.sin(since * 1.7) * 1.1 * u * k);
+      else if (a.m.idle === 'breathe') about(1 + 0.03 * Math.sin(since * 1.5) * k);
+      else if (a.m.idle === 'sway') about(1, Math.sin(since * 1.4) * 0.035 * k);
+      else if (a.m.idle === 'grow') about(1 + 0.07 * clamp01(since / Math.max(1, a.dur - start)));
+    } else if (role === 'sticker') {
+      if (a.m.accent === 'wiggle' || a.m.accent === 'both') about(1, Math.sin(since * 6) * 0.07 * k);
+    } else if (role === 'price' || pulse) {
+      if (a.m.accent === 'pulse' || a.m.accent === 'both') about(1 + 0.06 * Math.max(0, Math.sin(since * 4.2)) * k);
+    }
+  }
+  draw();
+  ctx.restore();
 }
 
 // ── Decoration ──────────────────────────────────────────────────────────────
@@ -226,6 +320,10 @@ interface PhotoStyle {
 
 /** The photo in its box: a cut-out whole with a soft shadow, anything else cut to the shape. */
 function photo(ctx: Ctx, box: Rect, spec: PostSpec, A: PostAssets, st: PhotoStyle, u: number): void {
+  moved(ctx, 'photo', 0, box.x + box.w / 2, box.y + box.h / 2, box, false, () => photoStill(ctx, box, spec, A, st, u));
+}
+
+function photoStill(ctx: Ctx, box: Rect, spec: PostSpec, A: PostAssets, st: PhotoStyle, u: number): void {
   const d = Math.min(box.w, box.h);
   const cx = box.x + box.w / 2;
   const cy = box.y + box.h / 2;
@@ -248,7 +346,7 @@ function photo(ctx: Ctx, box: Rect, spec: PostSpec, A: PostAssets, st: PhotoStyl
   if (img === null) {
     if (A.flame) {
       ctx.save();
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha *= 0.5;
       contain(ctx, A.flame, { x: cx - d * 0.22, y: cy - d * 0.28, w: d * 0.44, h: d * 0.56 });
       ctx.restore();
     }
@@ -373,7 +471,7 @@ function stack(ctx: Ctx, box: Rect, spec: PostSpec, st: StackStyle, parts: Stack
   const cta2 = want('cta') && spec.show.cta2 ? (spec.cta2 ?? '').trim() : '';
   if (!kicker && !headline && !tagline && !price && !cta && !cta2) return;
 
-  type Row = { h: number; gap: number; draw: (y: number) => void };
+  type Row = { h: number; gap: number; draw: (y: number) => void; pulse?: boolean };
   const build = (s: number): { rows: Row[]; total: number } => {
     const rows: Row[] = [];
     const ax = anchor(box, st.align);
@@ -520,7 +618,7 @@ function stack(ctx: Ctx, box: Rect, spec: PostSpec, st: StackStyle, parts: Stack
       spacing(ctx, 0, size);
       const oneRow = list.length === 1 || widths[0] + gapX + widths[1] <= box.w;
       const rowsH = oneRow ? h : h * 2 + size * 0.7;
-      rows.push({ h: rowsH, gap: 0, draw: (y) => {
+      rows.push({ h: rowsH, gap: 0, pulse: true, draw: (y) => {
         const place = (i: number, x: number, yy: number) => {
           const b = list[i];
           const w = widths[i];
@@ -594,7 +692,10 @@ function stack(ctx: Ctx, box: Rect, spec: PostSpec, st: StackStyle, parts: Stack
   y = Math.max(box.y, y);
   ctx.save();
   for (const row of built.rows) {
-    row.draw(y);
+    const at = y;
+    // Each row of words arrives after the one before it, across every stack on the picture.
+    const index = ANIM ? ANIM.rows++ : 0;
+    moved(ctx, 'text', index, anchor(box, st.align), at + row.h / 2, { x: box.x, y: at, w: box.w, h: row.h }, row.pulse === true, () => row.draw(at));
     y += row.h + row.gap;
   }
   ctx.restore();
@@ -602,6 +703,10 @@ function stack(ctx: Ctx, box: Rect, spec: PostSpec, st: StackStyle, parts: Stack
 
 /** A round or star sticker with a line or two of words, tilted. */
 function sticker(ctx: Ctx, cx: number, cy: number, r: number, text: string, fill: string, ink: string, rot: number, shape: 'burst' | 'circle'): void {
+  moved(ctx, 'sticker', 0, cx, cy, null, false, () => stickerStill(ctx, cx, cy, r, text, fill, ink, rot, shape));
+}
+
+function stickerStill(ctx: Ctx, cx: number, cy: number, r: number, text: string, fill: string, ink: string, rot: number, shape: 'burst' | 'circle'): void {
   if (!text.trim()) return;
   ctx.save();
   ctx.translate(cx, cy);
@@ -627,6 +732,10 @@ function sticker(ctx: Ctx, cx: number, cy: number, r: number, text: string, fill
 
 /** The price as a sticker on the photo: "MVR" over the amount, the old price above it. */
 function priceSticker(ctx: Ctx, cx: number, cy: number, r: number, spec: PostSpec, fill: string, ink: string, rot: number, shape: 'burst' | 'circle'): void {
+  moved(ctx, 'price', 0, cx, cy, null, false, () => priceStickerStill(ctx, cx, cy, r, spec, fill, ink, rot, shape));
+}
+
+function priceStickerStill(ctx: Ctx, cx: number, cy: number, r: number, spec: PostSpec, fill: string, ink: string, rot: number, shape: 'burst' | 'circle'): void {
   const price = spec.show.price ? priceWords(spec.price) : '';
   if (!price) return;
   const was = spec.show.was ? priceWords(spec.was) : '';
@@ -653,7 +762,7 @@ function priceSticker(ctx: Ctx, cx: number, cy: number, r: number, spec: PostSpe
     ctx.font = font('body', size);
     const w = ctx.measureText(was).width;
     const y = fit.size * 0.52 + size * 1.25;
-    ctx.globalAlpha = 0.8;
+    ctx.globalAlpha *= 0.8;
     ctx.fillText(was, 0, y);
     ctx.strokeStyle = ink;
     ctx.lineWidth = Math.max(1, size * 0.1);
@@ -683,6 +792,10 @@ function handset(ctx: Ctx, cx: number, cy: number, size: number, color: string):
  * beneath, and the QR code at the far end; each only when it is on.
  */
 function footer(ctx: Ctx, box: Rect, spec: PostSpec, A: PostAssets, ink: string, onDark: boolean, chip: string, chipInk: string): void {
+  moved(ctx, 'footer', 0, box.x + box.w / 2, box.y + box.h / 2, box, false, () => footerStill(ctx, box, spec, A, ink, onDark, chip, chipInk));
+}
+
+function footerStill(ctx: Ctx, box: Rect, spec: PostSpec, A: PostAssets, ink: string, onDark: boolean, chip: string, chipInk: string): void {
   if (box.h <= 0) return;
   let x = box.x;
   let right = box.x + box.w;
@@ -1393,8 +1506,11 @@ export const LAYOUT_DRAW: Record<string, Layout> = {
   block, bigcircle: bigCircle, ticket, glow, bands, tilt, corners, editorial, starburst, ribbon,
 };
 
-/** Draw one post onto `ctx` at W × H. */
-export function renderPost(ctx: Ctx, W: number, H: number, spec: PostSpec, layout: string, P: Palette, A: PostAssets): void {
+/** A moment of an animated post: which motion, how far in (seconds) and how long the whole clip is. */
+export interface PostMoment { motion: string; t: number; dur: number }
+
+/** Draw one post onto `ctx` at W × H: the still picture, or one frame of it in motion. */
+export function renderPost(ctx: Ctx, W: number, H: number, spec: PostSpec, layout: string, P: Palette, A: PostAssets, moment?: PostMoment | null): void {
   const u = Math.min(W, H) / 100;
   const wide = W / H > 1.3;
   const tall = H / W > 1.6;
@@ -1407,9 +1523,23 @@ export function renderPost(ctx: Ctx, W: number, H: number, spec: PostSpec, layou
   const bottom = H - m - lift;
   const foot: Rect = { x: m, y: bottom - fh, w: W - 2 * m, h: fh };
   const body: Rect = { x: m, y: top, w: W - 2 * m, h: bottom - top - fh - (hasFoot ? 3.5 * u : 0) };
+  const motion = moment ? motionOf(moment.motion) : null;
+  ANIM = motion && moment ? { t: Math.max(0, moment.t), dur: Math.max(1, moment.dur), m: motion, u, W, H, rows: 0 } : null;
   ctx.save();
   ctx.clearRect(0, 0, W, H);
   ctx.textBaseline = 'alphabetic';
-  (LAYOUT_DRAW[layout] ?? splash)({ ctx, W, H, u, wide, tall, body, foot, spec, P, A });
-  ctx.restore();
+  try {
+    if (ANIM && motion && motion.camera !== 'none') {
+      // The whole picture drifts slowly in or out, as a camera would.
+      const p = clamp01(ANIM.t / ANIM.dur);
+      const z = motion.camera === 'in' ? 1 + 0.06 * p : 1.06 - 0.06 * p;
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(z, z);
+      ctx.translate(-W / 2, -H / 2);
+    }
+    (LAYOUT_DRAW[layout] ?? splash)({ ctx, W, H, u, wide, tall, body, foot, spec, P, A });
+  } finally {
+    ANIM = null;
+    ctx.restore();
+  }
 }

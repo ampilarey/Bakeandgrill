@@ -34,6 +34,8 @@ export interface PostSpec {
   /** A second button beside the first ("Call 9120011"). */
   cta2: string;
   ctaStyle: ButtonStyle;
+  /** The motion the post plays as a video; '' is a still picture only. */
+  motion: string;
   phone: string;
   website: string;
   /** Where the QR code and the caption's link go. */
@@ -159,6 +161,66 @@ export function withTemplate(spec: PostSpec, t: PostTemplate): PostSpec {
   return { ...spec, ...t.words, show: { ...spec.show, ...t.show } };
 }
 
+/** How one part arrives. */
+export type Fx = 'none' | 'fade' | 'up' | 'down' | 'left' | 'right' | 'zoom' | 'shrink' | 'pop' | 'spin' | 'drop' | 'swing' | 'flip' | 'wipe';
+
+/**
+ * A motion template: how each part of the post arrives, what it does once it
+ * has, and what the camera does meanwhile. It names parts, never designs, so
+ * every motion plays on every design in every colour and shape.
+ */
+export interface Motion {
+  key: string;
+  name: string;
+  photo: Fx;
+  text: Fx;
+  price: Fx;
+  sticker: Fx;
+  footer: Fx;
+  /** Seconds between one row of words and the next. */
+  stagger: number;
+  /** 1 is the usual speed of arrival; under 1 is snappier, over 1 slower. */
+  pace: number;
+  /** What the photo does once it has arrived. */
+  idle: 'none' | 'float' | 'breathe' | 'sway' | 'grow';
+  /** What draws the eye afterwards: the sticker wiggles, the price and button pulse, or both. */
+  accent: 'none' | 'wiggle' | 'pulse' | 'both';
+  camera: 'none' | 'in' | 'out';
+}
+
+export const MOTIONS: Motion[] = [
+  { key: 'calm', name: 'Calm fade', photo: 'fade', text: 'fade', price: 'fade', sticker: 'fade', footer: 'fade', stagger: 0.16, pace: 1.3, idle: 'none', accent: 'none', camera: 'in' },
+  { key: 'rise', name: 'Rise', photo: 'zoom', text: 'up', price: 'pop', sticker: 'pop', footer: 'up', stagger: 0.14, pace: 1, idle: 'float', accent: 'pulse', camera: 'none' },
+  { key: 'pop', name: 'Pop', photo: 'pop', text: 'pop', price: 'pop', sticker: 'pop', footer: 'fade', stagger: 0.12, pace: 0.85, idle: 'breathe', accent: 'both', camera: 'none' },
+  { key: 'slide', name: 'Slide in', photo: 'right', text: 'left', price: 'left', sticker: 'pop', footer: 'up', stagger: 0.12, pace: 1, idle: 'none', accent: 'pulse', camera: 'in' },
+  { key: 'cross', name: 'Crossing', photo: 'left', text: 'right', price: 'right', sticker: 'spin', footer: 'fade', stagger: 0.12, pace: 1, idle: 'float', accent: 'wiggle', camera: 'none' },
+  { key: 'drop', name: 'Drop and bounce', photo: 'drop', text: 'fade', price: 'pop', sticker: 'drop', footer: 'fade', stagger: 0.14, pace: 1.2, idle: 'none', accent: 'pulse', camera: 'none' },
+  { key: 'spin', name: 'Spin', photo: 'spin', text: 'up', price: 'spin', sticker: 'spin', footer: 'fade', stagger: 0.12, pace: 1.1, idle: 'sway', accent: 'pulse', camera: 'none' },
+  { key: 'type', name: 'Typewriter', photo: 'fade', text: 'wipe', price: 'wipe', sticker: 'pop', footer: 'wipe', stagger: 0.3, pace: 1.3, idle: 'breathe', accent: 'none', camera: 'in' },
+  { key: 'punch', name: 'Zoom punch', photo: 'shrink', text: 'pop', price: 'shrink', sticker: 'shrink', footer: 'fade', stagger: 0.1, pace: 0.8, idle: 'none', accent: 'both', camera: 'out' },
+  { key: 'float', name: 'Floating', photo: 'up', text: 'fade', price: 'fade', sticker: 'fade', footer: 'fade', stagger: 0.16, pace: 1.2, idle: 'float', accent: 'wiggle', camera: 'none' },
+  { key: 'bounce', name: 'Bouncy words', photo: 'pop', text: 'drop', price: 'drop', sticker: 'pop', footer: 'up', stagger: 0.16, pace: 1.1, idle: 'breathe', accent: 'pulse', camera: 'none' },
+  { key: 'swing', name: 'Swing', photo: 'up', text: 'up', price: 'swing', sticker: 'swing', footer: 'fade', stagger: 0.12, pace: 1.2, idle: 'sway', accent: 'wiggle', camera: 'none' },
+  { key: 'beat', name: 'Heartbeat', photo: 'zoom', text: 'fade', price: 'pop', sticker: 'pop', footer: 'fade', stagger: 0.1, pace: 0.9, idle: 'breathe', accent: 'both', camera: 'none' },
+  { key: 'flip', name: 'Flip', photo: 'flip', text: 'flip', price: 'flip', sticker: 'flip', footer: 'fade', stagger: 0.14, pace: 1, idle: 'none', accent: 'pulse', camera: 'in' },
+  { key: 'whip', name: 'Whip', photo: 'right', text: 'right', price: 'right', sticker: 'right', footer: 'right', stagger: 0.07, pace: 0.6, idle: 'none', accent: 'both', camera: 'none' },
+  { key: 'cascade', name: 'Cascade', photo: 'down', text: 'down', price: 'down', sticker: 'down', footer: 'down', stagger: 0.2, pace: 1, idle: 'float', accent: 'none', camera: 'none' },
+  { key: 'closeup', name: 'Slow close-up', photo: 'fade', text: 'up', price: 'fade', sticker: 'fade', footer: 'fade', stagger: 0.18, pace: 1.4, idle: 'grow', accent: 'none', camera: 'in' },
+  { key: 'reveal', name: 'Photo first', photo: 'zoom', text: 'wipe', price: 'pop', sticker: 'spin', footer: 'up', stagger: 0.22, pace: 1.1, idle: 'sway', accent: 'pulse', camera: 'out' },
+  { key: 'party', name: 'Party', photo: 'spin', text: 'pop', price: 'drop', sticker: 'swing', footer: 'up', stagger: 0.1, pace: 0.9, idle: 'float', accent: 'both', camera: 'none' },
+  { key: 'elegant', name: 'Elegant', photo: 'fade', text: 'wipe', price: 'fade', sticker: 'fade', footer: 'fade', stagger: 0.34, pace: 1.6, idle: 'grow', accent: 'none', camera: 'out' },
+  { key: 'stamp', name: 'Stamp', photo: 'up', text: 'fade', price: 'shrink', sticker: 'shrink', footer: 'fade', stagger: 0.12, pace: 0.8, idle: 'none', accent: 'wiggle', camera: 'none' },
+  { key: 'tumble', name: 'Tumble', photo: 'swing', text: 'left', price: 'spin', sticker: 'drop', footer: 'fade', stagger: 0.14, pace: 1.1, idle: 'sway', accent: 'pulse', camera: 'none' },
+  { key: 'curtain', name: 'Curtain', photo: 'down', text: 'up', price: 'up', sticker: 'pop', footer: 'up', stagger: 0.12, pace: 1.1, idle: 'breathe', accent: 'pulse', camera: 'in' },
+  { key: 'burst', name: 'Burst', photo: 'pop', text: 'zoom', price: 'pop', sticker: 'spin', footer: 'zoom', stagger: 0.08, pace: 0.7, idle: 'breathe', accent: 'both', camera: 'out' },
+];
+
+export const MOTION_SECONDS = [4, 6, 8];
+
+export function motionOf(key: string): Motion | null {
+  return MOTIONS.find((m) => m.key === key) ?? null;
+}
+
 export const PART_NAMES: Record<PartKey, string> = {
   kicker: 'Small line above',
   tagline: 'Line below',
@@ -177,7 +239,7 @@ export const PART_ORDER: PartKey[] = ['price', 'was', 'badge', 'cta', 'cta2', 'p
 
 export function blankSpec(brand?: { name?: string; phone?: string; website?: string; order_url?: string }): PostSpec {
   return {
-    headline: '', kicker: '', tagline: '', price: '', was: '', badge: '', cta: 'Order now', cta2: '', ctaStyle: 'auto',
+    headline: '', kicker: '', tagline: '', price: '', was: '', badge: '', cta: 'Order now', cta2: '', ctaStyle: 'auto', motion: '',
     phone: brand?.phone ?? '', website: brand?.website ?? '', link: brand?.order_url ?? '',
     photo: '', cutout: false, brand: brand?.name ?? 'Bake & Grill', itemId: null,
     show: { kicker: false, tagline: false, price: true, was: false, badge: false, cta: true, cta2: false, phone: true, website: false, logo: true, qr: false },

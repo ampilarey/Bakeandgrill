@@ -929,6 +929,26 @@ export const GUIDES: Guide[] = [
     words: 'facebook instagram telegram viber post social share',
   },
   {
+    id: 'social-animated-post',
+    page: '/social',
+    title: 'Make an animated post (a short video of your design)',
+    steps: [
+      'Open Social Hub, tap Make a post and set up the post as usual: the dish, a design and the parts.',
+      'Under Make it move, tap a motion such as Rise, Pop or Drop and bounce. It plays on the picture straight away.',
+      'Pick How long: 4, 6 or 8 seconds. Play again shows it once more.',
+      'Tap the shape you want at the top (Feed post or Story are best for video), then tap Make the video.',
+      'Keep the page open while it records. Your video then opens: watch it and tap Download.',
+    ],
+    notes: [
+      'There are 24 motions and each one works with every design and colour.',
+      'The video is an MP4 with no sound. Instagram and TikTok let you add music when you post it.',
+      'Still picture turns the motion off. Download and All 4 sizes always give the still picture.',
+      'The motion is saved with the post, so a saved post opens ready to play.',
+      'It needs Chrome or Safari. If the button is greyed out, the browser cannot record.',
+    ],
+    words: 'animate animation motion moving video mp4 reel story clip animated post',
+  },
+  {
     id: 'social-videos',
     page: '/social',
     title: 'Make a short video of a dish, watch it and download it',

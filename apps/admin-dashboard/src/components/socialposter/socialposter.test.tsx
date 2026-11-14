@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LAYOUT_DRAW } from './draw';
-import { LAYOUTS, PALETTES, SIZES, TEMPLATES, blankSpec, captionOf, fullSpec, priceWords, withTemplate } from './types';
+import { LAYOUTS, MOTIONS, PALETTES, SIZES, TEMPLATES, blankSpec, captionOf, fullSpec, priceWords, withTemplate } from './types';
 
 const api = vi.hoisted(() => ({
   fetchSocialPosters: vi.fn(),
@@ -9,6 +9,7 @@ const api = vi.hoisted(() => ({
   updateSocialPoster: vi.fn(),
   deleteSocialPoster: vi.fn(),
   uploadSocialPosterPicture: vi.fn(),
+  uploadSocialPosterVideo: vi.fn(),
   fetchSocialItemPreview: vi.fn(),
 }));
 vi.mock('../../api', () => api);
@@ -40,6 +41,18 @@ describe('the social post designs', () => {
     expect(made).toMatchObject({ headline: 'Bajiya', price: '5', photo: '/x.png', badge: 'Free delivery', cta2: 'Call us' });
     expect(made.show.cta2).toBe(true);
     expect(made.show.logo).toBe(true);
+  });
+
+  it('has plenty of motions, each moving every part by a known effect', () => {
+    expect(MOTIONS.length).toBeGreaterThanOrEqual(20);
+    expect(new Set(MOTIONS.map((m) => m.key)).size).toBe(MOTIONS.length);
+    expect(new Set(MOTIONS.map((m) => m.name)).size).toBe(MOTIONS.length);
+    const fx = ['none', 'fade', 'up', 'down', 'left', 'right', 'zoom', 'shrink', 'pop', 'spin', 'drop', 'swing', 'flip', 'wipe'];
+    for (const m of MOTIONS) {
+      for (const part of [m.photo, m.text, m.price, m.sticker, m.footer]) expect(fx, m.key).toContain(part);
+      expect(m.pace, m.key).toBeGreaterThan(0);
+    }
+    expect(blankSpec(BRAND).motion).toBe('');
   });
 
   it('makes the shapes the platforms take', () => {
@@ -122,6 +135,21 @@ describe('Make a post', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(api.createSocialPoster).toHaveBeenCalled());
     expect(api.createSocialPoster.mock.calls[0][0].spec).toMatchObject({ cta2: 'See the menu', ctaStyle: 'pop', badge: 'Free delivery' });
+  });
+
+  it('keeps the motion with the post, and offers the video only once a motion is picked', async () => {
+    render(<SocialPosterMaker canCompose onSend={() => {}} />);
+    fireEvent.change(await screen.findByLabelText('Headline'), { target: { value: 'Bajiya' } });
+    expect(screen.queryByRole('button', { name: /Make the video/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Drop and bounce' }));
+    expect(screen.getByRole('button', { name: 'Drop and bounce' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: /Make the video/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '8 seconds' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(api.createSocialPoster).toHaveBeenCalled());
+    expect(api.createSocialPoster.mock.calls[0][0].spec.motion).toBe('drop');
+    fireEvent.click(screen.getByRole('button', { name: 'Still picture' }));
+    expect(screen.queryByRole('button', { name: /Make the video/ })).toBeNull();
   });
 
   it('leaves saving and posting out for someone who may only look', async () => {

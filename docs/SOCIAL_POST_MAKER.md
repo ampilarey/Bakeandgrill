@@ -33,6 +33,22 @@ The picture is shown in four shapes, all made from the same post:
 app. **Post it** opens the Social Hub composer with the picture and a caption ready for the connected channels
 (Facebook, Instagram, Telegram, Viber). TikTok and WhatsApp status are posted from the phone with the Story picture.
 
+## Animated posts
+
+Step 4, **Make it move**: pick one of 24 motions (Calm fade, Rise, Pop, Slide in, Crossing, Drop and bounce, Spin,
+Typewriter, Zoom punch, Floating, Bouncy words, Swing, Heartbeat, Flip, Whip, Cascade, Slow close-up, Photo first,
+Party, Elegant, Stamp, Tumble, Curtain, Burst) and the post plays on the picture. Each motion says how the photo, the
+rows of words, the price, the sticker and the footer arrive, what the photo does afterwards (float, breathe, sway, grow),
+what draws the eye (the sticker wiggles, the price and button pulse) and what the camera does (drift in or out). A
+motion names parts, not designs, so all 24 work on all 20 designs in all 20 colours and all four shapes.
+
+**Make the video** films the post in the browser for 4, 6 or 8 seconds in the shape on screen and the server makes it
+an MP4 (H.264, 30 frames a second, no sound). It opens in a player with Download. No GIF: Instagram and TikTok take
+none, and an MP4 is smaller and cleaner. Needs Chrome or Safari, and ffmpeg on the server (already there for item
+videos); without ffmpeg only Safari's own MP4 recording can be kept.
+
+Adding a motion: a row in `MOTIONS` (`types.ts`). Adding an effect: a case in `moved()` (`draw.ts`) and the `Fx` type.
+
 ## How it is built
 
 - `apps/admin-dashboard/src/components/socialposter/`

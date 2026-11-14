@@ -77,6 +77,7 @@ if (routes_domain_section_is('social', 'admin') && !routes_domain_loaded('social
         Route::get('/posters', [App\Http\Controllers\Api\SocialPosterController::class, 'index']);
         Route::post('/posters', [App\Http\Controllers\Api\SocialPosterController::class, 'store']);
         Route::post('/posters/picture', [App\Http\Controllers\Api\SocialPosterController::class, 'picture']);
+        Route::post('/posters/video', [App\Http\Controllers\Api\SocialPosterController::class, 'video']);
         Route::put('/posters/{id}', [App\Http\Controllers\Api\SocialPosterController::class, 'update'])->whereNumber('id');
         Route::delete('/posters/{id}', [App\Http\Controllers\Api\SocialPosterController::class, 'destroy'])->whereNumber('id');
     });

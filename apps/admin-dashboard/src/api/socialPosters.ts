@@ -45,6 +45,13 @@ export async function deleteSocialPoster(id: number): Promise<{ ok: boolean }> {
   return req(`/admin/social/posters/${id}`, { method: 'DELETE' });
 }
 
+/** Turn the browser's recording of an animated post into an MP4; the reply is its address. */
+export async function uploadSocialPosterVideo(video: Blob): Promise<{ url: string; converted: boolean }> {
+  const form = new FormData();
+  form.append('video', video, video.type.includes('mp4') ? 'post.mp4' : 'post.webm');
+  return req('/admin/social/posters/video', { method: 'POST', body: form });
+}
+
 /** Keep a finished picture where a channel can fetch it; the reply is its address. */
 export async function uploadSocialPosterPicture(picture: Blob): Promise<{ url: string; width: number; height: number }> {
   const form = new FormData();

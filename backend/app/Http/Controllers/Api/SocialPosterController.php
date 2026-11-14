@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Labels\LabelSettings;
+use App\Domains\Media\Services\VideoProcessor;
 use App\Domains\Permissions\Services\PermissionService;
 use App\Http\Controllers\Controller;
 use App\Models\SocialPoster;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -26,7 +28,7 @@ use Illuminate\Support\Str;
 class SocialPosterController extends Controller
 {
     /** The words a post may carry, and the longest each may be. */
-    private const TEXT = ['headline' => 80, 'kicker' => 40, 'tagline' => 120, 'price' => 12, 'was' => 12, 'badge' => 40, 'cta' => 30, 'cta2' => 30, 'phone' => 30, 'website' => 80, 'link' => 500, 'photo' => 500, 'brand' => 60];
+    private const TEXT = ['headline' => 80, 'kicker' => 40, 'tagline' => 120, 'price' => 12, 'was' => 12, 'badge' => 40, 'cta' => 30, 'cta2' => 30, 'phone' => 30, 'website' => 80, 'motion' => 40, 'link' => 500, 'photo' => 500, 'brand' => 60];
 
     /** The parts that can be shown or hidden. */
     private const PARTS = ['kicker', 'tagline', 'price', 'was', 'badge', 'cta', 'cta2', 'phone', 'website', 'logo', 'qr'];
@@ -111,6 +113,47 @@ class SocialPosterController extends Controller
         Storage::disk('public')->put($path, $jpeg);
 
         return response()->json(['url' => url(Storage::disk('public')->url($path)), 'width' => $w, 'height' => $h]);
+    }
+
+    /**
+     * An animated post, filmed by the browser as it played (MP4 from Safari,
+     * WebM from most others), made into an MP4 every platform takes: H.264,
+     * no sound, even sides, ready to stream. Without ffmpeg an MP4 is kept as
+     * it came and a WebM is refused, since Instagram and WhatsApp take no WebM.
+     */
+    public function video(Request $request, VideoProcessor $ffmpeg): JsonResponse
+    {
+        $this->requirePermission($request, 'social.compose');
+        $request->validate(['video' => ['required', 'file', 'max:61440', 'mimetypes:video/mp4,video/webm,video/quicktime,video/x-matroska']]);
+        $file = $request->file('video');
+        $isMp4 = in_array($file->getMimeType(), ['video/mp4', 'video/quicktime'], true);
+        $path = 'social-posters/video/' . now()->format('Y/m') . '/' . Str::lower(Str::random(24)) . '.mp4';
+        $disk = Storage::disk('public');
+
+        $converted = false;
+        if ($ffmpeg->available()) {
+            $tmp = (string) tempnam(sys_get_temp_dir(), 'spv');
+            $out = $tmp . '.mp4';
+            $run = Process::timeout(110)->run([
+                $ffmpeg->ffmpegBinary(), '-y', '-i', $file->getRealPath(),
+                '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p',
+                '-r', '30', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-movflags', '+faststart', $out,
+            ]);
+            if ($run->successful() && is_file($out) && filesize($out) > 0) {
+                $disk->put($path, (string) file_get_contents($out));
+                $converted = true;
+            }
+            @unlink($out);
+            @unlink($tmp);
+        }
+        if (!$converted) {
+            if (!$isMp4) {
+                return response()->json(['message' => 'The video could not be made into an MP4 on this server. Try from Safari on an iPhone or a Mac, which records MP4 itself.'], 422);
+            }
+            $disk->put($path, (string) file_get_contents($file->getRealPath()));
+        }
+
+        return response()->json(['url' => url($disk->url($path)), 'converted' => $converted]);
     }
 
     /** @return array{name: string, layout: string, palette: string, spec: array<string, mixed>} */
