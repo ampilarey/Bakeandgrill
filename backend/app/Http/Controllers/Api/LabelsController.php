@@ -21,6 +21,7 @@ use App\Domains\Labels\LabelTypes;
 use App\Domains\Labels\Nutrition;
 use App\Domains\Labels\PouchConfig;
 use App\Domains\Labels\PouchSet;
+use App\Domains\Labels\TubSet;
 use App\Domains\Labels\Reprint;
 use App\Domains\Labels\StickerLayouts;
 use App\Domains\Labels\StickerMockup;
@@ -101,6 +102,8 @@ class LabelsController extends Controller
             'pouch' => PouchConfig::catalogue(),
             // A pouch product in its sizes, made in one go: the form's starting rows.
             'pouch_set' => PouchSet::catalogue(),
+            // A tub's lid and side labels, made in one go (2026-11-16).
+            'tub_set' => TubSet::catalogue(),
             // The rolls and sheets the business owns (round 6, 2026-10-13): every size picker shows them first; with what is left on each (round 13).
             'rolls' => LabelRolls::presentAll(),
             // The badges a product can carry (round 9), for the pickers.
@@ -1292,6 +1295,70 @@ class LabelsController extends Controller
         return response()->json(['data' => $made, 'expires_in_minutes' => LabelSheetController::LINK_MINUTES], 201);
     }
 
+    /**
+     * A tub's two labels in one go (owner, 2026-11-16: "on the top of the container
+     * circular label with name and photo. At the side rectangular label with other
+     * details"): a round lid label and a rectangular side label, each a custom label
+     * with a saved label at its own size, drawn as a preview (nothing printed).
+     */
+    public function storeTubSet(Request $request): JsonResponse
+    {
+        $presets = array_column(StickerLayouts::PRESETS, null, 'id');
+        $data = $request->validate([
+            'name' => 'required|string|max:60',
+            'name_dv' => 'sometimes|nullable|string|max:80',
+            'template' => ['sometimes', 'nullable', Rule::in(array_keys(TubSet::templates()))],
+            // "builtin" is the photo that comes with the template; a number a library picture.
+            'photo' => 'sometimes|nullable',
+            'on' => ['sometimes', Rule::in(['sheet', 'printer'])],
+            'lid' => ['required', Rule::in(array_keys($presets))],
+            'side' => ['required', Rule::in(array_keys($presets))],
+            'label_storage' => ['sometimes', 'nullable', Rule::in(LabelSettings::STORAGES)],
+            'label_heading' => 'sometimes|nullable|string|max:60',
+            'label_ingredients' => 'sometimes|nullable|string|max:500',
+            'label_allergens' => 'sometimes|nullable|string|max:200',
+            'label_how_to_use' => 'sometimes|nullable|string|max:200',
+            'label_shelf_life_days' => 'sometimes|nullable|integer|min:1|max:3650',
+            'label_pack_qty' => 'sometimes|nullable|integer|min:1|max:9999',
+            'label_net_weight' => 'sometimes|nullable|string|max:20',
+            'label_price' => 'sometimes|nullable|numeric|min:0|max:99999999',
+        ]);
+        if ($presets[$data['lid']]['shape'] !== 'circle') {
+            return response()->json(['message' => 'Pick a round size for the lid.', 'errors' => ['lid' => ['Pick a round size, such as 80 mm.']]], 422);
+        }
+        if ($presets[$data['side']]['shape'] !== 'rect') {
+            return response()->json(['message' => 'Pick a rectangular size for the side.', 'errors' => ['side' => ['Pick a rectangular size, such as 100 × 50 mm.']]], 422);
+        }
+        $photo = $data['photo'] ?? null;
+        $mediaId = null;
+        if ($photo === 'builtin') {
+            $template = TubSet::templates()[$data['template'] ?? ''] ?? null;
+            $mediaId = $template ? LabelTemplates::builtinPhoto($template)?->id : null;
+        } elseif (is_numeric($photo)) {
+            if (Media::query()->whereKey((int) $photo)->value('media_type') !== 'image') {
+                return response()->json(['message' => 'Pick an image for the label.', 'errors' => ['photo' => ['Pick an image.']]], 422);
+            }
+            $mediaId = (int) $photo;
+        }
+        $userId = $request->user()?->id;
+        $on = $data['on'] ?? 'sheet';
+
+        $made = DB::transaction(function () use ($data, $mediaId, $userId, $on, $presets) {
+            $out = [];
+            foreach (TubSet::create(['photo_media_id' => $mediaId] + $data, $userId) as $row) {
+                $p = $presets[$row['preset']];
+                $sheet = ['items' => [['id' => $row['label']->id, 'kind' => 'custom', 'copies' => 1]], 'layout' => $p['on'][$on] ?? $p['on']['sheet'], 'w' => $p['w'], 'h' => $p['h'], 'fill' => true, 'lang' => $row['label']->label_lang ?: 'en'];
+                $links = $this->stickerLinks(StickerSheet::normalise($sheet), $userId, true);
+                $job = $this->rememberJob('stickers', $sheet, $links['summary'], $userId, printed: false);
+                $out[] = ['label' => $this->presentCustom($row['label']->refresh()), 'part' => $row['label']->label_part, 'job' => $job, 'preset' => $row['preset'], 'w' => $p['w'], 'h' => $p['h'], 'one_url' => $links['one_url'], 'view_url' => $links['view_url'], 'pdf_url' => $links['pdf_url'], 'request' => $sheet];
+            }
+
+            return $out;
+        });
+
+        return response()->json(['data' => $made, 'expires_in_minutes' => LabelSheetController::LINK_MINUTES], 201);
+    }
+
     /** The picture or the hand-lettered name, kept as the PNG uploaded (LabelMedia), never flattened onto white. */
     public function customLabelPicture(Request $request, CustomLabel $customLabel): JsonResponse
     {
@@ -1364,6 +1431,8 @@ class LabelsController extends Controller
             'footer_id' => 'sometimes|nullable|integer|exists:label_footers,id',
             'label_show_qr' => 'sometimes|nullable|boolean',
             'label_lang' => ['sometimes', 'nullable', Rule::in(StickerSheet::LANGS)],
+            // A tub's lid (name and photo on a round label) or its side label (2026-11-16); null is an ordinary label.
+            'label_part' => ['sometimes', 'nullable', Rule::in(array_keys(TubSet::PARTS))],
             // The size the label is made at (2026-11-14), so Edit, View and Print open on it from any device.
             'label_size' => 'sometimes|nullable|array',
             'label_size.shape' => ['sometimes', Rule::in(['rect', 'circle'])],
@@ -1462,6 +1531,7 @@ class LabelsController extends Controller
             'label_nutrition_per' => Nutrition::per($c),
             'label_wrap' => $wrap = WrapConfig::of($c),
             'label_pouch' => PouchConfig::of($c),
+            'label_part' => TubSet::partOf($c),
             'wrap_pictures' => $this->wrapPictures($wrap),
             'label_layout' => LabelLayout::of($c),
             'label_badges' => LabelBadges::of($c),

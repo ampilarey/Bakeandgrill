@@ -1,0 +1,89 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Labels;
+
+use App\Domains\Permissions\PermissionCatalogSync;
+use App\Models\CustomLabel;
+use App\Models\LabelJob;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\Sanctum;
+use Tests\TestCase;
+
+/**
+ * Owner, 2026-11-16: "on the top of the container circular label with name and
+ * photo. At the side rectangular label with other details."
+ */
+class TubSetTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        PermissionCatalogSync::sync();
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        Cache::flush();
+        Storage::fake('public');
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function make(array $over = []): array
+    {
+        return $this->postJson('/api/labels/tub-set', $over + [
+            'name' => 'Frozen Jhol Momo', 'template' => 'jhol-momo-round', 'photo' => 'builtin', 'lid' => 'c80', 'side' => 'r100x50',
+        ])->assertCreated()->json('data');
+    }
+
+    public function test_one_go_makes_a_lid_label_and_a_side_label(): void
+    {
+        $made = $this->make();
+        $this->assertSame(['lid', 'side'], array_column($made, 'part'));
+        $this->assertSame(['Frozen Jhol Momo (Lid)', 'Frozen Jhol Momo (Side)'], CustomLabel::query()->orderBy('id')->pluck('name')->all());
+        $this->assertSame(2, LabelJob::query()->count(), 'a saved label for each, nothing printed');
+        $this->assertSame('circle', $made[0]['label']['label_size']['shape']);
+        $this->assertSame('rect', $made[1]['label']['label_size']['shape']);
+        $this->assertNotNull($made[0]['label']['label_photo_media_id'], 'the template brings its photo');
+
+        // The lid: the name without "(Lid)", the pack line and the photo; no ingredients, no dates, and nothing reported as left out.
+        $lid = (string) $this->get($made[0]['view_url'])->assertOk()->getContent();
+        $this->assertStringContainsString('>Frozen Jhol Momo<', $lid);
+        $this->assertStringNotContainsString('(Lid)', $lid);
+        $this->assertStringContainsString('MOMO IN SPICY JHOL', $lid);
+        $this->assertStringContainsString('8 PCS', $lid);
+        $this->assertStringNotContainsString('EXP DATE', $lid);
+        $this->assertStringNotContainsString('Wheat flour', $lid);
+        $summary = $this->postJson('/api/labels/stickers/url', $made[0]['request'] + ['preview' => true])->assertOk()->json('summary');
+        $this->assertSame([], $summary['dropped'] ?? [], 'the lid leaves the list and the pack code to the side label');
+
+        // The side: the same name, with the list and the dates.
+        $side = (string) $this->get($made[1]['view_url'])->assertOk()->getContent();
+        $this->assertStringNotContainsString('(Side)', $side);
+        $this->assertStringContainsString('Frozen Jhol Momo', $side);
+        $this->assertStringContainsString('EXP', $side);
+        $this->assertStringContainsString('Wheat', $side);
+    }
+
+    public function test_typed_details_win_over_the_template_and_sizes_are_held_to_their_shape(): void
+    {
+        $made = $this->make(['name' => 'Chicken Curry', 'template' => null, 'photo' => null, 'label_ingredients' => 'Chicken, onion, chilli.', 'label_pack_qty' => 1, 'label_price' => 60]);
+        $this->assertSame('Chicken, onion, chilli.', $made[1]['label']['label_ingredients']);
+        $this->assertEquals(60.0, $made[0]['label']['label_price']);
+
+        $this->postJson('/api/labels/tub-set', ['name' => 'X', 'lid' => 'r100x50', 'side' => 'r100x50'])->assertStatus(422)->assertJsonValidationErrors('lid');
+        $this->postJson('/api/labels/tub-set', ['name' => 'X', 'lid' => 'c80', 'side' => 'c60'])->assertStatus(422)->assertJsonValidationErrors('side');
+    }
+
+    public function test_an_ordinary_round_label_becomes_a_lid_with_one_field(): void
+    {
+        $id = (int) $this->postJson('/api/labels/custom', ['name' => 'Garlic Sauce', 'label_ingredients' => 'Garlic, oil, salt.', 'label_part' => 'lid'])->assertCreated()->assertJsonPath('data.label_part', 'lid')->json('data.id');
+        $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 1]], 'layout' => 'single-round-custom', 'w' => 60, 'h' => 60, 'lang' => 'en', 'fill' => true, 'preview' => true])->assertOk();
+        $html = (string) $this->get($res->json('view_url') ?? $res->json('url'))->assertOk()->getContent();
+        $this->assertStringContainsString('>Garlic Sauce<', $html);
+        $this->assertStringNotContainsString('Garlic, oil', $html);
+        $this->putJson("/api/labels/custom/{$id}", ['label_part' => null])->assertOk()->assertJsonPath('data.label_part', null);
+    }
+}

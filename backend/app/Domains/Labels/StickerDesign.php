@@ -979,6 +979,10 @@ final class StickerDesign
      */
     public static function round(array $d, bool $dv, float $D): array
     {
+        // A lid label (owner, 2026-11-16): the name and the photo only; the side label has the rest.
+        if (($d['part'] ?? null) === 'lid') {
+            return self::lid($d, $dv, $D);
+        }
         $d = self::packQr($d);
         // Under 45 mm the rows below shrink past reading; the small round
         // sticker drops the ingredients and keeps the name and dates big.
@@ -1171,6 +1175,27 @@ final class StickerDesign
             $p[] = $text($y, $w, $dv ? 'dv' : 'j7', LabelText::fitPt($within, $dv ? 'dv' : 'j7', $w, ($dv ? 5.6 : 4.1) * $f, 3.4), self::PRIMARY, $within, $dv ? 0.5 : 0.0);
         }
 
+        array_push($p, ...self::roundFoot($d, $dv, $D));
+        $p[] = LabelSpots::close();
+
+        return $p;
+    }
+
+    /**
+     * The round sticker's foot, shared by the full round design and the lid.
+     *
+     * @param array<string, mixed> $d
+     * @return list<array<string, mixed>>
+     */
+    private static function roundFoot(array $d, bool $dv, float $D): array
+    {
+        $p = [];
+        $r = $D / 2;
+        $k = $D / 50;
+        $f = min($k, 1.5);
+        $chord = fn (float $y): float => max(10.0, 2 * sqrt(max(0.0, $r * $r - ($y - $r) * ($y - $r))) - 3.0 * $k);
+        $text = fn (float $y, float $w, string $font, float $pt, string $color, string $t, float $bold = 0.0) => ['t' => 'text', 'x' => ($D - $w) / 2, 'base' => $y, 'w' => $w, 'align' => 'c', 'font' => $font, 'pt' => $pt, 'color' => $color, 'text' => $t] + ($bold > 0 ? ['bold' => $bold] : []);
+        $ft = $d['footer'];
         // The foot: the storage line and the business's line on a segment in the
         // footer's own colours. A plain footer keeps a rust strip and a dark line.
         $pal = self::footerPalette((string) ($ft['style'] ?? 'dark'));
@@ -1219,6 +1244,97 @@ final class StickerDesign
             $foot = $footFor($w, 3.2);
             $p[] = $text($y, $w, $siteFont, LabelText::fitPt($foot, $siteFont, $w, ($siteFont === 'dv' ? 5.2 : 4.0) * $f, 3.0), $pal['accent'], $foot, $siteFont === 'dv' ? 0.5 : 0.0);
         }
+
+        return $p;
+    }
+
+    /**
+     * The lid of a tub (owner, 2026-11-16: "on the top of the container circular label with
+     * name and photo. At the side rectangular label with other details"): the brand on the
+     * cap, the photo large in a rust ring, the name, a line for what the pack holds, and the
+     * foot. No ingredients and no dates: the side label carries them.
+     *
+     * @param array<string, mixed> $d
+     * @return list<array<string, mixed>>
+     */
+    public static function lid(array $d, bool $dv, float $D): array
+    {
+        $p = [];
+        $r = $D / 2;
+        $k = $D / 50;
+        $f = min($k, 1.5);
+        $chord = fn (float $y): float => max(10.0, 2 * sqrt(max(0.0, $r * $r - ($y - $r) * ($y - $r))) - 3.0 * $k);
+        $text = fn (float $y, float $w, string $font, float $pt, string $color, string $t, float $bold = 0.0) => ['t' => 'text', 'x' => ($D - $w) / 2, 'base' => $y, 'w' => $w, 'align' => 'c', 'font' => $font, 'pt' => $pt, 'color' => $color, 'text' => $t] + ($bold > 0 ? ['bold' => $bold] : []);
+        $brand = $d['brand'];
+        $p[] = LabelSpots::open('brand');
+        array_push($p, ...self::cap($D, 0.0, 7.6 * $k, self::PRIMARY));
+        $w = $chord(3.4 * $k);
+        $p[] = $dv
+            ? $text(5.9 * $k, $w, 'dv', LabelText::fitPt($brand['name_dv'], 'dv', $w, 5.6 * $f, 3.2), self::CREAM, $brand['name_dv'], 0.6)
+            : $text(5.5 * $k, $w, 'j7', LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', $w, 4.6 * $f, 2.8), self::CREAM, self::spaced(mb_strtoupper($brand['name'])));
+
+        $both = !$dv && !empty($d['both']) && $d['name_dv'] !== '';
+        $head = trim((string) ($dv ? $d['header_line_dv'] : $d['header_line']));
+        // What the pack holds: the count, the weight, the price.
+        $pack = implode('  ·  ', array_filter([
+            $d['qty'] !== '' ? $d['qty'] . ($dv ? '' : ' ' . $d['unit']) : '',
+            (string) ($d['net_weight'] ?? ''),
+            (string) $d['price'],
+        ], fn ($v) => $v !== ''));
+        // Under the name: the heading and the pack line; both languages leave room for one.
+        $subs = array_values(array_filter([[$head, 'heading'], [$pack, 'qty']], fn ($row) => $row[0] !== ''));
+        if ($both) {
+            $subs = array_slice($pack !== '' ? [[$pack, 'qty']] : $subs, 0, 1);
+        }
+
+        // The picture: the photo in a ring, else the label's own mark, else the brand's logo.
+        // It takes the room the lines under it leave.
+        $rows = ($both ? 2 : 1) + count($subs);
+        $top = 8.8 * $k;
+        $bottom = (40.0 - 3.3 * $rows - ($rows > 1 ? 0.6 : 1.4)) * $k;
+        $side = $bottom - $top;
+        $cx = $D / 2;
+        if ($d['photo']) {
+            $p[] = LabelSpots::open('photo');
+            $p[] = ['t' => 'rect', 'x' => $cx - $side / 2, 'y' => $top, 'w' => $side, 'h' => $side, 'fill' => self::PRIMARY, 'r' => $side / 2];
+            $edge = max(0.45, 0.5 * $k);
+            $p[] = ['t' => 'img', 'x' => $cx - $side / 2 + $edge, 'y' => $top + $edge, 'w' => $side - 2 * $edge, 'h' => $side - 2 * $edge, 'src' => PouchDesign::circle($d['photo'])];
+        } elseif ($d['mark'] || $brand['logo']) {
+            $src = $d['mark'] ?: $brand['logo'];
+            [$pw, $ph] = self::fit($d['mark'] ? $d['mark_ratio'] : $brand['logo_ratio'], min($chord($top + 1.5 * $k), $side * 1.6), $side - 1.0 * $k);
+            $p[] = LabelSpots::open($d['mark'] ? 'photo' : 'brand');
+            $p[] = ['t' => 'img', 'x' => $cx - $pw / 2, 'y' => $top + ($side - $ph) / 2, 'w' => $pw, 'h' => $ph, 'src' => $src];
+        }
+
+        // The name, as large as the circle allows at its height.
+        $y = $bottom + 3.9 * $k;
+        $p[] = LabelSpots::open('name');
+        if ($both) {
+            [$npt, $ntext] = LabelText::fitted($d['name'], 'dsi', $chord($y - 2.5 * $k) - 1, 12.0 * $f, 5.0);
+            $p[] = $text($y - 0.4 * $k, $chord($y - 2.5 * $k), 'dsi', $npt, self::PRIMARY, $ntext);
+            $y += 3.3 * $k;
+            [$npt, $ntext] = LabelText::fitted($d['name_dv'], 'dv', $chord($y) - 1, 7.6 * $f, 4.6);
+            $p[] = $text($y, $chord($y), 'dv', $npt, self::PRIMARY, $ntext, 0.6);
+        } else {
+            $name = $dv && $d['name_dv'] !== '' ? $d['name_dv'] : $d['name'];
+            $nf = $dv && $d['name_dv'] !== '' ? 'dv' : 'dsi';
+            $w = $chord($y - 2.5 * $k);
+            [$npt, $ntext] = LabelText::fitted($name, $nf, $w - 1, 14.0 * $f, 5.0);
+            $p[] = $text($y, $w, $nf, $npt, self::PRIMARY, $ntext, $nf === 'dv' ? 0.7 : 0.0);
+        }
+        foreach ($subs as [$line, $spot]) {
+            $y += 3.3 * $k;
+            $w = $chord($y) - 1;
+            $p[] = LabelSpots::open($spot);
+            if ($spot === 'heading') {
+                [$pt, $t] = LabelText::fitted($line, $dv ? 'dv' : 'j8', $w, ($dv ? 6.6 : 5.0) * $f, 3.2);
+                $p[] = $text($y, $w, $dv ? 'dv' : 'j8', $pt, self::DARK, $t, $dv ? 0.6 : 0.0);
+            } else {
+                [$pt, $t] = LabelText::fitted($line, $dv ? 'dv' : 'j7', $w, ($dv ? 6.2 : 4.8) * $f, 3.2);
+                $p[] = $text($y, $w, $dv ? 'dv' : 'j7', $pt, self::TEXT, $t, $dv ? 0.5 : 0.0);
+            }
+        }
+        array_push($p, ...self::roundFoot($d, $dv, $D));
         $p[] = LabelSpots::close();
 
         return $p;

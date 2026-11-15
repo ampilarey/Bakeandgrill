@@ -129,6 +129,15 @@ export type PouchCatalogue = {
 export type PouchSetSize = { word: string; qty: number | null; price: number | null; preset: string };
 export type PouchSetCatalogue = { sizes: PouchSetSize[]; max_sizes: number; templates: { id: string; name: string; has_photo: boolean }[]; photo_url: string };
 export type PouchSetRow = { label: CustomLabel; job: { id: number; name: string }; preset: string; w: number; h: number; one_url: string | null; view_url: string; pdf_url: string };
+/** A tub's lid and side labels, made in one go (2026-11-16). */
+export type TubSetTemplate = { id: string; name: string; product: string; has_photo: boolean; photo_url?: string | null; fields: Record<string, string | number | null | undefined> };
+export type TubSetCatalogue = { lid: string; side: string; templates: TubSetTemplate[] };
+export type TubSetRow = PouchSetRow & { part: 'lid' | 'side' };
+export type TubSetBody = {
+  name: string; template?: string | null; photo?: 'builtin' | number | null; on?: 'sheet' | 'printer'; lid: string; side: string;
+  label_ingredients?: string | null; label_allergens?: string | null; label_shelf_life_days?: number | null;
+  label_pack_qty?: number | null; label_net_weight?: string | null; label_price?: number | null;
+};
 export type WrapCatalogue = {
   parts: { key: WrapPartKey; label: string; hint: string }[];
   marks: { key: string; label: string; caption: string }[];
@@ -247,7 +256,7 @@ export type KitchenLabelSetup = { size: { layout: string; w: number | null; h: n
 /** A shelf life to suggest per storage (round 15): days, and why. */
 export type ShelfLifeSuggestions = Record<LabelStorage, { days: number; why: string }>;
 
-export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; pouch?: PouchCatalogue; pouch_set?: PouchSetCatalogue; rolls?: LabelRoll[]; badges?: LabelBadge[]; kitchen?: KitchenLabelSetup; shelf_life?: ShelfLifeSuggestions };
+export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; pouch?: PouchCatalogue; pouch_set?: PouchSetCatalogue; tub_set?: TubSetCatalogue; rolls?: LabelRoll[]; badges?: LabelBadge[]; kitchen?: KitchenLabelSetup; shelf_life?: ShelfLifeSuggestions };
 
 /**
  * A label template (round 7, 2026-10-13: "Start from a saved label or a
@@ -319,6 +328,8 @@ export type CustomLabel = {
   label_wrap: LabelWrap;
   /** The pouch label's look and cooking method, or null for an ordinary sticker. */
   label_pouch?: LabelPouch | null;
+  /** A tub's lid (name and photo on a round label) or its side label (2026-11-16); null is an ordinary label. */
+  label_part?: 'lid' | 'side' | null;
   wrap_pictures: WrapPicture[];
   /** The parts moved or resized by hand on the preview, per design (round 8). */
   label_layout: LabelArrangement;
@@ -340,7 +351,7 @@ export type CustomLabelPayload = Partial<Pick<CustomLabel,
   | 'label_how_to_use' | 'label_how_to_use_dv' | 'label_note' | 'label_note_dv'
   | 'footer_id' | 'label_show_qr' | 'label_lang'
   | 'label_shelf_life_days' | 'label_pack_qty' | 'label_pack_unit' | 'label_photo_media_id' | 'label_title_media_id'
-  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition' | 'label_nutrition_per' | 'label_wrap'>> & { label_size?: LabelSizeKept | null; label_pouch?: LabelPouch | null; label_layout?: LabelArrangement | null; label_badges?: string[] | null };
+  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition' | 'label_nutrition_per' | 'label_wrap'>> & { label_size?: LabelSizeKept | null; label_pouch?: LabelPouch | null; label_part?: 'lid' | 'side' | null; label_layout?: LabelArrangement | null; label_badges?: string[] | null };
 
 /** The sticker's languages: English, Dhivehi, or both on one sticker (2026-10-12). */
 export type StickerLang = 'en' | 'dv' | 'both';
@@ -651,6 +662,9 @@ export function createCustomLabel(body: CustomLabelPayload) {
 }
 
 /** A custom label and a saved label per size of a pouch product; nothing is printed until Print. */
+export function createTubSet(body: TubSetBody) {
+  return req<{ data: TubSetRow[]; expires_in_minutes: number }>('/labels/tub-set', { method: 'POST', body: JSON.stringify(body) });
+}
 export function createPouchSet(body: { name: string; template?: string | null; look?: string | null; method?: string | null; photo?: 'builtin' | number | null; on?: 'sheet' | 'printer'; pack_place?: string | null; sizes: PouchSetSize[] }) {
   return req<{ data: PouchSetRow[]; expires_in_minutes: number }>('/labels/pouch-set', { method: 'POST', body: JSON.stringify(body) });
 }

@@ -22,6 +22,7 @@ import { customDraft, customPayload, itemDraft, itemPayload, nutritionWords, pic
 import { SaveAsTemplate } from './StartFrom';
 import { POUCH_FALLBACK, newPouch, pouchFits } from './PouchPicker';
 import { PouchSetModal } from './PouchSetModal';
+import { TubSetModal } from './TubSetModal';
 import { templateFromCustom, templateFromItem } from './labelTemplates';
 import { ArrangeBar } from './ArrangeBar';
 import { clearDesign, hasOverrides, isMovable, layoutPayload, nudgeSpot } from './labelLayout';
@@ -183,6 +184,7 @@ export function MakeLabelWizard({ canManage = false }: {
   const [switching, setSwitching] = useState<number | null>(null);
   const [newCustom, setNewCustom] = useState(false);
   const [pouchSet, setPouchSet] = useState(false);
+  const [tubSet, setTubSet] = useState(false);
   const [details, setDetails] = useState(false);
   const [choice, setChoice] = useState<SizeChoice>(DEFAULT_CHOICE);
   const [ownSize, setOwnSize] = useState(false);
@@ -538,6 +540,7 @@ export function MakeLabelWizard({ canManage = false }: {
                 </div>
                 {kind === 'custom' && <Button size="sm" icon={<Plus size={16} />} onClick={() => setNewCustom(true)} data-testid="make-new-custom">New custom label</Button>}
                 {kind === 'custom' && canManage && <Button size="sm" variant="secondary" icon={<Plus size={16} />} onClick={() => setPouchSet(true)} data-testid="make-pouch-set">Pouch labels in every size</Button>}
+                {kind === 'custom' && canManage && <Button size="sm" variant="secondary" icon={<Plus size={16} />} onClick={() => setTubSet(true)} data-testid="make-tub-set">Lid and side labels</Button>}
               </div>
               <ul className="divide-y divide-[var(--color-border-light)] rounded-xl border border-[var(--color-border)] max-h-[360px] overflow-y-auto" data-testid="make-products">
                 {kind === 'item' && products === null && <li className="px-3 py-3 text-sm text-[var(--color-text-muted)]">Loading…</li>}
@@ -789,6 +792,7 @@ export function MakeLabelWizard({ canManage = false }: {
           idPrefix="make-quick"
         />
       )}
+      {tubSet && <TubSetModal onClose={() => setTubSet(false)} onMade={(made) => setCustoms((list) => [...made.map((m) => m.label), ...(list ?? []).filter((x) => !made.some((m) => m.label.id === x.id))])} />}
       {pouchSet && <PouchSetModal onClose={() => setPouchSet(false)} onMade={(made) => setCustoms((list) => [...made.map((m) => m.label), ...(list ?? []).filter((x) => !made.some((m) => m.label.id === x.id))])} />}
       {newCustom && (
         <CustomLabelModal label={null} onClose={() => setNewCustom(false)} onSaved={(c, at) => { setNewCustom(false); setCustoms((list) => [c, ...(list ?? []).filter((x) => x.id !== c.id)]); pickCustom(c, at); }} />

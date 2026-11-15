@@ -13,6 +13,7 @@ import { clearDesign, hasOverrides, isMovable, nudgeSpot } from './labelLayout';
 import { BadgePicker } from './BadgePicker';
 import { WRAP_FALLBACK, WrapParts } from './WrapParts';
 import { PouchSetModal } from './PouchSetModal';
+import { TubSetModal } from './TubSetModal';
 import { POUCH_FALLBACK, PouchPicker, pouchFits, pouchSummary } from './PouchPicker';
 import { StripOverlay } from './StripEditor';
 import { SpotOverlay } from './SpotOverlay';
@@ -522,6 +523,16 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
               </Field>
             </Section>
 
+            <Section title="Lid or side of a tub" summary={d.label_part === 'lid' ? 'The lid: name and photo' : d.label_part === 'side' ? 'The side: the details' : 'An ordinary label'} open={d.label_part !== null} testId="custom-label-part" help="A tub can carry two labels: a round one on the lid with only the name and the photo, and a rectangular one on the side with the ingredients, the dates and the rest. Say here which of the two this label is.">
+              <Field id="cl-part" label="This label is for" hint={d.label_part === 'lid' ? (choice.shape === 'circle' ? 'Prints the brand, the photo, the name and what the pack holds. The ingredients and dates go on the side label.' : 'Pick a round size for the lid. On this size it prints as an ordinary label.') : d.label_part === 'side' ? 'An ordinary label with every detail. The name prints without "(Side)".' : undefined}>
+                <select id="cl-part" value={d.label_part ?? ''} onChange={(e) => set('label_part', (e.target.value || null) as 'lid' | 'side' | null)} className={fieldClass}>
+                  <option value="">An ordinary label</option>
+                  <option value="lid">The lid of a tub (name and photo only)</option>
+                  <option value="side">The side of a tub (the details)</option>
+                </select>
+              </Field>
+            </Section>
+
             <Section title="Pouch label (zip pouches and bags)" summary={pouchSummary(d.label_pouch, pouchCatalogue)} open={d.label_pouch !== null} testId="custom-label-pouch" help="A front-of-pack label for a pouch or bag: the food photo in a circle, the name in script, how it is cooked, the pieces and price, and the ingredients, storage, dates and complaints QR along the bottom. Pick the pouch colour and the cooking method; everything else is this label's own wording.">
               <PouchPicker
                 value={d.label_pouch}
@@ -627,6 +638,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
   const [rows, setRows] = useState<CustomLabel[] | null>(null);
   const [edit, setEdit] = useState<CustomLabel | null | 'new'>(null);
   const [pouchSet, setPouchSet] = useState(false);
+  const [tubSet, setTubSet] = useState(false);
   const [print, setPrint] = useState<CustomLabel | null>(null);
   const [view, setView] = useState<CustomLabel | null>(null);
   const [query, setQuery] = useState('');
@@ -657,6 +669,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
               {canManage && (
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="secondary" icon={<Plus size={16} />} onClick={() => setPouchSet(true)} data-testid="custom-label-pouch-set">Pouch labels in every size</Button>
+                  <Button size="sm" variant="secondary" icon={<Plus size={16} />} onClick={() => setTubSet(true)} data-testid="custom-label-tub-set">Lid and side labels</Button>
                   <Button size="sm" icon={<Plus size={16} />} onClick={() => setEdit('new')} data-testid="custom-label-new">New custom label</Button>
                 </div>
               )}
@@ -713,6 +726,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
       {view && <ViewLabelModal target={printTargetOf(view)} onClose={() => setView(null)} onPrint={() => { setPrint(view); setView(null); }} />}
       {print && <PrintLabelModal target={printTargetOf(print)} canManage={canManage} onClose={() => { setPrint(null); void load(); }} />}
       {pouchSet && <PouchSetModal onClose={() => { setPouchSet(false); void load(); }} />}
+      {tubSet && <TubSetModal onClose={() => { setTubSet(false); void load(); }} />}
       {edit !== null && <CustomLabelModal label={edit === 'new' ? null : edit} onClose={() => setEdit(null)} onSaved={() => void load()} />}
     </div>
   );

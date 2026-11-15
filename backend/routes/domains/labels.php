@@ -189,3 +189,8 @@ Route::post('/labels/pouch-set', [LabelsController::class, 'storePouchSet'])
 // A picture for a label not saved yet: into the library, its id into the draft.
 Route::post('/labels/pictures', [LabelsController::class, 'storePicture'])
     ->middleware('permission:labels.manage');
+
+// A tub's lid and side labels in one go (owner, 2026-11-16). At the end of the
+// file: the route permission fixture is keyed by line.
+Route::post('/labels/tub-set', [LabelsController::class, 'storeTubSet'])
+    ->middleware('permission:labels.manage');

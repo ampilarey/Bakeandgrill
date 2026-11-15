@@ -518,7 +518,18 @@ type stepping down a little before a line is cut and the word INGREDIENTS giving
 45 mm (`SmallStickerDesign::circle`) the same cap and foot with the dates on two lines. A new part on a round sticker
 sits between the cap and the foot, never on them. The built-in template `jhol-momo-round` (Frozen Jhol Momo, a round
 80 mm label for the tub's lid: the momo plate, the one list for momo and jhol, wheat and sesame, 30 days, the price)
-came with it. How to
+came with it. **Lid and side labels** (owner,
+2026-11-16: "on the top of the container circular label with name and photo. At the side rectangular label with other
+details"): `custom_labels.label_part` (`lid` | `side`, `App\Domains\Labels\TubSet`; custom labels only). A lid on a round
+size draws `StickerDesign::lid()` (the cap, the photo large in a rust ring, else the mark or the logo, the name, the
+heading and what the pack holds, and `roundFoot()`, the foot the full round design shares): no ingredients, no dates, no
+QR, and `dropped()` reports none of them, nor the photo a side label leaves out, since the other label carries each. A
+side label is an ordinary rectangular label. Both print the name without "(Lid)" / "(Side)" (`TubSet::printName`). Lid
+and side labels (`TubSetModal`, beside Pouch labels in every size on the wizard's Something else and Custom labels;
+`POST /labels/tub-set`, `labels.manage`) makes the two with a saved label each, from the form's words over a built-in
+template's (`TubSet::templates()`: a `BUILTIN` row with a `product` that is not a pouch or a wrap); the editor's Lid or
+side of a tub fold sets the part on any custom label. A new part of a tub is a row in `TubSet::PARTS`. `TubSetTest`,
+`TubSetModal.test.tsx`. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

@@ -20,6 +20,8 @@ export type CustomDraft = {
   label_nutrition_per: NutritionPer; label_wrap: LabelWrap; wrap_pictures: WrapPicture[];
   /** The pouch label's picks; null is an ordinary sticker. */
   label_pouch: LabelPouch | null;
+  /** A tub's lid (name and photo on a round label) or its side label; null is an ordinary label. */
+  label_part: 'lid' | 'side' | null;
   /** The parts moved or resized by hand, per design (round 8). */
   label_layout: LabelArrangement;
   /** Badges (round 9): up to four keys. */
@@ -36,7 +38,7 @@ export const customDraft = (c: CustomLabel | null): CustomDraft => ({
   label_shelf_life_days: c?.label_shelf_life_days ? String(c.label_shelf_life_days) : '', label_pack_qty: c?.label_pack_qty ? String(c.label_pack_qty) : '', label_pack_unit: c?.label_pack_unit ?? '',
   label_price: c?.label_price != null ? String(c.label_price) : '', label_barcode: c?.label_barcode ?? '', label_net_weight: c?.label_net_weight ?? '', label_allergens: c?.label_allergens ?? '',
   label_nutrition: c?.label_nutrition ?? '',
-  label_nutrition_per: c?.label_nutrition_per === 'ml' ? 'ml' : 'g', label_wrap: c?.label_wrap ?? EMPTY_WRAP, wrap_pictures: c?.wrap_pictures ?? [], label_pouch: c?.label_pouch ?? null,
+  label_nutrition_per: c?.label_nutrition_per === 'ml' ? 'ml' : 'g', label_wrap: c?.label_wrap ?? EMPTY_WRAP, wrap_pictures: c?.wrap_pictures ?? [], label_pouch: c?.label_pouch ?? null, label_part: c?.label_part ?? null,
   label_layout: c?.label_layout ?? {},
   label_badges: c?.label_badges ?? [],
   label_photo_media_id: c?.label_photo_media_id ?? null, label_photo_url: c?.label_photo_url ?? null, label_title_media_id: c?.label_title_media_id ?? null, label_title_url: c?.label_title_url ?? null,
@@ -53,7 +55,7 @@ export const customPayload = (d: CustomDraft): CustomLabelPayload => ({
   label_shelf_life_days: d.label_shelf_life_days ? Number(d.label_shelf_life_days) : null, label_pack_qty: d.label_pack_qty ? Number(d.label_pack_qty) : null, label_pack_unit: text(d.label_pack_unit),
   label_price: d.label_price !== '' ? Number(d.label_price) : null, label_barcode: text(d.label_barcode), label_net_weight: text(d.label_net_weight), label_allergens: text(d.label_allergens),
   label_nutrition: text(d.label_nutrition),
-  label_nutrition_per: d.label_nutrition_per, label_wrap: d.label_wrap, label_pouch: d.label_pouch, label_layout: d.label_layout, label_badges: d.label_badges,
+  label_nutrition_per: d.label_nutrition_per, label_wrap: d.label_wrap, label_pouch: d.label_pouch, label_part: d.label_part, label_layout: d.label_layout, label_badges: d.label_badges,
   label_photo_media_id: d.label_photo_media_id, label_title_media_id: d.label_title_media_id,
 });
 

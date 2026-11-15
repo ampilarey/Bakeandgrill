@@ -785,7 +785,9 @@ final class StickerSheet
             'vector' => $vector,
             // The nutrition panel (round C): the recipe's per 100 g when the item prints it, a custom label's typed line.
             'nutrition' => $this->nutrition->forSticker($item),
-            'name' => (string) $item->name,
+            // A tub's lid or side label (2026-11-16) prints the product's name, without "(Lid)".
+            'part' => TubSet::partOf($item),
+            'name' => TubSet::printName((string) $item->name, TubSet::partOf($item)),
             'name_dv' => trim((string) $item->name_dv),
             'title_img' => $title,
             'title_ratio' => LabelImage::ratio($title),
@@ -858,7 +860,11 @@ final class StickerSheet
         $all = ' ' . implode(' ', $texts) . ' ';
         $has = fn (string $word): bool => $word !== '' && str_contains($all, $word);
         $out = [];
-        $packMissing = !empty($data['batch_qr']) && !in_array((string) $data['batch_qr'], $imgs, true);
+        // A tub's two labels share the work (2026-11-16): the lid leaves the pack's code and the list to
+        // the side label, and the side label leaves the photo to the lid. Neither is something left out.
+        $part = $data['part'] ?? null;
+        $lid = $part === 'lid' && ($sheet['shape'] ?? '') === 'circle';
+        $packMissing = !$lid && !empty($data['batch_qr']) && !in_array((string) $data['batch_qr'], $imgs, true);
         if (self::designOf($sheet, $data) === 'wrap') {
             foreach (array_keys(array_filter($leftOut, fn ($why) => $why === 'narrow')) as $part) {
                 $out[] = WrapConfig::PART_WORDS[$part][0] ?? ucfirst(str_replace('_', ' ', (string) $part));
@@ -870,6 +876,9 @@ final class StickerSheet
                 $out[] = 'Dhivehi name';
             }
             $ingredients = $lang === 'dv' ? ($data['ingredients_dv'] ?? '') : ($data['ingredients_en'] ?? '');
+            if ($lid) {
+                $ingredients = '';
+            }
             if (trim((string) $ingredients) !== '' && !isset($spots['ingredients'])) {
                 $out[] = 'Ingredients';
             } elseif (trim((string) $ingredients) !== '') {
@@ -880,7 +889,7 @@ final class StickerSheet
                     $out[] = 'Part of the ingredients';
                 }
             }
-            if (!empty($data['photo']) && !isset($spots['photo'])) {
+            if (!empty($data['photo']) && !isset($spots['photo']) && $part !== 'side') {
                 $out[] = 'Photo';
             }
             // The pack's code stands in the one QR place of a small label (StickerDesign::packQr).
@@ -888,7 +897,7 @@ final class StickerSheet
             // The pack's own code on every design (owner, 2026-11-14): a label too small for a QR that scans says so, once.
             if ($packMissing) {
                 $out[] = 'Pack QR code';
-            } elseif (!empty($data['show_qr']) && $qrs !== [] && array_intersect($qrs, $imgs) === []) {
+            } elseif (!$lid && !empty($data['show_qr']) && $qrs !== [] && array_intersect($qrs, $imgs) === []) {
                 $out[] = 'QR code';
             }
         }
