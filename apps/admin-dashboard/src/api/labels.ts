@@ -393,6 +393,8 @@ export type StickerRequest = {
   promo_text?: string | null;
   /** Round C: "Pack 3 of 40" on each copy; crop marks, and a bleed in mm (0–5) around a single label; the label printer's dots per inch. */
   number?: boolean;
+  /** A tub's lid or side label for this print (2026-11-16): a menu item prints as either. */
+  part?: 'lid' | 'side' | null;
   marks?: boolean;
   bleed?: number | null;
   dpi?: PrinterDpi | null;

@@ -87,6 +87,8 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
   const [rounded, setRounded] = useState(false);
   const [paperOpen, setPaperOpen] = useState(false);
   const [lang, setLang] = useState<StickerLang>(target.lang);
+  // A menu item on a tub prints as its lid (name and photo, round) or its side (the details); a custom label keeps its own part.
+  const [part, setPart] = useState<'' | 'lid' | 'side'>('');
   const [copies, setCopies] = useState(1);
   const [fill, setFill] = useState(true);
   const [mfg, setMfg] = useState(() => localToday());
@@ -134,6 +136,13 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
     if (ready && !copiesTouched.current) setCopies(perPage);
   }, [ready, perPage]);
 
+  /** The lid is a round label and the side a rectangle: picking one moves the size to match. */
+  const pickPart = (next: '' | 'lid' | 'side') => {
+    setPart(next);
+    if (next === 'lid' && choice.shape !== 'circle') { setChoice({ ...withPreset(choice, 'c80', presets), on: 'sheet' }); setRollId(null); }
+    if (next === 'side' && choice.shape === 'circle') { setChoice({ ...withPreset(choice, 'r100x50', presets), on: 'sheet' }); setRollId(null); }
+  };
+
   const request = (copiesWanted: number, forPreview: boolean) => ({
     items: [{ id: target.id, copies: copiesWanted, kind: target.kind, ...(target.kind === 'item' && sizeId ? { size: sizeId } : {}) }],
     lang, layout: sized.layout, w: sized.w, h: sized.h,
@@ -144,10 +153,11 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
     for: packedFor.trim() || null,
     for2: packedFor2.trim() || null,
     roll: picked.roll?.id ?? null,
+    part: part || null,
     preview: forPreview || undefined,
   });
 
-  const previewKey = useMemo(() => JSON.stringify([ready ? request(1, true) : null, redraw]), [ready, redraw, lang, sized.layout, sized.w, sized.h, choice.shape, rounded, fill, mfg, exp, qty, batch, packedFor, packedFor2, sizeId, picked.roll?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const previewKey = useMemo(() => JSON.stringify([ready ? request(1, true) : null, redraw]), [ready, redraw, lang, sized.layout, sized.w, sized.h, choice.shape, rounded, fill, mfg, exp, qty, batch, packedFor, packedFor2, sizeId, picked.roll?.id, part]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!ready || presets.length === 0) return;
     if (sizeIssue) { ++seq.current; setPreview(null); setChecked(null); setPreviewError(sizeIssue); setPreviewBusy(false); return; }
@@ -264,6 +274,18 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
               </div>
             )}
           </div>
+
+          {target.kind === 'item' && (
+            <div>
+              <span className={labelClass}>Which label</span>
+              <TabScrollRow role="group" aria-label="Which label" style={{ gap: 6 }}>
+                {([['', 'The usual label'], ['lid', 'Lid: name and photo'], ['side', 'Side: the details']] as const).map(([key, word]) => (
+                  <button key={key} type="button" onClick={() => pickPart(key)} aria-pressed={part === key} className={chip(part === key)} data-testid={`print-part-${key || 'usual'}`}>{word}</button>
+                ))}
+              </TabScrollRow>
+              {part !== '' && <p className="text-xs text-[var(--color-text-muted)] mt-1">{part === 'lid' ? 'For the top of a tub: the brand, the photo, the name and what the pack holds, on a round label. Print the side label for the ingredients and dates.' : 'For the side of a tub: the ingredients, the dates and the rest, on a rectangular label.'}</p>}
+            </div>
+          )}
 
           <div>
             <span className={labelClass}>Language</span>

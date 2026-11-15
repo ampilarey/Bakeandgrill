@@ -543,6 +543,7 @@ export const GUIDES: Guide[] = [
       'The name prints without "(Lid)" or "(Side)".',
       'Print the side label from My labels to set its Made on and Use by dates.',
       'To turn a label you already have into a lid or a side label, tap Edit on it and open Lid or side of a tub.',
+      'A menu item needs nothing made: in My labels tap Print on the item, then under Which label pick Lid: name and photo, print, and again with Side: the details.',
       'Measure the lid and the flat part of the tub\'s side before picking the sizes.',
     ],
     words: 'lid top side tub container box two labels round circle rectangle name photo details jhol momo',

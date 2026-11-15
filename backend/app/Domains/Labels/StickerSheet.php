@@ -167,6 +167,8 @@ final class StickerSheet
             'promo_text' => $promo['text'],
             // Round C (2026-10-12): "Pack 3 of 40" on each sticker, and a
             // print-ready sheet with crop marks and a bleed (mm, single labels).
+            // A tub's lid or side label for this print (2026-11-16): a menu item prints as either, picked at the print.
+            'part' => isset(TubSet::PARTS[(string) ($in['part'] ?? '')]) ? (string) $in['part'] : null,
             'number' => filter_var($in['number'] ?? false, FILTER_VALIDATE_BOOL),
             'marks' => filter_var($in['marks'] ?? false, FILTER_VALIDATE_BOOL),
             'bleed' => max(0.0, min(5.0, round((float) ($in['bleed'] ?? 0), 1))),
@@ -786,7 +788,8 @@ final class StickerSheet
             // The nutrition panel (round C): the recipe's per 100 g when the item prints it, a custom label's typed line.
             'nutrition' => $this->nutrition->forSticker($item),
             // A tub's lid or side label (2026-11-16) prints the product's name, without "(Lid)".
-            'part' => TubSet::partOf($item),
+            // The print's own pick wins (a menu item has no part of its own).
+            'part' => ($req['part'] ?? null) ?: TubSet::partOf($item),
             'name' => TubSet::printName((string) $item->name, TubSet::partOf($item)),
             'name_dv' => trim((string) $item->name_dv),
             'title_img' => $title,

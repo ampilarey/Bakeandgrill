@@ -528,8 +528,11 @@ side label is an ordinary rectangular label. Both print the name without "(Lid)"
 and side labels (`TubSetModal`, beside Pouch labels in every size on the wizard's Something else and Custom labels;
 `POST /labels/tub-set`, `labels.manage`) makes the two with a saved label each, from the form's words over a built-in
 template's (`TubSet::templates()`: a `BUILTIN` row with a `product` that is not a pouch or a wrap); the editor's Lid or
-side of a tub fold sets the part on any custom label. A new part of a tub is a row in `TubSet::PARTS`. `TubSetTest`,
-`TubSetModal.test.tsx`. How to
+side of a tub fold sets the part on any custom label. A new part of a tub is a row in `TubSet::PARTS`. A menu
+item has no part of its own (owner, 2026-11-16: "Need it in menu items also"): the print says which, `part` on the
+sticker request (kept by the saved label, the sheet link and `Reprint::KEYS`; it wins over a custom label's own), picked
+under Which label in `PrintLabelModal` (items only: The usual label, Lid, Side), which moves the size to a round one for
+the lid and a rectangle for the side. `TubSetTest`, `TubSetModal.test.tsx`, `PrintLabelModal.test.tsx`. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

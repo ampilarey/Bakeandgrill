@@ -86,4 +86,26 @@ class TubSetTest extends TestCase
         $this->assertStringNotContainsString('Garlic, oil', $html);
         $this->putJson("/api/labels/custom/{$id}", ['label_part' => null])->assertOk()->assertJsonPath('data.label_part', null);
     }
+
+    /** Owner, 2026-11-16: "Need it in menu items also". A menu item prints as its lid or its side, picked at the print. */
+    public function test_a_menu_item_prints_as_a_lid_or_a_side_label(): void
+    {
+        $item = \App\Models\Item::factory()->create(['name' => 'Chicken Curry', 'label_enabled' => true, 'label_ingredients' => 'Chicken, onion, chilli, coconut.']);
+        $body = ['items' => [['id' => $item->id, 'kind' => 'item', 'copies' => 1]], 'lang' => 'en', 'fill' => true, 'preview' => true];
+
+        $lid = $this->postJson('/api/labels/stickers/url', $body + ['layout' => 'single-round-custom', 'w' => 80, 'h' => 80, 'part' => 'lid'])->assertOk();
+        $html = (string) $this->get($lid->json('view_url') ?? $lid->json('url'))->assertOk()->getContent();
+        $this->assertStringContainsString('>Chicken Curry<', $html);
+        $this->assertStringNotContainsString('Chicken, onion', $html);
+        $this->assertStringNotContainsString('EXP DATE', $html);
+        $this->assertSame([], $lid->json('summary.dropped') ?? []);
+
+        // The same round size with no part is the full round label, list and dates and all.
+        $usual = $this->postJson('/api/labels/stickers/url', $body + ['layout' => 'single-round-custom', 'w' => 80, 'h' => 80])->assertOk();
+        $this->assertStringContainsString('Chicken, onion', (string) $this->get($usual->json('view_url') ?? $usual->json('url'))->getContent());
+
+        $side = $this->postJson('/api/labels/stickers/url', $body + ['layout' => 'single-custom', 'w' => 100, 'h' => 50, 'part' => 'side'])->assertOk();
+        $this->assertStringContainsString('Chicken', (string) $this->get($side->json('view_url') ?? $side->json('url'))->getContent());
+        $this->postJson('/api/labels/stickers/url', $body + ['layout' => 'single-custom', 'w' => 100, 'h' => 50, 'part' => 'top'])->assertStatus(422);
+    }
 }

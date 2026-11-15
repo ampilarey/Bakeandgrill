@@ -125,4 +125,32 @@ describe('PrintLabelModal', () => {
     await previewed();
     await waitFor(() => expect(screen.getByTestId('print-go')).toBeDisabled());
   });
+
+  /** Owner, 2026-11-16: "Need it in menu items also". */
+  it('a menu item prints as a lid on a round label or as a side label', async () => {
+    const round = { id: 'c80', shape: 'circle' as const, w: 80, h: 80, name: '80 mm round', cm: '', design: 'round', options: [{ on: 'sheet', layout: 'a4-round-custom', label: 'A4 sheet', per_page: 6, landscape: false }] };
+    const side = { ...preset('r100x50', 100, 50, 10) };
+    fetchLabelLayouts.mockResolvedValue({ ...LAYOUTS, presets: [...LAYOUTS.presets, round, side] });
+    stickerLinks.mockResolvedValue({ one_url: '/one', view_url: '/v', pdf_url: '/p', url: '/v', summary: summary({ design: 'round' }) });
+    show({ kind: 'item', id: 12, name: 'Chicken Curry', lang: 'en' });
+    await previewed();
+    expect(lastBody().part ?? null).toBeNull();
+
+    fireEvent.click(screen.getByTestId('print-part-lid'));
+    await waitFor(() => expect(lastBody().part).toBe('lid'), { timeout: 3000 });
+    expect(lastBody().layout).toBe('a4-round-custom');
+    expect(lastBody().w).toBe(80);
+
+    fireEvent.click(screen.getByTestId('print-part-side'));
+    await waitFor(() => expect(lastBody().part).toBe('side'), { timeout: 3000 });
+    expect(lastBody().w).toBe(100);
+    expect(lastBody().h).toBe(50);
+  });
+
+  it('a custom label is not asked which label: it keeps its own part', async () => {
+    stickerLinks.mockResolvedValue({ one_url: '/one', view_url: '/v', pdf_url: '/p', url: '/v', summary: summary() });
+    show();
+    await previewed();
+    expect(screen.queryByTestId('print-part-lid')).toBeNull();
+  });
 });

@@ -175,6 +175,7 @@ class LabelsController extends Controller
             // Round C (2026-10-12): pack numbering, a print-ready sheet
             // (crop marks, bleed in mm) and the label printer's dots per inch.
             'number' => 'sometimes|boolean',
+            'part' => ['sometimes', 'nullable', Rule::in(array_keys(TubSet::PARTS))],
             'marks' => 'sometimes|boolean',
             'bleed' => 'nullable|numeric|min:0|max:5',
             'dpi' => ['nullable', Rule::in(LabelRaster::DPIS)],
@@ -248,6 +249,7 @@ class LabelsController extends Controller
             'promo_now' => $req['promo_now'],
             'promo_text' => $req['promo_text'],
             'number' => $req['number'] ? 1 : null,
+            'part' => $req['part'] ?? null,
             'marks' => $req['marks'] ? 1 : null,
             'bleed' => $req['marks'] && $req['bleed'] > 0 ? $req['bleed'] : null,
             // A variable run (round 10): the rows' own details, aligned with items.
