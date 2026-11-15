@@ -115,9 +115,16 @@ class TelegramBillsTest extends TestCase
         $sent = $this->sent('5550001');
         $this->assertStringContainsString('Got the bill', $sent[count($sent) - 2]['text']);
         $card = end($sent);
-        $this->assertStringContainsString('<b>Agora</b>', $card['text']);
-        $this->assertStringContainsString('1. Flour: 5 kg × MVR 22.00 = MVR 110.00', $card['text']);
-        $this->assertStringContainsString('the bill says MVR 110.00', $card['text']);
+        // Laid out as the manual order's form: who, when, the lines, the total, Did you pay?
+        $this->assertStringContainsString('<b>Bought from:</b> Agora', $card['text']);
+        $this->assertStringContainsString('<b>Purchase date:</b> ' . now()->subDay()->format('D j M Y'), $card['text']);
+        $this->assertStringContainsString('<b>Bill no.:</b> INV-77', $card['text']);
+        $this->assertStringContainsString('<b>1. Flour</b>', $card['text']);
+        $this->assertStringContainsString('5 kg × MVR 22.00 = <b>MVR 110.00</b>', $card['text']);
+        $this->assertStringContainsString('On the bill: WHEAT FLOUR 1KG', $card['text']);
+        $this->assertStringContainsString('<b>Order total: MVR 110.00</b>', $card['text']);
+        $this->assertStringContainsString('The same as the bill', $card['text']);
+        $this->assertStringContainsString('<b>Did you pay?</b>', $card['text']);
         $buttons = collect($card['reply_markup']['inline_keyboard'])->flatten(1);
         $this->assertSame('pba:' . $bill->id, $buttons->firstWhere('text', '✅ Approve: paid in cash')['callback_data']);
         $this->assertNotNull($buttons->firstWhere('text', 'Open in Admin')['url']);
@@ -191,6 +198,8 @@ class TelegramBillsTest extends TestCase
         $this->assertStringContainsString('Approving also sets up', $card['text']);
         $this->assertStringContainsString('New item in your inventory: <b>Microwave container 525ml</b>, counted in piece', $card['text']);
         $this->assertStringContainsString('1 bundle of Microwave container 525ml = 50 piece', $card['text']);
+        $this->assertStringContainsString('<b>1. Microwave container 525ml</b> · 🆕 not in inventory', $card['text']);
+        $this->assertStringContainsString('Pack: 1 bundle = 50 piece, so 50 piece at MVR 2.70 each', $card['text']);
         $this->assertSame('pba:' . $bill->id, collect($card['reply_markup']['inline_keyboard'])->flatten(1)->firstWhere('text', '✅ Add and approve: paid in cash')['callback_data']);
         // Nothing is added until the press.
         $this->assertSame(1, InventoryItem::count());

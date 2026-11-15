@@ -1236,7 +1236,10 @@ approve slip via telegram"): a photo or a PDF sent to the bot in a private chat 
 (`TelegramUpdateHandler` → `TelegramBills::receive()`, `suppliers.purchases`): fetched with `TelegramClient::download()`,
 kept by `BillReader::keep()` (the one place a bill's file is stored, the Admin upload too) with `telegram_link_id`, read
 after the webhook has answered (`DeferAfterResponse`; the scheduler reads it if that is cut short), and `BillReader::read()`
-sends the reading back to that chat (`TelegramBills::tell()`, `card()`). `BillReader::review()` sorts
+sends the reading back to that chat (`TelegramBills::tell()`, `card()`). The card reads as the manual order's form does (owner,
+2026-11-15: "show more like admin form"): Bought from, Purchase date, Bill no., each item with its quantity × price, GST,
+its pack and what one unit comes to (`BillReader::unitsIn()`), the bill's own words, the Order total against the bill's,
+and Did you pay? as the buttons. `BillReader::review()` sorts
 what is left to decide (owner, 2026-11-15: a bill for a product not on file sent them to Admin): `blocking` needs the
 form (a line unsure, no shop or date, the lines more than 0.05 off the bill's total, the bill number on file, a product
 not on file for someone without `inventory.manage`), while `new_items` (a line with `new_name` and `new_unit`),

@@ -260,6 +260,28 @@ class BillReader
         ], fn ($v) => $v !== null);
     }
 
+    /**
+     * How many of the item's own unit one of the line's unit holds: 1 when it is bought
+     * in its own unit, the pack's size when the item has that pack, else the size read
+     * off the bill or typed, and null when nobody knows yet.
+     */
+    public function unitsIn(array $line): ?float
+    {
+        $own = mb_strtolower(trim((string) ($line['item']['unit'] ?? $line['new_unit'] ?? '')));
+        if ($line['unit'] === '' || $line['unit'] === $own) {
+            return 1.0;
+        }
+        if (!empty($line['item'])) {
+            $pack = \App\Models\InventoryPurchaseUnit::query()->where('inventory_item_id', $line['item']['id'])->get(['name', 'base_units'])
+                ->first(fn ($p) => mb_strtolower(trim((string) $p->name)) === $line['unit']);
+            if ($pack !== null) {
+                return (float) $pack->base_units;
+            }
+        }
+
+        return ($line['pack_size'] ?? 0) > 0 ? (float) $line['pack_size'] : null;
+    }
+
     /** The id of the item's pack the line's unit names, if it has one by that name. */
     private function packFor(array $line): ?int
     {

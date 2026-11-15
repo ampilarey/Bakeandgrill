@@ -144,30 +144,64 @@ class TelegramBills
             return ["🧾 <b>This bill could not be read</b>\n" . TelegramText::e((string) $bill->error) . "\n\nSend a clearer photo, or type it in Admin.", [[$open, $remove]]];
         }
 
+        // Laid out as the manual order's form is: who, when, each line with what it puts
+        // on the shelf, the total against the bill's, then Did you pay? as the buttons.
         $data = $reader->present($bill)['data'];
         $money = fn (float $v): string => 'MVR ' . number_format($v, 2);
         $qty = fn (float $v): string => rtrim(rtrim(number_format($v, 3, '.', ''), '0'), '.');
-        $lines = ['🧾 <b>' . TelegramText::e($data['shop'] !== '' ? $data['shop'] : 'A bill') . '</b>'];
-        $lines[] = implode(' · ', array_filter([
-            $data['date'] ?? 'no date read',
-            $data['bill_no'] !== '' ? 'no. ' . TelegramText::e($data['bill_no']) : null,
-        ]));
-        $lines[] = '';
-        foreach (array_slice($data['lines'], 0, 25) as $i => $line) {
-            $name = $line['item'] !== null
-                ? TelegramText::e($line['item']['name'])
-                : '⚠ not in inventory: ' . TelegramText::e($line['name']);
-            $unit = $line['unit'] !== '' ? $line['unit'] : ($line['item']['unit'] ?? '');
-            $lines[] = ($i + 1) . '. ' . $name . ': ' . $qty($line['quantity']) . ' ' . TelegramText::e($unit) . ' × ' . $money($line['unit_price'])
-                . ' = ' . $money($line['amount']) . (!empty($line['unsure']) ? ' ⚠' : '');
-        }
-        if (count($data['lines']) > 25) {
-            $lines[] = '… and ' . (count($data['lines']) - 25) . ' more';
+        $e = fn (?string $v): string => TelegramText::e((string) $v);
+        $date = $data['date'] ?? null;
+        $lines = [
+            '🧾 <b>Purchase order from a bill</b>',
+            '',
+            '<b>Bought from:</b> ' . ($data['shop'] !== '' ? $e($data['shop']) : '⚠ not read'),
+            '<b>Purchase date:</b> ' . ($date !== null ? \Carbon\Carbon::parse($date)->format('D j M Y') : '⚠ not read'),
+        ];
+        if ($data['bill_no'] !== '') {
+            $lines[] = '<b>Bill no.:</b> ' . $e($data['bill_no']);
         }
         $lines[] = '';
-        $lines[] = '<b>Lines: ' . $money($data['lines_total']) . '</b>' . ($data['total'] > 0 ? ' · the bill says ' . $money($data['total']) : '');
+        $lines[] = '<b>Items (' . count($data['lines']) . ')</b>';
+        foreach (array_slice($data['lines'], 0, 20) as $i => $line) {
+            $known = $line['item'] !== null;
+            $own = (string) ($line['item']['unit'] ?? $line['new_unit']);
+            $unit = $line['unit'] !== '' ? $line['unit'] : $own;
+            $in = $reader->unitsIn($line);
+            $lines[] = '';
+            $lines[] = '<b>' . ($i + 1) . '. ' . $e($known ? $line['item']['name'] : ($line['new_name'] !== '' ? $line['new_name'] : $line['name'])) . '</b>'
+                . ($known ? '' : ' · 🆕 not in inventory') . (!empty($line['unsure']) ? ' · ⚠ check this line' : '');
+            $lines[] = '   ' . $qty($line['quantity']) . ' ' . $e($unit) . ' × ' . $money($line['unit_price']) . ' = <b>' . $money($line['amount']) . '</b>'
+                . ($line['gst'] ? ' · 8% GST inside' : '');
+            if ($in === null) {
+                $lines[] = '   Pack: how many ' . $e($own) . ' in one ' . $e($unit) . ' is not known yet';
+            } elseif ($in != 1.0) {
+                $units = $line['quantity'] * $in;
+                $lines[] = '   Pack: 1 ' . $e($unit) . ' = ' . $qty($in) . ' ' . $e($own) . ', so ' . $qty($units) . ' ' . $e($own)
+                    . ' at ' . $money($units > 0 ? $line['amount'] / $units : 0) . ' each';
+            }
+            if (mb_strtolower($line['name']) !== mb_strtolower((string) ($line['item']['name'] ?? ''))) {
+                $lines[] = '   <i>On the bill: ' . $e(mb_strimwidth($line['name'], 0, 80, '…')) . '</i>';
+            }
+        }
+        if (count($data['lines']) > 20) {
+            $lines[] = '';
+            $lines[] = '… and ' . (count($data['lines']) - 20) . ' more lines. Open it in Admin to see them all.';
+        }
+        $lines[] = '';
+        $lines[] = '<b>Order total: ' . $money($data['lines_total']) . '</b>';
+        if ($data['total'] > 0) {
+            $lines[] = abs($data['total'] - $data['lines_total']) <= 0.05
+                ? '✓ The same as the bill\'s total.'
+                : '⚠ The bill\'s total is ' . $money($data['total']) . '.';
+        }
+        if ($data['gst_total'] > 0) {
+            $lines[] = 'GST on the bill: ' . $money($data['gst_total']);
+        }
+        if (!empty($data['seen_before'])) {
+            $lines[] = '⚠ A purchase with this bill number is already on file.';
+        }
         if ($data['note'] !== '') {
-            $lines[] = TelegramText::e($data['note']);
+            $lines[] = '<i>' . $e($data['note']) . '</i>';
         }
 
         $review = $reader->review($bill, $user !== null && $this->commands->can($user, self::ADD_ITEMS));
@@ -213,7 +247,7 @@ class TelegramBills
             array_push($lines, ...$adds);
             $lines[] = '';
         }
-        $lines[] = 'Check it against the bill, then approve. Approving makes the purchase order as received, so the stock goes in.';
+        $lines[] = '<b>Did you pay?</b> Check it against the bill, then choose. Approving makes the purchase order as received, so the stock goes in.';
         $word = $adds !== [] ? '✅ Add and approve' : '✅ Approve';
 
         return [implode("\n", $lines), [

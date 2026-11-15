@@ -923,7 +923,7 @@ export const GUIDES: Guide[] = [
     open: { to: '/telegram', label: 'Open Telegram' },
     steps: [
       'In your chat with the staff bot, send a photo of the bill, or a PDF.',
-      'The bot answers Got the bill. In a moment the reading arrives: the shop, the date and each line with its quantity and price.',
+      'The bot answers Got the bill. In a moment the reading arrives, laid out like the manual order: Bought from, Purchase date, each item with its quantity, price and pack, the Order total against the bill\'s, and Did you pay?',
       'Check it against the bill.',
       'Tap Approve: paid in cash, or Approve: not paid yet.',
       'The purchase order is made as received, so the stock goes in, and the bill is kept as its receipt.',
