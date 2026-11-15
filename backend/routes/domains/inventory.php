@@ -97,6 +97,12 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
         // received a thing.
         Route::delete('/purchases/{id}', [PurchaseController::class, 'destroy'])->whereNumber('id');
         Route::post('/purchases/{id}/receipts', [PurchaseController::class, 'uploadReceipt'])->whereNumber('id');
+        // Supplier bills read into a manual PO (Purchase Orders → Read bills).
+        Route::get('/purchases/bills', [App\Http\Controllers\Api\PurchaseBillController::class, 'index']);
+        Route::post('/purchases/bills', [App\Http\Controllers\Api\PurchaseBillController::class, 'store']);
+        Route::post('/purchases/bills/{id}/read', [App\Http\Controllers\Api\PurchaseBillController::class, 'read'])->whereNumber('id');
+        Route::get('/purchases/bills/{id}/file', [App\Http\Controllers\Api\PurchaseBillController::class, 'file'])->whereNumber('id');
+        Route::delete('/purchases/bills/{id}', [App\Http\Controllers\Api\PurchaseBillController::class, 'destroy'])->whereNumber('id');
     });
 
     // Every switch that governs buying, on one screen (Purchasing → Settings).

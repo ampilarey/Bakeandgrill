@@ -14,6 +14,8 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { ScanSheet } from '../components/ScanSheet';
+import { BillsToCheck, viewBill } from '../components/purchasebills/BillsToCheck';
+import type { BillLine, PurchaseBill } from '../api/purchasing';
 import { countScannedItem } from '../utils/receivingScan';
 import { asPacks, describePack, tidyNumber } from '../utils/packDetails';
 
@@ -189,7 +191,36 @@ type ManualPoLine = {
    * a line can say otherwise for the shop it came from.
    */
   gst: boolean;
+  /**
+   * What the bill said, when the line was read from one (Read bills). Kept
+   * beside the boxes so the person checking can hold the two together, and
+   * so a line with no item yet still says what it is.
+   */
+  bill?: Pick<BillLine, 'name' | 'quantity' | 'unit' | 'unit_price' | 'amount' | 'unsure'>;
 };
+
+/** "2 carton × MVR 180.00 = MVR 360.00", as read off the bill. */
+export function billLineText(b: NonNullable<ManualPoLine['bill']>): string {
+  return `${tidyNumber(b.quantity)}${b.unit ? ` ${b.unit}` : ''} × ${mvr(b.unit_price)} = ${mvr(b.amount)}`;
+}
+
+/** A bill's lines as lines of the manual order, every figure the person's to change. */
+export function linesFromBill(lines: BillLine[], canAddItems: boolean): ManualPoLine[] {
+  return lines.map((b) => ({
+    ...blankManualLine(),
+    selection: b.item ? { id: b.item.id, label: b.item.name, item: b.item } : null,
+    // No item on file: the "not on the list" form opens with a name to start from.
+    newItem: !b.item && canAddItems ? { name: b.new_name || b.name, unit: b.new_unit } : null,
+    quantity: String(b.quantity),
+    unit_cost: String(b.unit_price),
+    unitText: b.unit,
+    gst: b.gst,
+    // The bill's price and unit are this purchase's: the last purchase's must not replace them.
+    costTyped: true,
+    unitTyped: true,
+    bill: { name: b.name, quantity: b.quantity, unit: b.unit, unit_price: b.unit_price, amount: b.amount, unsure: b.unsure },
+  }));
+}
 
 const blankManualLine = (): ManualPoLine => ({
   selection: null, quantity: '1', unit_cost: '0', unitText: '', packs: [], last: null, newPackQty: '',
@@ -463,6 +494,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     paid_method: lastManualPaid().method as ManualPaidMethod,
     paid_amount: '',
   });
+  /** The bill the open order was read from (Read bills), or null for one typed by hand. */
+  const [billFor, setBillFor] = useState<PurchaseBill | null>(null);
+  const [billsKey, setBillsKey] = useState(0);
   const [manualPoSaving, setManualPoSaving] = useState(false);
   const [manualPoError, setManualPoError] = useState('');
 
@@ -590,6 +624,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
 
   const openManualPo = async () => {
     setManualPoError('');
+    setBillFor(null);
     setManualPoForm({
       supplier_name_text: '',
       purchase_date: today(),
@@ -606,6 +641,28 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       const supRes = await fetchSuppliers({ active_only: true });
       setManualSuppliers(supRes.data ?? []);
     } catch (e) { setManualPoError((e as Error).message); }
+  };
+
+  /**
+   * The manual order, filled in from a bill that was read. Nothing is saved:
+   * every box is the person's to change, and Create is theirs to press.
+   */
+  const openManualPoFromBill = async (bill: PurchaseBill) => {
+    const data = bill.data;
+    if (!data) return;
+    await openManualPo();
+    const lines = linesFromBill(data.lines, canManageStock);
+    setBillFor(bill);
+    setManualPoForm((f) => ({
+      ...f,
+      supplier_name_text: data.shop,
+      purchase_date: data.date ?? f.purchase_date,
+      lines: lines.length > 0 ? lines : f.lines,
+    }));
+    // Open on the first line that needs a decision; else all folded, to read down.
+    const first = lines.findIndex((l) => !l.selection || l.bill?.unsure);
+    setOpenLine(first >= 0 ? first : null);
+    lines.forEach((l, idx) => { if (l.selection) void loadPacksFor(idx, l.selection.item.id); });
   };
 
   /**
@@ -748,6 +805,12 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       })
       .filter(Boolean) as { inventory_item_id: number; name: string; quantity: number; unit_cost: number; purchase_unit_id?: number; unit?: string; gst_rate_bp: number }[];
     if (lines.length === 0) { setManualPoError('Add at least one valid line item.'); return; }
+    // A line read from the bill with no item would be left out without a word.
+    const noItem = manualPoForm.lines.filter((l) => l.bill && !l.selection).length;
+    if (noItem > 0) {
+      setManualPoError(`${noItem} ${noItem === 1 ? 'line from the bill has' : 'lines from the bill have'} no item yet. Pick or add the item, or remove the line.`);
+      return;
+    }
 
     // A word like "case" with no size behind it cannot be turned into stock or
     // a price, so it is stopped here rather than saved as a guess.
@@ -782,7 +845,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
         paid,
         ...(paid !== 'none' ? { paid_method: paidMethod } : {}),
         ...(paid === 'part' ? { paid_amount: Math.round(partAmount * 100) / 100 } : {}),
+        ...(billFor ? { bill_id: billFor.id, ...(billFor.data?.bill_no ? { supplier_invoice_no: billFor.data.bill_no } : {}) } : {}),
       });
+      if (billFor) { setBillFor(null); setBillsKey((k) => k + 1); }
       rememberManualPaid(paid, paidMethod);
       showToast('Purchase order created.');
       setShowManualPo(false);
@@ -1244,6 +1309,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
         </div>
       )}
       {error && <ErrorMsg message={error} />}
+
+      {/* Supplier bills sent in to be read; Check opens the manual order filled in. */}
+      <BillsToCheck onCheck={(bill) => void openManualPoFromBill(bill)} reloadKey={billsKey} startOpen={searchParams.get('bills') === '1'} />
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -1751,6 +1819,30 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       {showManualPo && (
         <Modal title="Create Manual Purchase Order" onClose={() => setShowManualPo(false)} maxWidth={760}>
           {manualPoError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 8 }}>{manualPoError}</p>}
+          {/* Read from a bill: say so, keep the bill a tap away, and hold the
+              lines against the bill's own total while they are checked. */}
+          {billFor?.data && (
+            <div data-testid="manual-po-bill">
+              <p className="po-note">
+                Read from a bill{billFor.data.bill_no ? ` (no. ${billFor.data.bill_no})` : ''}. Check the shop, the date and every line against it before you create the order.{' '}
+                <button type="button" className="pb-link" onClick={() => void viewBill(billFor).catch((e: Error) => setManualPoError(e.message))}>View the bill</button>
+              </p>
+              {billFor.data.note && <p className="po-note po-note--warn">{billFor.data.note}</p>}
+              {billFor.data.seen_before && (
+                <p className="po-note po-note--warn" data-testid="manual-po-bill-seen">
+                  A purchase with this bill number is already on file{billFor.data.seen_before.purchase_date ? ` (${billFor.data.seen_before.purchase_date})` : ''}. Create this one only if it is a different bill.
+                </p>
+              )}
+              {!billFor.data.date && (
+                <p className="po-note po-note--warn">The date on the bill could not be read. Set the purchase date yourself.</p>
+              )}
+              {billFor.data.total > 0 && (
+                Math.abs(billFor.data.total - manualPoTotal) <= 0.05 && manualPoIncompleteLines === 0
+                  ? <p className="po-note" data-testid="manual-po-bill-match">The lines add up to the bill's total, {mvr(billFor.data.total)}.</p>
+                  : <p className="po-note po-note--warn" data-testid="manual-po-bill-match">The bill's total is {mvr(billFor.data.total)}. These lines add up to {mvr(manualPoTotal)}.</p>
+              )}
+            </div>
+          )}
           <div data-responsive-grid style={{ display: 'grid', '--cols': '3fr 2fr', gap: 12, marginBottom: 12 }}>
             <div>
               {/* Bought from whom. One field: a supplier you deal with and the
@@ -1876,7 +1968,8 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
             </div>
           )}
 
-          <div style={{ display: 'grid', gap: 8 }}>
+          {/* minmax(0, 1fr): a long name on one row must not widen every row past the phone. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }}>
             {manualPoForm.lines.map((line, idx) => (openLine === idx ? (
               <div key={idx} data-testid={`manual-po-line-${idx}`} style={{ border: '1.5px solid var(--color-primary)', borderRadius: 10, padding: 12, background: 'var(--color-surface)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -1890,6 +1983,11 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                     )}
                   </div>
                 </div>
+                {line.bill && (
+                  <p style={{ fontSize: 12, color: line.bill.unsure ? 'var(--color-warning-strong)' : 'var(--color-text-secondary)', margin: '0 0 6px', lineHeight: 1.45 }} data-testid={`manual-po-bill-line-${idx}`}>
+                    On the bill: {line.bill.name} · {billLineText(line.bill)}{line.bill.unsure ? '. This one was hard to read: check it.' : ''}
+                  </p>
+                )}
                 <ItemSearch
                   kind="inventory"
                   value={line.selection}
@@ -1922,6 +2020,8 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                          */
                         unit_cost: '',
                         gst: (sel?.item.gst_rate_bp ?? 0) > 0,
+                        // Read from a bill: what was paid is on the bill, not in last week's order.
+                        ...(l.bill ? { unit_cost: String(l.bill.unit_price), unitText: l.bill.unit, costTyped: true, unitTyped: true, gst: l.gst } : {}),
                       } : l),
                     }));
                     if (sel) void loadPacksFor(idx, sel.item.id);
@@ -2209,15 +2309,16 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', color: 'inherit' }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
-                    <span style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {line.selection ? line.selection.item.name : 'No item picked yet'}
+                    <span style={{ fontWeight: 700, fontSize: 14, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {line.selection ? line.selection.item.name : line.bill ? `Not in your inventory: ${line.bill.name}` : 'No item picked yet'}
                     </span>
                     <span data-testid={`manual-po-line-total-${idx}`} style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
                       {manualLineTotal(line) === null ? '—' : mvr(manualLineTotal(line))}
                     </span>
                   </div>
                   <div style={{ fontSize: 12, color: manualLineTotal(line) === null ? 'var(--color-warning-strong)' : 'var(--color-text-secondary)', marginTop: 2 }}>
-                    {lineSummaryText(line)}
+                    {line.bill && !line.selection ? `On the bill: ${billLineText(line.bill)}. Tap to pick or add the item.` : lineSummaryText(line)}
+                    {line.bill?.unsure && line.selection ? ' · check this line' : ''}
                   </div>
                 </button>
                 {manualPoForm.lines.length > 1 && (

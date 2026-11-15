@@ -104,4 +104,14 @@ return [
         'expense_tax_type' => env('XERO_EXPENSE_TAX_TYPE'),
     ],
 
+
+    /*
+    | Claude reads supplier bills into a purchase order (Purchase Orders →
+    | Read bills). Without a key the button says it is not set up.
+    */
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+        'bill_model' => env('BILL_READER_MODEL', 'claude-opus-5-5'),
+        'base_url' => env('ANTHROPIC_BASE_URL'),
+    ],
 ];

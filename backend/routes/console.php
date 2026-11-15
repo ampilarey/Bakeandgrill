@@ -75,6 +75,14 @@ Schedule::command('app:expire-loyalty-points')
     ->onFailure($alertOnFailure('app:expire-loyalty-points'))
     ->after($trackSuccess('app:expire-loyalty-points'));
 
+// Supplier bills sent in and not read by the screen that sent them (Purchase Orders → Read bills)
+Schedule::command('purchases:read-bills')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onFailure($alertOnFailure('purchases:read-bills'))
+    ->after($trackSuccess('purchases:read-bills'));
+
 // Coming-soon dishes go on sale on their day; customers waiting for a dish hear it is back (iruali import plan, feature 8)
 Schedule::command('items:alerts')
     ->everyFiveMinutes()

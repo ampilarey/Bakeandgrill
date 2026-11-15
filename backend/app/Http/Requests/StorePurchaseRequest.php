@@ -65,6 +65,9 @@ class StorePurchaseRequest extends FormRequest
             // Paid at the counter when it was bought (owner, 2026-10-23: a
             // manual PO received said "you owe" a shop already paid). Omitted
             // or "none" leaves it owed, as before.
+            // The bill this order was read from (Read bills): its file becomes
+            // the order's receipt and it leaves the list of bills to check.
+            'bill_id' => 'nullable|integer|exists:purchase_bills,id',
             'paid' => 'nullable|in:none,full,part',
             'paid_amount' => 'nullable|required_if:paid,part|numeric|min:0.01',
             'paid_method' => 'nullable|in:' . implode(',', \App\Http\Controllers\Api\PurchasePaymentController::METHODS),

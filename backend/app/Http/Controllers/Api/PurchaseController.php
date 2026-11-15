@@ -94,8 +94,16 @@ class PurchaseController extends Controller
         unset($validated['lines_with_gst']);
         $paid = array_intersect_key($validated, array_flip(['paid', 'paid_amount', 'paid_method']));
         unset($validated['paid'], $validated['paid_amount'], $validated['paid_method']);
+        $billId = $validated['bill_id'] ?? null;
+        unset($validated['bill_id']);
         $purchase = $this->createFromPayload($validated, $request);
         $purchase = $this->recordPaidAtPurchase($purchase, $paid);
+        if ($billId !== null) {
+            $bill = \App\Models\PurchaseBill::query()->whereIn('status', \App\Models\PurchaseBill::WAITING)->find($billId);
+            if ($bill !== null) {
+                app(\App\Domains\Inventory\Bills\BillReader::class)->used($bill, $purchase, $request->user()?->id);
+            }
+        }
 
         app(AuditLogService::class)->log(
             'purchase.created',

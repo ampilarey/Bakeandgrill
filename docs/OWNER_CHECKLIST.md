@@ -145,6 +145,20 @@ itself; the cashier confirms it at Charge and hands over that stand. The number 
 the kitchen screen marks the order served, or for 90 minutes. Zero turns it off again. Tables
 you already have keep working as before.
 
+## 7e. A Claude key so bills are read for you (10 minutes)
+
+Purchasing → Orders → **Read bills** reads a photo or PDF of a supplier's bill into a purchase
+order for you to check. It needs a key:
+
+1. Go to console.anthropic.com, sign up, and add a little credit (a bill costs a few cents to read).
+2. Under API keys, create a key. It starts with `sk-ant-`.
+3. In cPanel → File Manager, open `/home/bakeandgrill/public_html/backend/.env` and add a line:
+   `ANTHROPIC_API_KEY=` followed by the key. Do the same on TEST if you want it there.
+4. Run the deploy command once more so the setting is picked up.
+
+Without the key everything else works; the Read bills button says it is not set up.
+Bill pictures are sent to Anthropic (the maker of Claude) to be read, and nowhere else.
+
 ## 8. Optional
 
 - **Printed cards on the Matica 210** (or any card printer): Promotions → Printed cards. Install the

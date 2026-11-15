@@ -7294,6 +7294,20 @@ table.is-table.is-table { display: none; }
 .po-pick__name { flex: 1 1 200px; min-width: 0; font-size: 13px; color: var(--color-text-secondary); overflow-wrap: anywhere; }
 .po-note { margin: 0 0 12px; padding: 8px 12px; border-radius: 10px; font-size: 13px; background: var(--color-tone-rust-bg); color: var(--color-tone-rust-text); border: 1px solid var(--color-tone-rust-border); }
 .po-note--warn { background: color-mix(in srgb, var(--color-warning) 14%, var(--color-surface)); color: var(--color-text); border-color: color-mix(in srgb, var(--color-warning) 45%, transparent); }
+/* Bills to check (Purchase Orders → Read bills). Phone first: words over buttons; from 700px side by side. */
+.pb-card { margin: 0 0 16px; padding: 12px; border-radius: 14px; background: var(--color-surface); border: 1px solid var(--color-border); }
+.pb-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.pb-head__words { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.pb-head__words span { font-size: 12px; color: var(--color-text-secondary); line-height: 1.45; }
+.pb-card .po-note { margin: 10px 0 0; }
+.pb-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pb-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; border-radius: 10px; background: var(--color-bg); border: 1px solid var(--color-border-light); }
+.pb-row--failed { border-color: color-mix(in srgb, var(--color-danger) 35%, transparent); }
+.pb-row__words { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; overflow-wrap: anywhere; }
+.pb-row__words span { font-size: 12px; color: var(--color-text-secondary); line-height: 1.45; }
+.pb-row--failed .pb-row__words span { color: var(--color-danger-strong); }
+.pb-row__acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.pb-link { background: none; border: none; padding: 0; font: inherit; font-weight: 700; color: var(--color-primary); text-decoration: underline; cursor: pointer; }
 .po-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px 12px; margin-bottom: 14px; }
 .po-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .po-field--wide { grid-column: 1 / -1; }

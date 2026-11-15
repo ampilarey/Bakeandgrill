@@ -1027,6 +1027,9 @@ export async function createPurchase(data: {
   paid?: 'full' | 'part' | 'none';
   paid_amount?: number;
   paid_method?: 'cash' | 'transfer' | 'other';
+  /** The bill this order was read from (Read bills): its file becomes the receipt. */
+  bill_id?: number;
+  supplier_invoice_no?: string;
 }): Promise<{ purchase: Purchase }> {
   return req('/purchases', { method: 'POST', body: JSON.stringify(data) });
 }

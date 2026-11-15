@@ -1193,6 +1193,32 @@ each order dated its own purchase day, cash, `payment_ref` "Marked paid together
 way to create or re-total a purchase goes through these, never leaves `paid_amount` behind. `SupplierPaymentsTest`,
 `OneShopRunOnePotTest`.
 
+## Supplier bills are read into the manual PO
+
+Owner, 2026-11-15 ("I have a pile of bills to enter. But I have no time. Can u add google or claude ocr… and fill the
+manual po. So admin just need to check and approve"). Purchasing → Orders → **Bills to check** (`components/purchasebills/
+BillsToCheck.tsx`): Read bills takes photos or PDFs, as many as picked, each kept as a `purchase_bills` row
+(`PurchaseBill`: queued → reading → ready | failed, done once it became a purchase; the file under
+`purchase-receipts/bills/` on the private disk, one sha1 per file so the same file is refused twice) and read on the
+server by Claude (`App\Domains\Inventory\Bills\BillVision`, the only place that calls the Claude API: the official PHP
+SDK `anthropic-ai/sdk`, `claude-opus-5-5` unless `BILL_READER_MODEL` says otherwise, the answer held to
+`BillVision::SCHEMA` by structured output, the instructions and the inventory and supplier lists cached; key
+`ANTHROPIC_API_KEY`, and without it `enabled` is false, the button is off and says why). `BillReader` sends a photo
+upright and at most 2200 px, tells Claude what is on file (`context()`: each active inventory item with its unit and packs,
+the suppliers), and `tidy()` holds the answer to what the form takes: an item id that is not on file is dropped, a date
+in the future is left blank, and a line whose quantity × price is not its amount is `unsure`. The screen that sent a bill
+reads it at once (`POST /purchases/bills/{id}/read`, one reader per bill by a claimed update); `purchases:read-bills`
+(every minute) reads what a closed phone left and frees a reading killed part way (`STALE_MINUTES`). Check opens the
+manual PO filled in (`openManualPoFromBill`, `linesFromBill()`): a matched line keeps the bill's price and unit
+(`costTyped`, `unitTyped`, so the last purchase never replaces them; a unit the item has no pack for asks how many it
+holds, as any typed unit does), a line with no item says "Not in your inventory" with the bill's words and opens the new
+item form, the banner holds the lines against the bill's total and points out a bill number already on file
+(`seen_before`), and **a line from the bill with no item stops Create PO, never dropped without a word**. Nothing is a
+purchase until Create PO, which goes through the one manual path with `bill_id`: `BillReader::used()` makes the bill's
+file the order's receipt and takes it off the list. Needs attention carries `purchase_bills`. A new thing read from a
+picture goes through `BillVision`'s pattern (one class that calls Claude, swapped in tests), never a key in the browser.
+`PurchaseBillsTest`, `ReadBills.test.tsx`.
+
 ## QR and card payments are checked by hand
 
 Owner, 2026-10-28: a QR customer types the bill amount themselves and the cashier keys the card

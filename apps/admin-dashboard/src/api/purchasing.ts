@@ -1,4 +1,5 @@
-import { req } from './client';
+import { req, requestBlob } from './client';
+import type { InventoryItem } from './operations';
 
 /**
  * Every switch that governs buying — one call, one screen.
@@ -242,4 +243,74 @@ export async function recordPurchasePayment(purchaseId: number, data: {
 
 export async function clearPurchasePayment(purchaseId: number): Promise<{ message: string }> {
   return req(`/purchases/${purchaseId}/payment`, { method: 'DELETE' });
+}
+
+// ── Supplier bills read into a manual PO (owner, 2026-11-15) ──────────────────
+
+/** One line of goods as read off a bill. */
+export type BillLine = {
+  /** The line as written on the bill. */
+  name: string;
+  /** The inventory item it was matched to, or null when none of them is this product. */
+  item_id: number | null;
+  item: InventoryItem | null;
+  /** For a line with no item: a name and a unit to start a new inventory item from. */
+  new_name: string;
+  new_unit: string;
+  quantity: number;
+  /** "" is the item's own unit; else a pack's name or the bill's own word. */
+  unit: string;
+  /** What one cost, as paid: GST inside. */
+  unit_price: number;
+  amount: number;
+  gst: boolean;
+  /** Hard to read, or the sum does not come to the amount: look at this one. */
+  unsure: boolean;
+};
+
+export type BillData = {
+  shop: string;
+  bill_no: string;
+  date: string | null;
+  total: number;
+  gst_total: number;
+  note: string;
+  lines: BillLine[];
+  lines_total: number;
+  /** A purchase already on file with this bill number. */
+  seen_before: { purchase_id: number; purchase_date: string | null } | null;
+};
+
+export type PurchaseBill = {
+  id: number;
+  status: 'queued' | 'reading' | 'ready' | 'failed';
+  file_name: string;
+  is_image: boolean;
+  error: string | null;
+  sent_at: string | null;
+  data: BillData | null;
+};
+
+export async function fetchPurchaseBills(): Promise<{ enabled: boolean; bills: PurchaseBill[] }> {
+  return req('/purchases/bills');
+}
+
+/** Keep one bill (a photo or a PDF). It is not read yet: call readPurchaseBill. */
+export async function sendPurchaseBill(file: File): Promise<{ bill: PurchaseBill }> {
+  const body = new FormData();
+  body.append('file', file);
+  return req('/purchases/bills', { method: 'POST', body });
+}
+
+/** Read it now. Takes a few seconds; also "Try again" on one that failed. */
+export async function readPurchaseBill(id: number): Promise<{ bill: PurchaseBill }> {
+  return req(`/purchases/bills/${id}/read`, { method: 'POST' });
+}
+
+export async function removePurchaseBill(id: number): Promise<{ ok: boolean }> {
+  return req(`/purchases/bills/${id}`, { method: 'DELETE' });
+}
+
+export async function downloadPurchaseBill(id: number): Promise<Blob> {
+  return requestBlob(`/purchases/bills/${id}/file`, {});
 }

@@ -94,6 +94,11 @@ final class AdminInbox
                 'count' => fn () => (int) DB::table('failed_jobs')->count(),
                 'level' => $warn,
             ],
+            // Supplier bills read and waiting for someone to check and save them.
+            'purchase_bills' => [
+                'label' => 'Supplier bills to check', 'link' => '/purchasing/orders?bills=1', 'permission' => 'suppliers.purchases',
+                'count' => fn () => \App\Models\PurchaseBill::query()->whereIn('status', [\App\Models\PurchaseBill::READY, \App\Models\PurchaseBill::FAILED])->count(),
+            ],
             'label_rolls' => [
                 'label' => 'Label rolls running low', 'link' => '/labels/settings', 'permission' => 'labels.manage',
                 'count' => fn () => count(array_filter(LabelRolls::presentAll(), fn (array $r) => !empty($r['low_now']))),
