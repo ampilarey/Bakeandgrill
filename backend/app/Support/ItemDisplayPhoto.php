@@ -72,7 +72,7 @@ final class ItemDisplayPhoto
 
         return $photo + [
             'cutout_only' => $cutoutOnly,
-            'animated_tile' => ! $cutoutOnly && $photo['placeholder'] && parse_url((string) $photo['url'], PHP_URL_PATH) === self::STANDARD_TILE,
+            'animated_tile' => !$cutoutOnly && $photo['placeholder'] && parse_url((string) $photo['url'], PHP_URL_PATH) === self::STANDARD_TILE,
             'cutout' => $cutout,
             'cutout_webp' => $cutout ? PublicMediaUrl::absolute($item->cutout_webp_url ?? null) : null,
             'backdrop' => $cutout ? app(CutoutBackdrop::class)->resolve($item) : null,

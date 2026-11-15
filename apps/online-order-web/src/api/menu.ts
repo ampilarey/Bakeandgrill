@@ -261,8 +261,43 @@ export async function fetchCheckoutFeesPreview(
   });
 }
 
+/*
+ * The menu's reads, shared for a few seconds (menu audit, 2026-11-15). The app
+ * asks for the menu as soon as it starts (`primeMenu()` in main.tsx), while the
+ * menu page's own code is still downloading; when the page then asks, it gets
+ * the answer already on its way instead of starting again. A failure is not
+ * remembered, and after the window every ask is a fresh one.
+ */
+const MENU_SHARE_MS = 5_000;
+const menuShared = new Map<string, { at: number; promise: Promise<unknown> }>();
+
+function sharedBriefly<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const hit = menuShared.get(key);
+  if (hit && now - hit.at < MENU_SHARE_MS) return hit.promise as Promise<T>;
+  const promise = load();
+  const entry = { at: now, promise };
+  menuShared.set(key, entry);
+  promise.catch(() => {
+    if (menuShared.get(key) === entry) menuShared.delete(key);
+  });
+  return promise;
+}
+
+export function resetMenuShare(): void {
+  menuShared.clear();
+}
+
+/** Ask for everything the menu page needs, before the page itself has loaded. */
+export function primeMenu(): void {
+  void fetchCategories().catch(() => undefined);
+  void fetchItems().catch(() => undefined);
+  void fetchItems('catering').catch(() => undefined);
+  void fetchOnlineOrderingStatus().catch(() => undefined);
+}
+
 export async function fetchCategories(): Promise<{ data: Category[] }> {
-  return request<{ data: Category[] }>(ENDPOINTS.CATEGORIES);
+  return sharedBriefly('categories', () => request<{ data: Category[] }>(ENDPOINTS.CATEGORIES));
 }
 
 export type FetchItemsResult = {
@@ -276,7 +311,11 @@ export type FetchItemsResult = {
 /** A guard against a bad `last_page`, not a limit anyone should reach. */
 const MAX_MENU_PAGES = 20;
 
-async function fetchItemsForChannel(ch: MenuListingChannel): Promise<MenuItem[]> {
+function fetchItemsForChannel(ch: MenuListingChannel): Promise<MenuItem[]> {
+  return sharedBriefly(`items:${ch}`, () => loadItemsForChannel(ch));
+}
+
+async function loadItemsForChannel(ch: MenuListingChannel): Promise<MenuItem[]> {
   // Keep inactive items off the menu via the API's is_active filter.
   // Do NOT send available_only — snoozed / 86'd / sold-out items must stay
   // visible (dimmed) with available_now / unavailable_reason attached.
@@ -290,17 +329,22 @@ async function fetchItemsForChannel(ch: MenuListingChannel): Promise<MenuItem[]>
    * `data` worked while the menu fitted in one page and would have started
    * dropping dishes the day it passed a hundred, with nothing to show for it.
    */
-  const raw: MenuItem[] = [];
-  let page = 1;
-  let lastPage = 1;
-  do {
+  const pageOf = (page: number) => {
     const qs = new URLSearchParams({ channel: ch, view: 'customer', page: String(page) });
-    const res = await request<{ data: MenuItem[]; last_page?: number }>(`${ENDPOINTS.ITEMS}?${qs}`);
-    raw.push(...(res.data ?? []));
-    lastPage = Number(res.last_page ?? 1) || 1;
-    page += 1;
-    // A malformed last_page must not spin: the menu is not thousands of pages.
-  } while (page <= lastPage && page <= MAX_MENU_PAGES);
+    return request<{ data: MenuItem[]; last_page?: number }>(`${ENDPOINTS.ITEMS}?${qs}`);
+  };
+  const first = await pageOf(1);
+  const raw: MenuItem[] = [...(first.data ?? [])];
+  // The server sends the whole menu in one page; should it ever not, the rest
+  // are asked for together, not one after another (menu audit, 2026-11-15).
+  // A malformed last_page must not spin: the menu is not thousands of pages.
+  const lastPage = Math.min(Number(first.last_page ?? 1) || 1, MAX_MENU_PAGES);
+  if (lastPage > 1) {
+    const rest = await Promise.all(
+      Array.from({ length: lastPage - 1 }, (_, i) => pageOf(i + 2)),
+    );
+    for (const res of rest) raw.push(...(res.data ?? []));
+  }
 
   return raw.map((item) => ({
     ...item,

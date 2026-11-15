@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   fetchCategories,
@@ -291,7 +292,19 @@ export function MenuPage() {
       localStorage.setItem(CONTROLS_KEY, next ? '1' : '0');
     } catch { /* ignore */ }
   };
-  const toggleControls = () => setControls(!controlsOpen);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  // Opening the panel puts the cursor in the search box, as the website's menu
+  // does (menu audit, 2026-11-15: it took a second tap to start typing). The
+  // focus happens inside the tap, or an iPhone will not raise its keyboard.
+  const toggleControls = () => {
+    const next = !controlsOpen;
+    flushSync(() => setControls(next));
+    if (next) {
+      const focus = () => searchInputRef.current?.focus({ preventScroll: true });
+      focus();
+      if (document.activeElement !== searchInputRef.current) requestAnimationFrame(focus);
+    }
+  };
   const closeControls = () => setControls(false);
 
   // The floating cart button and back-to-top live in the shell, not here, so
@@ -1379,6 +1392,7 @@ export function MenuPage() {
             <div className="menu-search-row">
               <span className="menu-search-row__icon" aria-hidden="true"><Search size={16} /></span>
               <input
+                ref={searchInputRef}
                 type="search"
                 data-testid="menu-search-input"
                 className="menu-search-row__input"

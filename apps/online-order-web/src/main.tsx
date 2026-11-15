@@ -21,6 +21,7 @@ import { ScrollToTop } from './components/ScrollToTop';
 import { ServiceUnavailableModal } from './components/ServiceUnavailableModal';
 import { registerServiceWorker } from './lib/registerServiceWorker';
 import { captureCardCode } from './lib/cardCode';
+import { primeMenu } from './api/menu';
 import { isSignagePath } from './lib/signageBoard';
 import '@shared/styles/fonts.css';
 import { refreshDhivehiFont } from '@shared/utils/dhivehiFont';
@@ -44,6 +45,10 @@ registerServiceWorker();
 
 // A printed card's QR (?promo= / ?gift=) fills its code in at checkout.
 captureCardCode();
+
+// The menu's data is asked for now, while the menu page's code is still
+// downloading, so the two waits overlap (menu audit, 2026-11-15).
+if (/^\/order\/menu(\/|$)/.test(window.location.pathname)) primeMenu();
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 if (sentryDsn) {

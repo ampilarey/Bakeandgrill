@@ -196,7 +196,10 @@ class ItemController extends Controller
             ? min(100, max(10, (int) $request->input('per_page', 100)))
             : ($isAdmin
                 ? min(100, max(10, (int) $request->input('per_page', 25)))
-                : 100); // public menu always gets all items
+                // The public menu gets every dish in one reply (menu audit,
+                // 2026-11-15: at 133 dishes the order app fetched page 1,
+                // waited, then fetched page 2 before it could show anything).
+                : 500);
         // Admin list order (owner, 2026-09-03: "there is no sort option in
         // menu items"). The public menu and the POS keep the menu's own
         // sort_order; the admin table can be ordered by what the manager

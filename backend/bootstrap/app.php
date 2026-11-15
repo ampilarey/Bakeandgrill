@@ -54,6 +54,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Dhivehi addresses for public pages, before routing (iruali import plan, feature 3b).
         $middleware->prepend(App\Http\Middleware\LocalePrefix::class);
+        // Outermost, so its stopwatch covers every other middleware.
+        $middleware->prepend(App\Http\Middleware\ServerTiming::class);
         $middleware->append(App\Http\Middleware\SecurityHeaders::class);
         $middleware->append(App\Http\Middleware\SearchEngineDirectives::class);
         $middleware->append(App\Http\Middleware\RejectOversizedUploads::class);

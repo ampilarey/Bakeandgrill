@@ -22,7 +22,7 @@ vi.mock('./client', async () => {
   return { ...actual, request };
 });
 
-const { fetchItems } = await import('./menu');
+const { fetchItems, resetMenuShare } = await import('./menu');
 
 function itemsPage(names: string[], lastPage: number) {
   return {
@@ -43,6 +43,7 @@ function queriesFor(calls: unknown[][]): URLSearchParams[] {
 beforeEach(() => {
   request.mockReset();
   localStorage.clear();
+  resetMenuShare();
 });
 
 describe('the menu request', () => {
@@ -123,5 +124,45 @@ describe('when the response is paginated', () => {
     const res = await fetchItems('online_pickup');
 
     expect(res.data.map((i) => i.name)).toEqual(['Bondibai']);
+  });
+});
+
+/* Menu audit, 2026-11-15: the app asks for the menu as it starts, and the menu
+   page then joins that answer instead of asking again. */
+describe('the menu asked for twice in a moment', () => {
+  it('is fetched once and both callers get it', async () => {
+    request.mockResolvedValue(itemsPage(['Bondibai'], 1));
+
+    const [a, b] = await Promise.all([fetchItems('online_pickup'), fetchItems('online_pickup')]);
+
+    expect(queriesFor(request.mock.calls)).toHaveLength(1);
+    expect(a.data).toHaveLength(1);
+    expect(b.data).toHaveLength(1);
+  });
+
+  it('asks for later pages together, not one after another', async () => {
+    let open = 0;
+    let most = 0;
+    request.mockImplementation(async (url: string) => {
+      const page = Number(new URLSearchParams(String(url).split('?')[1] ?? '').get('page'));
+      open += 1;
+      most = Math.max(most, open);
+      await new Promise((r) => setTimeout(r, 5));
+      open -= 1;
+      return itemsPage([`Dish ${page}`], 3);
+    });
+
+    const res = await fetchItems('online_pickup');
+
+    expect(res.data).toHaveLength(3);
+    expect(most).toBe(2);
+  });
+
+  it('does not remember a failure', async () => {
+    request.mockRejectedValueOnce(new Error('offline'));
+    await expect(fetchItems('online_pickup')).rejects.toThrow('offline');
+
+    request.mockResolvedValue(itemsPage(['Bondibai'], 1));
+    expect((await fetchItems('online_pickup')).data).toHaveLength(1);
   });
 });

@@ -696,6 +696,21 @@ adds the dish in the same tap; the cards' quick "+" goes through the same questi
 and opens the sheet instead for a dish with sizes, extras, a platter, packaging or a
 minimum quantity.
 
+## Menu speed: one page, asked early, timed
+
+Menu audit, 2026-11-15 (owner: "I think it takes some time to load"). The public items list (`GET /api/items`
+without a staff view) answers with every dish in one page (500): at 133 dishes the order app fetched page 1, waited,
+then page 2 before it could draw anything. Should there ever be more pages, `loadItemsForChannel()` asks for the rest
+together, never one after another. The order app asks for the menu as it starts (`primeMenu()` in `main.tsx`, on
+`/order/menu`), while the menu page's code is still downloading, and the page joins that answer (`sharedBriefly()` in
+`api/menu.ts`, five seconds, a failure not remembered; tests call `resetMenuShare()`). The cards wait for three reads
+only: categories, items and `ordering/status`; never add a fourth to that `Promise.all`. `index.html` preloads nothing
+the page may not use (a 112 KB `/logo.png` preload was fetched first on every visit and then not used). The search
+button puts the cursor in the box, inside the tap, as the website's does. Every answer carries `Server-Timing`
+(`App\Http\Middleware\ServerTiming`: `boot`, `db` with the query count, `app`), durations only, so a slow page is
+measured from outside with `curl -sI`; measure before changing anything for speed. `ServerTimingTest`,
+`menu.pagination.test.ts`.
+
 ## Photo frames follow the stored shape
 
 Owner, 2026-10-22 ("some photos are not showing correctly": a best-seller card cut the tip off a
