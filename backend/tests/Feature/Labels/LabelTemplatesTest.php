@@ -141,4 +141,18 @@ class LabelTemplatesTest extends TestCase
             $this->assertStringContainsString($needle, (string) $this->get($res->json('view_url'))->assertOk()->getContent(), $b['name']);
         }
     }
+
+    /** Owner, 2026-11-16: "make a template for Frozen Jhol Momo", asked with the round label. */
+    public function test_the_frozen_jhol_momo_template_is_a_round_label_with_its_name_list_and_photo(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $t = collect($this->getJson('/api/labels/templates')->assertOk()->json('builtin'))->keyBy('id')['jhol-momo-round'];
+
+        $this->assertSame('Frozen Jhol Momo', $t['product']);
+        $this->assertSame(['shape' => 'circle', 'preset' => 'c80', 'on' => 'sheet'], array_intersect_key($t['size'], array_flip(['shape', 'preset', 'on'])));
+        $this->assertSame('frozen', $t['fields']['label_storage']);
+        $this->assertSame(LabelTemplates::MOMO_INGREDIENTS, $t['fields']['label_ingredients']);
+        $this->assertSame('Wheat, Sesame', $t['fields']['label_allergens']);
+        $this->assertNotEmpty($t['photo'] ?? null);
+    }
 }

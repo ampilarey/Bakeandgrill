@@ -133,6 +133,22 @@ final class LabelTemplates
             ],
             'size' => ['shape' => 'rect', 'preset' => 'r140x62', 'on' => 'sheet'],
         ],
+        // Frozen Jhol Momo (owner, 2026-11-16: "make a template for Frozen Jhol Momo", asked with the round label):
+        // momo with its jhol, the sesame and tomato sauce it is served in. A round label for the tub's lid, with the
+        // momo plate, the one list for momo and jhol, and the price. 30 days, as the other frozen momo.
+        [
+            'photo' => PouchSet::MOMO_PHOTO, 'id' => 'jhol-momo-round', 'name' => 'Frozen Jhol Momo (round)', 'blurb' => 'Frozen momo with its jhol sauce: a round label for the tub\'s lid, with the photo, ingredients, dates and price.',
+            'product' => 'Frozen Jhol Momo',
+            'fields' => [
+                'label_storage' => 'frozen', 'label_heading' => 'MOMO IN SPICY JHOL',
+                'label_ingredients' => self::MOMO_INGREDIENTS, 'label_allergens' => 'Wheat, Sesame',
+                'label_how_to_use' => 'Steam the momo from frozen for 8 to 10 minutes, or microwave for 2 to 3 minutes, until steaming hot. Warm the jhol and pour it over.',
+                'label_note' => 'Contains wheat and sesame.',
+                'label_shelf_life_days' => 30, 'label_pack_unit' => 'PCS', 'label_pack_qty' => 8,
+                'label_show_price' => true, 'label_lang' => 'en',
+            ],
+            'size' => ['shape' => 'circle', 'preset' => 'c80', 'on' => 'sheet'],
+        ],
         // A four-sided bottle (owner, 2026-11-11: Amma's Theluli Rihaakuru, 21.5 cm about and 4 cm tall): the wrap-around
         // label in four equal faces, a fold on each corner. `product` names a new label that has no name yet, `brand`
         // picks the brand of that name when there is one, `photo` comes with it. 90 days is a start: the owner checks it.

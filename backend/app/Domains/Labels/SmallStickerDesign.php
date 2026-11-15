@@ -317,23 +317,23 @@ final class SmallStickerDesign
             $this->text($mid($base - $up), $base, $w, 'c', $font, $pt, $color, $t, $bold);
         };
 
-        // Brand line, heading, rule, name.
+        // The cap: the brand in cream on a rust segment (owner, 2026-11-16: "enhance the circular label").
+        $this->mark('brand');
+        array_push($this->p, ...StickerDesign::cap($D, 0.0, 7.4 * $k, StickerDesign::PRIMARY));
         if ($this->dv) {
-            $this->mark('brand');
-            $put(6.9 * $k, 1.2 * $k, 'dv', 5.4 * $k, 3.6, StickerDesign::PRIMARY, $brand['name_dv'], 0.5);
+            $put(5.9 * $k, 2.2 * $k, 'dv', 5.2 * $k, 3.4, StickerDesign::CREAM, $brand['name_dv'], 0.6);
             $this->mark('heading');
-            $put(11.6 * $k, 2.0 * $k, 'dv', 8.0 * $k, 4.6, StickerDesign::DARK, $d['header_line_dv'], 0.6);
+            $put(11.9 * $k, 2.0 * $k, 'dv', 7.4 * $k, 4.4, StickerDesign::DARK, $d['header_line_dv'], 0.6);
         } else {
-            $line = StickerDesign::spaced(mb_strtoupper($brand['name']));
             $this->mark('brand');
-            $put(6.6 * $k, 1.2 * $k, 'j7', 4.4 * $k, 3.0, StickerDesign::PRIMARY, $line);
+            $put(5.5 * $k, 2.2 * $k, 'j7', 4.2 * $k, 2.8, StickerDesign::CREAM, StickerDesign::spaced(mb_strtoupper($brand['name'])));
             $this->mark('heading');
-            $put(11.2 * $k, 2.0 * $k, 'j8', 6.6 * $k, 3.8, StickerDesign::DARK, $d['header_line']);
+            $put(11.5 * $k, 2.0 * $k, 'j8', 6.0 * $k, 3.6, StickerDesign::DARK, $d['header_line']);
         }
-        $this->box(($D - 8 * $k) / 2, 12.6 * $k, 8 * $k, 0.6 * $k, StickerDesign::PRIMARY);
+        $this->box(($D - 8 * $k) / 2, 12.8 * $k, 8 * $k, 0.6 * $k, StickerDesign::PRIMARY);
         $useDv = $this->dv && $d['name_dv'] !== '';
         $this->mark('name');
-        $put(19.4 * $k, 3.6 * $k, $useDv ? 'dv' : 'dsi', ($useDv ? 13.0 : 12.0) * $k, 6.0, StickerDesign::PRIMARY, $useDv ? $d['name_dv'] : $d['name'], $useDv ? 0.7 : 0.0);
+        $put(19.6 * $k, 3.6 * $k, $useDv ? 'dv' : 'dsi', ($useDv ? 13.0 : 12.0) * $k, 6.0, StickerDesign::PRIMARY, $useDv ? $d['name_dv'] : $d['name'], $useDv ? 0.7 : 0.0);
 
         // The dates on two lines.
         $this->mark('dates');
@@ -342,24 +342,42 @@ final class SmallStickerDesign
             ? [['ހެދި', $d['mfg']], ['ހަމަވާ', $d['exp']]]
             : [[$d['mfg_label'], $d['mfg']], [$d['exp_label'], $d['exp']]];
         foreach ($rows as $i => [$label, $date]) {
-            $base = (24.6 + 3.6 * $i) * $k;
+            $base = (24.4 + 3.6 * $i) * $k;
             $t = $this->dv ? ($date ?: $blank) . '  :' . $label : $label . ':  ' . ($date ?: $blank);
             $put($base, 0.0, $this->dv ? 'dv' : 'j7', ($this->dv ? 6.2 : 5.0) * $k, 3.2, $i === 0 ? StickerDesign::DARK : StickerDesign::PRIMARY, $t, $this->dv ? 0.5 : 0.0);
         }
 
-        // Storage strip (its first clause when the line is long) and the phone.
-        $sy = 29.6 * $k;
-        $sh = 3.4 * $k;
-        $sw = $chord($sy + $sh / 2) - 0.6;
-        $this->mark('storage');
-        $this->box(($D - $sw) / 2, $sy, $sw, $sh, StickerDesign::PRIMARY, 0.8);
-        $msg = $this->shortStorage($sw - 1.6, $this->dv ? 4.4 : 3.6);
+        // The foot: the storage line (its first clause when it is long) and the phone,
+        // on a segment in the footer's colours; a plain footer keeps the rust strip.
+        $pal = StickerDesign::footerPalette((string) ($f['style'] ?? 'dark'));
         $font = $this->dv ? 'dv' : 'j7';
-        $pt = LabelText::fitPt($msg, $font, $sw - 1.6, ($this->dv ? 5.4 : 4.2) * $k, 3.0);
-        $this->text(($D - $sw) / 2 + 0.8, $this->baseCentred($sy, $sh, $font, $pt), $sw - 1.6, 'c', $font, $pt, StickerDesign::CREAM, $msg, $this->dv ? 0.6 : 0.0);
-        if ($D >= 34 && $f['phone'] !== '') {
+        if ($pal['band'] === null) {
+            $sy = 29.6 * $k;
+            $sh = 3.4 * $k;
+            $sw = $chord($sy + $sh / 2) - 0.6;
+            $this->mark('storage');
+            $this->box(($D - $sw) / 2, $sy, $sw, $sh, StickerDesign::PRIMARY, 0.8);
+            $msg = $this->shortStorage($sw - 1.6, $this->dv ? 4.4 : 3.6);
+            $pt = LabelText::fitPt($msg, $font, $sw - 1.6, ($this->dv ? 5.4 : 4.2) * $k, 3.0);
+            $this->text(($D - $sw) / 2 + 0.8, $this->baseCentred($sy, $sh, $font, $pt), $sw - 1.6, 'c', $font, $pt, StickerDesign::CREAM, $msg, $this->dv ? 0.6 : 0.0);
+            if ($D >= 34 && $f['phone'] !== '') {
+                $this->mark('footer');
+                $put(36.0 * $k, 1.4 * $k, 'j7', 4.2 * $k, 3.0, StickerDesign::DARK, $f['phone']);
+            }
+
+            return;
+        }
+        $this->mark('storage');
+        array_push($this->p, ...StickerDesign::cap($D, 30.0 * $k, $D, $pal['band']));
+        $phone = $D >= 34 && $f['phone'] !== '';
+        $sb = ($phone ? 33.3 : 34.2) * $k;
+        $sw = $chord($sb) - 0.6;
+        $msg = $this->shortStorage($sw - 1.0, $this->dv ? 4.4 : 3.6);
+        $pt = LabelText::fitPt($msg, $font, $sw - 1.0, ($this->dv ? 5.2 : 4.0) * $k, 2.8);
+        $this->text(($D - $sw) / 2, $sb, $sw, 'c', $font, $pt, $pal['ink'], $msg, $this->dv ? 0.6 : 0.0);
+        if ($phone) {
             $this->mark('footer');
-            $put(36.0 * $k, 1.4 * $k, 'j7', 4.2 * $k, 3.0, StickerDesign::DARK, $f['phone']);
+            $put(36.5 * $k, 0.0, 'j7', 3.8 * $k, 2.8, $pal['accent'], $f['phone']);
         }
     }
 

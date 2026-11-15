@@ -504,6 +504,27 @@ export const GUIDES: Guide[] = [
     words: 'sticker label new make pack expiry',
   },
   {
+    id: 'round-label',
+    page: '/labels',
+    title: 'Make a round label (Frozen Jhol Momo and other tubs and lids)',
+    about: 'A round sticker for a lid or a tub: the brand on a rust cap, the name, the photo beside the ingredients, the dates in two boxes, and the storage line on the foot.',
+    open: { to: '/labels/make', label: 'Open New label' },
+    steps: [
+      'Open Labels and tap the New label tab.',
+      'Step 1: tap Something else, then New custom label.',
+      'In Start from, pick Frozen Jhol Momo (round). The name, photo, ingredients, storage and a round 80 mm size fill in.',
+      'Change anything that differs, such as the price, the number of pieces or the photo, then Save.',
+      'Check the preview, then type how many and print.',
+    ],
+    notes: [
+      'For another product, pick Jar lid (round) in Start from, or pick any round size under Shape and size.',
+      'Round sizes run from 30 to 200 mm. From 56 mm the photo shows beside the ingredients; from 70 mm there is also a QR code and a batch line.',
+      'Under 45 mm there is no room for ingredients: the label keeps the name, the dates and the storage line.',
+      'The colours of the foot follow the bottom strip you picked for the label.',
+    ],
+    words: 'round circle circular label sticker lid tub jar jhol momo template',
+  },
+  {
     id: 'pouch-label',
     page: '/labels',
     title: 'Make a label for a zip pouch (frozen momo and other packs)',

@@ -82,8 +82,10 @@ class LabelAuditFitTest extends TestCase
         [$html, $summary] = $this->sticker($id, 40, 30, 'en');
         $this->assertStringContainsString('…', $html);
         $this->assertStringNotContainsString('>Chicken Kulhi Bajiya With Extra Filling<', $html, 'the whole name does not fit 40 mm');
-        [, $round] = $this->sticker($id, 60, 60, 'en', 'single-round-custom');
-        $this->assertContains('Part of the ingredients', $round['dropped'] ?? [], 'a 6 cm round label cannot hold the list, and the screen is told');
+        // A 6 cm round label cut the list until its middle was given the room of the batch line (2026-11-16).
+        [$roundHtml, $round] = $this->sticker($id, 60, 60, 'en', 'single-round-custom');
+        $this->assertNotContains('Part of the ingredients', $round['dropped'] ?? []);
+        $this->assertStringContainsString('pepper.', $roundHtml, 'the whole list prints on a 6 cm round label');
     }
 
     public function test_a_narrow_sticker_breaks_its_storage_line_and_keeps_the_footer_apart(): void

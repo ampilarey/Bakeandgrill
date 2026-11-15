@@ -199,7 +199,7 @@ class LabelFootersTest extends TestCase
             $this->assertStringNotContainsString('Bake &amp; Grill', $html, "$layout: the logo stands for the name");
             $this->assertStringContainsString('+960 912 0011', $html, "$layout keeps the phone");
         }
-        // The round sticker has no band: it keeps its footer line.
+        // The round sticker's foot is a segment with no room for the logo: it keeps its footer line.
         $this->assertStringContainsString('Bake &amp; Grill', $sheet('single-round-custom', ['w' => 60]));
     }
 

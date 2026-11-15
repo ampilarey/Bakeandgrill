@@ -294,7 +294,8 @@ class StickerSheetTest extends TestCase
         $this->assertSame(20, substr_count($html, 'border-radius:50%'), 'twenty round cut lines');
         $this->assertStringContainsString('B A K E   &amp;   G R I L L', $html);
         $this->assertStringContainsString('FROZEN HEDHIKA', $html);
-        $this->assertStringContainsString('EXP DATE:', $html);
+        // The dates are two boxes, a coloured tab over each date (2026-11-16).
+        $this->assertStringContainsString('>EXP DATE<', $html);
         $this->assertStringNotContainsString('data:image/svg+xml', $html, 'no QR on a 50 mm circle');
         $pdf = $this->get($res->json('pdf_url'))->assertOk();
         $this->assertSame(1, preg_match_all('#/Type\\s*/Page[^s]#', (string) $pdf->getContent()));

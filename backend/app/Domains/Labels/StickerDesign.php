@@ -997,22 +997,26 @@ final class StickerDesign
         $ft = $d['footer'];
         $big = $D >= 68;
 
-        // Brand line, heading, rule, name.
-        $y = 5.6 * $k;
-        $w = $chord($y);
+        // The cap: the brand in cream on a rust segment that follows the circle's edge
+        // (owner, 2026-11-16: "enhance the circular label"; it was words on white).
+        $capH = 7.6 * $k;
         $p[] = LabelSpots::open('brand');
+        array_push($p, ...self::cap($D, 0.0, $capH, self::PRIMARY));
+        $w = $chord(3.4 * $k);
         $p[] = $dv
-            ? $text($y + 0.4 * $f, $w, 'dv', 5.2 * $f, self::PRIMARY, $brand['name_dv'], 0.5)
-            : $text($y, $w, 'j7', LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', $w, 4.4 * $f, 3.4), self::PRIMARY, self::spaced(mb_strtoupper($brand['name'])));
-        $y = 10.2 * $k;
+            ? $text(5.9 * $k, $w, 'dv', LabelText::fitPt($brand['name_dv'], 'dv', $w, 5.6 * $f, 3.6), self::CREAM, $brand['name_dv'], 0.6)
+            : $text(5.5 * $k, $w, 'j7', LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', $w, 4.6 * $f, 3.2), self::CREAM, self::spaced(mb_strtoupper($brand['name'])));
+
+        // Heading, rule, name.
+        $y = 11.2 * $k;
         $w = $chord($y - 1.5 * $k);
         $head = $dv ? $d['header_line_dv'] : $d['header_line'];
         $p[] = LabelSpots::open('heading');
         $p[] = $dv
-            ? $text($y + 0.6 * $f, $w, 'dv', LabelText::fitPt($head, 'dv', $w, 8.5 * $f, 6), self::DARK, $head, 0.7)
-            : $text($y, $w, 'j8', LabelText::fitPt($head, 'j8', $w, 7 * $f, 4.6), self::DARK, $head);
-        $p[] = ['t' => 'rect', 'x' => ($D - 9 * $k) / 2, 'y' => 11.4 * $k, 'w' => 9 * $k, 'h' => 0.7 * $k, 'fill' => self::PRIMARY];
-        $y = 18 * $k;
+            ? $text($y + 0.6 * $f, $w, 'dv', LabelText::fitPt($head, 'dv', $w, 7.6 * $f, 5), self::DARK, $head, 0.7)
+            : $text($y, $w, 'j8', LabelText::fitPt($head, 'j8', $w, 5.6 * $f, 4), self::DARK, $head);
+        $p[] = ['t' => 'rect', 'x' => ($D - 9 * $k) / 2, 'y' => 12.3 * $k, 'w' => 9 * $k, 'h' => 0.6 * $k, 'fill' => self::PRIMARY, 'r' => 0.3 * $k];
+        $y = 18.6 * $k;
         $w = $chord($y - 3 * $k);
         $name = $dv && $d['name_dv'] !== '' ? $d['name_dv'] : $d['name'];
         $nf = $dv && $d['name_dv'] !== '' ? 'dv' : 'dsi';
@@ -1022,20 +1026,24 @@ final class StickerDesign
             // Both languages (2026-10-12): the English name a little higher
             // and smaller, the Dhivehi name beneath; the zone below starts lower.
             [$npt, $ntext] = LabelText::fitted($d['name'], 'dsi', $w - 1, 10.5 * $f, 5.5);
-            $p[] = $text(16.4 * $k, $w, 'dsi', $npt, self::PRIMARY, $ntext);
-            [$npt, $ntext] = LabelText::fitted($d['name_dv'], 'dv', $chord(18.6 * $k) - 1, 7.6 * $f, 5);
-            $p[] = $text(20.8 * $k, $chord(18.6 * $k), 'dv', $npt, self::PRIMARY, $ntext, 0.6);
+            $p[] = $text(17.0 * $k, $w, 'dsi', $npt, self::PRIMARY, $ntext);
+            [$npt, $ntext] = LabelText::fitted($d['name_dv'], 'dv', $chord(19.0 * $k) - 1, 7.4 * $f, 5);
+            $p[] = $text(21.2 * $k, $chord(19.0 * $k), 'dv', $npt, self::PRIMARY, $ntext, 0.6);
         } else {
             // Cut with "…" at the smallest size, never past the circle's edge (label audit, 2026-11-11).
             [$npt, $ntext] = LabelText::fitted($name, $nf, $w - 1, 12.5 * $f, 5.5);
             $p[] = $text($y + ($nf === 'dv' ? 0.5 * $f : 0), $w, $nf, $npt, self::PRIMARY, $ntext, $nf === 'dv' ? 0.7 : 0.0);
         }
 
-        // Ingredients (or the picture) between the name and the dates; on a
-        // big circle the brand logo sits to their left and the QR to their
-        // right, so the round sticker carries the same branding as the rest.
-        $top = ($both ? 21.6 : 19.8) * $k;
-        $zoneH = 29.0 * $k - $top;
+        // The middle, between the name and the dates: the ingredients (or the
+        // picture), with the product's photo in a ring on their left when it has
+        // one, else the brand's logo on a big circle, and the QR on their right.
+        $top = ($both ? 22.0 : 20.2) * $k;
+        // A circle too small for the batch line gives that room to the middle.
+        // So does a big one with no use-within line under its batch line.
+        $within = $dv ? $d['use_within_dv'] : $d['use_within'];
+        $low = $big ? ($within === '' ? 1.6 * $k : 0.0) : 2.2 * $k;
+        $zoneH = 28.2 * $k + $low - $top;
         // Badges (round 9): a row of pills at the top of the middle, from a 60 mm circle up.
         if (!empty($d['badges']) && $D >= 60) {
             $bh = 3.6 * $f;
@@ -1046,18 +1054,27 @@ final class StickerDesign
             $top += $bh + 0.8 * $f;
             $zoneH -= $bh + 0.8 * $f;
         }
-        $qr = $big && $d['show_qr'] && $d['qr'] ? 9.5 : 0.0;
-        $logo = $big && $brand['logo'] ? 11.0 : 0.0;
         $ing = $dv ? $d['ingredients_dv'] : $d['ingredients_en'];
+        $qr = $big && $d['show_qr'] && $d['qr'] ? 9.5 : 0.0;
+        // Beside a list the photo is a small ring; with no list it has the middle to itself (below).
+        $ring = $ing !== '' && $d['photo'] && $D >= 56 ? min($zoneH, 12.0 * $f) : 0.0;
+        $logo = $ring <= 0 && $big && $brand['logo'] ? 11.0 : 0.0;
         $full = $chord($top + $zoneH / 2);
         $zx = ($D - $full) / 2;
+        if ($ring > 0) {
+            $p[] = LabelSpots::open('photo');
+            $p[] = ['t' => 'rect', 'x' => $zx + 0.3, 'y' => $top + ($zoneH - $ring) / 2, 'w' => $ring, 'h' => $ring, 'fill' => self::PRIMARY, 'r' => $ring / 2];
+            $p[] = ['t' => 'img', 'x' => $zx + 0.3 + 0.45, 'y' => $top + ($zoneH - $ring) / 2 + 0.45, 'w' => $ring - 0.9, 'h' => $ring - 0.9, 'src' => PouchDesign::circle($d['photo'])];
+            $zx += $ring + 2.0;
+        }
         if ($logo > 0) {
-            [$lw, $lh] = self::fit($brand['logo_ratio'], $logo, $logo);
+            [$lw, $lh] = self::fit($brand['logo_ratio'], $logo, min($logo, $zoneH));
             $p[] = LabelSpots::open('brand');
             $p[] = ['t' => 'img', 'x' => $zx + 0.5 + ($logo - $lw) / 2, 'y' => $top + ($zoneH - $lh) / 2, 'w' => $lw, 'h' => $lh, 'src' => $brand['logo']];
             $zx += $logo + 2.5;
         }
         if ($qr > 0) {
+            $qr = min($qr, $zoneH - 1.2);
             $qx = ($D + $full) / 2 - $qr - 0.5;
             $qy = $top + ($zoneH - $qr) / 2;
             // The complaints QR is the footer's: its tap opens the footer.
@@ -1071,49 +1088,82 @@ final class StickerDesign
             $lf = $dv ? 'dv' : 'j4';
             $lpt = $dv ? 6.4 * $f : 4.7 * $f;
             $lead = $dv ? 2.9 * $f : 2.5 * $f;
-            $p[] = $dv
-                ? ['t' => 'text', 'x' => $zx, 'base' => $top + 2.6 * $f, 'w' => $zw, 'align' => 'c', 'font' => 'dv', 'pt' => 5.6 * $f, 'color' => self::PRIMARY, 'text' => 'ހިމެނޭ ތަކެތި', 'bold' => 0.5]
-                : ['t' => 'text', 'x' => $zx, 'base' => $top + 2.3 * $f, 'w' => $zw, 'align' => 'c', 'font' => 'j7', 'pt' => 3.9 * $f, 'color' => self::PRIMARY, 'text' => self::spaced('INGREDIENTS')];
+            // The word INGREDIENTS heads the list when the middle has room for it and two lines;
+            // squeezed (badges above, a small circle), the list starts at the top and keeps its lines.
+            $headed = $zoneH >= 2.6 * $f + 2 * $lead;
+            $from = $headed ? 2.3 * $f : -0.2 * $f;
+            if ($headed) {
+                $p[] = $dv
+                    ? ['t' => 'text', 'x' => $zx, 'base' => $top + 2.6 * $f, 'w' => $zw, 'align' => 'c', 'font' => 'dv', 'pt' => 5.6 * $f, 'color' => self::PRIMARY, 'text' => 'ހިމެނޭ ތަކެތި', 'bold' => 0.5]
+                    : ['t' => 'text', 'x' => $zx, 'base' => $top + 2.3 * $f, 'w' => $zw, 'align' => 'c', 'font' => 'j7', 'pt' => 3.9 * $f, 'color' => self::PRIMARY, 'text' => self::spaced('INGREDIENTS')];
+            }
             // Both languages: the last line of the zone is the first Dhivehi line of the list.
             $dvLine = !$dv && !empty($d['both']) && $d['ingredients_dv'] !== '' ? (LabelText::wrap($d['ingredients_dv'], 5.8 * $f, $zw - 1, 'dv')[0] ?? '') : '';
-            $max = max(1, (int) floor(($zoneH - 2.6 * $f) / $lead) - ($dvLine !== '' ? 1 : 0));
-            $lines = LabelText::cut(LabelText::wrap($ing, $lpt, $zw - 1, $lf), $max, $lpt, $zw - 1, $lf);
+            // The whole list before a comfortable size: the type steps down a little before a line is cut.
+            foreach ([1.0, 0.92, 0.84] as $step) {
+                $tryPt = $lpt * $step;
+                $tryLead = $lead * $step;
+                $max = max(1, (int) floor(($zoneH - $from - 0.3 * $f) / $tryLead) - ($dvLine !== '' ? 1 : 0));
+                $wrapped = LabelText::wrap($ing, $tryPt, $zw - 1, $lf);
+                if (count($wrapped) <= $max || $step === 0.84) {
+                    [$lpt, $lead] = [$tryPt, $tryLead];
+                    break;
+                }
+            }
+            $lines = LabelText::cut($wrapped, $max, $lpt, $zw - 1, $lf);
             foreach ($lines as $i => $line) {
-                $p[] = ['t' => 'text', 'x' => $zx, 'base' => $top + 2.3 * $f + $lead * ($i + 1), 'w' => $zw, 'align' => 'c', 'font' => $lf, 'pt' => $lpt, 'color' => self::TEXT, 'text' => $line] + ($dv ? ['bold' => 0.4] : ['bold_words' => $d['allergens']]);
+                $p[] = ['t' => 'text', 'x' => $zx, 'base' => $top + $from + $lead * ($i + 1), 'w' => $zw, 'align' => 'c', 'font' => $lf, 'pt' => $lpt, 'color' => self::TEXT, 'text' => $line] + ($dv ? ['bold' => 0.4] : ['bold_words' => $d['allergens']]);
             }
             if ($dvLine !== '') {
-                $p[] = ['t' => 'text', 'x' => $zx, 'base' => $top + 2.3 * $f + $lead * (count($lines) + 1) + 0.4 * $f, 'w' => $zw, 'align' => 'c', 'font' => 'dv', 'pt' => 5.8 * $f, 'color' => self::TEXT, 'text' => $dvLine, 'bold' => 0.4];
+                $p[] = ['t' => 'text', 'x' => $zx, 'base' => $top + $from + $lead * (count($lines) + 1) + 0.4 * $f, 'w' => $zw, 'align' => 'c', 'font' => 'dv', 'pt' => 5.8 * $f, 'color' => self::TEXT, 'text' => $dvLine, 'bold' => 0.4];
             }
-        } elseif ($d['photo'] ?: $d['mark']) {
-            $pic = $d['photo'] ?: $d['mark'];
-            [$pw, $ph] = self::fit($d['photo'] ? $d['photo_ratio'] : $d['mark_ratio'], $zw * 0.8, $zoneH - 0.5);
+        } elseif ($d['photo']) {
+            // No list: the photo in a rust ring, the size the middle allows.
+            $side = max(6.0, $zoneH - 0.4);
             $p[] = LabelSpots::open('photo');
-            $p[] = ['t' => 'img', 'x' => $zx + ($zw - $pw) / 2, 'y' => $top + ($zoneH - $ph) / 2, 'w' => $pw, 'h' => $ph, 'src' => $pic];
+            $p[] = ['t' => 'rect', 'x' => $zx + ($zw - $side) / 2, 'y' => $top + ($zoneH - $side) / 2, 'w' => $side, 'h' => $side, 'fill' => self::PRIMARY, 'r' => $side / 2];
+            $p[] = ['t' => 'img', 'x' => $zx + ($zw - $side) / 2 + 0.45, 'y' => $top + ($zoneH - $side) / 2 + 0.45, 'w' => $side - 0.9, 'h' => $side - 0.9, 'src' => PouchDesign::circle($d['photo'])];
+        } elseif ($d['mark']) {
+            [$pw, $ph] = self::fit($d['mark_ratio'], $zw * 0.8, $zoneH - 0.5);
+            $p[] = LabelSpots::open('photo');
+            $p[] = ['t' => 'img', 'x' => $zx + ($zw - $pw) / 2, 'y' => $top + ($zoneH - $ph) / 2, 'w' => $pw, 'h' => $ph, 'src' => $d['mark']];
         }
 
-        // Dates on two lines, then the use-within line (and a batch line on a big circle).
+        // The dates as two boxes side by side, each a coloured tab over the date, as on the other stickers.
         $p[] = LabelSpots::open('dates');
-        $blank = '__ / __ / ____';
         $rows = $dv
-            ? [['ހެދި ތާރީޚު', $d['mfg']], ['ހަމަވާ ތާރީޚު', $d['exp']]]
-            : [[$d['mfg_label'], $d['mfg']], [$d['exp_label'], $d['exp']]];
-        $y = 31.6 * $k;
-        foreach ($rows as $i => [$label, $date]) {
-            $w = $chord($y);
-            $line = $dv ? ($date ?: $blank) . '  :' . $label : $label . ':  ' . ($date ?: $blank);
-            $p[] = $dv
-                ? $text($y + 0.4 * $f, $w, 'dv', LabelText::fitPt($line, 'dv', $w, 6.6 * $f, 5), $i === 0 ? self::DARK : self::PRIMARY, $line, 0.6)
-                : $text($y, $w, 'j7', LabelText::fitPt($line, 'j7', $w, 5 * $f, 3.8), $i === 0 ? self::DARK : self::PRIMARY, $line);
-            $y += 2.9 * $f;
+            ? [['ހެދި ތާރީޚު', self::DARK, $d['mfg']], ['ހަމަވާ ތާރީޚު', self::PRIMARY, $d['exp']]]
+            : [[$d['mfg_label'], self::DARK, $d['mfg']], [$d['exp_label'], self::PRIMARY, $d['exp']]];
+        $bh = 5.6 * $f;
+        $by = 28.8 * $k + $low + (5.6 * $k - $bh) / 2;
+        $gap = 1.4 * $f;
+        $tw = min($chord($by + $bh) - 0.6, 44.0 * $f);
+        $boxW = ($tw - $gap) / 2;
+        $tab = round($bh * 0.42, 2);
+        foreach ($rows as $i => [$label, $colour, $date]) {
+            $bx = ($D - $tw) / 2 + $i * ($boxW + $gap);
+            // Right to left: made on sits on the right.
+            $bx = $dv ? ($D - $tw) / 2 + (1 - $i) * ($boxW + $gap) : $bx;
+            $p[] = ['t' => 'rect', 'x' => $bx, 'y' => $by, 'w' => $boxW, 'h' => $bh, 'fill' => self::CREAM, 'stroke' => $colour, 'sw' => 0.3, 'r' => 1.0];
+            $p[] = ['t' => 'rect', 'x' => $bx, 'y' => $by, 'w' => $boxW, 'h' => $tab, 'fill' => $colour, 'r' => 1.0, 'rb' => 0];
+            $lfont = $dv ? 'dv' : 'j7';
+            $lpt = LabelText::fitPt($label, $lfont, $boxW - 1.2, $tab * ($dv ? 1.9 : 1.5), 2.8);
+            $p[] = ['t' => 'text', 'x' => $bx + 0.6, 'base' => $by + $tab * ($dv ? 0.78 : 0.74), 'w' => $boxW - 1.2, 'align' => 'c', 'font' => $lfont, 'pt' => $lpt, 'color' => self::CREAM, 'text' => $label] + ($dv ? ['bold' => 0.5] : []);
+            $t = $date ?: '__ / __ / ____';
+            $dpt = LabelText::fitPt($t, 'j7', $boxW - 1.2, ($bh - $tab) * 1.7, 3.4);
+            $p[] = ['t' => 'text', 'x' => $bx + 0.6, 'base' => $by + $tab + ($bh - $tab) * 0.74, 'w' => $boxW - 1.2, 'align' => 'c', 'font' => $date ? 'j7' : 'j4', 'pt' => $dpt, 'color' => $date ? self::TEXT : self::SOFT, 'text' => $t];
         }
-        $within = $dv ? $d['use_within_dv'] : $d['use_within'];
-        $y = 37.1 * $k;
+
+        // Under the dates: a batch line on a big circle, then the use-within line.
+        $y = 36.6 * $k + ($big ? $low : 0.0);
         if ($big) {
             $bq = ($dv ? 'ބެޗް: ' : 'BATCH: ') . ($d['batch'] !== '' ? $d['batch'] : '________') . '   ·   ' . ($dv ? 'އަދަދު: ' : 'QTY: ') . ($d['qty'] !== '' ? $d['qty'] : '____') . ($dv ? '' : ' ' . $d['unit']) . ($d['price'] !== '' ? '   ·   ' . $d['price'] : '');
             $w = $chord($y);
             $p[] = LabelSpots::open('batch');
             $p[] = $text($y, $w, $dv ? 'dv' : 'j5', LabelText::fitPt($bq, $dv ? 'dv' : 'j5', $w, ($dv ? 6 : 4.6) * $f, 3.8), self::TEXT, $bq, $dv ? 0.4 : 0.0);
-            $y += 2.6 * $f;
+            $y += 2.2 * $k;
+        } else {
+            $y = 38.8 * $k;
         }
         if ($within !== '') {
             $w = $chord($y);
@@ -1121,37 +1171,89 @@ final class StickerDesign
             $p[] = $text($y, $w, $dv ? 'dv' : 'j7', LabelText::fitPt($within, $dv ? 'dv' : 'j7', $w, ($dv ? 5.6 : 4.1) * $f, 3.4), self::PRIMARY, $within, $dv ? 0.5 : 0.0);
         }
 
-        // Storage strip and the footer line.
-        $p[] = LabelSpots::open('storage');
-        $sy = 40.3 * $k;
-        $sh = 3.4 * $f;
-        $sw = $chord($sy + $sh / 2) - 1;
-        $p[] = ['t' => 'rect', 'x' => ($D - $sw) / 2, 'y' => $sy, 'w' => $sw, 'h' => $sh, 'fill' => self::PRIMARY, 'r' => 1];
+        // The foot: the storage line and the business's line on a segment in the
+        // footer's own colours. A plain footer keeps a rust strip and a dark line.
+        $pal = self::footerPalette((string) ($ft['style'] ?? 'dark'));
         $msg = $dv ? $d['storage_dv'] : $d['storage_en'];
         $sf = $dv ? 'dv' : 'j7';
-        // A small circle keeps the first clause of a long storage line ("KEEP
-        // FROZEN AT -18°C OR BELOW") rather than shrinking it past reading.
-        if (LabelText::widthMm($msg, 3.4, $sf) > $sw - 3 && preg_match('/^(.+?)\s+[•·]\s+/u', $msg, $m)) {
-            $msg = trim($m[1]);
-        }
-        $p[] = $text($sy + $sh * 0.72, $sw - 2, $sf, LabelText::fitPt($msg, $sf, $sw - 3, ($dv ? 5.6 : 4.2) * $f, 3.2), self::CREAM, $msg, $dv ? 0.7 : 0.0);
-        $p[] = LabelSpots::open('footer');
-        $y = 46.4 * $k;
-        $w = $chord($y - 1.2 * $f);
         // A footer's own tagline takes the website's place.
         [$site, $siteFont] = self::ownFooter($d, $dv) ?? [$ft['website'], 'j7'];
-        $foot = $ft['name'] . '  ·  ' . $ft['phone'] . '  ·  ' . $site;
-        if (LabelText::widthMm($foot, 3.6, $siteFont) > $w) {
-            $foot = $ft['phone'] . '  ·  ' . $site;
+        $footFor = function (float $w, float $pt = 3.6) use ($ft, $site, $siteFont): string {
+            $foot = $ft['name'] . '  ·  ' . $ft['phone'] . '  ·  ' . $site;
+            if (LabelText::widthMm($foot, $pt, $siteFont) > $w) {
+                $foot = $ft['phone'] . '  ·  ' . $site;
+            }
+
+            return $siteFont === 'dv' && LabelText::widthMm($foot, $pt, 'dv') > $w ? $site : $foot;
+        };
+        // A small circle keeps the first clause of a long storage line ("KEEP
+        // FROZEN AT -18°C OR BELOW") rather than shrinking it past reading.
+        $short = function (float $w) use ($msg, $sf): string {
+            return LabelText::widthMm($msg, 3.4, $sf) > $w && preg_match('/^(.+?)\s+[•·]\s+/u', $msg, $m) ? trim($m[1]) : $msg;
+        };
+        if ($pal['band'] === null) {
+            $p[] = LabelSpots::open('storage');
+            $sy = 40.3 * $k;
+            $sh = 3.4 * $f;
+            $sw = $chord($sy + $sh / 2) - 1;
+            $p[] = ['t' => 'rect', 'x' => ($D - $sw) / 2, 'y' => $sy, 'w' => $sw, 'h' => $sh, 'fill' => self::PRIMARY, 'r' => 1];
+            $line = $short($sw - 3);
+            $p[] = $text($sy + $sh * 0.72, $sw - 2, $sf, LabelText::fitPt($line, $sf, $sw - 3, ($dv ? 5.6 : 4.2) * $f, 3.2), self::CREAM, $line, $dv ? 0.7 : 0.0);
+            $p[] = LabelSpots::open('footer');
+            $y = 46.4 * $k;
+            $w = $chord($y - 1.2 * $f);
+            $foot = $footFor($w);
+            $p[] = $text($y, $w, $siteFont, LabelText::fitPt($foot, $siteFont, $w, ($siteFont === 'dv' ? 5.4 : 4.3) * $f, 3.2), self::DARK, $foot, $siteFont === 'dv' ? 0.5 : 0.0);
+        } else {
+            $footY = 40.2 * $k;
+            $p[] = LabelSpots::open('storage');
+            array_push($p, ...self::cap($D, $footY, $D, $pal['band']));
+            $y = 43.2 * $k;
+            $w = $chord($y) - 1;
+            $line = $short($w - 1);
+            $p[] = $text($y, $w, $sf, LabelText::fitPt($line, $sf, $w - 1, ($dv ? 5.6 : 4.3) * $f, 3.2), $pal['ink'], $line, $dv ? 0.7 : 0.0);
+            $p[] = LabelSpots::open('footer');
+            $y = 46.2 * $k;
+            $w = $chord($y) - 1;
+            // The business's name stays on the foot down to the smallest type that still reads.
+            $foot = $footFor($w, 3.2);
+            $p[] = $text($y, $w, $siteFont, LabelText::fitPt($foot, $siteFont, $w, ($siteFont === 'dv' ? 5.2 : 4.0) * $f, 3.0), $pal['accent'], $foot, $siteFont === 'dv' ? 0.5 : 0.0);
         }
-        if ($siteFont === 'dv' && LabelText::widthMm($foot, 3.6, 'dv') > $w) {
-            $foot = $site;
-        }
-        // No band on a circle: the rust look colours the line, the others keep it dark.
-        $p[] = $text($y, $w, $siteFont, LabelText::fitPt($foot, $siteFont, $w, ($siteFont === 'dv' ? 5.4 : 4.3) * $f, 3.2), ($ft['style'] ?? 'dark') === 'rust' ? self::PRIMARY : self::DARK, $foot, $siteFont === 'dv' ? 0.5 : 0.0);
         $p[] = LabelSpots::close();
 
         return $p;
+    }
+
+    /**
+     * A segment of a circle of diameter $D, from $y0 to $y1 down from its top, as thin
+     * filled strips that follow the edge: the round sticker's cap and foot. Strips,
+     * not a clipped box, because the PDF and the label printer's bitmap clip nothing.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function cap(float $D, float $y0, float $y1, string $fill, float $inset = 0.0): array
+    {
+        $r = $D / 2;
+        $half = fn (float $y): float => sqrt(max(0.0, $r * $r - ($y - $r) * ($y - $r)));
+        $out = [];
+        // Thin where the edge runs flat and thinner still where it turns, so each strip is
+        // at most $tol wider a side than the last: smooth to the eye in print and on screen.
+        $tol = max(0.06, $D / 700);
+        $y = $y0;
+        while ($y < $y1 - 0.001) {
+            $h = max(0.05, $half($y));
+            $slope = abs($r - $y) / $h; // how fast the half-width changes with y
+            $b = min($y1, $y + min(0.6, max(0.02, $tol / max(0.001, $slope))));
+            // The narrower end of the strip, so no corner pokes past the circle.
+            $w = 2 * (min($half($y), $half($b)) - $inset);
+            if ($w > 0.8) {
+                // A hair of overlap, so no light shows between two strips.
+                $out[] = ['t' => 'rect', 'x' => round(($D - $w) / 2, 3), 'y' => round($y, 3), 'w' => round($w, 3), 'h' => round($b - $y + 0.06, 3), 'fill' => $fill];
+            }
+            $y = $b;
+        }
+
+        return $out;
     }
 
     /**
