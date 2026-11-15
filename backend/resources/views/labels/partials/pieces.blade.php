@@ -66,6 +66,12 @@
                 $align = ['l' => 'left', 'c' => 'center', 'r' => 'right'][$p['align']];
                 $rtl = $p['font'] === 'dv' && !$forPdf;
                 $ls = isset($p['ls']) ? 'letter-spacing:' . $p['ls'] . 'em;' : '';
+                // dompdf breaks a line after a bold word when the bold makes the line a hair wider than its box
+                // (2026-11-16: "Wheat" stood alone and the rest of the line fell onto the next). The PDF's box gets
+                // room to spare on the side the text does not start from, so the line stays one line where it was.
+                $slack = $forPdf && !empty($p['bold_words']) ? 12.0 : 0.0;
+                $boxX = $p['x'] * $s - ($p['align'] === 'c' ? $slack / 2 : ($p['align'] === 'r' ? $slack : 0.0));
+                $boxW = $p['w'] * $s + $slack;
             @endphp
             @php
                 // A Dhivehi heading sets in the face's true bold when it has
@@ -79,7 +85,7 @@
                 $offsets = $nudge > 0 ? [-$nudge * 0.5, $nudge * 0.5, 0.0] : [0.0];
             @endphp
             @foreach ($offsets as $dx)
-            <div class="pc tx f-{{ $p['font'] }}{{ $trueBold ? ' b' : '' }}" style="left:{{ $mm($ox + $p['x'] * $s + $dx) }};top:{{ $mm($top) }};width:{{ $mm($p['w'] * $s) }};height:{{ $mm($lh) }};line-height:{{ $mm($lh) }};font-size:{{ round($size, 3) }}pt;color:{{ $p['color'] }};text-align:{{ $align }};{{ $ls }}{{ $rtl ? 'direction:rtl;' : '' }}">{!! $textHtml((string) $p['text'], $p['font'], $p['bold_words'] ?? []) !!}</div>
+            <div class="pc tx f-{{ $p['font'] }}{{ $trueBold ? ' b' : '' }}" style="left:{{ $mm($ox + $boxX + $dx) }};top:{{ $mm($top) }};width:{{ $mm($boxW) }};height:{{ $mm($lh) }};line-height:{{ $mm($lh) }};font-size:{{ round($size, 3) }}pt;color:{{ $p['color'] }};text-align:{{ $align }};{{ $ls }}{{ $rtl ? 'direction:rtl;' : '' }}">{!! $textHtml((string) $p['text'], $p['font'], $p['bold_words'] ?? []) !!}</div>
             @endforeach
             @break
     @endswitch

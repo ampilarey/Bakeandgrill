@@ -395,6 +395,9 @@ export type StickerRequest = {
   number?: boolean;
   /** A tub's lid or side label for this print (2026-11-16): a menu item prints as either. */
   part?: 'lid' | 'side' | null;
+  /** A pair sheet (2026-11-16): the side label's size, printed beside each round lid label on A4. */
+  pair_w?: number | null;
+  pair_h?: number | null;
   marks?: boolean;
   bleed?: number | null;
   dpi?: PrinterDpi | null;
@@ -484,6 +487,8 @@ export type LabelSpotKey = 'brand' | 'heading' | 'batch_qr' | 'pack' | 'name' | 
 export type LabelSpot = { key: LabelSpotKey; x: number; y: number; w: number; h: number; fixed?: boolean };
 
 export type StickerSummary = {
+  /** A pair sheet: the side label's size and how many pairs a page holds. */
+  pair?: { w: number; h: number; pairs: number; design: string };
   layout: string;
   label: string;
   design: LabelDesign;

@@ -176,6 +176,9 @@ class LabelsController extends Controller
             // (crop marks, bleed in mm) and the label printer's dots per inch.
             'number' => 'sometimes|boolean',
             'part' => ['sometimes', 'nullable', Rule::in(array_keys(TubSet::PARTS))],
+            // A pair sheet (2026-11-16): the side label's size, printed beside each round lid label.
+            'pair_w' => 'sometimes|nullable|numeric|min:20|max:297',
+            'pair_h' => 'sometimes|nullable|numeric|min:20|max:210',
             'marks' => 'sometimes|boolean',
             'bleed' => 'nullable|numeric|min:0|max:5',
             'dpi' => ['nullable', Rule::in(LabelRaster::DPIS)],
@@ -250,6 +253,8 @@ class LabelsController extends Controller
             'promo_text' => $req['promo_text'],
             'number' => $req['number'] ? 1 : null,
             'part' => $req['part'] ?? null,
+            'pair_w' => $req['pair']['w'] ?? null,
+            'pair_h' => $req['pair']['h'] ?? null,
             'marks' => $req['marks'] ? 1 : null,
             'bleed' => $req['marks'] && $req['bleed'] > 0 ? $req['bleed'] : null,
             // A variable run (round 10): the rows' own details, aligned with items.
@@ -301,7 +306,8 @@ class LabelsController extends Controller
         }
         $query['b'] = StickerSheet::codesParam($codes);
         // Label stock (round 13): a real print is counted off the roll it used; the summary says what is left.
-        $summary['roll'] = $preview ? null : LabelRolls::consume($req, $summary);
+        // A pair sheet is plain A4 cut by hand, never a roll.
+        $summary['roll'] = $preview || ! empty($req['pair']) ? null : LabelRolls::consume($req, $summary);
         // Two rolls of this size and none named (label audit, Batch C): not guessed, and said, so the screen asks which.
         $summary['roll_unsure'] = LabelRolls::pick(LabelRolls::all(), $req)['unsure'];
 

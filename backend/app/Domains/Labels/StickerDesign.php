@@ -1291,7 +1291,7 @@ final class StickerDesign
         // It takes the room the lines under it leave.
         $rows = ($both ? 2 : 1) + count($subs);
         $top = 8.8 * $k;
-        $bottom = (40.0 - 3.3 * $rows - ($rows > 1 ? 0.6 : 1.4)) * $k;
+        $bottom = (40.0 - 3.3 * $rows - 1.4) * $k;
         $side = $bottom - $top;
         $cx = $D / 2;
         if ($d['photo']) {

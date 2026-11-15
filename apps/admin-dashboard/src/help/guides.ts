@@ -544,6 +544,8 @@ export const GUIDES: Guide[] = [
       'Print the side label from My labels to set its Made on and Use by dates.',
       'To turn a label you already have into a lid or a side label, tap Edit on it and open Lid or side of a tub.',
       'A menu item needs nothing made: in My labels tap Print on the item, then under Which label pick Lid: name and photo, print, and again with Side: the details.',
+      'To print both on one A4 sheet, tap Print on the menu item (or on the Lid or Side label), pick Lid and side together under Which label, choose the Side label size, type How many pairs and press Print. Each round lid has its side label beside it with the same dates.',
+      'A sheet holds 3 pairs with an 80 mm lid and a 100 × 50 mm side. The pair sheet is for plain A4 sticker paper cut by hand, not for a label printer or ready-cut sheets.',
       'Measure the lid and the flat part of the tub\'s side before picking the sizes.',
     ],
     words: 'lid top side tub container box two labels round circle rectangle name photo details jhol momo',

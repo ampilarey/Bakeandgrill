@@ -47,7 +47,7 @@ export function packLine(c: Pick<CustomLabel, 'label_pouch' | 'label_pack_qty' |
 }
 
 /** A custom label as the Print pop-up needs it. */
-export const printTargetOf = (c: CustomLabel): PrintTarget => ({ kind: 'custom', id: c.id, name: c.name, lang: langOf(c), pouch: Boolean(c.label_pouch), faces: c.label_wrap?.faces ?? 0, ownQty: c.label_pack_qty ?? null, size: c.label_size ?? null });
+export const printTargetOf = (c: CustomLabel): PrintTarget => ({ kind: 'custom', id: c.id, name: c.name, lang: langOf(c), part: c.label_part ?? null, pouch: Boolean(c.label_pouch), faces: c.label_wrap?.faces ?? 0, ownQty: c.label_pack_qty ?? null, size: c.label_size ?? null });
 
 /*
  * Custom labels (owner, 2026-10-11: "Add option to add custom labels using

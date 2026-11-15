@@ -35,6 +35,8 @@ export type PrintTarget = {
   name: string;
   /** The language the label prints in. */
   lang: StickerLang;
+  /** A custom label made as a tub's lid or side: its Print offers the two together on one sheet. */
+  part?: 'lid' | 'side' | null;
   /** A pouch label, or a bottle with flat sides: it opens at the size made for it. */
   pouch?: boolean;
   faces?: number;
@@ -88,7 +90,9 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
   const [paperOpen, setPaperOpen] = useState(false);
   const [lang, setLang] = useState<StickerLang>(target.lang);
   // A menu item on a tub prints as its lid (name and photo, round) or its side (the details); a custom label keeps its own part.
-  const [part, setPart] = useState<'' | 'lid' | 'side'>('');
+  const [part, setPart] = useState<'' | 'lid' | 'side' | 'pair'>('');
+  // Lid and side together: the side label's size, beside each round lid on A4.
+  const [sideId, setSideId] = useState('r100x50');
   const [copies, setCopies] = useState(1);
   const [fill, setFill] = useState(true);
   const [mfg, setMfg] = useState(() => localToday());
@@ -137,11 +141,24 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
   }, [ready, perPage]);
 
   /** The lid is a round label and the side a rectangle: picking one moves the size to match. */
-  const pickPart = (next: '' | 'lid' | 'side') => {
+  const pickPart = (next: '' | 'lid' | 'side' | 'pair') => {
     setPart(next);
+    copiesTouched.current = false;
+    // The pair sheet is plain A4, cut by hand: a round lid, never a roll.
+    if (next === 'pair') { setChoice({ ...(choice.shape === 'circle' ? choice : withPreset(choice, 'c80', presets)), on: 'sheet' }); setRollId(null); }
     if (next === 'lid' && choice.shape !== 'circle') { setChoice({ ...withPreset(choice, 'c80', presets), on: 'sheet' }); setRollId(null); }
     if (next === 'side' && choice.shape === 'circle') { setChoice({ ...withPreset(choice, 'r100x50', presets), on: 'sheet' }); setRollId(null); }
   };
+
+  const pairing = part === 'pair' && choice.shape === 'circle';
+  const sideChoices = presets.filter((p) => p.shape === 'rect' && p.w >= p.h && p.w <= 120 && p.h >= 40 && p.h <= 80);
+  const sideSize = sideChoices.find((p) => p.id === sideId) ?? { w: 100, h: 50 };
+  const pairsPerPage = pairing ? checked?.pair?.pairs ?? 0 : 0;
+
+  // A pair sheet starts on one full page of pairs, until the count is typed.
+  useEffect(() => {
+    if (pairsPerPage > 0 && !copiesTouched.current) setCopies(pairsPerPage);
+  }, [pairsPerPage]);
 
   const request = (copiesWanted: number, forPreview: boolean) => ({
     items: [{ id: target.id, copies: copiesWanted, kind: target.kind, ...(target.kind === 'item' && sizeId ? { size: sizeId } : {}) }],
@@ -153,11 +170,12 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
     for: packedFor.trim() || null,
     for2: packedFor2.trim() || null,
     roll: picked.roll?.id ?? null,
-    part: part || null,
+    part: part === 'pair' ? null : part || null,
+    ...(pairing ? { pair_w: sideSize.w, pair_h: sideSize.h } : {}),
     preview: forPreview || undefined,
   });
 
-  const previewKey = useMemo(() => JSON.stringify([ready ? request(1, true) : null, redraw]), [ready, redraw, lang, sized.layout, sized.w, sized.h, choice.shape, rounded, fill, mfg, exp, qty, batch, packedFor, packedFor2, sizeId, picked.roll?.id, part]); // eslint-disable-line react-hooks/exhaustive-deps
+  const previewKey = useMemo(() => JSON.stringify([ready ? request(1, true) : null, redraw]), [ready, redraw, lang, sized.layout, sized.w, sized.h, choice.shape, rounded, fill, mfg, exp, qty, batch, packedFor, packedFor2, sizeId, picked.roll?.id, part, sideId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!ready || presets.length === 0) return;
     if (sizeIssue) { ++seq.current; setPreview(null); setChecked(null); setPreviewError(sizeIssue); setPreviewBusy(false); return; }
@@ -219,8 +237,8 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
     <Modal title={`Print ${target.name}`} onClose={onClose} maxWidth={860}>
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_300px]" data-testid="print-label">
         <div className="min-w-0">
-          <div className={round ? 'max-w-[280px] mx-auto' : design === 'wrap' ? 'w-full' : 'max-w-[400px] mx-auto'}>
-            <SheetPreview url={preview} ratio={(checked?.w ?? stickerW) / (checked?.h ?? stickerH)} busy={previewBusy} round={round} title="The label, as it will print" empty={previewError ?? 'Drawing…'} />
+          <div className={pairing ? 'w-full' : round ? 'max-w-[280px] mx-auto' : design === 'wrap' ? 'w-full' : 'max-w-[400px] mx-auto'}>
+            <SheetPreview url={preview} ratio={pairing && checked?.pair ? ((checked.w ?? stickerW) + 3 + checked.pair.w) / Math.max(checked.h ?? stickerH, checked.pair.h) : (checked?.w ?? stickerW) / (checked?.h ?? stickerH)} busy={previewBusy} round={round && !pairing} title="The label, as it will print" empty={previewError ?? 'Drawing…'} />
           </div>
           <p className="text-xs text-[var(--color-text-muted)] mt-2 text-center">Check the dates on the label, then press Print.</p>
           {!previewError && <div className="mt-1 flex justify-center"><DroppedNote dropped={checked?.dropped} /></div>}
@@ -228,9 +246,12 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
 
         <div className="space-y-4 min-w-0">
           <div>
-            <span className={labelClass}>How many labels</span>
-            <QtyStepper value={copies} onChange={(n) => { copiesTouched.current = true; setCopies(n); }} min={1} max={500} step={perPage} label="How many labels" />
-            {stock && stock.on !== 'printer' && stock.perPage > 0 && (
+            <span className={labelClass}>{pairing ? 'How many pairs' : 'How many labels'}</span>
+            <QtyStepper value={copies} onChange={(n) => { copiesTouched.current = true; setCopies(n); }} min={1} max={500} step={pairsPerPage > 0 ? pairsPerPage : perPage} label={pairing ? 'How many pairs' : 'How many labels'} />
+            {pairsPerPage > 0 && (
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">{Math.ceil(copies / pairsPerPage)} {Math.ceil(copies / pairsPerPage) === 1 ? 'sheet' : 'sheets'} of {pairsPerPage} {pairsPerPage === 1 ? 'pair' : 'pairs'}.</p>
+            )}
+            {!pairing && stock && stock.on !== 'printer' && stock.perPage > 0 && (
               <p className="text-xs text-[var(--color-text-muted)] mt-1">{Math.ceil(copies / stock.perPage)} {Math.ceil(copies / stock.perPage) === 1 ? 'sheet' : 'sheets'} of {stock.perPage}.</p>
             )}
           </div>
@@ -275,15 +296,27 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
             )}
           </div>
 
-          {target.kind === 'item' && (
+          {(target.kind === 'item' || target.part) && (
             <div>
               <span className={labelClass}>Which label</span>
               <TabScrollRow role="group" aria-label="Which label" style={{ gap: 6 }}>
-                {([['', 'The usual label'], ['lid', 'Lid: name and photo'], ['side', 'Side: the details']] as const).map(([key, word]) => (
+                {(target.kind === 'item'
+                  ? [['', 'The usual label'], ['lid', 'Lid: name and photo'], ['side', 'Side: the details'], ['pair', 'Lid and side together']] as const
+                  : [['', target.part === 'lid' ? 'The lid only' : 'The side only'], ['pair', 'Lid and side together']] as const
+                ).map(([key, word]) => (
                   <button key={key} type="button" onClick={() => pickPart(key)} aria-pressed={part === key} className={chip(part === key)} data-testid={`print-part-${key || 'usual'}`}>{word}</button>
                 ))}
               </TabScrollRow>
-              {part !== '' && <p className="text-xs text-[var(--color-text-muted)] mt-1">{part === 'lid' ? 'For the top of a tub: the brand, the photo, the name and what the pack holds, on a round label. Print the side label for the ingredients and dates.' : 'For the side of a tub: the ingredients, the dates and the rest, on a rectangular label.'}</p>}
+              {part === 'pair' && (
+                <div className="mt-2">
+                  <label className={labelClass} htmlFor="print-side-size">Side label size</label>
+                  <select id="print-side-size" value={sideId} onChange={(e) => setSideId(e.target.value)} className={fieldClass} data-testid="print-side-size">
+                    {(sideChoices.length > 0 ? sideChoices : [{ id: 'r100x50', name: '100 × 50 mm' }]).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-1">On plain A4 sticker paper, cut by hand: each round lid label with its side label beside it, with the same dates. The lid's size is under Paper.{pairsPerPage > 0 ? ` ${pairsPerPage} ${pairsPerPage === 1 ? 'pair fits' : 'pairs fit'} on a sheet.` : ''}</p>
+                </div>
+              )}
+              {(part === 'lid' || part === 'side') && <p className="text-xs text-[var(--color-text-muted)] mt-1">{part === 'lid' ? 'For the top of a tub: the brand, the photo, the name and what the pack holds, on a round label. Print the side label for the ingredients and dates.' : 'For the side of a tub: the ingredients, the dates and the rest, on a rectangular label.'}</p>}
             </div>
           )}
 

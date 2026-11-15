@@ -147,6 +147,37 @@ describe('PrintLabelModal', () => {
     expect(lastBody().h).toBe(50);
   });
 
+  /** Owner, 2026-11-16: "Circular one and rectangular one come side by side?" → "Build". */
+  it('lid and side together asks for one sheet of pairs, counted in pairs', async () => {
+    const round = { id: 'c80', shape: 'circle' as const, w: 80, h: 80, name: '80 mm round', cm: '', design: 'round', options: [{ on: 'sheet', layout: 'a4-round-custom', label: 'A4 sheet', per_page: 6, landscape: false }] };
+    fetchLabelLayouts.mockResolvedValue({ ...LAYOUTS, presets: [...LAYOUTS.presets, round, preset('r100x50', 100, 50, 10), preset('r99x70', 99, 70, 8)] });
+    stickerLinks.mockImplementation(async (body: Record<string, unknown>) => ({ one_url: '/one', view_url: '/v', pdf_url: '/p', url: '/v', summary: summary({ design: 'round', w: 80, h: 80, ...(body.pair_w ? { pair: { w: body.pair_w, h: body.pair_h, pairs: 3, design: 'small' } } : {}) }) }));
+    show({ kind: 'item', id: 12, name: 'Chicken Curry', lang: 'en' });
+    await previewed();
+
+    fireEvent.click(screen.getByTestId('print-part-pair'));
+    await waitFor(() => expect(lastBody().pair_w).toBe(100), { timeout: 3000 });
+    expect(lastBody().pair_h).toBe(50);
+    expect(lastBody().part ?? null).toBeNull();
+    expect(lastBody().layout).toBe('a4-round-custom');
+    expect(lastBody().w).toBe(80);
+    await screen.findByText(/3 pairs fit on a sheet/);
+    expect(screen.getByText('How many pairs')).toBeTruthy();
+    expect(screen.getByText('1 sheet of 3 pairs.')).toBeTruthy();
+
+    fireEvent.change(screen.getByTestId('print-side-size'), { target: { value: 'r99x70' } });
+    await waitFor(() => expect(lastBody().pair_w).toBe(99), { timeout: 3000 });
+  });
+
+  it('a lid label of a tub offers the two together', async () => {
+    stickerLinks.mockResolvedValue({ one_url: '/one', view_url: '/v', pdf_url: '/p', url: '/v', summary: summary() });
+    show({ kind: 'custom', id: 9, name: 'Frozen Jhol Momo (Lid)', lang: 'en', part: 'lid' });
+    await previewed();
+    expect(screen.getByRole('button', { name: 'The lid only' })).toBeTruthy();
+    expect(screen.getByTestId('print-part-pair')).toBeTruthy();
+    expect(screen.queryByTestId('print-part-side')).toBeNull();
+  });
+
   it('a custom label is not asked which label: it keeps its own part', async () => {
     stickerLinks.mockResolvedValue({ one_url: '/one', view_url: '/v', pdf_url: '/p', url: '/v', summary: summary() });
     show();

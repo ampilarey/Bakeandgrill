@@ -73,7 +73,13 @@ final class StickerSheet
         }
         $w = isset($in['w']) && $in['w'] !== '' ? (float) $in['w'] : null;
         $h = isset($in['h']) && $in['h'] !== '' ? (float) $in['h'] : null;
-        StickerLayouts::resolve($layout, $w, $h); // throws for a bad custom size
+        $resolved = StickerLayouts::resolve($layout, $w, $h); // throws for a bad custom size
+        // A pair sheet (2026-11-16): the lid's round label with a side label of this size beside it.
+        $pair = null;
+        if (($in['pair_w'] ?? '') !== '' && ($in['pair_w'] ?? null) !== null) {
+            $pair = ['w' => round((float) $in['pair_w'], 2), 'h' => round((float) ($in['pair_h'] ?? 0), 2)];
+            StickerLayouts::paired($resolved, $pair['w'], $pair['h']); // throws when the two do not fit
+        }
 
         $items = [];
         // Each row its own key (label audit, 2026-10-16): the product's ("i12"),
@@ -169,6 +175,7 @@ final class StickerSheet
             // print-ready sheet with crop marks and a bleed (mm, single labels).
             // A tub's lid or side label for this print (2026-11-16): a menu item prints as either, picked at the print.
             'part' => isset(TubSet::PARTS[(string) ($in['part'] ?? '')]) ? (string) $in['part'] : null,
+            'pair' => $pair,
             'number' => filter_var($in['number'] ?? false, FILTER_VALIDATE_BOOL),
             'marks' => filter_var($in['marks'] ?? false, FILTER_VALIDATE_BOOL),
             'bleed' => max(0.0, min(5.0, round((float) ($in['bleed'] ?? 0), 1))),
@@ -314,6 +321,19 @@ final class StickerSheet
     }
 
     /**
+     * The sheet a request prints on: its layout's, or a pair sheet when it asks for one.
+     *
+     * @param array<string, mixed> $req from normalise()
+     * @return array<string, mixed>
+     */
+    public static function sheetOf(array $req): array
+    {
+        $sheet = StickerLayouts::resolve($req['layout'], $req['w'], $req['h'], LabelSettings::precut());
+
+        return empty($req['pair']) ? $sheet : StickerLayouts::paired($sheet, (float) $req['pair']['w'], (float) $req['pair']['h']);
+    }
+
+    /**
      * Everything the sticker view needs.
      *
      * @param array<string, mixed> $req from normalise()
@@ -324,7 +344,7 @@ final class StickerSheet
         // The footers read once per sheet, never per process: the router keeps
         // the controller, and this object with it, between requests.
         $this->footers = [];
-        $sheet = StickerLayouts::resolve($req['layout'], $req['w'], $req['h'], LabelSettings::precut());
+        $sheet = self::sheetOf($req);
         $dv = $req['lang'] === 'dv';
         $production = $req['pi'] ? KitchenProductionItem::query()->find($req['pi']) : null;
         $products = $this->products($req['items']);
@@ -337,7 +357,11 @@ final class StickerSheet
         // What each SVG picture on the sheet is (round C), for the label
         // printer's rasteriser, which draws a QR or a barcode itself.
         $vectors = [];
-        $draw = fn (array $data): array => LabelSpots::strip($this->pieces($sheet, $data, $dv));
+        // One sticker of the sheet, or on a pair sheet the lid and then its side label.
+        $side = $sheet['pair']['side'] ?? null;
+        $draw = fn (array $data): array => $side === null
+            ? [LabelSpots::strip($this->pieces($sheet, $data, $dv))]
+            : [LabelSpots::strip($this->pieces($sheet, ['part' => 'lid'] + $data, $dv)), LabelSpots::strip($this->pieces($side, ['part' => 'side'] + $data, $dv))];
         foreach ($req['items'] as $row) {
             $product = $products[self::key($row)] ?? null;
             if ($product === null) {
@@ -349,12 +373,12 @@ final class StickerSheet
             if (!empty($req['number'])) {
                 // Pack numbering (round C): each copy its own sticker, "Pack 3 of 40".
                 for ($i = 1; $i <= $row['copies']; $i++) {
-                    $stickers[] = $draw($data + ['pack_no' => $i, 'pack_of' => (int) $row['copies']]);
+                    array_push($stickers, ...$draw($data + ['pack_no' => $i, 'pack_of' => (int) $row['copies']]));
                 }
             } else {
                 $pieces = $draw($data);
                 for ($i = 0; $i < $row['copies']; $i++) {
-                    $stickers[] = $pieces;
+                    array_push($stickers, ...$pieces);
                 }
             }
             $summary[] = ['id' => $product->id, 'kind' => $row['kind'], 'name' => $product->name, 'copies' => $row['copies'], 'exp' => $data['exp_iso'], 'mfg' => $data['mfg_iso'], 'batch' => $rowReq['batch'], 'qty' => $rowReq['qty']];
@@ -571,7 +595,7 @@ final class StickerSheet
      */
     public function summary(array $req): array
     {
-        $sheet = StickerLayouts::resolve($req['layout'], $req['w'], $req['h'], LabelSettings::precut());
+        $sheet = self::sheetOf($req);
         $production = $req['pi'] ? KitchenProductionItem::query()->find($req['pi']) : null;
         $found = $this->products($req['items']);
         $products = [];
@@ -625,6 +649,13 @@ final class StickerSheet
             'per_page' => $sheet['per_page'],
             'products' => $products,
         ];
+        // A pair sheet: a copy is a lid with its side label, and a page holds so many pairs.
+        $side = $sheet['pair']['side'] ?? null;
+        if ($side !== null) {
+            $summary['pair'] = ['w' => $sheet['pair']['w'], 'h' => $sheet['pair']['h'], 'pairs' => $sheet['pair']['pairs'], 'design' => $side['design']];
+            $summary['per_page'] = $sheet['pair']['pairs'];
+            $summary['pages'] = (int) ceil($total / max(1, $sheet['pair']['pairs']));
+        }
         // Where the first product's parts land (rounds 2 and 3 of the usability
         // work, 2026-10-13), so the Admin can lay touch zones over the preview:
         // a wrap-around label says where its strips are, every other design
@@ -639,6 +670,9 @@ final class StickerSheet
                 $rowReq['codes'] = [$products[0]['key'] => BatchLink::PREVIEW];
             }
             $data = $this->stickerData($first, $rowReq, $this->common() + ['both' => $req['lang'] === 'both'], $production);
+            if ($side !== null) {
+                $data = ['part' => 'lid'] + $data;
+            }
             // The first product's own design: a pouch label where the product is one.
             $summary['design'] = $design = self::designOf($sheet, $data);
             if ($design === 'wrap') {
@@ -648,6 +682,13 @@ final class StickerSheet
             $summary['spots'] = LabelSpots::spots($pieces);
             // What the size left out (label audit, Batch B, 2026-10-16), said under the preview.
             $summary['dropped'] = self::dropped($sheet, $data, $req['lang'], $pieces, $summary['wrap']['left_out'] ?? []);
+            if ($side !== null) {
+                // What the side label left out too: the pair is one print.
+                $sideData = ['part' => 'side'] + $data;
+                $sidePieces = $this->pieces($side, $sideData, $dv);
+                $leftOut = self::designOf($side, $sideData) === 'wrap' ? (WrapDesign::strips($sideData, $dv, (float) $side['w'], (float) $side['h'])['left_out'] ?? []) : [];
+                $summary['dropped'] = array_values(array_unique([...$summary['dropped'], ...self::dropped($side, $sideData, $req['lang'], $sidePieces, $leftOut)]));
+            }
         }
 
         return $summary;

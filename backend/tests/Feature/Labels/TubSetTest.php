@@ -108,4 +108,32 @@ class TubSetTest extends TestCase
         $this->assertStringContainsString('Chicken', (string) $this->get($side->json('view_url') ?? $side->json('url'))->getContent());
         $this->postJson('/api/labels/stickers/url', $body + ['layout' => 'single-custom', 'w' => 100, 'h' => 50, 'part' => 'top'])->assertStatus(422);
     }
+
+    /** Owner, 2026-11-16: "Circular one and rectangular one come side by side?" → "Build". */
+    public function test_a_pair_sheet_prints_each_lid_beside_its_side_label(): void
+    {
+        $item = \App\Models\Item::factory()->create(['name' => 'Chicken Curry', 'label_enabled' => true, 'label_ingredients' => 'Chicken, onion, chilli, coconut.']);
+        $body = ['items' => [['id' => $item->id, 'kind' => 'item', 'copies' => 3]], 'lang' => 'en', 'fill' => true, 'preview' => true, 'layout' => 'a4-round-custom', 'w' => 80, 'pair_w' => 100, 'pair_h' => 50];
+
+        $res = $this->postJson('/api/labels/stickers/url', $body)->assertOk();
+        $this->assertSame(3, $res->json('summary.stickers'), 'a copy is a pair');
+        $this->assertSame(['w' => 100, 'h' => 50, 'pairs' => 3, 'design' => 'small'], array_map(fn ($v) => is_float($v) ? (int) $v : $v, $res->json('summary.pair')));
+        $this->assertSame(1, $res->json('summary.pages'));
+        $this->assertSame([], $res->json('summary.dropped'));
+
+        $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
+        $this->assertSame(6, substr_count($html, 'data-testid="sticker"'), 'three lids and three side labels');
+        $this->assertSame(3, substr_count($html, 'border-radius:50%'), 'three round cut lines');
+        $this->assertSame(6, substr_count($html, '>Chicken Curry<'), 'the name on each');
+        $this->assertSame(3, substr_count($html, '>EXP DATE<'), 'the dates on the side labels only');
+
+        // The live preview is the first pair, not the lid alone.
+        $one = (string) $this->get($res->json('one_url'))->assertOk()->getContent();
+        $this->assertSame(2, substr_count($one, 'data-testid="sticker"'));
+
+        // Two sizes that cannot sit side by side on A4 are refused with the reason.
+        $this->postJson('/api/labels/stickers/url', ['w' => 200, 'pair_w' => 150, 'pair_h' => 100] + $body)->assertStatus(422);
+        // A pair needs a round lid.
+        $this->postJson('/api/labels/stickers/url', ['layout' => 'a4-custom', 'w' => 80, 'h' => 80] + $body)->assertStatus(422);
+    }
 }

@@ -532,7 +532,17 @@ side of a tub fold sets the part on any custom label. A new part of a tub is a r
 item has no part of its own (owner, 2026-11-16: "Need it in menu items also"): the print says which, `part` on the
 sticker request (kept by the saved label, the sheet link and `Reprint::KEYS`; it wins over a custom label's own), picked
 under Which label in `PrintLabelModal` (items only: The usual label, Lid, Side), which moves the size to a round one for
-the lid and a rectangle for the side. `TubSetTest`, `TubSetModal.test.tsx`, `PrintLabelModal.test.tsx`. How to
+the lid and a rectangle for the side. **The pair sheet** (owner, 2026-11-16: "Circular one and
+rectangular one come side by side?" → "Build"): a round layout's request with `pair_w` / `pair_h` (the side label's
+size; `pair` after `normalise()`, kept by the sheet link and `Reprint::KEYS`) prints on `StickerLayouts::paired()`, A4
+whichever way holds more, slots alternating lid and side, each slot with its own `shape`, `dx`, `dy` and `s`, which
+`stickers.blade.php` reads before the sheet's; `StickerSheet::sheetOf()` is the one place a request becomes a sheet.
+`build()` draws each copy as the lid (`part` lid) then the side (`part` side, on `pair.side`); a copy is a pair, the
+summary carries `pair` (size, pairs a page), counts pages in pairs and merges what either label left out; the live
+preview is the first pair; never counted off a roll. Lid and side together under Which label in `PrintLabelModal`
+(a menu item, and a custom label with a part) with Side label size and How many pairs. dompdf broke an ingredients
+line after a bold allergen that made it a hair wider than its box; the PDF's box for a line with `bold_words` has
+12 mm to spare (`pieces.blade.php`). `TubSetTest`, `TubSetModal.test.tsx`, `PrintLabelModal.test.tsx`. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

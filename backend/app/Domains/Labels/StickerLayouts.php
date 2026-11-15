@@ -260,6 +260,63 @@ final class StickerLayouts
         return $best;
     }
 
+    /** The gap between a lid and its side label on a pair sheet, and between two pairs. */
+    public const PAIR_GAP = 3.0;
+
+    /**
+     * A pair sheet (owner, 2026-11-16: "Circular one and rectangular one come side by side?"):
+     * each round lid label with its rectangular side label beside it on A4, as many pairs as
+     * fit, whichever way up the page holds more. Slots alternate lid, side; each carries its
+     * own shape and how its design sits in it.
+     *
+     * @param array<string, mixed> $lid a round sheet from resolve()
+     * @return array<string, mixed> the same sheet, its page and slots replaced, with `pair`
+     */
+    public static function paired(array $lid, float $w, float $h): array
+    {
+        if ($lid['shape'] !== 'circle') {
+            throw new InvalidArgumentException('Pick a round size for the lid label.');
+        }
+        $side = self::resolve('single-custom', $w, $h);
+        $D = (float) $lid['w'];
+        $cellW = $D + self::PAIR_GAP + $side['w'];
+        $cellH = max($D, $side['h']);
+        $best = null;
+        foreach ([[210.0, 297.0], [297.0, 210.0]] as [$pw, $ph]) {
+            $cols = (int) floor(($pw - 2 * self::SHEET_MARGIN + self::PAIR_GAP + 0.001) / ($cellW + self::PAIR_GAP));
+            $rows = (int) floor(($ph - 2 * self::SHEET_MARGIN + self::PAIR_GAP + 0.001) / ($cellH + self::PAIR_GAP));
+            if ($best === null || $cols * $rows > $best[2] * $best[3]) {
+                $best = [$pw, $ph, $cols, $rows];
+            }
+        }
+        [$pageW, $pageH, $cols, $rows] = $best;
+        if ($cols * $rows < 1) {
+            throw new InvalidArgumentException('These two sizes do not fit side by side on an A4 sheet. Pick a smaller lid or side label.');
+        }
+        $ox = ($pageW - ($cols * $cellW + ($cols - 1) * self::PAIR_GAP)) / 2;
+        $oy = ($pageH - ($rows * $cellH + ($rows - 1) * self::PAIR_GAP)) / 2;
+        $slots = [];
+        for ($r = 0; $r < $rows; $r++) {
+            for ($c = 0; $c < $cols; $c++) {
+                $x = $ox + $c * ($cellW + self::PAIR_GAP);
+                $y = $oy + $r * ($cellH + self::PAIR_GAP);
+                $slots[] = ['x' => round($x, 3), 'y' => round($y + ($cellH - $D) / 2, 3), 'w' => $D, 'h' => $D, 'shape' => 'circle', 'dx' => 0.0, 'dy' => 0.0, 's' => 1.0];
+                $slots[] = ['x' => round($x + $D + self::PAIR_GAP, 3), 'y' => round($y + ($cellH - $side['h']) / 2, 3), 'w' => $side['w'], 'h' => $side['h'], 'shape' => 'rect', 'dx' => $side['dx'], 'dy' => $side['dy'], 's' => $side['scale']];
+            }
+        }
+        $pairs = $cols * $rows;
+
+        return [
+            'label' => 'Lid ' . self::sizeName('circle', $D, $D) . ' with side ' . self::sizeName('rect', $side['w'], $side['h']) . ', ' . $pairs . ($pairs === 1 ? ' pair' : ' pairs') . ' on A4',
+            'page_w' => $pageW,
+            'page_h' => $pageH,
+            'slots' => $slots,
+            'per_page' => count($slots),
+            'cut' => true,
+            'pair' => ['w' => $side['w'], 'h' => $side['h'], 'pairs' => $pairs, 'side' => $side],
+        ] + $lid;
+    }
+
     /**
      * The presets as the hub shows them: the size in mm and cm, the design it
      * gets, and for each stock its layout and how many go on a page.

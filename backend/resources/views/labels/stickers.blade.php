@@ -18,7 +18,17 @@
     if ($preview) {
         $pages = array_slice($pages, 0, 1);
     }
-    if ($one && $pages !== [] && $sheet['slots'] !== []) {
+    if ($one && $pages !== [] && !empty($sheet['pair']) && count($sheet['slots']) >= 2) {
+        // A pair sheet's live preview: the first lid with its side label beside it.
+        [$a, $b] = [$sheet['slots'][0], $sheet['slots'][1]];
+        $top = min($a['y'], $b['y']);
+        $first = array_values(array_slice($pages[0], 0, 2));
+        $pages = [$first];
+        $sheet['slots'] = [['x' => 0.0, 'y' => $a['y'] - $top] + $a, ['x' => $b['x'] - $a['x'], 'y' => $b['y'] - $top] + $b];
+        $pageW = $b['x'] - $a['x'] + $b['w'];
+        $pageH = max($a['h'], $b['h']);
+        $mock = null;
+    } elseif ($one && $pages !== [] && $sheet['slots'] !== []) {
         $slot = $sheet['slots'][0];
         $pages = [[0 => $pages[0][array_key_first($pages[0])] ?? []]];
         $sheet['slots'] = [['x' => 0.0, 'y' => 0.0, 'w' => $slot['w'], 'h' => $slot['h']]];
@@ -129,7 +139,7 @@
         <div class="page" data-testid="labels-page">
             @foreach ($sheet['slots'] as $si => $slot)
                 @if ($sheet['cut'])
-                    <div class="cut" style="left:{{ $mm($slot['x']) }};top:{{ $mm($slot['y']) }};width:{{ $mm($slot['w']) }};height:{{ $mm($slot['h']) }};{{ $sheet['shape'] === 'circle' ? 'border-radius:50%;' : ($rounded ?? false ? 'border-radius:3mm;' : '') }}"></div>
+                    <div class="cut" style="left:{{ $mm($slot['x']) }};top:{{ $mm($slot['y']) }};width:{{ $mm($slot['w']) }};height:{{ $mm($slot['h']) }};{{ ($slot['shape'] ?? $sheet['shape']) === 'circle' ? 'border-radius:50%;' : ($rounded ?? false ? 'border-radius:3mm;' : '') }}"></div>
                 @endif
                 @if (!empty($sheet['marks']))
                     @php
@@ -152,7 +162,7 @@
                 @endif
                 @if (isset($page[$si]))
                     <div class="sticker" data-testid="sticker"></div>
-                    @include('labels.partials.pieces', ['pieces' => $page[$si], 'ox' => $slot['x'] + $sheet['dx'], 'oy' => $slot['y'] + $sheet['dy'], 's' => $s])
+                    @include('labels.partials.pieces', ['pieces' => $page[$si], 'ox' => $slot['x'] + ($slot['dx'] ?? $sheet['dx']), 'oy' => $slot['y'] + ($slot['dy'] ?? $sheet['dy']), 's' => $slot['s'] ?? $s])
                 @endif
             @endforeach
         </div>
