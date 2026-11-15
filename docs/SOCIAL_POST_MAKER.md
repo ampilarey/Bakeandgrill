@@ -29,8 +29,9 @@ The picture is shown in four shapes, all made from the same post:
 | Story | 1080 × 1920 | Stories, WhatsApp status, TikTok |
 | Wide | 1200 × 630 | A Facebook link, a website banner |
 
-**Download** saves the shape on screen, **All 4 sizes** saves each. **Share** (phones) hands the picture to another
-app. **Post it** opens the Social Hub composer with the picture and a caption ready for the connected channels
+**Save or share** opens a sheet with all four sizes, each with its own button, one button for all four, and the video
+once one is made. On a phone the button opens the share sheet (Save Image or Save Video to Photos, or WhatsApp,
+Instagram, Viber, TikTok); on a computer it downloads. **Post it** opens the Social Hub composer with the picture and a caption ready for the connected channels
 (Facebook, Instagram, Telegram, Viber). TikTok and WhatsApp status are posted from the phone with the Story picture.
 
 ## Animated posts

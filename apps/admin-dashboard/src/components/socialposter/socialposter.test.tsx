@@ -152,6 +152,16 @@ describe('Make a post', () => {
     expect(screen.queryByRole('button', { name: /Make the video/ })).toBeNull();
   });
 
+  it('offers one Save or share button, and no separate downloads', async () => {
+    render(<SocialPosterMaker canCompose onSend={() => {}} />);
+    const save = await screen.findByRole('button', { name: /Save or share/ });
+    expect((save as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText('Headline'), { target: { value: 'Bajiya' } });
+    expect((screen.getByRole('button', { name: /Save or share/ }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByRole('button', { name: 'All 4 sizes' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Download' })).toBeNull();
+  });
+
   it('leaves saving and posting out for someone who may only look', async () => {
     render(<SocialPosterMaker canCompose={false} onSend={() => {}} />);
     await screen.findByLabelText('Headline');

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clapperboard, Download, Play, ImagePlus, Save, Send, Share2, Shuffle, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clapperboard, Play, ImagePlus, Save, Send, Share2, Shuffle, Trash2 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import {
   createSocialPoster, deleteSocialPoster, fetchSocialItemPreview, fetchSocialPosters, updateSocialPoster, uploadSocialPosterPicture, uploadSocialPosterVideo,
@@ -7,10 +7,12 @@ import {
 } from '../../api';
 import { ItemSearch, type MenuItemSelection } from '../ItemSearch';
 import { MediaPicker } from '../MediaPicker';
-import { Btn, Card, ConfirmDialog, ErrorMsg, Input, Modal, ModalActions, Spinner, Switch, TabScrollRow, useConfirmDialog } from '../SharedUI';
+import { Btn, Card, ConfirmDialog, ErrorMsg, Input, Spinner, Switch, TabScrollRow, useConfirmDialog } from '../SharedUI';
 import { usePostAssets } from './assets';
 import { renderPost, type PostAssets } from './draw';
+import { pictureOf } from './picture';
 import { canRecord, recordPost } from './record';
+import { SaveSheet } from './SaveSheet';
 import {
   BADGE_PRESETS, BUTTON_STYLES, CTA2_PRESETS, CTA_PRESETS, LAYOUTS, MOTIONS, MOTION_SECONDS, PALETTES, PART_NAMES, PART_ORDER, SIZES, TEMPLATES,
   blankSpec, captionOf, fullSpec, paletteOf, sizeOf, withTemplate, type PartKey, type PostSize, type PostSpec, type PostTemplate,
@@ -62,39 +64,6 @@ export function PostCanvas({ spec, layout, palette, size, assets, px, version = 
     : <canvas ref={ref} width={px} height={h} aria-hidden className="sp-canvas" />;
 }
 
-/** A finished picture at the platform's own size. */
-async function pictureOf(spec: PostSpec, layout: string, palette: string, size: PostSize, assets: PostAssets, type: 'image/png' | 'image/jpeg'): Promise<Blob | null> {
-  const canvas = document.createElement('canvas');
-  canvas.width = size.w;
-  canvas.height = size.h;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-  renderPost(ctx, size.w, size.h, spec, layout, paletteOf(palette), assets);
-  return new Promise((resolve) => {
-    try {
-      canvas.toBlob((b) => resolve(b), type, 0.92);
-    } catch {
-      resolve(null);
-    }
-  });
-}
-
-function fileName(spec: PostSpec, name: string, size: PostSize): string {
-  const base = (name || spec.headline || 'post').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'post';
-  return `${base}-${size.key}.png`;
-}
-
-function save(blob: Blob, name: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
-}
-
 function SavedCard({ row, brand, onOpen, onRemove, canCompose }: {
   row: SavedSocialPoster; brand: SocialPosterBrand | null; onOpen: () => void; onRemove: () => void; canCompose: boolean;
 }) {
@@ -142,6 +111,8 @@ export function SocialPosterMaker({ canCompose, onSend }: {
   const [seconds, setSeconds] = useState(6);
   const [recorded, setRecorded] = useState(0);
   const [video, setVideo] = useState<string | null>(null);
+  // The Save or share sheet: every size, and the video once one is made.
+  const [saving, setSaving] = useState(false);
   const dialog = useConfirmDialog();
 
   const size = sizeOf(sizeKey);
@@ -169,6 +140,9 @@ export function SocialPosterMaker({ canCompose, onSend }: {
     }
   }, []);
   useEffect(() => { void load(); }, [load]);
+
+  // A video is of the post as it was: any change to the words, the design or the colour forgets it.
+  useEffect(() => { setVideo(null); }, [spec, layout, palette, sizeKey, seconds]);
 
   const patch = (over: Partial<PostSpec>) => { setSpec((s) => ({ ...s, ...over })); setNotice(''); };
   const show = (part: PartKey, on: boolean) => { setSpec((s) => ({ ...s, show: { ...s.show, [part]: on } })); setNotice(''); };
@@ -232,6 +206,7 @@ export function SocialPosterMaker({ canCompose, onSend }: {
       setBusy('convert');
       const { url } = await uploadSocialPosterVideo(blob);
       setVideo(url);
+      setSaving(true);
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'The video could not be made.');
@@ -298,41 +273,6 @@ export function SocialPosterMaker({ canCompose, onSend }: {
     },
   });
 
-  const download = async (sizes: PostSize[]) => {
-    setBusy('download');
-    try {
-      for (const s of sizes) {
-        const blob = await pictureOf(spec, layout, palette, s, assets, 'image/png');
-        if (!blob) throw new Error('The picture could not be made. If the photo is from another website, pick one from the library.');
-        save(blob, fileName(spec, name, s));
-        // A browser drops downloads that start in the same instant.
-        if (sizes.length > 1) await new Promise((r) => setTimeout(r, 350));
-      }
-      setError('');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'The picture could not be made.');
-    } finally {
-      setBusy('');
-    }
-  };
-
-  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function' && typeof navigator.canShare === 'function';
-  const share = async () => {
-    setBusy('share');
-    try {
-      const blob = await pictureOf(spec, layout, palette, size, assets, 'image/png');
-      if (!blob) throw new Error('The picture could not be made.');
-      const file = new File([blob], fileName(spec, name, size), { type: 'image/png' });
-      if (navigator.canShare({ files: [file] })) await navigator.share({ files: [file], text: captionOf({ ...spec, link }) });
-      else save(blob, file.name);
-    } catch (e) {
-      // Closing the share sheet is not an error.
-      if (!(e instanceof DOMException && e.name === 'AbortError')) setError(e instanceof Error ? e.message : 'The picture could not be shared.');
-    } finally {
-      setBusy('');
-    }
-  };
-
   const send = async () => {
     setBusy('send');
     try {
@@ -384,9 +324,7 @@ export function SocialPosterMaker({ canCompose, onSend }: {
               <Btn small variant="secondary" onClick={() => step(1)} aria-label="Next design"><ChevronRight size={16} aria-hidden /></Btn>
             </div>
             <div className="sp-row">
-              <Btn small onClick={() => void download([size])} disabled={empty || busy !== ''}><Download size={14} aria-hidden /> Download</Btn>
-              <Btn small variant="secondary" onClick={() => void download(SIZES)} disabled={empty || busy !== ''}>All 4 sizes</Btn>
-              {canShare && <Btn small variant="secondary" onClick={() => void share()} disabled={empty || busy !== ''}><Share2 size={14} aria-hidden /> Share</Btn>}
+              <Btn small onClick={() => setSaving(true)} disabled={empty || busy !== ''}><Share2 size={14} aria-hidden /> Save or share</Btn>
               {canCompose && <Btn small variant="secondary" onClick={() => void send()} disabled={empty || busy !== ''}><Send size={14} aria-hidden /> {busy === 'send' ? 'Sending…' : 'Post it'}</Btn>}
             </div>
           </Card>
@@ -560,14 +498,12 @@ export function SocialPosterMaker({ canCompose, onSend }: {
       <div aria-hidden className="sp-offscreen">
         <QRCodeCanvas ref={setQr} value={link || 'https://'} size={480} marginSize={0} />
       </div>
-      {video && (
-        <Modal title="Your video" onClose={() => setVideo(null)} maxWidth={520}>
-          <video src={video} controls autoPlay loop muted playsInline style={{ display: 'block', width: '100%', maxHeight: '70vh', borderRadius: 10, background: 'var(--color-backdrop)' }} />
-          <ModalActions>
-            <Btn variant="secondary" onClick={() => setVideo(null)}>Close</Btn>
-            <a href={video} download={fileName(spec, name, size).replace(/\.png$/, '.mp4')} className="social-video-link"><Download size={14} aria-hidden /> Download</a>
-          </ModalActions>
-        </Modal>
+      {saving && (
+        <SaveSheet
+          spec={spec} layout={layout} palette={palette} assets={assets} name={name}
+          caption={captionOf({ ...spec, link })} videoUrl={spec.motion ? video : null}
+          onClose={() => setSaving(false)}
+        />
       )}
       <MediaPicker open={picking} onClose={() => setPicking(false)} onPick={pickPhoto} mediaType="image" title="Pick a photo for the post" />
       <ConfirmDialog state={dialog.state} close={dialog.close} />
