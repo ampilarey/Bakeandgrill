@@ -66,6 +66,11 @@
    reads as one panel instead of a black square floating on cream. Sampled from
    the current stand-in, which is solid #000 to every edge; if that image is
    ever replaced with one on a different ground, this is the value to change. */
+/* A dish whose only picture is its cut-out: all of it, on the card's circle colour. */
+.menu-item-hero--cutout {
+    background: color-mix(in srgb, var(--cutout-color, #F3EAE1) calc(var(--cutout-alpha, 1) * 100%), var(--surface, #fff));
+}
+.menu-item-hero--cutout img { object-fit: contain; padding: 5%; box-sizing: border-box; }
 .menu-item-hero--placeholder {
     background: var(--menu-placeholder-bg, #000);
 }

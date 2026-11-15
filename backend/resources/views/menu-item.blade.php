@@ -52,6 +52,8 @@
     $webp = $chosen['webp'] ?? null;
     // The stand-in logo must not be cropped into the hero — see the CSS below.
     $photoIsPlaceholder = (bool) ($chosen['placeholder'] ?? false);
+    // A dish whose only picture is its cut-out shows that, whole, on its backdrop.
+    $cutoutOnly = (bool) ($chosen['cutout_only'] ?? false);
     $variants = $item->variants->where('is_active', true)->sortBy('sort_order')->values();
     $dietary = array_values(array_filter((array) ($item->dietary_tags ?? [])));
     $allergens = array_values(array_filter((array) ($item->allergens ?? [])));
@@ -104,8 +106,14 @@
             'shareItemId' => $item->id, ])
     </div>
 
-    <div class="menu-item-hero @if($photo && $photoIsPlaceholder)menu-item-hero--placeholder @endif">
-        @if($chosen['animated_tile'] ?? false)
+    <div class="menu-item-hero @if($cutoutOnly)menu-item-hero--cutout @elseif($photo && $photoIsPlaceholder)menu-item-hero--placeholder @endif"
+         @if($cutoutOnly) style="--cutout-color: {{ $chosen['backdrop']['color'] ?? '#F3EAE1' }}; --cutout-alpha: {{ number_format(($chosen['backdrop']['strength'] ?? 100) / 100, 2, '.', '') }};" @endif>
+        @if($cutoutOnly)
+            <picture>
+                @if($chosen['cutout_webp'] ?? null)<source srcset="{{ $chosen['cutout_webp'] }}" type="image/webp">@endif
+                <img src="{{ $chosen['cutout'] }}" alt="{{ $iname['text'] }}" width="640" height="480" data-cutout="1">
+            </picture>
+        @elseif($chosen['animated_tile'] ?? false)
             @include('partials.animated-item-tile', ['tileLabel' => $iname['text']])
         @elseif($photo)
             <picture>

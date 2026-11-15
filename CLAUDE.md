@@ -724,7 +724,10 @@ middle under a dark wash (`.mh-img::after`; owner, 2026-10-24: "Wouldn't it be g
 pic fills the bar?"), on the section's tint (`--mh-tint`; `.mh-banner--plain` without a photo) and
 hides the count; the hero fades while pinned, since on a computer its last rows would
 show between the header and the strip. A new frame for a stored picture uses its ratio, and a new
-email thumb carries width and height attributes in that ratio.
+email thumb carries width and height attributes in that ratio. A dish whose only picture is its cut-out opens on
+that cut-out, whole, on the card's backdrop (owner, 2026-11-15: Frozen Momo's card showed its picture and the opened
+dish the logo): `cutout_only` from `ItemDisplayPhoto` on the website's dish and offer pages, `cutoutOnlySrc` in the order
+app's `ItemSheet`; a dish with a photo of its own still opens on the photo.
 
 ## Dhivehi addresses on the website
 

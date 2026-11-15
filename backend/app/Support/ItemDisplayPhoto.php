@@ -32,9 +32,12 @@ use Illuminate\Support\Collection;
  * `cutout` is the see-through thumbnail for the small cards (owner,
  * 2026-10-01, after the ZUS screenshots), with `backdrop` the circle the card
  * draws behind it; both null when the item has none, and the card then shows
- * `url` as before. An opened item never uses the cut-out.
+ * `url` as before. An opened item uses its photo; `cutout_only` (owner,
+ * 2026-11-15: Frozen Momo's card showed its picture and the opened dish the
+ * logo) says the cut-out is the only picture the item has, so an opened item
+ * draws it whole on its backdrop instead of the stand-in.
  *
- * @phpstan-type DisplayPhoto array{url: ?string, webp: ?string, full: ?string, placeholder: bool, animated_tile: bool, cutout: ?string, cutout_webp: ?string, backdrop: ?array{color: string, strength: int, source: string}}
+ * @phpstan-type DisplayPhoto array{url: ?string, webp: ?string, full: ?string, placeholder: bool, animated_tile: bool, cutout_only: bool, cutout: ?string, cutout_webp: ?string, backdrop: ?array{color: string, strength: int, source: string}}
  */
 final class ItemDisplayPhoto
 {
@@ -65,8 +68,11 @@ final class ItemDisplayPhoto
 
         $photo = $this->photo($item, $default);
 
+        $cutoutOnly = $cutout !== null && ($photo['placeholder'] || $photo['url'] === null);
+
         return $photo + [
-            'animated_tile' => $photo['placeholder'] && parse_url((string) $photo['url'], PHP_URL_PATH) === self::STANDARD_TILE,
+            'cutout_only' => $cutoutOnly,
+            'animated_tile' => ! $cutoutOnly && $photo['placeholder'] && parse_url((string) $photo['url'], PHP_URL_PATH) === self::STANDARD_TILE,
             'cutout' => $cutout,
             'cutout_webp' => $cutout ? PublicMediaUrl::absolute($item->cutout_webp_url ?? null) : null,
             'backdrop' => $cutout ? app(CutoutBackdrop::class)->resolve($item) : null,

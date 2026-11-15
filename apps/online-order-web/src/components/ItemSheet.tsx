@@ -3,6 +3,7 @@
  * edit-mode props call CartContext.updateEntry when editIndex is set.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { cutoutBackdropVars, hasCutout } from '@shared/utils';
 import { fetchCartRecommendations, trackSuggestion, getItemReviews, getItemPhotos } from '../api';
 import type { Item, Modifier, ItemReview, ItemPhoto } from '../api';
 import type { ComboItemEntry, PlatterSelection, Variant } from '@shared/types';
@@ -226,6 +227,12 @@ export function ItemSheet({
     [item.image_url, item.thumb_url, item.name, photos, siteSettings.default_item_image],
   );
 
+  // A dish with a cut-out and no photo of its own opens on the cut-out.
+  const cutoutOnlySrc = hasCutout(item) && slides.every((sl) => sl.isPlaceholder === true)
+    ? resolveMediaUrl(item.cutout_url)
+    : null;
+  const cutoutOnlyWebp = cutoutOnlySrc ? resolveMediaUrl(item.cutout_webp_url) : null;
+
   useEffect(() => {
     let cancelled = false;
     setPhotos(item.photos ?? []);
@@ -439,7 +446,28 @@ export function ItemSheet({
             borderRadius: 16,
             overflow: 'hidden',
           }}>
-            {slides.length === 1 && slides[0].isPlaceholder && isStandardItemTile(siteSettings.default_item_image) ? (
+            {cutoutOnlySrc ? (
+              // The cut-out is the only picture this dish has: show it whole on
+              // the card's own backdrop, not the logo (owner, 2026-11-15).
+              <div
+                data-testid="item-sheet-cutout"
+                style={{
+                  ...(cutoutBackdropVars(item.cutout_backdrop) as CSSProperties),
+                  aspectRatio: '4 / 3',
+                  background: 'color-mix(in srgb, var(--cutout-color) calc(var(--cutout-alpha) * 100%), var(--color-surface))',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <picture style={{ display: 'block', width: '100%', height: '100%' }}>
+                  {cutoutOnlyWebp ? <source srcSet={cutoutOnlyWebp} type="image/webp" /> : null}
+                  <img
+                    src={cutoutOnlySrc}
+                    alt={item.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '5%', boxSizing: 'border-box', display: 'block' }}
+                  />
+                </picture>
+              </div>
+            ) : slides.length === 1 && slides[0].isPlaceholder && isStandardItemTile(siteSettings.default_item_image) ? (
               <AnimatedItemTile label={item.name} />
             ) : slides.length > 0 ? (
               <MenuImageSlider

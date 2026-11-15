@@ -63,4 +63,19 @@ describe('ItemSheet hero', () => {
     expect(screen.getByTestId('slider')).toBeTruthy();
     settingsState.settings = { logo: '/logo.png' };
   });
+  /* Owner, 2026-11-15: Frozen Momo's card showed its cut-out and the opened
+     dish showed the logo. */
+  it('opens on the cut-out when that is the only picture the dish has', () => {
+    settingsState.settings = { logo: '/logo.png', default_item_image: '/brand/default-item-image.png' };
+    const cut: Item = { ...item, image_url: null, cutout_url: '/storage/menu-cutouts/momo.png' };
+    const { unmount } = render(<ItemSheet open item={cut} qty={1} selectedModifiers={[]} onToggleModifier={() => {}} onAddToCart={() => {}} onClose={() => {}} />);
+    expect(screen.getByTestId('item-sheet-cutout').querySelector('img')?.getAttribute('src')).toContain('momo.png');
+    expect(screen.queryByTestId('animated-item-tile')).toBeNull();
+    unmount();
+
+    render(<ItemSheet open item={{ ...cut, image_url: '/storage/menu/a.jpg' }} qty={1} selectedModifiers={[]} onToggleModifier={() => {}} onAddToCart={() => {}} onClose={() => {}} />);
+    expect(screen.queryByTestId('item-sheet-cutout')).toBeNull();
+    expect(screen.getByTestId('slider')).toBeTruthy();
+    settingsState.settings = { logo: '/logo.png' };
+  });
 });

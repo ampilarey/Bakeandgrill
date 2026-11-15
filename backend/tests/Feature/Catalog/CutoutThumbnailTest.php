@@ -156,9 +156,17 @@ class CutoutThumbnailTest extends TestCase
         $this->assertStringContainsString('/storage/menu-cutouts/', $html);
         $this->assertStringContainsString('data-cutout="1"', $html);
 
-        // The item page is the opened item: photos, never the cut-out.
+        // Owner, 2026-11-15: a dish whose only picture is its cut-out opens on
+        // it, on the same backdrop, not on the logo.
         $page = $this->get('/menu/' . $this->item->id)->assertOk()->getContent();
-        $this->assertStringNotContainsString('menu-cutouts', $page);
+        $this->assertStringContainsString('menu-item-hero--cutout', $page);
+        $this->assertStringContainsString('--cutout-color: #FFEEDD; --cutout-alpha: 0.40;', $page);
+        $this->assertStringContainsString('data-cutout="1"', $page);
+
+        // With a photo of its own, the opened item shows the photo.
+        $this->item->update(['image_url' => '/storage/menu/cup.jpg']);
+        $page = $this->get('/menu/' . $this->item->id)->assertOk()->getContent();
+        $this->assertStringNotContainsString('data-cutout="1"', $page);
     }
 
     public function test_removing_the_cut_out_deletes_its_files_and_the_card_falls_back(): void

@@ -73,6 +73,8 @@
    img sizes against a shrink-to-fit box and object-fit has nothing to cover. */
 .offer-hero picture { display: block; width: 100%; height: 100%; }
 .offer-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.offer-hero--cutout { background: color-mix(in srgb, var(--cutout-color, #F3EAE1) calc(var(--cutout-alpha, 1) * 100%), var(--surface, #fff)); }
+.offer-hero--cutout img { object-fit: contain; padding: 5%; box-sizing: border-box; }
 .offer-hero--placeholder { background: var(--menu-placeholder-bg, #000); }
 .offer-hero--placeholder img { object-fit: contain; padding: 4%; box-sizing: border-box; }
 .offer-hero-quiet {
@@ -145,8 +147,14 @@
             'shareButtonClass' => 'btn-outline share-control-btn', ])
     </div>
 
-    <div class="offer-hero{{ $photoIsPlaceholder ? ' offer-hero--placeholder' : '' }}">
-        @if($photo['animated_tile'] ?? false)
+    <div class="offer-hero{{ ($photo['cutout_only'] ?? false) ? ' offer-hero--cutout' : ($photoIsPlaceholder ? ' offer-hero--placeholder' : '') }}"
+         @if($photo['cutout_only'] ?? false) style="--cutout-color: {{ $photo['backdrop']['color'] ?? '#F3EAE1' }}; --cutout-alpha: {{ number_format(($photo['backdrop']['strength'] ?? 100) / 100, 2, '.', '') }};" @endif>
+        @if($photo['cutout_only'] ?? false)
+            <picture>
+                @if($photo['cutout_webp'] ?? null)<source srcset="{{ $photo['cutout_webp'] }}" type="image/webp">@endif
+                <img src="{{ $photo['cutout'] }}" alt="{{ $socialImage['alt'] ?? $headline }}" loading="eager" decoding="async" data-cutout="1">
+            </picture>
+        @elseif($photo['animated_tile'] ?? false)
             @include('partials.animated-item-tile', ['tileLabel' => $socialImage['alt'] ?? $headline])
         @elseif($photoUrl)
             <picture>
