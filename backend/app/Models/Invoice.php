@@ -24,14 +24,16 @@ class Invoice extends Model
         'tax_rate_bp', 'issue_date', 'gst_period_key', 'gst_ledger_date', 'due_date', 'paid_at',
         'payment_method', 'payment_reference',
         'notes', 'terms', 'pdf_path', 'parent_invoice_id', 'credit_note_reason',
+        'po_number', 'po_file_path', 'deliver_to', 'delivery_date',
     ];
 
-    protected $hidden = ['token'];
+    protected $hidden = ['token', 'po_file_path'];
 
     protected $casts = [
         'issue_date' => 'date',
         'due_date' => 'date',
         'gst_ledger_date' => 'date',
+        'delivery_date' => 'date',
         'paid_at' => 'datetime',
         'is_tax_invoice' => 'boolean',
     ];

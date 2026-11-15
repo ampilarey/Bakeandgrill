@@ -7288,3 +7288,30 @@ table.is-table.is-table { display: none; }
 .sp-save-pic { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--color-border-light); background: var(--color-bg); -webkit-touch-callout: default; }
 .sp-save-video { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--color-border-light); }
 .sp-save-vid { display: block; width: 100%; max-height: 46vh; border-radius: 10px; background: var(--color-backdrop); }
+
+/* ── Invoice from a PO (pop-up, so nothing here is under a page class) ─────── */
+.po-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+.po-pick__name { flex: 1 1 200px; min-width: 0; font-size: 13px; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.po-note { margin: 0 0 12px; padding: 8px 12px; border-radius: 10px; font-size: 13px; background: var(--color-tone-rust-bg); color: var(--color-tone-rust-text); border: 1px solid var(--color-tone-rust-border); }
+.po-note--warn { background: color-mix(in srgb, var(--color-warning) 14%, var(--color-surface)); color: var(--color-text); border-color: color-mix(in srgb, var(--color-warning) 45%, transparent); }
+.po-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px 12px; margin-bottom: 14px; }
+.po-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.po-field--wide { grid-column: 1 / -1; }
+.po-label { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); }
+.po-date { display: block; min-width: 0; max-width: 100%; appearance: none; -webkit-appearance: none; }
+.po-switch { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 13px; color: var(--color-text-secondary); }
+.po-items { margin-bottom: 14px; }
+.po-items__head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+.po-item { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 6px; align-items: center; padding: 8px 0; border-top: 1px solid var(--color-border-light); }
+.po-item__name { grid-column: 1 / -1; }
+.po-item__amount { grid-column: 1 / 4; font-size: 13px; font-weight: 700; color: var(--color-text-secondary); white-space: nowrap; }
+.po-totals { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; padding: 10px 12px; border-radius: 10px; background: var(--color-bg); font-size: 13px; margin-bottom: 4px; }
+.po-totals__total { font-size: 15px; }
+.po-totals__check { flex: 1 1 100%; color: var(--color-success); font-weight: 700; }
+.po-totals__check--off { color: var(--color-danger-strong); }
+.po-done { margin: 0 0 14px; font-size: 14px; line-height: 1.5; }
+@media (min-width: 640px) {
+  .po-item { grid-template-columns: minmax(0, 3fr) 84px 84px 96px 96px auto; border-top: 0; padding: 3px 0; }
+  .po-item__name { grid-column: auto; }
+  .po-item__amount { grid-column: auto; text-align: right; }
+}

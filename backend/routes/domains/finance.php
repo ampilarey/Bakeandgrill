@@ -16,6 +16,11 @@ declare(strict_types=1);
 Route::middleware(['auth:sanctum', 'permission:finance.invoices'])->prefix('invoices')->group(function () {
     Route::get('/', [App\Http\Controllers\Api\InvoiceController::class, 'index']);
     Route::post('/', [App\Http\Controllers\Api\InvoiceController::class, 'store']);
+    // A customer's purchase order: keep the file, warn of a PO invoiced before, open the file again.
+    // Static paths before /{id}.
+    Route::post('/po-file', [App\Http\Controllers\Api\InvoicePoController::class, 'upload'])->middleware('throttle:30,1');
+    Route::get('/po-check', [App\Http\Controllers\Api\InvoicePoController::class, 'check']);
+    Route::get('/{id}/po-file', [App\Http\Controllers\Api\InvoicePoController::class, 'download'])->whereNumber('id');
     Route::get('/{id}', [App\Http\Controllers\Api\InvoiceController::class, 'show']);
     Route::patch('/{id}', [App\Http\Controllers\Api\InvoiceController::class, 'update']);
     Route::post('/{id}/mark-sent', [App\Http\Controllers\Api\InvoiceController::class, 'markSent']);

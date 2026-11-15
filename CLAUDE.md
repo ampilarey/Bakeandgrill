@@ -1146,6 +1146,26 @@ dish's tax code are kept. A new place that taxes a sale reads `salesTaxRateBp()`
 `defaultTaxRateBp()` (that one is the stored rate, for supplier bills and the ledger). "GST registered" is about
 filing and tax invoices, not about charging. `FeeGstTest::test_the_one_switch_turns_every_gst_off`. The till asks `/gst/bootstrap` again every minute and when it comes back to the front, and a failed ask keeps the last good answer (owner, 2026-11-12: a cashier saved a ticket and Charge asked for less than the cart showed; the till had kept the rate from when it opened, and a failed request answered a made-up 8% that was saved as the offline copy). `fetchGstBootstrap()` in the till throws; never give it a hard-coded rate to fall back on. `useCart.gstRefresh.test.ts`. Till totals audit (owner, 2026-11-12: "Before it was 419 but when charge clicked it was 400"): Charge on a saved ticket always took the server's total while the cart showed the till's own sums. A saved ticket opened and not changed now shows the order's own figures (`savedTicket` from `useOrderCreation`, `shown` in `usePosApp`: total, GST, service charge, packaging from `GET /orders/{id}` and the save reply), and the till's sums return only while it is being edited; the service charge settings are asked again every minute like the GST rate (`fetchPublicSiteSettingsStrict()`, which throws; a failed ask used to read as no service charge and was saved as the offline copy). A new money line on an order goes into `figuresOf()` and the save reply. `SavedTicketFiguresTest`, `useOrderCreation.savedTicket.test.ts`.
 
+## An invoice from a customer's purchase order
+
+Owner, 2026-11-15 ("a place where I can upload PO and generate invoice": a resort's PO for short eats). Finance →
+Invoices → **+ From a PO** (`components/poinvoice/PoInvoiceModal.tsx`): pick the PO's PDF, it is read **in the browser**
+(`pdfText.ts`: pdf.js, loaded only then, as an ordinary `.js` worker through `?worker`, never the bare `.mjs`, which not
+every host serves as script; `readPo.ts`: `linesOf()` puts the words back into lines by their place on the page,
+`readPo()` finds the PO number, dates, who to bill from the PO's own "issue the invoice to" block with that block's TIN
+and never the supplier's, where to deliver, and each row where quantity × price is the amount), every value lands in a
+box that can be changed, the totals are held against the PO's printed total, and Create invoice goes through the one
+manual path, `InvoiceController::store`. So the server needs no PDF software. The invoice keeps `invoices.po_number`,
+`deliver_to`, `delivery_date` and `po_file_path` (the file on the private disk under `invoice-pos/`, uploaded by
+`POST /api/invoices/po-file`, opened again by `GET /api/invoices/{id}/po-file`; the path is hidden, and `store` takes
+only a path `InvoicePoController::checkedPath()` made). `GET /api/invoices/po-check` names invoices already made for a
+PO number (void ones aside) and the pop-up warns; the list is searched by PO number and shows it under the invoice's.
+The public invoice page and both PDFs print PO No., Delivery and Deliver to (`partials/invoice-po`), and Bill to carries
+the address and TIN. A photo or a scan cannot be read: the boxes are typed and the picture is still kept. Tax invoice is
+off unless switched on (it takes a number from the GST series and posts to the GST ledger). A new PO layout that reads
+badly gets a case in `readPo()` and a fixture in `readPo.test.ts` (with the supplier's own details changed), never a
+second reader. `InvoiceFromPoTest`, `readPo.test.ts`, `PoInvoiceModal.test.tsx`.
+
 ## QR and card payments are checked by hand
 
 Owner, 2026-10-28: a QR customer types the bill amount themselves and the cashier keys the card

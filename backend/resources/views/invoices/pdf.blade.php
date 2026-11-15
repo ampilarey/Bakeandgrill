@@ -52,6 +52,7 @@
         @if ($invoice->due_date)
             <div class="pdf-meta-value">Due: {{ $invoice->due_date->format('d M Y') }}</div>
         @endif
+        @include('partials.invoice-po')
         @if ($invoice->paid_at)
             <div class="pdf-meta-value">Paid: {{ $invoice->paid_at->format('d M Y') }}</div>
         @endif

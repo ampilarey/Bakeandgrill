@@ -33,6 +33,10 @@ export type Invoice = {
   payment_method: string | null;
   notes: string | null;
   is_tax_invoice?: boolean;
+  po_number?: string | null;
+  has_po_file?: boolean;
+  deliver_to?: string | null;
+  delivery_date?: string | null;
   customer_tin?: string | null;
   credit_note_reason?: string | null;
   customer: { id: number; name: string; phone: string } | null;
@@ -135,9 +139,34 @@ export async function createInvoice(data: {
   tax_rate_bp?: number;
   notes?: string;
   terms?: string;
+  is_tax_invoice?: boolean;
+  customer_tin?: string;
+  /** From a customer's purchase order. */
+  po_number?: string;
+  po_file?: string;
+  deliver_to?: string;
+  delivery_date?: string;
   items: ManualInvoiceLineItem[];
 }): Promise<{ invoice: Invoice }> {
   return req('/invoices', { method: 'POST', body: JSON.stringify(data) });
+}
+
+/** Keep a customer's PO file (PDF or a photo); the path goes on the invoice made from it. */
+export async function uploadInvoicePoFile(file: File): Promise<{ path: string }> {
+  const body = new FormData();
+  body.append('file', file);
+  return req('/invoices/po-file', { method: 'POST', body });
+}
+
+export type PoInvoicedBefore = { id: number; invoice_number: string; issue_date: string | null; total: number; status: string };
+
+/** Invoices already made for this PO number. */
+export async function checkInvoicePo(poNumber: string): Promise<{ invoices: PoInvoicedBefore[] }> {
+  return req(`/invoices/po-check?po_number=${encodeURIComponent(poNumber)}`);
+}
+
+export async function downloadInvoicePoFile(id: number): Promise<Blob> {
+  return requestBlob(`/invoices/${id}/po-file`, {});
 }
 
 // ── Expenses ──────────────────────────────────────────────────────────────────

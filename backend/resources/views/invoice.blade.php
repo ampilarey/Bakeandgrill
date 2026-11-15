@@ -110,6 +110,12 @@
                     @if ($invoice->customer->phone ?? $invoice->recipient_phone)
                         <p class="doc-subtitle" style="margin:0;">{{ $invoice->customer->phone ?? $invoice->recipient_phone }}</p>
                     @endif
+                    @if ($invoice->recipient_address)
+                        <p class="doc-subtitle" style="margin:0;">{{ $invoice->recipient_address }}</p>
+                    @endif
+                    @if ($invoice->customer_tin)
+                        <p class="doc-subtitle" style="margin:0;">TIN: {{ $invoice->customer_tin }}</p>
+                    @endif
                 </div>
             @endif
             <div>
@@ -118,6 +124,7 @@
                 @if ($invoice->due_date)
                     <p style="margin:0.25rem 0 0; color:var(--muted);">Due: {{ $invoice->due_date->format('d M Y') }}</p>
                 @endif
+                @include('partials.invoice-po', ['tag' => 'p', 'class' => 'doc-po-line', 'style' => 'margin:0.25rem 0 0;'])
                 @if (($page['overdue_days'] ?? null) !== null)
                     <p style="margin:0.25rem 0 0; color:var(--danger-text, #b91c1c); font-weight:700;" data-overdue-days="{{ $page['overdue_days'] }}">
                         Overdue by {{ $page['overdue_days'] }} {{ $page['overdue_days'] === 1 ? 'day' : 'days' }}

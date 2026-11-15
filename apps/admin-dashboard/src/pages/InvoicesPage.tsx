@@ -4,7 +4,7 @@ import {
   getInvoices, getInvoice, markInvoiceSent, markInvoicePaid, voidInvoice, sendInvoiceToCustomer,
   generateInvoicePdf, pushInvoiceToXero,
   createInvoiceFromOrder, createInvoiceFromPurchase,
-  createCreditNote, updateInvoice, createInvoice,
+  createCreditNote, updateInvoice, createInvoice, downloadInvoicePoFile,
   type Invoice, type ManualInvoiceLineItem,
 } from '../api';
 import {
@@ -16,7 +16,8 @@ import { PurchaseSearch, type PurchaseSearchSelection } from '../components/Purc
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today } from '../utils/dateHelpers';
 import { ADMIN_INVOICE_PAYMENT_METHODS } from '../lib/paymentMethods';
-import { MessageSquare, RefreshCw, CloudUpload, FileDown, Ban, Check, X } from 'lucide-react';
+import { MessageSquare, RefreshCw, CloudUpload, FileDown, FileText, Ban, Check, X } from 'lucide-react';
+import { PoInvoiceModal } from '../components/poinvoice/PoInvoiceModal';
 import { inputFont } from '../utils/cssVars';
 
 const TYPE_COLOR: Record<string, string> = { sale: 'teal', purchase: 'blue', credit_note: 'orange' };
@@ -93,6 +94,7 @@ export function InvoicesPage() {
   // Manual invoice creation
   const emptyLine = (): ManualInvoiceLineItem => ({ description: '', quantity: 1, unit_price: 0 });
   const [showManual, setShowManual]       = useState(false);
+  const [showPo, setShowPo]               = useState(false);
   const [manualForm, setManualForm]       = useState({ type: 'sale' as 'sale' | 'purchase' | 'credit_note', recipient_name: '', recipient_phone: '', issue_date: today(), due_date: '', notes: '', tax_rate_bp: '0' });
   const [manualLines, setManualLines]     = useState<ManualInvoiceLineItem[]>([emptyLine()]);
   const [manualSaving, setManualSaving]   = useState(false);
@@ -238,6 +240,19 @@ export function InvoicesPage() {
     });
   };
 
+  // The customer's purchase order kept with an invoice made from one.
+  const handleOpenPo = async (inv: Invoice) => {
+    try {
+      const blob = await downloadInvoicePoFile(inv.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `PO-${inv.po_number || inv.invoice_number}${blob.type === 'application/pdf' ? '.pdf' : blob.type === 'image/png' ? '.png' : '.jpg'}`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (e) { setError((e as Error).message); }
+  };
+
   const handleDownloadPdf = async (inv: Invoice) => {
     setPdfLoading(inv.id);
     try {
@@ -380,6 +395,7 @@ export function InvoicesPage() {
         action={
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn onClick={() => { setShowManual(true); setManualError(''); }}>+ New Invoice</Btn>
+            <Btn variant="secondary" onClick={() => setShowPo(true)} data-testid="from-po">+ From a PO</Btn>
             <Btn variant="secondary" onClick={() => { setCreateFrom('order'); setCreateRef(null); }}>+ From Order</Btn>
             <Btn variant="secondary" onClick={() => { setCreateFrom('purchase'); setCreateRef(null); }}>+ From Purchase</Btn>
             <Btn onClick={load} variant="secondary"><RefreshCw size={15} aria-hidden />Refresh</Btn>
@@ -398,7 +414,7 @@ export function InvoicesPage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search invoice #, recipient…"
+          placeholder="Search invoice #, PO #, recipient…"
           style={inputFont({ ...selectStyle, minWidth: 220 })}
         />
         <select value={typeFilter} onChange={(e) => setType(e.target.value)} style={inputFont(selectStyle)}>
@@ -443,7 +459,10 @@ export function InvoicesPage() {
                   <td style={{ ...CELL, width: 36 }}>
                     <input type="checkbox" checked={bulkSelected.has(inv.id)} onChange={() => toggleSelect(inv.id)} style={{ cursor: 'pointer' }} />
                   </td>
-                  <td style={{ ...CELL, fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{inv.invoice_number}</td>
+                  <td style={{ ...CELL, fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
+                    {inv.invoice_number}
+                    {inv.po_number && <span style={{ display: 'block', fontWeight: 500, fontSize: 12, color: 'var(--color-text-muted)' }}>PO {inv.po_number}</span>}
+                  </td>
                   <td style={CELL}>
                     <Badge label={inv.type.replace(/_/g, ' ')} color={TYPE_COLOR[inv.type] ?? 'gray'} />
                   </td>
@@ -519,6 +538,9 @@ export function InvoicesPage() {
                       )}
                       {!['void', 'cancelled'].includes(inv.status) && inv.type === 'sale' && (
                         <Btn small variant="secondary" onClick={() => openSmsModal(inv)} title="Send by SMS" aria-label={`Send ${inv.invoice_number} by SMS`}><MessageSquare size={15} aria-hidden /></Btn>
+                      )}
+                      {inv.has_po_file && (
+                        <Btn small variant="secondary" onClick={() => void handleOpenPo(inv)} title="Open the PO" aria-label={`Open the PO for ${inv.invoice_number}`}><FileText size={15} aria-hidden /></Btn>
                       )}
                       <Btn small variant="secondary" onClick={() => void handleDownloadPdf(inv)} disabled={pdfLoading === inv.id} title="Download PDF" aria-label={`Download ${inv.invoice_number} as PDF`}>
                         {pdfLoading === inv.id ? '…' : <FileDown size={15} aria-hidden />}
@@ -721,6 +743,13 @@ export function InvoicesPage() {
             </Btn>
           </ModalActions>
         </Modal>
+      )}
+
+      {showPo && (
+        <PoInvoiceModal
+          onClose={() => setShowPo(false)}
+          onCreated={(inv) => { showToast(`Invoice ${inv.invoice_number} created.`); void load(); }}
+        />
       )}
 
       {/* Manual Invoice Modal */}

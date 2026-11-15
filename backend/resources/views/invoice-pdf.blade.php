@@ -26,6 +26,12 @@
             @if ($invoice->customer->phone ?? $invoice->recipient_phone)
                 <div class="pdf-meta-value">{{ $invoice->customer->phone ?? $invoice->recipient_phone }}</div>
             @endif
+            @if ($invoice->recipient_address)
+                <div class="pdf-meta-value">{{ $invoice->recipient_address }}</div>
+            @endif
+            @if ($invoice->customer_tin)
+                <div class="pdf-meta-value">TIN: {{ $invoice->customer_tin }}</div>
+            @endif
         @endif
     </div>
     <div class="pdf-meta-col">
@@ -34,6 +40,7 @@
         @if ($invoice->due_date)
             <div class="pdf-meta-value">Due: {{ $invoice->due_date->format('d M Y') }}</div>
         @endif
+        @include('partials.invoice-po')
         @if ($invoice->paid_at)
             <div class="pdf-meta-value">Paid: {{ $invoice->paid_at->format('d M Y') }}</div>
         @elseif ($onCredit && $balanceDueMvr > 0)

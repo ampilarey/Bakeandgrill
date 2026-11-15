@@ -199,6 +199,28 @@ export const GUIDES: Guide[] = [
     words: 'gst tax off remove no tax 8% bill receipt',
   },
   {
+    id: 'invoice-from-po',
+    page: '/finance',
+    title: 'Make an invoice from a customer\'s purchase order',
+    about: 'Upload the PO a resort or company sent. It is read for you, you check it, and the invoice carries the PO number.',
+    open: { to: '/finance/invoices', label: 'Open Invoices' },
+    steps: [
+      'Open Finance → Invoices and tap + From a PO.',
+      'Tap Choose the PO (PDF) and pick the file the customer sent.',
+      'Check the boxes it filled in: PO number, Bill to, Their TIN, Deliver to, Delivery date and each item with its quantity and price.',
+      'Look at the totals. It says whether they match the PO\'s total.',
+      'Tap Create invoice, then Download the invoice.',
+    ],
+    notes: [
+      'A photo or a scanned PO cannot be read. Type the boxes yourself; the picture is still kept with the invoice.',
+      'If the PO number already has an invoice it says so, to stop one PO being billed twice.',
+      'Switch on Tax invoice only when you want it numbered in your GST series. It needs the customer\'s TIN.',
+      'The PO file stays with the invoice: the page icon on its row opens it again.',
+      'Search the list by PO number to find the invoice later.',
+    ],
+    words: 'purchase order po upload pdf resort company invoice bill generate tin tax invoice delivery',
+  },
+  {
     id: 'check-payments',
     page: '/finance',
     title: 'Check today\'s QR, card and transfer payments',

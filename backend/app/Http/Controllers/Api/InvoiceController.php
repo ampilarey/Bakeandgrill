@@ -73,7 +73,8 @@ class InvoiceController extends Controller
             $query->where(function ($q) use ($term, $raw) {
                 $q->where('invoice_number', 'like', $term)
                     ->orWhere('recipient_name', 'like', $term)
-                    ->orWhere('recipient_phone', 'like', $term);
+                    ->orWhere('recipient_phone', 'like', $term)
+                    ->orWhere('po_number', 'like', $term);
                 if (ctype_digit($raw)) {
                     $q->orWhere('id', (int) $raw);
                 }
@@ -119,7 +120,14 @@ class InvoiceController extends Controller
             'items.*.tax_rate_bp' => ['nullable', 'integer', 'min:0', 'max:10000'],
             'is_tax_invoice' => ['sometimes', 'boolean'],
             'customer_tin' => ['nullable', 'string', 'max:30'],
+            // An invoice made from a customer's purchase order (owner, 2026-11-15).
+            'po_number' => ['nullable', 'string', 'max:80'],
+            'po_file' => ['nullable', 'string', 'max:255'],
+            'deliver_to' => ['nullable', 'string', 'max:1000'],
+            'delivery_date' => ['nullable', 'date'],
         ]);
+
+        $poFile = InvoicePoController::checkedPath($validated['po_file'] ?? null);
 
         if (!empty($validated['is_tax_invoice'])) {
             if (empty($validated['customer_tin']) && empty($validated['recipient_name'])) {
@@ -130,7 +138,7 @@ class InvoiceController extends Controller
             }
         }
 
-        $invoice = DB::transaction(function () use ($validated, $request) {
+        $invoice = DB::transaction(function () use ($validated, $request, $poFile) {
             $subtotal = 0.0;
             $taxTotal = 0.0;
             $lineItems = [];
@@ -192,6 +200,10 @@ class InvoiceController extends Controller
                 'due_date' => $validated['due_date'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'terms' => $validated['terms'] ?? null,
+                'po_number' => trim((string) ($validated['po_number'] ?? '')) ?: null,
+                'po_file_path' => $poFile,
+                'deliver_to' => trim((string) ($validated['deliver_to'] ?? '')) ?: null,
+                'delivery_date' => $validated['delivery_date'] ?? null,
             ]);
 
             foreach ($lineItems as $line) {
@@ -950,6 +962,10 @@ class InvoiceController extends Controller
             'payment_reference' => $inv->payment_reference,
             'notes' => $inv->notes,
             'terms' => $inv->terms,
+            'po_number' => $inv->po_number,
+            'has_po_file' => (string) $inv->po_file_path !== '',
+            'deliver_to' => $inv->deliver_to,
+            'delivery_date' => $inv->delivery_date?->toDateString(),
             'pdf_path' => $inv->pdf_path,
             'order_id' => $inv->order_id,
             'order' => $inv->order ? [
