@@ -30,6 +30,8 @@ class BillReaderSettingsController extends Controller
         $providers = array_keys(BillReaderSettings::PROVIDERS);
         $data = $request->validate([
             'provider' => ['sometimes', Rule::in($providers)],
+            // Who bills are made out to, separated by commas. Empty puts the usual names back.
+            'our_names' => ['sometimes', 'nullable', 'string', 'max:300'],
             // A key that is sent replaces the stored one; "" removes it. Not sent, it is kept.
             'keys' => ['sometimes', 'array'],
             'keys.*' => ['nullable', 'string', 'max:400'],
@@ -47,6 +49,10 @@ class BillReaderSettingsController extends Controller
                 $settings->setModel($p, (string) $data['models'][$p]);
                 $changed[] = "{$p} model";
             }
+        }
+        if (array_key_exists('our_names', $data)) {
+            $settings->setOurNames((string) $data['our_names']);
+            $changed[] = 'our names';
         }
         if (isset($data['provider'])) {
             $settings->setProvider($data['provider']);

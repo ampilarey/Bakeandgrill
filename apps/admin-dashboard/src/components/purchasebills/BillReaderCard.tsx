@@ -93,10 +93,11 @@ export function BillReaderCard() {
   const [settings, setSettings] = useState<BillReaderSettings | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [names, setNames] = useState('');
 
   useEffect(() => {
     let gone = false;
-    getBillReader().then((s) => { if (!gone) setSettings(s); }).catch(() => { /* not theirs to see */ });
+    getBillReader().then((s) => { if (!gone) { setSettings(s); setNames(s.our_names ?? ''); } }).catch(() => { /* not theirs to see */ });
     return () => { gone = true; };
   }, []);
 
@@ -127,6 +128,23 @@ export function BillReaderCard() {
             onUse={() => void save({ provider: p.key }).catch(() => { /* shown above */ })}
           />
         ))}
+      </div>
+
+      <div className="br-names">
+        <label className="br-label" htmlFor="br-our-names">Bills are made out to</label>
+        <p className="br-help">
+          Your own names, with commas between them: the shop and the company it belongs to. A bill addressed to any of them is read as yours.
+        </p>
+        <div className="br-row">
+          <input
+            id="br-our-names" value={names} onChange={(e) => setNames(e.target.value)} spellCheck={false}
+            className="br-input" style={inputFont({})} data-testid="bill-reader-names"
+          />
+          <Btn small variant="secondary" disabled={busy || names.trim() === (settings.our_names ?? '')}
+            onClick={() => void save({ our_names: names.trim() }).then(() => undefined).catch(() => { /* shown above */ })}>
+            Save names
+          </Btn>
+        </div>
       </div>
     </section>
   );

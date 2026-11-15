@@ -7326,6 +7326,7 @@ table.is-table.is-table { display: none; }
 .br-more summary { cursor: pointer; font-size: 12px; font-weight: 700; color: var(--color-text-secondary); min-height: 32px; display: flex; align-items: center; }
 .br-more[open] { display: flex; flex-direction: column; gap: 6px; }
 .br-block .po-note { margin: 0; }
+.br-names { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
 .po-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px 12px; margin-bottom: 14px; }
 .po-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .po-field--wide { grid-column: 1 / -1; }

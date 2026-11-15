@@ -1226,7 +1226,10 @@ which the settings list never returns, and **never goes back to a screen**, only
 came from; a key in `.env` (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`) is used until one is typed. `BillVision::read()`
 hands the bill to the picked service: Claude through the SDK, Google through `GeminiVision` (the `generateContent` REST
 call, `gemini-flash-latest`, the same `INSTRUCTIONS`, `SCHEMA` turned to Gemini's dialect by `GeminiVision::schema()`).
-Test sends a bill drawn on the spot (`BillReader::trial()`). A new service is a row in `PROVIDERS` and a reader class
+Test sends a bill drawn on the spot (`BillReader::trial()`). The reader is told the business's own names
+(`BillReaderSettings::ourNames()`, the card's Bills are made out to, "Bake & Grill, Akuru Institute" unless typed;
+owner, 2026-11-15: "Akuru is main company. Bake and grill is under akuru"), so a bill addressed to the parent company
+is ours and is never the shop nor worth a note. A new service is a row in `PROVIDERS` and a reader class
 `BillVision::read()` dispatches to, answering in `SCHEMA`; never a second place to type a key.
 `BillReaderSettingsTest`, `BillReaderCard.test.tsx`. **Bills through the staff bot** (owner, 2026-11-15: "Can I upload and
 approve slip via telegram"): a photo or a PDF sent to the bot in a private chat is a bill

@@ -959,6 +959,7 @@ export const GUIDES: Guide[] = [
       'You can keep a key for both and switch whenever you like. Bills already read stay as they are.',
       'Remove key takes a typed key away. A key in the server\'s .env file, if there is one, is then used.',
       'Leave Model empty unless you know the exact name of another model.',
+      'Bills are made out to lists your own names, such as the shop and its parent company, so a bill addressed to either is read as yours.',
       'Each bill read costs a few cents, charged by the service to your account with them.',
       'Only someone who may change settings sees this part.',
     ],

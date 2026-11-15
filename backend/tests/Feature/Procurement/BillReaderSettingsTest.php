@@ -157,6 +157,20 @@ class BillReaderSettingsTest extends TestCase
             ->assertJsonPath('ok', false);
     }
 
+    /** Owner, 2026-11-15: "Akuru is main company. Bake and grill is under akuru". */
+    public function test_the_reader_is_told_the_business_and_its_parent_company_are_us(): void
+    {
+        $context = app(\App\Domains\Inventory\Bills\BillReader::class)->context();
+        $this->assertStringContainsString('Our own names (the buyer on a bill, never the shop): Bake & Grill; Akuru Institute', $context);
+
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $this->putJson('/api/purchasing/bill-reader', ['our_names' => 'Bake & Grill, Akuru Institute, Akuru Pvt Ltd'])
+            ->assertOk()->assertJsonPath('our_names', 'Bake & Grill, Akuru Institute, Akuru Pvt Ltd');
+        $this->assertStringContainsString('Akuru Pvt Ltd', app(\App\Domains\Inventory\Bills\BillReader::class)->context());
+        // Emptied, the usual names come back.
+        $this->putJson('/api/purchasing/bill-reader', ['our_names' => ''])->assertJsonPath('our_names', 'Bake & Grill, Akuru Institute');
+    }
+
     public function test_only_someone_who_may_change_settings_reaches_the_keys(): void
     {
         Sanctum::actingAs($this->makeStaff(), ['staff']);

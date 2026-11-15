@@ -73,7 +73,7 @@ class BillVision
         - Give the price of one unit and the line total as actually paid. When the bill shows prices before GST and adds GST at the foot, add the GST into the unit price and the amount of the lines it applies to, so that the lines add up to the grand total. Apply a line discount to its line; spread a discount on the whole bill across the lines in proportion.
         - Leave out lines that are not goods: subtotals, totals, GST, rounding, change, payment and bottle deposits returned. A delivery or service charge is a line of its own with item_id 0.
 
-        The shop is whoever issued the bill, never the restaurant it is addressed to (Bake & Grill). When the shop is clearly one of the suppliers on file, answer with that supplier's name exactly as listed.
+        The shop is whoever issued the bill, never the business it is addressed to. The restaurant's own names are listed with the inventory: a bill made out to any of them is the restaurant's own bill, which is the usual case and needs no note. When the shop is clearly one of the suppliers on file, answer with that supplier's name exactly as listed.
 
         If the picture is not a bill for goods, or is too blurred to read at all, answer with is_bill false and no lines.
         TXT;

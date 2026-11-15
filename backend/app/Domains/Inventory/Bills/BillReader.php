@@ -395,7 +395,8 @@ class BillReader
         })->all();
         $suppliers = Supplier::query()->orderBy('name')->pluck('name')->filter()->unique()->values()->all();
 
-        return "Inventory items (id | name | own unit | packs):\n" . ($rows === [] ? '(none yet)' : implode("\n", $rows))
+        return 'Our own names (the buyer on a bill, never the shop): ' . implode('; ', app(BillReaderSettings::class)->ourNames())
+            . "\n\nInventory items (id | name | own unit | packs):\n" . ($rows === [] ? '(none yet)' : implode("\n", $rows))
             . "\n\nSuppliers on file:\n" . ($suppliers === [] ? '(none yet)' : implode("\n", $suppliers));
     }
 

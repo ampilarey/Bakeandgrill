@@ -37,6 +37,13 @@ class BillReaderSettings
 
     private const SCOPE = 'secret';
 
+    /**
+     * The names a supplier may write a bill out to (owner, 2026-11-15: "Akuru is main
+     * company. Bake and Grill is under Akuru"): the reader is told these are us, so a
+     * bill addressed to the parent company is not pointed out as someone else's.
+     */
+    public const OUR_NAMES = 'Bake & Grill, Akuru Institute';
+
     public function provider(): string
     {
         $picked = (string) SiteSetting::get('bill_reader_provider', '');
@@ -105,6 +112,20 @@ class BillReaderSettings
         SiteSetting::set("bill_reader_model_{$provider}", trim($model));
     }
 
+    /** @return list<string> */
+    public function ourNames(): array
+    {
+        $typed = trim((string) SiteSetting::get('bill_reader_our_names', ''));
+        $names = array_values(array_filter(array_map('trim', explode(',', $typed !== '' ? $typed : self::OUR_NAMES))));
+
+        return $names === [] ? array_map('trim', explode(',', self::OUR_NAMES)) : $names;
+    }
+
+    public function setOurNames(string $names): void
+    {
+        SiteSetting::set('bill_reader_our_names', mb_substr(trim($names), 0, 300));
+    }
+
     /**
      * For the settings screen. Never the key itself.
      *
@@ -128,6 +149,6 @@ class BillReaderSettings
             ];
         }
 
-        return ['provider' => $this->provider(), 'providers' => $rows];
+        return ['provider' => $this->provider(), 'providers' => $rows, 'our_names' => implode(', ', $this->ourNames())];
     }
 }

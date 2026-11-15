@@ -332,7 +332,12 @@ export type BillReaderProvider = {
   default_model: string;
 };
 
-export type BillReaderSettings = { provider: string; providers: BillReaderProvider[] };
+export type BillReaderSettings = {
+  provider: string;
+  providers: BillReaderProvider[];
+  /** The names a bill may be made out to, comma separated: the business and its parent company. */
+  our_names: string;
+};
 
 export async function getBillReader(): Promise<BillReaderSettings> {
   return req('/purchasing/bill-reader');
@@ -340,7 +345,7 @@ export async function getBillReader(): Promise<BillReaderSettings> {
 
 /** A key that is sent replaces the stored one; "" removes it; left out, it is kept. */
 export async function saveBillReader(data: {
-  provider?: string; keys?: Record<string, string>; models?: Record<string, string>;
+  provider?: string; keys?: Record<string, string>; models?: Record<string, string>; our_names?: string;
 }): Promise<BillReaderSettings> {
   return req('/purchasing/bill-reader', { method: 'PUT', body: JSON.stringify(data) });
 }
