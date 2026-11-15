@@ -243,6 +243,9 @@ class BillReader
                 'quantity' => $line['quantity'],
                 'unit_cost' => $line['unit_price'],
                 'purchase_unit_id' => $pack,
+                'brand' => ($line['brand'] ?? '') !== '' ? $line['brand'] : null,
+                // What the bill called it, so the wording is remembered for the next bill.
+                'bill_name' => $line['name'] !== '' ? $line['name'] : null,
                 'gst_rate_bp' => $line['gst'] ? 800 : 0,
             ], fn ($v) => $v !== null);
         }
@@ -419,7 +422,8 @@ class BillReader
 
         return 'Our own names (the buyer on a bill, never the shop): ' . implode('; ', app(BillReaderSettings::class)->ourNames())
             . "\n\nInventory items (id | name | own unit | packs):\n" . ($rows === [] ? '(none yet)' : implode("\n", $rows))
-            . "\n\nSuppliers on file:\n" . ($suppliers === [] ? '(none yet)' : implode("\n", $suppliers));
+            . "\n\nSuppliers on file:\n" . ($suppliers === [] ? '(none yet)' : implode("\n", $suppliers))
+            . "\n\n" . app(BillNames::class)->hints();
     }
 
     /**
@@ -433,6 +437,7 @@ class BillReader
     public function tidy(array $raw): array
     {
         $known = InventoryItem::query()->where('is_active', true)->pluck('id')->flip();
+        $names = app(BillNames::class);
         $num = fn ($v): float => is_numeric($v) && (float) $v > 0 ? round((float) $v, 4) : 0.0;
         $text = fn ($v, int $max = 255): string => mb_substr(trim((string) (is_scalar($v) ? $v : '')), 0, $max);
 
@@ -442,6 +447,8 @@ class BillReader
                 continue;
             }
             $id = (int) ($line['item_id'] ?? 0);
+            // A wording a person settled on an earlier bill is that item again, whatever was guessed.
+            $id = $names->itemFor((string) ($line['name'] ?? '')) ?? $id;
             $qty = $num($line['quantity'] ?? 0);
             $price = $num($line['unit_price'] ?? 0);
             $amount = $num($line['amount'] ?? 0);
@@ -466,6 +473,7 @@ class BillReader
             $lines[] = [
                 'name' => $name,
                 'item_id' => $known->has($id) ? $id : null,
+                'brand' => $text($line['brand'] ?? '', 120),
                 'new_name' => $text($line['new_name'] ?? '') ?: $name,
                 'new_unit' => $text($line['new_unit'] ?? '', 40),
                 'quantity' => $qty,
@@ -488,7 +496,10 @@ class BillReader
 
         return [
             'is_bill' => (bool) ($raw['is_bill'] ?? false),
-            'shop' => $text($raw['shop'] ?? ''),
+            // The shop as the bill wrote it, kept so a name the person corrects is remembered.
+            'shop_as_read' => $text($raw['shop'] ?? ''),
+            // A branch's own name, once settled, is the supplier on file.
+            'shop' => $names->shopFor($text($raw['shop'] ?? '')) ?? $text($raw['shop'] ?? ''),
             'bill_no' => $text($raw['bill_no'] ?? '', 64),
             'date' => $date,
             'total' => round($num($raw['total'] ?? 0), 2),

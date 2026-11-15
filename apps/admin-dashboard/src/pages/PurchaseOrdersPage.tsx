@@ -214,6 +214,8 @@ export function linesFromBill(lines: BillLine[], canAddItems: boolean): ManualPo
     quantity: String(b.quantity),
     unit_cost: String(b.unit_price),
     unitText: b.unit,
+    // The brand on the bill; none read, the last one bought fills in as on any line.
+    brand: b.brand ?? '',
     // The bill said how many are in the pack: the "what is a carton?" box comes filled.
     newPackQty: b.pack_size && b.pack_size > 0 ? String(b.pack_size) : '',
     gst: b.gst,
@@ -802,6 +804,8 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           unit_cost: cost,
           ...packPayload(linePack(l)),
           ...(l.brand.trim() ? { brand: l.brand.trim() } : {}),
+          // What the bill called it: the wording is remembered, so the next bill finds this item.
+          ...(l.bill?.name ? { bill_name: l.bill.name } : {}),
           gst_rate_bp: l.gst ? 800 : 0,
         };
       })
@@ -2023,7 +2027,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                         unit_cost: '',
                         gst: (sel?.item.gst_rate_bp ?? 0) > 0,
                         // Read from a bill: what was paid is on the bill, not in last week's order.
-                        ...(l.bill ? { unit_cost: String(l.bill.unit_price), unitText: l.bill.unit, costTyped: true, unitTyped: true, gst: l.gst } : {}),
+                        ...(l.bill ? { unit_cost: String(l.bill.unit_price), unitText: l.bill.unit, costTyped: true, unitTyped: true, gst: l.gst, brand: l.brand } : {}),
                       } : l),
                     }));
                     if (sel) void loadPacksFor(idx, sel.item.id);

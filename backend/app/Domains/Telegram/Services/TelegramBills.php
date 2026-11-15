@@ -172,6 +172,9 @@ class TelegramBills
                 . ($known ? '' : ' · 🆕 not in inventory') . (!empty($line['unsure']) ? ' · ⚠ check this line' : '');
             $lines[] = '   ' . $qty($line['quantity']) . ' ' . $e($unit) . ' × ' . $money($line['unit_price']) . ' = <b>' . $money($line['amount']) . '</b>'
                 . ($line['gst'] ? ' · 8% GST inside' : '');
+            if (($line['brand'] ?? '') !== '') {
+                $lines[] = '   Brand: ' . $e($line['brand']);
+            }
             if ($in === null) {
                 $lines[] = '   Pack: how many ' . $e($own) . ' in one ' . $e($unit) . ' is not known yet';
             } elseif ($in != 1.0) {

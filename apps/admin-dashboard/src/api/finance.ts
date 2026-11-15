@@ -1019,6 +1019,8 @@ export async function createPurchase(data: {
      * stock count being split between them.
      */
     brand?: string;
+    /** Read from a bill: what the bill called this line, remembered for the next bill. */
+    bill_name?: string;
   }[];
   /**
    * Paid when it was bought: in full, part (`paid_amount`) or not yet.

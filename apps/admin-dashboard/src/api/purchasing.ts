@@ -254,6 +254,8 @@ export type BillLine = {
   /** The inventory item it was matched to, or null when none of them is this product. */
   item_id: number | null;
   item: InventoryItem | null;
+  /** The brand the bill names, or "". One item per product, whatever its brand. */
+  brand?: string;
   /** For a line with no item: a name and a unit to start a new inventory item from. */
   new_name: string;
   new_unit: string;

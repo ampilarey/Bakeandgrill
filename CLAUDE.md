@@ -1250,7 +1250,19 @@ set up before it does it; Approve (`pba` paid in cash, `pbn` not paid yet; `pbr`
 untouched), holds `purchasePayload()` to `StorePurchaseRequest`'s rules and goes through
 `PurchaseController::createManual()`, the one manual path the form's `store` uses too, with `status: received`, since a
 bill in hand means the goods are on the shelf (the Admin form still saves a draft). A new way to make a purchase from a
-bill goes through `review()`, `settle()` and `createManual()`. `TelegramBillsTest`.
+bill goes through `review()`, `settle()` and `createManual()`. `TelegramBillsTest`. **What bills call things is remembered**
+(owner, 2026-11-15: "one shop may have 2-3 branches so invoice will be in different shops name. But actually its one
+shop. Some items also like that. And how do u deal with brands?"): `bill_names` (`BillNames`), learned and never typed.
+Every purchase made from a bill sends each line's `bill_name` (the bill's wording; the Admin form and
+`purchasePayload()` both, stripped in `createManual()` before the order is made), and `BillNames::learn()` keeps the
+shop as the bill wrote it (`data.shop_as_read`) beside the supplier the order went to and each wording beside its item,
+where they differ from the name on file; a later answer replaces an earlier one. `tidy()` then puts a known branch name
+on its supplier and a known wording on its item whatever the reader guessed (`shopFor()`, `itemFor()`, compared through
+`BillNames::key()`: lower case, letters and digits only), and `context()` shows the reader both lists (`hints()`) so a
+wording that is only close follows. The reader also returns each line's `brand`: the inventory stays one item per
+product, and the brand goes on the purchase line (the form's Brand box, `items.*.brand`), where price history already
+keeps brands apart. A line is in the item's own unit unless the bill sells it by a pack; a new item is counted in the
+smallest unit (`new_unit`) with the pack on top. `BillNamesTest`.
 
 ## QR and card payments are checked by hand
 

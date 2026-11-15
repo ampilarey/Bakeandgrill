@@ -106,11 +106,21 @@ class PurchaseController extends Controller
         unset($validated['paid'], $validated['paid_amount'], $validated['paid_method']);
         $billId = $validated['bill_id'] ?? null;
         unset($validated['bill_id']);
+        // What the bill called each line, kept apart from the order itself.
+        $billLines = [];
+        foreach ($validated['items'] as $i => $item) {
+            if (trim((string) ($item['bill_name'] ?? '')) !== '') {
+                $billLines[] = ['bill_name' => (string) $item['bill_name'], 'inventory_item_id' => (int) $item['inventory_item_id']];
+            }
+            unset($validated['items'][$i]['bill_name']);
+        }
         $purchase = $this->createFromPayload($validated, $request);
         $purchase = $this->recordPaidAtPurchase($purchase, $paid);
         if ($billId !== null) {
             $bill = \App\Models\PurchaseBill::query()->whereIn('status', \App\Models\PurchaseBill::WAITING)->find($billId);
             if ($bill !== null) {
+                // The shop and the wordings on this bill, and what they turned out to be.
+                app(\App\Domains\Inventory\Bills\BillNames::class)->learn((string) ($bill->data['shop_as_read'] ?? $bill->data['shop'] ?? ''), $purchase->supplier, $billLines);
                 app(\App\Domains\Inventory\Bills\BillReader::class)->used($bill, $purchase, $request->user()?->id);
             }
         }

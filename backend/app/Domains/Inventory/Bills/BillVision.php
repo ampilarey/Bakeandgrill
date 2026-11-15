@@ -43,10 +43,11 @@ class BillVision
                 'items' => [
                     'type' => 'object',
                     'additionalProperties' => false,
-                    'required' => ['name', 'item_id', 'new_name', 'new_unit', 'quantity', 'unit', 'pack_size', 'unit_price', 'amount', 'gst', 'unsure'],
+                    'required' => ['name', 'item_id', 'brand', 'new_name', 'new_unit', 'quantity', 'unit', 'pack_size', 'unit_price', 'amount', 'gst', 'unsure'],
                     'properties' => [
                         'name' => ['type' => 'string', 'description' => 'The line as written on the bill.'],
                         'item_id' => ['type' => 'integer', 'description' => 'The id of the inventory item this line is, from the list, or 0 when none of them is this product.'],
+                        'brand' => ['type' => 'string', 'description' => 'The brand of the product when the bill names one ("Anchor", "Lily", "Coca-Cola"), as a brand is written, else "". Never the shop.'],
                         'new_name' => ['type' => 'string', 'description' => 'When item_id is 0: a short, clean name for a new inventory item (no brand, no size unless the size is what tells it apart). Else "".'],
                         'new_unit' => ['type' => 'string', 'description' => 'When item_id is 0: the smallest unit it would be counted in on the shelf (piece, kg, litre, packet…). Else "".'],
                         'quantity' => ['type' => 'number', 'description' => 'How many were bought, in the unit below.'],
@@ -68,12 +69,12 @@ class BillVision
         A person will check your reading against the bill before anything is saved, and stock and money records are made from it. So read what is there and never fill a gap with a likely value: a figure you cannot read is 0 with "unsure" true, and a product you cannot place gets item_id 0. A wrong match that looks confident costs them more than an honest blank.
 
         For each line of goods on the bill, in the bill's order:
-        - Match it to one inventory item from the list when it is the same product, allowing for brand names, abbreviations, spelling and sizes ("C/COLA 500ML PET" is a cola item counted in bottles). Different products that merely share a word are not a match.
+        - Match it to one inventory item from the list when it is the same product, allowing for brand names, abbreviations, spelling and sizes ("C/COLA 500ML PET" is a cola item counted in bottles). Different products that merely share a word are not a match. The inventory keeps one item per product whatever its brand (one "Butter", not one per maker), so give the brand in "brand" and match the product. Wordings from earlier bills are listed with the item a person chose for them: the same wording, or one that differs only in spacing, case, punctuation or a size written another way, is that same item.
         - Give the quantity and the unit it was sold in. The inventory list shows each item's own unit and the packs already defined for it with how many of the own unit one pack holds. If the bill sells it in the item's own unit, leave "unit" empty. If it sells it in one of the listed packs, use that pack's name exactly. If it sells it in some other pack (a carton of 24 where no carton is defined), give the bill's word for it, and in pack_size how many it holds when the bill says so plainly; when it does not, or says two different things, give 0 and the person is asked. An unclear pack size alone does not make a line "unsure".
         - Give the price of one unit and the line total as actually paid. When the bill shows prices before GST and adds GST at the foot, add the GST into the unit price and the amount of the lines it applies to, so that the lines add up to the grand total. Apply a line discount to its line; spread a discount on the whole bill across the lines in proportion.
         - Leave out lines that are not goods: subtotals, totals, GST, rounding, change, payment and bottle deposits returned. A delivery or service charge is a line of its own with item_id 0.
 
-        The shop is whoever issued the bill, never the business it is addressed to. The restaurant's own names are listed with the inventory: a bill made out to any of them is the restaurant's own bill, which is the usual case and needs no note. When the shop is clearly one of the suppliers on file, answer with that supplier's name exactly as listed.
+        The shop is whoever issued the bill, never the business it is addressed to. The restaurant's own names are listed with the inventory: a bill made out to any of them is the restaurant's own bill, which is the usual case and needs no note. When the shop is clearly one of the suppliers on file, answer with that supplier's name exactly as listed. Branches of one shop are one supplier: a bill headed with a supplier's name plus a place, a branch number or "Pvt Ltd" is that supplier, and so is any name listed as one earlier bills gave it.
 
         If the picture is not a bill for goods, or is too blurred to read at all, answer with is_bill false and no lines.
         TXT;
