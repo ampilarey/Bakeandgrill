@@ -1228,7 +1228,19 @@ hands the bill to the picked service: Claude through the SDK, Google through `Ge
 call, `gemini-flash-latest`, the same `INSTRUCTIONS`, `SCHEMA` turned to Gemini's dialect by `GeminiVision::schema()`).
 Test sends a bill drawn on the spot (`BillReader::trial()`). A new service is a row in `PROVIDERS` and a reader class
 `BillVision::read()` dispatches to, answering in `SCHEMA`; never a second place to type a key.
-`BillReaderSettingsTest`, `BillReaderCard.test.tsx`.
+`BillReaderSettingsTest`, `BillReaderCard.test.tsx`. **Bills through the staff bot** (owner, 2026-11-15: "Can I upload and
+approve slip via telegram"): a photo or a PDF sent to the bot in a private chat is a bill
+(`TelegramUpdateHandler` → `TelegramBills::receive()`, `suppliers.purchases`): fetched with `TelegramClient::download()`,
+kept by `BillReader::keep()` (the one place a bill's file is stored, the Admin upload too) with `telegram_link_id`, read
+after the webhook has answered (`DeferAfterResponse`; the scheduler reads it if that is cut short), and `BillReader::read()`
+sends the reading back to that chat (`TelegramBills::tell()`, `card()`). The card carries Approve only when
+`BillReader::needsAPerson()` finds nothing to decide (every line an item on file, in its own unit or a pack it has, none
+unsure, a shop and a date, the lines within 0.05 of the bill's total, the bill number not on file); otherwise it lists why
+and links to Admin. Approve (`pba` paid in cash, `pbn` not paid yet; `pbr` removes) asks the permission and
+`needsAPerson()` again at the press, holds `purchasePayload()` to `StorePurchaseRequest`'s rules and goes through
+`PurchaseController::createManual()`, the one manual path the form's `store` uses too, with `status: received`, since a
+bill in hand means the goods are on the shelf (the Admin form still saves a draft). A new way to make a purchase from a
+bill goes through `needsAPerson()` and `createManual()`. `TelegramBillsTest`.
 
 ## QR and card payments are checked by hand
 

@@ -408,3 +408,15 @@ changes it under the row's Edit → Who gets it (linked people only):
 | Admin page | `apps/admin-dashboard/src/pages/TelegramPage.tsx` (Bots, Groups, Alerts, People) |
 | Settings keys | `telegram_alerts_enabled`; channels: `notify_channels_roles`, `sms_type_telegram.{type}`, `users.notify_channels` |
 | Tests | `backend/tests/Feature/Telegram/*` |
+
+## Supplier bills by photo
+
+Send the bot a photo or a PDF of a supplier's bill (needs the permission to enter purchases).
+It is read into a purchase order, the same way as Purchasing → Orders → Read bills, and the
+reading comes back to the chat. When nothing needs a decision the message has
+**Approve: paid in cash** and **Approve: not paid yet**; approving makes the purchase order as
+received and keeps the bill as its receipt. When a line is not in the inventory, is in a pack
+with no size, was hard to read, or the lines do not add up, the message says so and the bill
+waits in Admin under Bills to check. **Remove** takes it off the list. Code:
+`App\Domains\Telegram\Services\TelegramBills`, `App\Domains\Inventory\Bills\BillReader`.
+

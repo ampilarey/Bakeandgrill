@@ -581,6 +581,9 @@ class TelegramCommands
         if ($this->can($user, 'customers.lookup') || $this->can($user, 'customers.view')) {
             $lines[] = '<b>' . self::BTN_CUSTOMER . '</b>: type a phone number or name to see points, orders, credit and deposit.';
         }
+        if ($this->can($user, 'suppliers.purchases')) {
+            $lines[] = '<b>Supplier bills</b>: send a photo or PDF of a bill here. It is read into a purchase order and comes back with Approve.';
+        }
         foreach ($this->cashier()->helpLines($user) as $line) {
             $lines[] = $line;
         }
@@ -634,6 +637,7 @@ class TelegramCommands
                 'gp' => $this->cashier()->orderTap($link, $user, $id, $messageId, $arg),
                 'bl' => app(TelegramBuyingList::class)->privateTap($link, $user, $id, $messageId, $arg),
                 'kp', 'kc' => $this->kitchen()->handleCallback($link, $user, $id, $messageId, $action, $arg),
+                'pba', 'pbn', 'pbr' => app(TelegramBills::class)->tap($link, $user, $id, $messageId, $action, (int) $arg),
                 default => $this->extrasCallback($link, $user, $id, $messageId, $action, $arg),
             };
         } catch (Throwable $e) {

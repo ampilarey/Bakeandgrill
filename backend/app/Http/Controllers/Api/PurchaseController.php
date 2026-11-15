@@ -84,7 +84,17 @@ class PurchaseController extends Controller
 
     public function store(StorePurchaseRequest $request)
     {
-        $validated = $request->validated();
+        return response()->json(['purchase' => $this->createManual($request->validated(), $request)], 201);
+    }
+
+    /**
+     * The one way a manual purchase is made, from a payload StorePurchaseRequest's
+     * rules have passed: the admin form, and a bill approved from Telegram.
+     *
+     * @param array<string, mixed> $validated
+     */
+    public function createManual(array $validated, Request $request): Purchase
+    {
         $validator = app(GstInputTaxValidator::class);
         // Lines that carry GST decide the header — owner, 2026-09-07: "some
         // items are eligible for GST return."
@@ -115,7 +125,7 @@ class PurchaseController extends Controller
             $request,
         );
 
-        return response()->json(['purchase' => $purchase], 201);
+        return $purchase;
     }
 
     public function show($id)

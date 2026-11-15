@@ -19,7 +19,7 @@ class PurchaseBill extends Model
     public const WAITING = [self::QUEUED, self::READING, self::READY, self::FAILED];
 
     protected $fillable = [
-        'user_id', 'file_path', 'file_name', 'mime_type', 'file_hash',
+        'user_id', 'telegram_link_id', 'telegram_told_at', 'file_path', 'file_name', 'mime_type', 'file_hash',
         'status', 'reading_at', 'data', 'error', 'purchase_id',
     ];
 
@@ -28,5 +28,6 @@ class PurchaseBill extends Model
     protected $casts = [
         'data' => 'array',
         'reading_at' => 'datetime',
+        'telegram_told_at' => 'datetime',
     ];
 }

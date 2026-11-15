@@ -67,7 +67,140 @@ class BillReader
             $bill->forceFill(['status' => PurchaseBill::FAILED, 'error' => 'This bill could not be read. Try it again, or type it.'])->save();
         }
 
-        return $bill->refresh();
+        $bill->refresh();
+        // Sent to the staff bot as a photo: the reading goes back to that chat.
+        if ($bill->telegram_link_id !== null) {
+            app(\App\Domains\Telegram\Services\TelegramBills::class)->tell($bill);
+        }
+
+        return $bill;
+    }
+
+    /**
+     * Keep one bill's file as a queued row. The same file is not taken twice.
+     *
+     * @throws BillUnreadable when this very file was sent before
+     */
+    public function keep(string $bytes, string $name, string $mime, ?int $userId, ?int $telegramLinkId = null): PurchaseBill
+    {
+        $hash = sha1($bytes);
+        $same = PurchaseBill::query()->where('file_hash', $hash)->latest('id')->first();
+        if ($same !== null) {
+            throw new BillUnreadable($same->status === PurchaseBill::DONE
+                ? 'This bill was already entered on ' . $same->updated_at?->format('j M Y') . '.'
+                : 'This bill is already on the list.');
+        }
+        $ext = ['application/pdf' => 'pdf', 'image/png' => 'png', 'image/webp' => 'webp'][$mime] ?? 'jpg';
+        $path = 'purchase-receipts/bills/' . now()->format('Y/m') . '/' . bin2hex(random_bytes(16)) . '.' . $ext;
+        Storage::disk('local')->put($path, $bytes);
+
+        return PurchaseBill::create([
+            'user_id' => $userId,
+            'telegram_link_id' => $telegramLinkId,
+            'file_path' => $path,
+            'file_name' => mb_substr($name, 0, 255) ?: 'bill.' . $ext,
+            'mime_type' => $mime,
+            'file_hash' => $hash,
+            'status' => PurchaseBill::QUEUED,
+        ]);
+    }
+
+    /**
+     * What stops a bill being approved without the form (from Telegram): anything a
+     * person has to decide. Empty means every line is an item on file, in a unit the
+     * item has, read with confidence, and the lines come to the bill's total.
+     *
+     * @return list<string>
+     */
+    public function needsAPerson(PurchaseBill $bill): array
+    {
+        $data = $this->present($bill)['data'];
+        if (!is_array($data) || $bill->status !== PurchaseBill::READY) {
+            return ['It has not been read.'];
+        }
+        $why = [];
+        if (trim((string) $data['shop']) === '') {
+            $why[] = 'The shop could not be read.';
+        }
+        if (empty($data['date'])) {
+            $why[] = 'The date could not be read.';
+        }
+        if (!empty($data['seen_before'])) {
+            $why[] = 'A purchase with this bill number is already on file.';
+        }
+        $noItem = $unsure = $noPack = 0;
+        foreach ($data['lines'] as $line) {
+            if (empty($line['item'])) {
+                $noItem++;
+
+                continue;
+            }
+            if (!empty($line['unsure'])) {
+                $unsure++;
+            }
+            if ($line['unit'] !== '' && $this->packFor($line) === null && mb_strtolower((string) $line['item']['unit']) !== $line['unit']) {
+                $noPack++;
+            }
+        }
+        if ($noItem > 0) {
+            $why[] = $noItem === 1 ? '1 line is not in your inventory.' : "{$noItem} lines are not in your inventory.";
+        }
+        if ($unsure > 0) {
+            $why[] = $unsure === 1 ? '1 line was hard to read.' : "{$unsure} lines were hard to read.";
+        }
+        if ($noPack > 0) {
+            $why[] = $noPack === 1 ? '1 line is in a pack that has no size yet.' : "{$noPack} lines are in packs that have no size yet.";
+        }
+        if ($data['total'] > 0 && abs($data['total'] - $data['lines_total']) > 0.05) {
+            $why[] = 'The lines do not add up to the bill\'s total.';
+        }
+
+        return $why;
+    }
+
+    /**
+     * The bill as the manual order's payload, for a bill `needsAPerson()` passed.
+     *
+     * @return array<string, mixed>
+     */
+    public function purchasePayload(PurchaseBill $bill, bool $paid): array
+    {
+        $data = $this->present($bill)['data'];
+        $items = [];
+        foreach ($data['lines'] as $line) {
+            $pack = $line['unit'] !== '' ? $this->packFor($line) : null;
+            $items[] = array_filter([
+                'inventory_item_id' => $line['item']['id'],
+                'name' => $line['item']['name'],
+                'quantity' => $line['quantity'],
+                'unit_cost' => $line['unit_price'],
+                'purchase_unit_id' => $pack,
+                'gst_rate_bp' => $line['gst'] ? 800 : 0,
+            ], fn ($v) => $v !== null);
+        }
+
+        return array_filter([
+            'supplier_name_text' => $data['shop'],
+            'purchase_date' => $data['date'],
+            'supplier_invoice_no' => $data['bill_no'] !== '' ? $data['bill_no'] : null,
+            'bill_id' => $bill->id,
+            // The bill is in hand, so the goods are on the shelf: stock goes in with the order.
+            'status' => 'received',
+            'items' => $items,
+            'paid' => $paid ? 'full' : 'none',
+            'paid_method' => $paid ? 'cash' : null,
+        ], fn ($v) => $v !== null);
+    }
+
+    /** The id of the item's pack the line's unit names, if it has one by that name. */
+    private function packFor(array $line): ?int
+    {
+        $id = \App\Models\InventoryPurchaseUnit::query()
+            ->where('inventory_item_id', $line['item']['id'])
+            ->get(['id', 'name'])
+            ->first(fn ($p) => mb_strtolower(trim((string) $p->name)) === $line['unit'])?->id;
+
+        return $id === null ? null : (int) $id;
     }
 
     /**

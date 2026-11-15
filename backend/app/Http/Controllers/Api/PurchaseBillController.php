@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Inventory\Bills\BillReader;
+use App\Domains\Inventory\Bills\BillUnreadable;
 use App\Http\Controllers\Controller;
 use App\Models\PurchaseBill;
 use Illuminate\Http\JsonResponse;
@@ -49,28 +50,16 @@ class PurchaseBillController extends Controller
         }
 
         $file = $request->file('file');
-        $hash = sha1_file($file->getRealPath()) ?: '';
-        $same = PurchaseBill::query()->where('file_hash', $hash)->latest('id')->first();
-        if ($same !== null) {
-            return response()->json([
-                'message' => $same->status === PurchaseBill::DONE
-                    ? 'This bill was already entered on ' . $same->updated_at?->format('j M Y') . '.'
-                    : 'This bill is already on the list.',
-            ], 422);
+        try {
+            $bill = $this->reader()->keep(
+                (string) file_get_contents($file->getRealPath()),
+                (string) $file->getClientOriginalName(),
+                (string) $file->getMimeType(),
+                $request->user()?->id,
+            );
+        } catch (BillUnreadable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
-
-        $mime = (string) $file->getMimeType();
-        $ext = ['application/pdf' => 'pdf', 'image/png' => 'png', 'image/webp' => 'webp'][$mime] ?? 'jpg';
-        $path = $file->storeAs('purchase-receipts/bills/' . now()->format('Y/m'), bin2hex(random_bytes(16)) . '.' . $ext, 'local');
-
-        $bill = PurchaseBill::create([
-            'user_id' => $request->user()?->id,
-            'file_path' => $path,
-            'file_name' => mb_substr((string) $file->getClientOriginalName(), 0, 255) ?: 'bill.' . $ext,
-            'mime_type' => $mime,
-            'file_hash' => $hash,
-            'status' => PurchaseBill::QUEUED,
-        ]);
 
         return response()->json(['bill' => $this->reader()->present($bill)], 201);
     }

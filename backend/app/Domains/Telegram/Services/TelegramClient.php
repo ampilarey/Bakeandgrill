@@ -46,6 +46,31 @@ class TelegramClient
     }
 
     /**
+     * A file someone sent the bot (a photo, a document), by its file id.
+     *
+     * @return array{bytes: string, path: string}
+     */
+    public function download(TelegramBot $bot, string $fileId): array
+    {
+        $token = (string) $bot->token;
+        $file = $this->call($bot, 'getFile', ['file_id' => $fileId]);
+        $path = (string) ($file['file_path'] ?? '');
+        if ($path === '') {
+            throw new TelegramApiException('Telegram did not say where the file is.');
+        }
+        try {
+            $response = Http::timeout(30)->get('https://api.telegram.org/file/bot' . $token . '/' . $path);
+        } catch (ConnectionException $e) {
+            throw new TelegramApiException('Could not fetch the file from Telegram: ' . str_replace($token, '***', $e->getMessage()));
+        }
+        if (!$response->successful() || $response->body() === '') {
+            throw new TelegramApiException('Could not fetch the file from Telegram (HTTP ' . $response->status() . ').');
+        }
+
+        return ['bytes' => $response->body(), 'path' => $path];
+    }
+
+    /**
      * True when the request reached Telegram but the answer did not reach us:
      * the transfer timed out, or the line dropped mid-answer. A message sent
      * that way is usually shown. Not when the connection never opened.

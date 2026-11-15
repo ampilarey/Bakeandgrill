@@ -114,6 +114,12 @@ class TelegramUpdateHandler
 
             return;
         }
+        // A photo or a PDF is a supplier's bill to read (Purchasing → Read bills).
+        if (isset($message['photo']) || isset($message['document'])) {
+            app(TelegramBills::class)->receive($link, $message);
+
+            return;
+        }
         if ($text === '' || !$this->commands->handleText($link, $text)) {
             $this->commands->help($link, $link->user ?? throw new \LogicException('no user'));
         }

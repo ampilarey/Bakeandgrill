@@ -21,6 +21,8 @@ trait FakesTelegram
 
     protected string $webhookUrlOnTelegram = '';
 
+    protected int $telegramFiles = 0;
+
     protected bool $telegramDown = false;
 
     /** Telegram takes each message but answers after our timeout (cURL error 28). */
@@ -30,6 +32,14 @@ trait FakesTelegram
     {
         $this->telegramCalls = [];
         Http::fake(['api.telegram.org/*' => function (HttpRequest $request) {
+            // A file someone sent the bot is fetched from /file/bot<token>/<path>: its bytes, each one different.
+            if (str_contains((string) parse_url($request->url(), PHP_URL_PATH), '/file/bot')) {
+                $image = imagecreatetruecolor(40 + (++$this->telegramFiles), 60);
+                ob_start();
+                imagejpeg($image);
+
+                return Http::response((string) ob_get_clean(), 200, ['Content-Type' => 'image/jpeg']);
+            }
             $method = (string) last(explode('/', parse_url($request->url(), PHP_URL_PATH)));
             $params = $request->data();
             $this->telegramCalls[] = ['method' => $method, 'params' => $params];
@@ -48,6 +58,7 @@ trait FakesTelegram
 
                     return Http::response(['ok' => true, 'result' => true]);
                 })(),
+                'getFile' => Http::response(['ok' => true, 'result' => ['file_id' => $params['file_id'] ?? '', 'file_path' => 'photos/file_' . count($this->telegramCalls) . '.jpg']]),
                 'sendMessage' => Http::response(['ok' => true, 'result' => ['message_id' => count($this->telegramCalls)]]),
                 default => Http::response(['ok' => true, 'result' => true]),
             };
