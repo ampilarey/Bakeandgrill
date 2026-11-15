@@ -66,7 +66,9 @@ class SecurityHeaders
             // data: + blob: required for menu image crop/preview
             // worker-src blob: required for HEIC→JPEG conversion (heic-to / libheif wasm worker)
             // Fonts are self-hosted under /fonts/ — no Google Fonts hosts.
-            return "default-src 'self'; script-src 'self' {$nonce}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io; worker-src 'self' blob:;";
+            // 'wasm-unsafe-eval' lets WebAssembly run and nothing else: the scanned-PO
+            // reader (Tesseract) and the HEIC converter are both WebAssembly.
+            return "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' {$nonce}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io; worker-src 'self' blob:;";
         }
 
         if ($request->is('pos', 'pos/*')) {

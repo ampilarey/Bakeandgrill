@@ -206,19 +206,20 @@ export const GUIDES: Guide[] = [
     open: { to: '/finance/invoices', label: 'Open Invoices' },
     steps: [
       'Open Finance → Invoices and tap + From a PO.',
-      'Tap Choose the PO (PDF) and pick the file the customer sent.',
+      'Tap Choose the PO (PDF) and pick the file the customer sent. A scan or a photo of the PO works too.',
       'Check the boxes it filled in: PO number, Bill to, Their TIN, Deliver to, Delivery date and each item with its quantity and price.',
       'Look at the totals. It says whether they match the PO\'s total.',
       'Tap Create invoice, then Download the invoice.',
     ],
     notes: [
-      'A photo or a scanned PO cannot be read. Type the boxes yourself; the picture is still kept with the invoice.',
+      'A scan or a photo is read from the picture, which takes a few seconds. It can misread a number, so it says "Read from a scan": check every box and that the totals match the PO.',
+      'For a photo, lay the PO flat in good light and fill the frame. A file it cannot read at all is typed by hand, and is still kept with the invoice.',
       'If the PO number already has an invoice it says so, to stop one PO being billed twice.',
       'Switch on Tax invoice only when you want it numbered in your GST series. It needs the customer\'s TIN.',
       'The PO file stays with the invoice: the page icon on its row opens it again.',
       'Search the list by PO number to find the invoice later.',
     ],
-    words: 'purchase order po upload pdf resort company invoice bill generate tin tax invoice delivery',
+    words: 'purchase order po upload pdf scan scanned photo picture resort company invoice bill generate tin tax invoice delivery',
   },
   {
     id: 'check-payments',

@@ -9,6 +9,7 @@ import { inputFont } from '../../utils/cssVars';
 import { today } from '../../utils/dateHelpers';
 import { readPo, sumOf, type PoDraft } from './readPo';
 import { pdfLines } from './pdfText';
+import { ocrLines } from './ocrText';
 
 /*
  * An invoice from a customer's purchase order (owner, 2026-11-15: "a place
@@ -17,8 +18,9 @@ import { pdfLines } from './pdfText';
  * Pick the PO's PDF; it is read here in the browser and every value lands in a
  * box that can be changed. Nothing is saved until Create invoice: the PO file
  * is then kept with the invoice, which carries the PO's number, where to
- * deliver and by when. A photo or a scanned PO cannot be read, so its boxes
- * are typed, and the picture is still kept with the invoice.
+ * deliver and by when. A scan or a photo is read from the picture
+ * (`ocrText.ts`) and says so, since a scan can be misread; one that cannot be
+ * read at all is typed, and the picture is still kept with the invoice.
  */
 
 type Line = { description: string; quantity: string; unit: string; unit_price: string };
@@ -88,6 +90,10 @@ export function PoInvoiceModal({ onClose, onCreated }: { onClose: () => void; on
   const [reading, setReading] = useState(false);
   const [read, setRead] = useState<PoDraft | null>(null);
   const [unreadable, setUnreadable] = useState(false);
+  /** The values came from a scan or a photo, which can be misread. */
+  const [scanned, setScanned] = useState(false);
+  /** 0 to 1 while a scan is being read; null otherwise. */
+  const [scanProgress, setScanProgress] = useState<number | null>(null);
   const [form, setForm] = useState<Form>(blankForm);
   const [lines, setLines] = useState<Line[]>([blankLine()]);
   const [before, setBefore] = useState<PoInvoicedBefore[]>([]);
@@ -99,27 +105,36 @@ export function PoInvoiceModal({ onClose, onCreated }: { onClose: () => void; on
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((f) => ({ ...f, [key]: value }));
 
+  const fill = (draft: PoDraft) => {
+    setRead(draft);
+    setForm(formOf(draft));
+    setLines(draft.lines.length > 0
+      ? draft.lines.map((l) => ({ description: l.description, quantity: String(l.quantity), unit: l.unit, unit_price: l.unit_price.toFixed(2) }))
+      : [blankLine()]);
+  };
+
+  const found = (draft: PoDraft) => draft.lines.length > 0 || draft.po_number !== '';
+
   const choose = async (picked: File | null) => {
     if (!picked) return;
-    setFile(picked); setError(''); setRead(null); setUnreadable(false);
+    setFile(picked); setError(''); setRead(null); setUnreadable(false); setScanned(false); setScanProgress(null);
     const isPdf = picked.type === 'application/pdf' || /\.pdf$/i.test(picked.name);
-    if (!isPdf) { setUnreadable(true); return; }
     setReading(true);
     try {
-      const draft = readPo(await pdfLines(picked));
-      if (draft.lines.length === 0 && draft.po_number === '') {
-        setUnreadable(true);
-      } else {
-        setRead(draft);
-        setForm(formOf(draft));
-        setLines(draft.lines.length > 0
-          ? draft.lines.map((l) => ({ description: l.description, quantity: String(l.quantity), unit: l.unit, unit_price: l.unit_price.toFixed(2) }))
-          : [blankLine()]);
+      // A PDF made by a computer carries its own text: that is exact, so it is tried first.
+      if (isPdf) {
+        const draft = await pdfLines(picked).then(readPo).catch(() => null);
+        if (draft && found(draft)) { fill(draft); return; }
       }
+      // A scan or a photo is a picture: its words are worked out from the picture.
+      setScanProgress(0);
+      const draft = readPo(await ocrLines(picked, setScanProgress));
+      if (found(draft)) { fill(draft); setScanned(true); } else { setUnreadable(true); }
     } catch {
       setUnreadable(true);
     } finally {
       setReading(false);
+      setScanProgress(null);
     }
   };
 
@@ -234,19 +249,27 @@ export function PoInvoiceModal({ onClose, onCreated }: { onClose: () => void; on
           <InlineIcon icon={FileUp} />{file ? 'Choose another PO' : 'Choose the PO (PDF)'}
         </Btn>
         <span className="po-pick__name">
-          {reading ? 'Reading the PO…' : file ? file.name : 'The customer’s purchase order, as the PDF they sent. A photo works too, but is typed by hand.'}
+          {reading
+            ? (scanProgress === null ? 'Reading the PO…' : `Reading the scan… ${Math.round(scanProgress * 100)}%`)
+            : file ? file.name : 'The customer’s purchase order: the PDF they sent, a scan, or a photo of it.'}
         </span>
       </div>
 
       {started && unreadable && (
         <p className="po-note po-note--warn" data-testid="po-unreadable">
-          This file could not be read (a photo or a scan has no text). Type the details below; the file is still kept with the invoice.
+          This file could not be read. A sharper, straighter scan or photo may work; or type the details below. The file is still kept with the invoice.
         </p>
       )}
       {started && read && read.missing.length > 0 && (
         <p className="po-note po-note--warn">Not found on the PO: {read.missing.join(', ')}. Type what is missing.</p>
       )}
-      {started && read && read.missing.length === 0 && (
+      {started && read && scanned && (
+        <p className="po-note po-note--warn" data-testid="po-scanned">
+          Read from a scan. A scan can be misread, mostly in numbers: check every box against the PO, and that the totals match.
+          {read.mended > 0 && ` ${read.mended} smudged ${read.mended === 1 ? 'figure was' : 'figures were'} worked out from the row’s amount.`}
+        </p>
+      )}
+      {started && read && !scanned && read.missing.length === 0 && (
         <p className="po-note" data-testid="po-read">Read from the PO. Check each box before you create the invoice.</p>
       )}
       {before.length > 0 && (

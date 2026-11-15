@@ -8,7 +8,7 @@
     <!-- Keep in sync with backend SecurityHeaders middleware: browsers enforce the
          INTERSECTION of this meta CSP and the server header, and the /admin/ directory
          index can be served statically (bypassing Laravel), so this meta is load-bearing. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io; worker-src 'self' blob:;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io; worker-src 'self' blob:;" />
     <meta name="theme-color" content="#B74B0C" />
     <!-- Tab and home-screen icons. These were one 1080px logo at the site
          root, which the dev server does not serve and which Safari will not

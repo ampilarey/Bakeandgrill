@@ -27,6 +27,8 @@ export type PoDraft = {
   subtotal: number | null;
   tax: number | null;
   total: number | null;
+  /** Rows where a smudged figure was worked out from the row's amount (scans only, in practice). */
+  mended: number;
   /** What could not be found, in the screen's words. */
   missing: string[];
 };
@@ -133,6 +135,70 @@ function rowOf(line: string): PoLine | null {
   return { description, quantity: qty.value, unit, unit_price: price.value, amount: amount.value };
 }
 
+/** The digits a smudged figure most likely is: "37s" is 375, "2OO" is 200. */
+function digitsOf(token: string): string {
+  return token
+    .replace(/[sS]/g, '5').replace(/[oO]/g, '0').replace(/[lI|]/g, '1').replace(/B/g, '8').replace(/Z/g, '2')
+    .replace(/[.,]/g, '');
+}
+
+/** Whether a smudged figure has the digits of this value: "375" or "37s" for 3.75, "20000" for 200. */
+function sameDigits(token: string, value: number): boolean {
+  const seen = digitsOf(token);
+  if (!/^\d+$/.test(seen)) return false;
+  return seen === value.toFixed(2).replace('.', '') || seen === String(value).replace('.', '');
+}
+
+const FIGURE = /^[\dOolIsSBZ|][\dOolIsSBZ|,.]*$/;
+
+/**
+ * A row from a scan where one figure lost its decimal point or a digit was read
+ * as a letter (menu audit of scans, 2026-11-15: "3.75" came back as "375" and
+ * "37s"). The row's amount and its other figure are sound, so the smudged one
+ * is worked out from them, and taken only when its digits agree with what was
+ * read. A row that cannot be checked this way is left out, never guessed.
+ */
+function mendedRow(line: string): PoLine | null {
+  const tokens = line.trim().split(/\s+/);
+  if (tokens.length < 5) return null;
+  const amountTok = tokens[tokens.length - 1];
+  if (!/^\d[\d,]*\.\d{2}$/.test(amountTok)) return null;
+  const amount = num(amountTok);
+  const priceTok = tokens[tokens.length - 2];
+  if (!(amount > 0) || !FIGURE.test(priceTok) || !/\d/.test(priceTok)) return null;
+
+  // The quantity is the figure with the unit's word after it, nearest the price.
+  let at = -1;
+  for (let i = tokens.length - 3; i >= 1; i--) {
+    if (FIGURE.test(tokens[i]) && /\d/.test(tokens[i]) && /^[A-Za-z]{1,12}$/.test(tokens[i + 1] ?? '')) { at = i; break; }
+  }
+  if (at < 1) return null;
+  const qtyTok = tokens[at];
+
+  const plain = (t: string) => (/^\d[\d,]*(?:\.\d+)?$/.test(t) ? num(t) : NaN);
+  let quantity = plain(qtyTok);
+  let price = plain(priceTok);
+  const near = (a: number, b: number) => Math.abs(a - b) < 0.011;
+
+  if (Number.isFinite(quantity) && quantity > 0) {
+    const worked = Math.round((amount / quantity) * 100) / 100;
+    if (near(worked * quantity, amount) && sameDigits(priceTok, worked)) price = worked;
+  }
+  if (!(Number.isFinite(price) && price > 0 && Number.isFinite(quantity) && near(price * quantity, amount))) {
+    price = plain(priceTok);
+    if (!(Number.isFinite(price) && price > 0)) return null;
+    const worked = Math.round((amount / price) * 100) / 100;
+    if (!near(worked * price, amount) || !sameDigits(qtyTok, worked)) return null;
+    quantity = worked;
+  }
+
+  // The row's number is not part of the name, nor is one read as a letter ("s" for 5).
+  const description = tokens.slice(0, at).join(' ').replace(/^(?:\d{1,3}[.)]?|[sSoOlI|])\s+(?=\S)/, '').trim();
+  if (description === '' || NOT_A_ROW.test(description)) return null;
+
+  return { description, quantity, unit: tokens[at + 1], unit_price: price, amount };
+}
+
 /** The last number on the first line that carries the label. */
 function figure(lines: string[], label: RegExp): number | null {
   for (const line of lines) {
@@ -177,8 +243,13 @@ export function readPo(lines: string[]): PoDraft {
   const deliver_to = [shipName, shipAddress].filter((s) => s !== '').join(', ');
 
   const rows: PoLine[] = [];
+  let mended = 0;
   for (const line of text) {
-    const row = rowOf(line);
+    let row = rowOf(line);
+    if (!row) {
+      row = mendedRow(line);
+      if (row) mended += 1;
+    }
     if (row) rows.push(row);
   }
 
@@ -209,6 +280,7 @@ export function readPo(lines: string[]): PoDraft {
     subtotal,
     tax,
     total,
+    mended,
     missing,
   };
 }

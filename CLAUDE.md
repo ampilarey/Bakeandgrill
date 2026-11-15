@@ -1161,10 +1161,22 @@ manual path, `InvoiceController::store`. So the server needs no PDF software. Th
 only a path `InvoicePoController::checkedPath()` made). `GET /api/invoices/po-check` names invoices already made for a
 PO number (void ones aside) and the pop-up warns; the list is searched by PO number and shows it under the invoice's.
 The public invoice page and both PDFs print PO No., Delivery and Deliver to (`partials/invoice-po`), and Bill to carries
-the address and TIN. A photo or a scan cannot be read: the boxes are typed and the picture is still kept. Tax invoice is
+the address and TIN. **A scan or a photo is read from the picture** (owner, 2026-11-15: "what if I get a scanned PO" →
+"yes add it"; `ocrText.ts`): a PDF's own text is tried first, as it is exact, and a PDF with none, or a JPG / PNG, goes
+to Tesseract (tesseract.js, in the browser, nothing sent anywhere), whose three files are served from this site at
+`/ocr/` (`backend/public/ocr/`: the worker, the two LSTM engines, `eng.traineddata.gz`), never a CDN, since the admin's
+CSP allows scripts from here only; the worker is loaded by address (`workerBlobURL: false`) and the admin's CSP carries
+`'wasm-unsafe-eval'` (header in `SecurityHeaders` and the meta in `index.html`), which lets WebAssembly run and nothing
+else. The picture is scaled to 2400 px on its long edge, a small one enlarged (`readingScale()`; at chat-app size
+"200.00" read as "20000"), straightened (`rotateAuto`) and read as one block (PSM 6) so a row stays a row;
+`linesOfScan()` hands its words to the same `linesOf()` and `readPo()`. A figure that lost its point or had a digit read
+as a letter is worked out from the row's amount, and only when its digits agree with what was read (`mendedRow()`;
+`mended` on the draft); a row that cannot be checked is left out, never guessed. The screen says "Read from a scan" and
+to check every box, and the totals are held against the PO's as before. A file nothing can be made of is typed and is
+still kept. Tax invoice is
 off unless switched on (it takes a number from the GST series and posts to the GST ledger). A new PO layout that reads
 badly gets a case in `readPo()` and a fixture in `readPo.test.ts` (with the supplier's own details changed), never a
-second reader. `InvoiceFromPoTest`, `readPo.test.ts`, `PoInvoiceModal.test.tsx`.
+second reader. `InvoiceFromPoTest`, `readPo.test.ts`, `ocrText.test.ts`, `PoInvoiceModal.test.tsx`.
 
 ## QR and card payments are checked by hand
 

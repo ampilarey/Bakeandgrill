@@ -19,6 +19,9 @@ vi.mock('../../api/finance', () => api);
 const pdf = vi.hoisted(() => ({ pdfLines: vi.fn() }));
 vi.mock('./pdfText', () => pdf);
 
+const ocr = vi.hoisted(() => ({ ocrLines: vi.fn() }));
+vi.mock('./ocrText', () => ocr);
+
 const LINES = [
   'Sample Resorts Maldives Private Limited',
   'Purchase Order',
@@ -45,6 +48,9 @@ async function pickFile(file: File) {
 beforeEach(() => {
   Object.values(api).forEach((f) => f.mockReset());
   pdf.pdfLines.mockReset();
+  ocr.ocrLines.mockReset();
+  // A file nothing can be made of, unless a test says otherwise.
+  ocr.ocrLines.mockResolvedValue([]);
   api.checkInvoicePo.mockResolvedValue({ invoices: [] });
   api.uploadInvoicePoFile.mockResolvedValue({ path: 'invoice-pos/2026/11/abc.pdf' });
   api.createInvoice.mockResolvedValue({ invoice: { id: 9, invoice_number: 'INV-0009', total: 1350, po_number: 'HKUD-M30300000524', items: [] } });
@@ -133,6 +139,41 @@ describe('an invoice from a PO', () => {
 
     await waitFor(() => expect(api.createInvoice).toHaveBeenCalled());
     expect(api.uploadInvoicePoFile).toHaveBeenCalledTimes(1);
+  });
+
+  /* Owner, 2026-11-15: "what if I get a scanned PO" → "yes add it". */
+  it('reads a photo of a PO from the picture, and says a scan can be misread', async () => {
+    ocr.ocrLines.mockResolvedValue(LINES);
+    render(<PoInvoiceModal onClose={() => {}} onCreated={() => {}} />);
+    await pickFile(new File(['x'], 'po-photo.jpg', { type: 'image/jpeg' }));
+
+    await waitFor(() => expect(screen.getByTestId('po-scanned')).toHaveTextContent('Read from a scan'));
+    expect(pdf.pdfLines).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('po-read')).toBeNull();
+    expect(screen.getByTestId('po-number')).toHaveValue('HKUD-M30300000524');
+    expect(screen.getAllByTestId('po-item')).toHaveLength(2);
+    expect(screen.getByTestId('po-match')).toHaveTextContent('Matches the PO’s total.');
+  });
+
+  it('reads a scanned PDF from its picture when the PDF holds no text', async () => {
+    pdf.pdfLines.mockResolvedValue([]);
+    ocr.ocrLines.mockResolvedValue(LINES);
+    render(<PoInvoiceModal onClose={() => {}} onCreated={() => {}} />);
+    await pickFile(poFile());
+
+    await waitFor(() => expect(screen.getByTestId('po-scanned')).toBeInTheDocument());
+    expect(ocr.ocrLines).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('Item 2 name')).toHaveValue('BAJIYAA');
+  });
+
+  it('never reads a computer-made PDF as a scan', async () => {
+    pdf.pdfLines.mockResolvedValue(LINES);
+    render(<PoInvoiceModal onClose={() => {}} onCreated={() => {}} />);
+    await pickFile(poFile());
+
+    await waitFor(() => expect(screen.getByTestId('po-read')).toBeInTheDocument());
+    expect(ocr.ocrLines).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('po-scanned')).toBeNull();
   });
 
   it('refuses a tax invoice without the customer’s TIN', async () => {

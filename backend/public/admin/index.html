@@ -8,7 +8,7 @@
     <!-- Keep in sync with backend SecurityHeaders middleware: browsers enforce the
          INTERSECTION of this meta CSP and the server header, and the /admin/ directory
          index can be served statically (bypassing Laravel), so this meta is load-bearing. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io; worker-src 'self' blob:;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io; worker-src 'self' blob:;" />
     <meta name="theme-color" content="#B74B0C" />
     <!-- Tab and home-screen icons. These were one 1080px logo at the site
          root, which the dev server does not serve and which Safari will not
@@ -50,7 +50,7 @@
       button { font-family: inherit; cursor: pointer; }
       input, select, textarea { font-family: inherit; }
     </style>
-    <script type="module" crossorigin src="/admin/assets/index-BJAVW01m.js"></script>
+    <script type="module" crossorigin src="/admin/assets/index-zgIydcu4.js"></script>
     <link rel="modulepreload" crossorigin href="/admin/assets/vendor-Du1vKj2-.js">
     <link rel="stylesheet" crossorigin href="/admin/assets/index-ygIiz9hT.css">
   <link rel="manifest" href="/admin/manifest.webmanifest"></head>

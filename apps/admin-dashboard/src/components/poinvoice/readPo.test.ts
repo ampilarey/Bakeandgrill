@@ -112,6 +112,43 @@ describe('reading a purchase order', () => {
   });
 });
 
+/* A scan loses a decimal point or reads a digit as a letter. The row's amount
+   and its other figure say what the smudged one is. */
+describe('a row smudged by a scan', () => {
+  const rows = (lines: string[]) => readPo(['Order No.  PO-1', ...lines]);
+
+  it('works a smudged price out from the amount when its digits agree', () => {
+    const po = rows([
+      '1  MASROSHI  200.00  Piece  HKUD-FB Administration  375  750.00',
+      's  SHORT EAT - KEEMIYA  200.00  Piece  HKUD-FB Administration  37s  750.00',
+    ]);
+    expect(po.lines).toEqual([
+      { description: 'MASROSHI', quantity: 200, unit: 'Piece', unit_price: 3.75, amount: 750 },
+      { description: 'SHORT EAT - KEEMIYA', quantity: 200, unit: 'Piece', unit_price: 3.75, amount: 750 },
+    ]);
+    expect(po.mended).toBe(2);
+  });
+
+  it('works a smudged quantity out the same way', () => {
+    const po = rows(['4  SHORT EAT - PATTIES  20000  Piece  HKUD-FB Administration  2.50  500.00']);
+    expect(po.lines).toEqual([{ description: 'SHORT EAT - PATTIES', quantity: 200, unit: 'Piece', unit_price: 2.5, amount: 500 }]);
+    expect(po.mended).toBe(1);
+  });
+
+  it('leaves a row out rather than guess when the digits do not agree', () => {
+    const po = rows([
+      '1  MASROSHI  200.00  Piece  HKUD-FB Administration  ams  750.00',
+      '2  BAJIYAA  200.00  Piece  HKUD-FB Administration  4.10  600.00',
+    ]);
+    expect(po.lines).toEqual([]);
+    expect(po.mended).toBe(0);
+  });
+
+  it('mends nothing on a clean PO', () => {
+    expect(readPo(RESORT_PO).mended).toBe(0);
+  });
+});
+
 describe('dates on a PO', () => {
   it('reads the ways a date is written', () => {
     expect(isoDate('14-Nov-2026')).toBe('2026-11-14');
