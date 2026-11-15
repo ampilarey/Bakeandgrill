@@ -8,6 +8,7 @@ import {
   type PurchasingSettingsPatch,
 } from '../../api';
 import { inputFont } from '../../utils/cssVars';
+import { BillReaderCard } from '../../components/purchasebills/BillReaderCard';
 
 /*
  * Purchasing → Settings: every switch that governs buying, in the order the
@@ -320,6 +321,9 @@ export function PurchasingSettings({ canEdit }: { canEdit: boolean }) {
           <Link to="/notifications/messages?open=owner_price_rise" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>price rises</Link>.
         </p>
       </Section>
+
+      {/* Which service reads supplier bills, and its key. Owner-level, like the rest. */}
+      {canEdit && <BillReaderCard />}
     </div>
   );
 }

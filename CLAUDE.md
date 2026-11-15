@@ -1201,9 +1201,9 @@ BillsToCheck.tsx`): Read bills takes photos or PDFs, as many as picked, each kep
 (`PurchaseBill`: queued → reading → ready | failed, done once it became a purchase; the file under
 `purchase-receipts/bills/` on the private disk, one sha1 per file so the same file is refused twice) and read on the
 server by Claude (`App\Domains\Inventory\Bills\BillVision`, the only place that calls the Claude API: the official PHP
-SDK `anthropic-ai/sdk`, `claude-opus-5-5` unless `BILL_READER_MODEL` says otherwise, the answer held to
-`BillVision::SCHEMA` by structured output, the instructions and the inventory and supplier lists cached; key
-`ANTHROPIC_API_KEY`, and without it `enabled` is false, the button is off and says why). `BillReader` sends a photo
+SDK `anthropic-ai/sdk`, `claude-opus-5-5` unless another is typed, the answer held to
+`BillVision::SCHEMA` by structured output, the instructions and the inventory and supplier lists cached; without a key
+for the picked service `enabled` is false, the button is off and says why). `BillReader` sends a photo
 upright and at most 2200 px, tells Claude what is on file (`context()`: each active inventory item with its unit and packs,
 the suppliers), and `tidy()` holds the answer to what the form takes: an item id that is not on file is dropped, a date
 in the future is left blank, and a line whose quantity × price is not its amount is `unsure`. The screen that sent a bill
@@ -1216,8 +1216,19 @@ item form, the banner holds the lines against the bill's total and points out a 
 (`seen_before`), and **a line from the bill with no item stops Create PO, never dropped without a word**. Nothing is a
 purchase until Create PO, which goes through the one manual path with `bill_id`: `BillReader::used()` makes the bill's
 file the order's receipt and takes it off the list. Needs attention carries `purchase_bills`. A new thing read from a
-picture goes through `BillVision`'s pattern (one class that calls Claude, swapped in tests), never a key in the browser.
-`PurchaseBillsTest`, `ReadBills.test.tsx`.
+picture goes through `BillVision`'s pattern (one class that calls the service, swapped in tests), never a key in the browser.
+`PurchaseBillsTest`, `ReadBills.test.tsx`. **The service and its key are the owner's, in the admin** (owner, 2026-11-15:
+"add api key entry to admin so I can switch between claude, google etc."): Purchasing → Settings → 7 · Reading bills
+(`BillReaderCard.tsx`, `GET` / `PUT /purchasing/bill-reader`, `POST …/test`, `settings.update`), read through
+`BillReaderSettings`: `PROVIDERS` (claude, google), the picked one (`bill_reader_provider`; none picked is whichever has
+a key, Claude first), each one's key and model. A typed key is kept encrypted under the site-setting scope `secret`,
+which the settings list never returns, and **never goes back to a screen**, only `key_hint` (its last four) and where it
+came from; a key in `.env` (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`) is used until one is typed. `BillVision::read()`
+hands the bill to the picked service: Claude through the SDK, Google through `GeminiVision` (the `generateContent` REST
+call, `gemini-flash-latest`, the same `INSTRUCTIONS`, `SCHEMA` turned to Gemini's dialect by `GeminiVision::schema()`).
+Test sends a bill drawn on the spot (`BillReader::trial()`). A new service is a row in `PROVIDERS` and a reader class
+`BillVision::read()` dispatches to, answering in `SCHEMA`; never a second place to type a key.
+`BillReaderSettingsTest`, `BillReaderCard.test.tsx`.
 
 ## QR and card payments are checked by hand
 

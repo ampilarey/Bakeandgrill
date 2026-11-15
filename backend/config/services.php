@@ -109,6 +109,11 @@ return [
     | Claude reads supplier bills into a purchase order (Purchase Orders →
     | Read bills). Without a key the button says it is not set up.
     */
+    /* Google Gemini as the bill reader instead (Purchasing → Settings → Reading bills). */
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+        'base_url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com'),
+    ],
     'anthropic' => [
         'key' => env('ANTHROPIC_API_KEY'),
         'bill_model' => env('BILL_READER_MODEL', 'claude-opus-5-5'),

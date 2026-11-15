@@ -7308,6 +7308,24 @@ table.is-table.is-table { display: none; }
 .pb-row--failed .pb-row__words span { color: var(--color-danger-strong); }
 .pb-row__acts { display: flex; flex-wrap: wrap; gap: 6px; }
 .pb-link { background: none; border: none; padding: 0; font: inherit; font-weight: 700; color: var(--color-primary); text-decoration: underline; cursor: pointer; }
+/* Reading bills: one block per service (Purchasing → Settings). Phone first; two side by side when there is room. */
+.br-card { margin-top: 20px; padding: 14px; border-radius: 14px; background: var(--color-surface); border: 1px solid var(--color-border); }
+.br-title { margin: 0 0 4px; font-size: 15px; font-weight: 700; }
+.br-lead { margin: 0 0 12px; font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; }
+.br-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; }
+.br-block { min-width: 0; padding: 12px; border-radius: 12px; background: var(--color-bg); border: 1.5px solid var(--color-border-light); display: flex; flex-direction: column; gap: 8px; }
+.br-block--on { border-color: var(--color-primary); }
+.br-block__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
+.br-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--color-tone-rust-bg); color: var(--color-tone-rust-text); border: 1px solid var(--color-tone-rust-border); }
+.br-line { margin: 0; font-size: 13px; color: var(--color-text); line-height: 1.45; overflow-wrap: anywhere; }
+.br-label { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); }
+.br-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.br-input { flex: 1 1 180px; min-width: 0; height: 44px; padding: 0 12px; border-radius: 10px; border: 1.5px solid var(--color-border); background: var(--color-surface); color: var(--color-text); font-family: inherit; }
+.br-help { margin: 0; font-size: 12px; color: var(--color-text-muted); line-height: 1.45; }
+.br-row .br-help { flex: 1 1 160px; min-width: 0; }
+.br-more summary { cursor: pointer; font-size: 12px; font-weight: 700; color: var(--color-text-secondary); min-height: 32px; display: flex; align-items: center; }
+.br-more[open] { display: flex; flex-direction: column; gap: 6px; }
+.br-block .po-note { margin: 0; }
 .po-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px 12px; margin-bottom: 14px; }
 .po-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .po-field--wide { grid-column: 1 / -1; }

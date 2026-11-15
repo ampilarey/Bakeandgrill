@@ -70,6 +70,35 @@ class BillReader
         return $bill->refresh();
     }
 
+    /**
+     * A made-up bill drawn here and sent to a service, to prove its key and model work
+     * (the Test button on Purchasing → Settings → Reading bills). Costs one small read.
+     *
+     * @return array{shop: string, lines: int, total: float}
+     *
+     * @throws BillUnreadable
+     */
+    public function trial(string $provider): array
+    {
+        $image = imagecreatetruecolor(700, 420);
+        imagefill($image, 0, 0, 0xFFFFFF);
+        foreach ([
+            'CORNER SHOP PVT LTD', 'Cash bill no. 1001', '',
+            'RICE 5KG BAG        2 x 85.00     170.00',
+            'COOKING OIL 2L      1 x 64.00      64.00', '',
+            'TOTAL MVR                         234.00',
+        ] as $i => $row) {
+            imagestring($image, 5, 30, 30 + $i * 48, $row, 0x000000);
+        }
+        ob_start();
+        imagejpeg($image, null, 90);
+        $jpeg = (string) ob_get_clean();
+
+        $data = $this->tidy($this->vision->read($jpeg, 'image/jpeg', $this->context(), $provider));
+
+        return ['shop' => $data['shop'], 'lines' => count($data['lines']), 'total' => $data['total']];
+    }
+
     /** Bills nobody is reading: queued ones, and ones whose reader was killed. For the scheduler. */
     public function readWaiting(int $limit = 5): int
     {

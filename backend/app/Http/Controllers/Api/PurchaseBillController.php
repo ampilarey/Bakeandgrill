@@ -45,7 +45,7 @@ class PurchaseBillController extends Controller
             'file.max' => 'That file is over 10 MB. Send a smaller photo.',
         ]);
         if (!$this->reader()->enabled()) {
-            return response()->json(['message' => 'Bill reading is not set up yet: the Claude key is missing.'], 422);
+            return response()->json(['message' => 'Bill reading is not set up yet. Add a key under Purchasing → Settings → Reading bills.'], 422);
         }
 
         $file = $request->file('file');

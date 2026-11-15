@@ -110,6 +110,10 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
     Route::middleware('permission:settings.update')->group(function () {
         Route::get('/purchasing/settings', [App\Http\Controllers\Api\PurchasingSettingsController::class, 'show']);
         Route::patch('/purchasing/settings', [App\Http\Controllers\Api\PurchasingSettingsController::class, 'update']);
+        // Which service reads supplier bills, and its key (Purchasing → Settings → Reading bills).
+        Route::get('/purchasing/bill-reader', [App\Http\Controllers\Api\BillReaderSettingsController::class, 'show']);
+        Route::put('/purchasing/bill-reader', [App\Http\Controllers\Api\BillReaderSettingsController::class, 'update']);
+        Route::post('/purchasing/bill-reader/test', [App\Http\Controllers\Api\BillReaderSettingsController::class, 'test']);
     });
 
     // Purchase Requests — operational buying tasks (staff request, manager verify)

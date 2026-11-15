@@ -314,3 +314,36 @@ export async function removePurchaseBill(id: number): Promise<{ ok: boolean }> {
 export async function downloadPurchaseBill(id: number): Promise<Blob> {
   return requestBlob(`/purchases/bills/${id}/file`, {});
 }
+
+/** Which service reads supplier bills (Purchasing → Settings → Reading bills). A key is never sent back. */
+export type BillReaderProvider = {
+  key: string;
+  label: string;
+  /** Where to get a key, in words. */
+  where: string;
+  has_key: boolean;
+  /** "…9f3c": the last four of the key in use. */
+  key_hint: string | null;
+  /** Typed here, or sitting in the server's .env. */
+  key_from: 'admin' | 'env' | null;
+  model: string;
+  default_model: string;
+};
+
+export type BillReaderSettings = { provider: string; providers: BillReaderProvider[] };
+
+export async function getBillReader(): Promise<BillReaderSettings> {
+  return req('/purchasing/bill-reader');
+}
+
+/** A key that is sent replaces the stored one; "" removes it; left out, it is kept. */
+export async function saveBillReader(data: {
+  provider?: string; keys?: Record<string, string>; models?: Record<string, string>;
+}): Promise<BillReaderSettings> {
+  return req('/purchasing/bill-reader', { method: 'PUT', body: JSON.stringify(data) });
+}
+
+/** Sends a made-up bill to the service. Costs one small read. */
+export async function testBillReader(provider: string): Promise<{ ok: boolean; message: string }> {
+  return req('/purchasing/bill-reader/test', { method: 'POST', body: JSON.stringify({ provider }) });
+}

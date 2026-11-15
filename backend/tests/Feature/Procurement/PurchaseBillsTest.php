@@ -55,7 +55,7 @@ class PurchaseBillsTest extends TestCase
                 return $this->on;
             }
 
-            public function read(string $bytes, string $mime, string $context): array
+            public function read(string $bytes, string $mime, string $context, ?string $provider = null): array
             {
                 PurchaseBillsTest::$asked = ['mime' => $mime, 'context' => $context, 'size' => strlen($bytes)];
                 if ($this->answer instanceof BillUnreadable) {

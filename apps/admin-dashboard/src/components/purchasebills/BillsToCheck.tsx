@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Camera, Eye, RefreshCw, Trash2 } from 'lucide-react';
 import {
   downloadPurchaseBill, fetchPurchaseBills, readPurchaseBill, removePurchaseBill, sendPurchaseBill,
@@ -145,7 +146,7 @@ export function BillsToCheck({ onCheck, reloadKey, startOpen }: {
           <span>
             {enabled
               ? 'Send photos or PDFs of supplier bills. Each is read into a purchase order for you to check and save.'
-              : 'Reading bills is not set up yet. It needs a Claude key on the server (ANTHROPIC_API_KEY in .env).'}
+              : <>Reading bills is not set up yet. It needs a key: <Link to="/purchasing/settings" className="pb-link">Purchasing → Settings → Reading bills</Link>.</>}
           </span>
         </div>
         <Btn onClick={() => fileRef.current?.click()} disabled={!enabled || sending !== null} data-testid="bills-send">

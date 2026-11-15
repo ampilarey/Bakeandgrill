@@ -8,16 +8,20 @@ use Anthropic\Client;
 use Anthropic\Core\Exceptions\APIConnectionException;
 use Anthropic\Core\Exceptions\APIStatusException;
 use Anthropic\Core\Exceptions\AuthenticationException;
+use Anthropic\Core\Exceptions\NotFoundException;
 use Anthropic\Core\Exceptions\PermissionDeniedException;
 use Anthropic\Core\Exceptions\RateLimitException;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Reads a supplier's bill (a photo, a scan or a PDF) with Claude and returns what is on
- * it as plain data. This is the only place that talks to the Claude API; BillReader
- * decides what to send and checks what comes back, and tests swap this class out.
+ * Reads a supplier's bill (a photo, a scan or a PDF) and returns what is on it as plain
+ * data. BillReader decides what to send and checks what comes back, and tests swap this
+ * class out.
  *
- * The key is ANTHROPIC_API_KEY in .env. Without it `enabled()` is false and nothing is sent.
+ * Which service reads it is the owner's pick (BillReaderSettings, Purchasing → Settings →
+ * Reading bills): Claude, read here through the official SDK, or Google Gemini
+ * (GeminiVision). Both get the same instructions and must answer in the same SCHEMA.
+ * With no key for the picked service `enabled()` is false and nothing is sent.
  */
 class BillVision
 {
@@ -57,7 +61,7 @@ class BillVision
         ],
     ];
 
-    private const INSTRUCTIONS = <<<'TXT'
+    public const INSTRUCTIONS = <<<'TXT'
         You read supplier bills for a restaurant in the Maldives so that staff do not have to type them. You are given one bill: a phone photo, a scan or a PDF. It may be a printed tax invoice, a till receipt or a handwritten cash bill, in English and sometimes partly in Dhivehi. Amounts are in Maldivian rufiyaa (MVR) unless the bill says otherwise.
 
         A person will check your reading against the bill before anything is saved, and stock and money records are made from it. So read what is there and never fill a gap with a likely value: a figure you cannot read is 0 with "unsure" true, and a product you cannot place gets item_id 0. A wrong match that looks confident costs them more than an honest blank.
@@ -73,30 +77,42 @@ class BillVision
         If the picture is not a bill for goods, or is too blurred to read at all, answer with is_bill false and no lines.
         TXT;
 
+    public function __construct(private readonly BillReaderSettings $settings) {}
+
     public function enabled(): bool
     {
-        return trim((string) config('services.anthropic.key')) !== '';
+        return $this->settings->key($this->settings->provider()) !== '';
     }
 
     /**
      * @param string $bytes the file itself: a JPEG, PNG or WebP picture, or a PDF
      * @param string $mime its media type
      * @param string $context the inventory items and suppliers on file, as text
+     * @param string|null $provider the service to ask, when not the picked one (the settings Test)
      * @return array<string, mixed> matching SCHEMA
      *
      * @throws BillUnreadable
      */
-    public function read(string $bytes, string $mime, string $context): array
+    public function read(string $bytes, string $mime, string $context, ?string $provider = null): array
     {
-        if (!$this->enabled()) {
-            throw new BillUnreadable('Bill reading is not set up yet: the Claude key is missing.');
+        $provider ??= $this->settings->provider();
+        $key = $this->settings->key($provider);
+        if ($key === '') {
+            throw new BillUnreadable('Bill reading is not set up yet: add a key under Purchasing → Settings → Reading bills.');
         }
+        $model = $this->settings->model($provider);
 
+        return match ($provider) {
+            'google' => app(GeminiVision::class)->read($bytes, $mime, $context, $key, $model),
+            default => $this->readWithClaude($bytes, $mime, $context, $key, $model),
+        };
+    }
+
+    /** @return array<string, mixed> */
+    private function readWithClaude(string $bytes, string $mime, string $context, string $key, string $model): array
+    {
         $base = trim((string) config('services.anthropic.base_url'));
-        $client = new Client(
-            apiKey: trim((string) config('services.anthropic.key')),
-            baseUrl: $base !== '' ? $base : null,
-        );
+        $client = new Client(apiKey: $key, baseUrl: $base !== '' ? $base : null);
 
         $file = $mime === 'application/pdf'
             ? ['type' => 'document', 'source' => ['type' => 'base64', 'mediaType' => 'application/pdf', 'data' => base64_encode($bytes)]]
@@ -109,7 +125,7 @@ class BillVision
                     'role' => 'user',
                     'content' => [$file, ['type' => 'text', 'text' => 'Read this bill.']],
                 ]],
-                model: (string) config('services.anthropic.bill_model', 'claude-opus-5-5'),
+                model: $model,
                 // The instructions and the lists are the same for every bill in a pile, so
                 // they are cached: the second bill on pays a tenth for them.
                 system: [
@@ -127,9 +143,11 @@ class BillVision
             );
         } catch (AuthenticationException|PermissionDeniedException $e) {
             Log::warning('Bill reading: the Claude key was refused', ['error' => $e->getMessage()]);
-            throw new BillUnreadable('The Claude key was refused. Check ANTHROPIC_API_KEY and that the account has credit.');
+            throw new BillUnreadable('The Claude key was refused. Check the key and that the account has credit.');
         } catch (RateLimitException $e) {
             throw new BillUnreadable('The reader is busy just now. Try this bill again in a minute.', retry: true);
+        } catch (NotFoundException $e) {
+            throw new BillUnreadable("Claude does not know the model \"{$model}\". Clear the model box to use the usual one.");
         } catch (APIStatusException $e) {
             Log::warning('Bill reading failed', ['status' => $e->status ?? null, 'error' => $e->getMessage()]);
             $retry = ($e->status ?? 0) >= 500;
