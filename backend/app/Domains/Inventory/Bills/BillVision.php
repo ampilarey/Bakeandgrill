@@ -43,7 +43,7 @@ class BillVision
                 'items' => [
                     'type' => 'object',
                     'additionalProperties' => false,
-                    'required' => ['name', 'item_id', 'new_name', 'new_unit', 'quantity', 'unit', 'unit_price', 'amount', 'gst', 'unsure'],
+                    'required' => ['name', 'item_id', 'new_name', 'new_unit', 'quantity', 'unit', 'pack_size', 'unit_price', 'amount', 'gst', 'unsure'],
                     'properties' => [
                         'name' => ['type' => 'string', 'description' => 'The line as written on the bill.'],
                         'item_id' => ['type' => 'integer', 'description' => 'The id of the inventory item this line is, from the list, or 0 when none of them is this product.'],
@@ -51,6 +51,7 @@ class BillVision
                         'new_unit' => ['type' => 'string', 'description' => 'When item_id is 0: the smallest unit it would be counted in on the shelf (piece, kg, litre, packet…). Else "".'],
                         'quantity' => ['type' => 'number', 'description' => 'How many were bought, in the unit below.'],
                         'unit' => ['type' => 'string', 'description' => '"" when the quantity is in the inventory item\'s own unit. Otherwise the name of one of that item\'s packs when the bill\'s unit is that pack, else the bill\'s own word in lower case (case, carton, box, tray, bag…).'],
+                        'pack_size' => ['type' => 'number', 'description' => 'When "unit" is a pack that is not one of the item\'s listed packs: how many of the item\'s own unit (or of new_unit) one such pack holds, when the bill says so plainly ("CTN x 24", "bundle of 50 pcs"). 0 when the bill does not say or says two different things.'],
                         'unit_price' => ['type' => 'number', 'description' => 'What one of that unit cost, as paid: after any discount on the line, GST included.'],
                         'amount' => ['type' => 'number', 'description' => 'The line total as paid, GST included.'],
                         'gst' => ['type' => 'boolean', 'description' => 'True when GST was charged on this line.'],
@@ -68,7 +69,7 @@ class BillVision
 
         For each line of goods on the bill, in the bill's order:
         - Match it to one inventory item from the list when it is the same product, allowing for brand names, abbreviations, spelling and sizes ("C/COLA 500ML PET" is a cola item counted in bottles). Different products that merely share a word are not a match.
-        - Give the quantity and the unit it was sold in. The inventory list shows each item's own unit and the packs already defined for it with how many of the own unit one pack holds. If the bill sells it in the item's own unit, leave "unit" empty. If it sells it in one of the listed packs, use that pack's name exactly. If it sells it in some other pack (a carton of 24 where no carton is defined), give the bill's word for it: the person will say how many it holds.
+        - Give the quantity and the unit it was sold in. The inventory list shows each item's own unit and the packs already defined for it with how many of the own unit one pack holds. If the bill sells it in the item's own unit, leave "unit" empty. If it sells it in one of the listed packs, use that pack's name exactly. If it sells it in some other pack (a carton of 24 where no carton is defined), give the bill's word for it, and in pack_size how many it holds when the bill says so plainly; when it does not, or says two different things, give 0 and the person is asked. An unclear pack size alone does not make a line "unsure".
         - Give the price of one unit and the line total as actually paid. When the bill shows prices before GST and adds GST at the foot, add the GST into the unit price and the amount of the lines it applies to, so that the lines add up to the grand total. Apply a line discount to its line; spread a discount on the whole bill across the lines in proportion.
         - Leave out lines that are not goods: subtotals, totals, GST, rounding, change, payment and bottle deposits returned. A delivery or service charge is a line of its own with item_id 0.
 

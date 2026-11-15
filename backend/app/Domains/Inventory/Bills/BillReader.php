@@ -106,60 +106,128 @@ class BillReader
     }
 
     /**
-     * What stops a bill being approved without the form (from Telegram): anything a
-     * person has to decide. Empty means every line is an item on file, in a unit the
-     * item has, read with confidence, and the lines come to the bill's total.
+     * What stands between a read bill and a purchase, sorted by who can settle it.
      *
-     * @return list<string>
+     * `blocking` needs the form in Admin (a figure hard to read, lines that do not add
+     * up, an unknown product for someone who may not add items). The rest can be settled
+     * where the bill is being approved: `new_items` are lines whose product is not on
+     * file but has a name and a unit to add it by, `new_packs` are lines sold in a pack
+     * the item does not have whose size the bill gave, and `ask_packs` are such lines
+     * whose size the person has to say. Each is a list of line positions.
+     *
+     * @return array{blocking: list<string>, new_items: list<int>, new_packs: list<int>, ask_packs: list<int>}
      */
-    public function needsAPerson(PurchaseBill $bill): array
+    public function review(PurchaseBill $bill, bool $mayAddItems = false): array
     {
+        $out = ['blocking' => [], 'new_items' => [], 'new_packs' => [], 'ask_packs' => []];
         $data = $this->present($bill)['data'];
         if (!is_array($data) || $bill->status !== PurchaseBill::READY) {
-            return ['It has not been read.'];
+            $out['blocking'][] = 'It has not been read.';
+
+            return $out;
         }
-        $why = [];
         if (trim((string) $data['shop']) === '') {
-            $why[] = 'The shop could not be read.';
+            $out['blocking'][] = 'The shop could not be read.';
         }
         if (empty($data['date'])) {
-            $why[] = 'The date could not be read.';
+            $out['blocking'][] = 'The date could not be read.';
         }
         if (!empty($data['seen_before'])) {
-            $why[] = 'A purchase with this bill number is already on file.';
+            $out['blocking'][] = 'A purchase with this bill number is already on file.';
         }
-        $noItem = $unsure = $noPack = 0;
-        foreach ($data['lines'] as $line) {
-            if (empty($line['item'])) {
-                $noItem++;
-
-                continue;
-            }
+        $noItem = $unsure = 0;
+        foreach ($data['lines'] as $i => $line) {
             if (!empty($line['unsure'])) {
                 $unsure++;
             }
-            if ($line['unit'] !== '' && $this->packFor($line) === null && mb_strtolower((string) $line['item']['unit']) !== $line['unit']) {
-                $noPack++;
+            $own = mb_strtolower(trim((string) ($line['item']['unit'] ?? '')));
+            if (empty($line['item'])) {
+                if (!$mayAddItems || trim((string) $line['new_name']) === '' || trim((string) $line['new_unit']) === '') {
+                    $noItem++;
+
+                    continue;
+                }
+                $out['new_items'][] = $i;
+                $own = mb_strtolower(trim((string) $line['new_unit']));
+            }
+            if ($line['unit'] !== '' && $line['unit'] !== $own && (empty($line['item']) || $this->packFor($line) === null)) {
+                $out[($line['pack_size'] ?? 0) > 0 ? 'new_packs' : 'ask_packs'][] = $i;
             }
         }
         if ($noItem > 0) {
-            $why[] = $noItem === 1 ? '1 line is not in your inventory.' : "{$noItem} lines are not in your inventory.";
+            $out['blocking'][] = $noItem === 1 ? '1 line is not in your inventory.' : "{$noItem} lines are not in your inventory.";
         }
         if ($unsure > 0) {
-            $why[] = $unsure === 1 ? '1 line was hard to read.' : "{$unsure} lines were hard to read.";
-        }
-        if ($noPack > 0) {
-            $why[] = $noPack === 1 ? '1 line is in a pack that has no size yet.' : "{$noPack} lines are in packs that have no size yet.";
+            $out['blocking'][] = $unsure === 1 ? '1 line was hard to read.' : "{$unsure} lines were hard to read.";
         }
         if ($data['total'] > 0 && abs($data['total'] - $data['lines_total']) > 0.05) {
-            $why[] = 'The lines do not add up to the bill\'s total.';
+            $out['blocking'][] = 'The lines do not add up to the bill\'s total.';
         }
 
-        return $why;
+        return $out;
+    }
+
+    /** Nothing left for a person to decide: `purchasePayload()` can be saved as it is. */
+    public function ready(array $review): bool
+    {
+        return $review['blocking'] === [] && $review['new_items'] === [] && $review['new_packs'] === [] && $review['ask_packs'] === [];
+    }
+
+    /** How many of the item's own unit one of a line's packs holds, as the person said. */
+    public function setPackSize(PurchaseBill $bill, int $line, float $size): void
+    {
+        $data = $bill->data;
+        if (isset($data['lines'][$line]) && $size > 0) {
+            $data['lines'][$line]['pack_size'] = round($size, 4);
+            $bill->forceFill(['data' => $data])->save();
+        }
     }
 
     /**
-     * The bill as the manual order's payload, for a bill `needsAPerson()` passed.
+     * Do what `review()` said could be done here: add the new products to the inventory
+     * (an item already on file under that name is used, never doubled) and define the
+     * packs whose size is known. Stock is not touched: the purchase puts it in.
+     *
+     * @param array{new_items: list<int>, new_packs: list<int>} $review
+     */
+    public function settle(PurchaseBill $bill, array $review): void
+    {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($bill, $review) {
+            $data = $bill->data;
+            foreach ($review['new_items'] as $i) {
+                $line = $data['lines'][$i] ?? null;
+                if ($line === null || !empty($line['item_id'])) {
+                    continue;
+                }
+                $name = trim((string) $line['new_name']);
+                $item = InventoryItem::query()->where('is_active', true)
+                    ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($name)])->first()
+                    ?? InventoryItem::create(['name' => $name, 'unit' => trim((string) $line['new_unit']), 'current_stock' => 0, 'is_active' => true]);
+                $data['lines'][$i]['item_id'] = $item->id;
+            }
+            foreach ($review['new_packs'] as $i) {
+                $line = $data['lines'][$i] ?? null;
+                $itemId = (int) ($line['item_id'] ?? 0);
+                if ($line === null || $itemId === 0 || ($line['pack_size'] ?? 0) <= 0) {
+                    continue;
+                }
+                $has = \App\Models\InventoryPurchaseUnit::query()->where('inventory_item_id', $itemId)->get(['name'])
+                    ->contains(fn ($p) => mb_strtolower(trim((string) $p->name)) === $line['unit']);
+                if (!$has) {
+                    \App\Models\InventoryPurchaseUnit::create([
+                        'inventory_item_id' => $itemId,
+                        'brand_key' => '',
+                        'name' => mb_convert_case($line['unit'], MB_CASE_TITLE),
+                        'base_units' => $line['pack_size'],
+                    ]);
+                }
+            }
+            $bill->forceFill(['data' => $data])->save();
+        });
+    }
+
+    /**
+     * The bill as the manual order's payload, for a bill whose `review()` is `ready()`.
      *
      * @return array<string, mixed>
      */
@@ -379,6 +447,7 @@ class BillReader
                 'new_unit' => $text($line['new_unit'] ?? '', 40),
                 'quantity' => $qty,
                 'unit' => mb_strtolower($text($line['unit'] ?? '', 40)),
+                'pack_size' => $num($line['pack_size'] ?? 0),
                 'unit_price' => $price,
                 'amount' => round($amount, 2),
                 'gst' => (bool) ($line['gst'] ?? false),

@@ -260,6 +260,8 @@ export type BillLine = {
   quantity: number;
   /** "" is the item's own unit; else a pack's name or the bill's own word. */
   unit: string;
+  /** How many of the item's own unit one of that pack holds, when the bill said; else 0. */
+  pack_size?: number;
   /** What one cost, as paid: GST inside. */
   unit_price: number;
   amount: number;

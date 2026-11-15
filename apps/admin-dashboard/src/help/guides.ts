@@ -929,8 +929,10 @@ export const GUIDES: Guide[] = [
       'The purchase order is made as received, so the stock goes in, and the bill is kept as its receipt.',
     ],
     notes: [
-      'Approve shows only when nothing needs a decision: every line is an item in your inventory, in a unit it has, and the lines add up to the bill\'s total.',
-      'Otherwise the bot says what needs checking, with Open in Admin. The bill waits under Purchasing → Orders → Bills to check.',
+      'A product that is not in your inventory yet is added when you approve. The message says its name and what it is counted in first, and the button reads Add and approve.',
+      'Bought by the bundle, carton or case? The pack is set up from the bill. If the bill does not say how many are in one, the bot asks: tap the button and send the number.',
+      'When a figure was hard to read or the lines do not add up, the bot says so, with Open in Admin. The bill waits under Purchasing → Orders → Bills to check.',
+      'Adding a new product needs the permission to manage inventory. Without it, a bill with a new product goes to Admin.',
       'Remove takes the bill off the list. Nothing is entered from it.',
       'Only someone who may enter purchases can send bills or approve them.',
       'The same photo is not taken twice.',

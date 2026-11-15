@@ -26,14 +26,19 @@ use Throwable;
  *
  * Send the bot a photo or a PDF of a bill: it is kept as a purchase_bills row like one
  * sent from Admin, read after the webhook has answered (the scheduler reads it if that
- * is cut short), and the reading comes back to the chat. When nothing on it needs a
- * person (BillReader::needsAPerson) the card carries Approve, which makes the purchase
- * through the one manual path; otherwise it says what needs a look and links to Admin.
- * Everything asks `suppliers.purchases`, on the photo and again on every button.
+ * is cut short), and the reading comes back to the chat. BillReader::review() sorts what
+ * is left to decide: a product not on file is added to the inventory at Approve (for
+ * someone with `inventory.manage`), a pack with no size is defined from the bill or asked
+ * for here, and only what truly needs the form (a figure hard to read, lines that do not
+ * add up) sends the person to Admin. Approve makes the purchase through the one manual
+ * path. Everything asks `suppliers.purchases`, on the photo and again on every button.
  */
 class TelegramBills
 {
     private const PERMISSION = 'suppliers.purchases';
+
+    /** Adding a product to the inventory, as on the manual order's "Item not on the list". */
+    private const ADD_ITEMS = 'inventory.manage';
 
     private const MIMES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 
@@ -116,7 +121,7 @@ class TelegramBills
             return;
         }
         try {
-            [$html, $buttons] = $this->card($bill);
+            [$html, $buttons] = $this->card($bill, $link->user);
             $this->client->sendMessage($link->bot, $link->chat_id, $html, $buttons);
             $bill->forceFill(['telegram_told_at' => now()])->save();
         } catch (Throwable $e) {
@@ -128,7 +133,7 @@ class TelegramBills
     /**
      * @return array{0: string, 1: array<int, array<int, array<string, string>>>|null}
      */
-    public function card(PurchaseBill $bill): array
+    public function card(PurchaseBill $bill, ?User $user = null): array
     {
         $reader = app(BillReader::class);
         $admin = rtrim((string) config('app.url'), '/') . '/admin/purchasing/orders?bills=1';
@@ -165,28 +170,62 @@ class TelegramBills
             $lines[] = TelegramText::e($data['note']);
         }
 
-        $why = $reader->needsAPerson($bill);
-        if ($why !== []) {
+        $review = $reader->review($bill, $user !== null && $this->commands->can($user, self::ADD_ITEMS));
+        if ($review['blocking'] !== []) {
             $lines[] = '';
             $lines[] = '<b>This one needs checking in Admin:</b>';
-            foreach ($why as $reason) {
+            foreach ($review['blocking'] as $reason) {
                 $lines[] = '• ' . TelegramText::e($reason);
             }
 
             return [implode("\n", $lines), [[$open, $remove]]];
         }
+
+        // What the bot settles itself, said before it is done.
+        $unitOf = fn (array $line): string => (string) ($line['item']['unit'] ?? $line['new_unit']);
+        $nameOf = fn (array $line): string => (string) ($line['item']['name'] ?? $line['new_name']);
+        $adds = [];
+        foreach ($review['new_items'] as $i) {
+            $line = $data['lines'][$i];
+            $adds[] = '• New item in your inventory: <b>' . TelegramText::e($line['new_name']) . '</b>, counted in ' . TelegramText::e($line['new_unit']);
+        }
+        foreach ($review['new_packs'] as $i) {
+            $line = $data['lines'][$i];
+            $adds[] = '• 1 ' . TelegramText::e($line['unit']) . ' of ' . TelegramText::e($nameOf($line)) . ' = ' . $qty((float) $line['pack_size']) . ' ' . TelegramText::e($unitOf($line));
+        }
+
+        // A pack whose size the bill does not give: asked for, one at a time.
+        if ($review['ask_packs'] !== []) {
+            $i = $review['ask_packs'][0];
+            $line = $data['lines'][$i];
+            $lines[] = '';
+            $lines[] = 'Before this can be approved: how many ' . TelegramText::e($unitOf($line)) . ' are in one <b>' . TelegramText::e($line['unit']) . '</b> of ' . TelegramText::e($nameOf($line)) . '?';
+
+            return [implode("\n", $lines), [
+                [['text' => 'Say how many in one ' . $line['unit'], 'callback_data' => 'pbs:' . $bill->id . '.' . $i]],
+                [$open, $remove],
+            ]];
+        }
+
         $lines[] = '';
+        if ($adds !== []) {
+            $lines[] = '<b>Approving also sets up:</b>';
+            array_push($lines, ...$adds);
+            $lines[] = '';
+        }
         $lines[] = 'Check it against the bill, then approve. Approving makes the purchase order as received, so the stock goes in.';
+        $word = $adds !== [] ? '✅ Add and approve' : '✅ Approve';
 
         return [implode("\n", $lines), [
-            [['text' => '✅ Approve: paid in cash', 'callback_data' => 'pba:' . $bill->id]],
-            [['text' => '✅ Approve: not paid yet', 'callback_data' => 'pbn:' . $bill->id]],
+            [['text' => $word . ': paid in cash', 'callback_data' => 'pba:' . $bill->id]],
+            [['text' => $word . ': not paid yet', 'callback_data' => 'pbn:' . $bill->id]],
             [$open, $remove],
         ]];
     }
 
-    public function tap(TelegramLink $link, User $user, string $callbackId, int $messageId, string $action, int $billId): void
+    public function tap(TelegramLink $link, User $user, string $callbackId, int $messageId, string $action, string $arg): void
     {
+        [$billId, $lineNo] = array_map('intval', array_pad(explode('.', $arg, 2), 2, '0'));
         $bot = $link->bot;
         if (!$this->commands->can($user, self::PERMISSION)) {
             $this->client->answerCallback($bot, $callbackId, 'Your account cannot enter purchases.', true);
@@ -210,10 +249,34 @@ class TelegramBills
         }
 
         $reader = app(BillReader::class);
+        $mayAdd = $this->commands->can($user, self::ADD_ITEMS);
+
+        if ($action === 'pbs') {
+            $line = $reader->present($bill)['data']['lines'][$lineNo] ?? null;
+            if ($line === null) {
+                $this->client->answerCallback($bot, $callbackId, 'That line is no longer on the bill.', true);
+
+                return;
+            }
+            $this->client->answerCallback($bot, $callbackId);
+            $this->commands->awaitReply($link, ['action' => 'bill_pack', 'bill' => $bill->id, 'line' => $lineNo]);
+            $this->commands->send($link, 'How many ' . TelegramText::e((string) ($line['item']['unit'] ?? $line['new_unit'])) . ' are in one ' . TelegramText::e($line['unit']) . '? Send just the number, like 24.');
+
+            return;
+        }
+
         // Asked again at the press: an item may have been switched off since the card was sent.
-        $why = $reader->needsAPerson($bill);
-        if ($why !== []) {
-            $this->client->answerCallback($bot, $callbackId, 'This one needs checking in Admin: ' . $why[0], true);
+        $review = $reader->review($bill, $mayAdd);
+        if ($review['blocking'] !== [] || $review['ask_packs'] !== []) {
+            $this->client->answerCallback($bot, $callbackId, $review['blocking'] !== [] ? 'This one needs checking in Admin: ' . $review['blocking'][0] : 'Say how many are in one pack first.', true);
+
+            return;
+        }
+        // New products and packs first, then the bill is like any other.
+        $reader->settle($bill, $review);
+        $bill->refresh();
+        if (!$reader->ready($reader->review($bill, $mayAdd))) {
+            $this->client->answerCallback($bot, $callbackId, 'This one needs checking in Admin.', true);
 
             return;
         }
@@ -235,5 +298,36 @@ class TelegramBills
             number_format((float) $purchase->total, 2),
             $action === 'pba' ? 'paid in cash' : 'not paid yet',
         ));
+    }
+
+    /**
+     * The number typed after "Say how many in one …": kept on the bill, and the card
+     * comes again, now with Approve (or the next pack to ask about).
+     *
+     * @param array<string, mixed> $await
+     */
+    public function answerAwait(TelegramLink $link, User $user, array $await, string $text): bool
+    {
+        if (($await['action'] ?? '') !== 'bill_pack') {
+            return false;
+        }
+        $bill = PurchaseBill::query()->whereIn('status', PurchaseBill::WAITING)->find((int) ($await['bill'] ?? 0));
+        if ($bill === null || !$this->commands->can($user, self::PERMISSION)) {
+            $this->commands->send($link, 'That bill is no longer on the list.');
+
+            return true;
+        }
+        $number = (float) str_replace(',', '', trim($text));
+        if (!is_numeric(str_replace(',', '', trim($text))) || $number <= 0 || $number > 100000) {
+            $this->commands->awaitReply($link, $await);
+            $this->commands->send($link, 'Just the number, please, like 24.');
+
+            return true;
+        }
+        app(BillReader::class)->setPackSize($bill, (int) ($await['line'] ?? -1), $number);
+        [$html, $buttons] = $this->card($bill->refresh(), $user);
+        $this->client->sendMessage($link->bot, $link->chat_id, $html, $buttons);
+
+        return true;
     }
 }

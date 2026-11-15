@@ -214,6 +214,8 @@ export function linesFromBill(lines: BillLine[], canAddItems: boolean): ManualPo
     quantity: String(b.quantity),
     unit_cost: String(b.unit_price),
     unitText: b.unit,
+    // The bill said how many are in the pack: the "what is a carton?" box comes filled.
+    newPackQty: b.pack_size && b.pack_size > 0 ? String(b.pack_size) : '',
     gst: b.gst,
     // The bill's price and unit are this purchase's: the last purchase's must not replace them.
     costTyped: true,

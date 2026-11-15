@@ -637,7 +637,7 @@ class TelegramCommands
                 'gp' => $this->cashier()->orderTap($link, $user, $id, $messageId, $arg),
                 'bl' => app(TelegramBuyingList::class)->privateTap($link, $user, $id, $messageId, $arg),
                 'kp', 'kc' => $this->kitchen()->handleCallback($link, $user, $id, $messageId, $action, $arg),
-                'pba', 'pbn', 'pbr' => app(TelegramBills::class)->tap($link, $user, $id, $messageId, $action, (int) $arg),
+                'pba', 'pbn', 'pbr', 'pbs' => app(TelegramBills::class)->tap($link, $user, $id, $messageId, $action, $arg),
                 default => $this->extrasCallback($link, $user, $id, $messageId, $action, $arg),
             };
         } catch (Throwable $e) {
@@ -800,7 +800,8 @@ class TelegramCommands
             return $this->extras()->answerAwait($link, $user, $await, $text)
                 || app(TelegramBuyingList::class)->answerAwait($link, $user, $await, $text)
                 || $this->kitchen()->answerAwait($link, $user, $await, $text)
-                || $this->tools()->answerAwait($link, $user, $await, $text);
+                || $this->tools()->answerAwait($link, $user, $await, $text)
+                || app(TelegramBills::class)->answerAwait($link, $user, $await, $text);
         }
 
         $refund = Refund::find((int) ($await['id'] ?? 0));
