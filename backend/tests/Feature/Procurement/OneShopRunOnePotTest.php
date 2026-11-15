@@ -109,6 +109,24 @@ class OneShopRunOnePotTest extends TestCase
         );
     }
 
+    /* Owner, 2026-11-15: "it says I owe to the shops. But I pay and bring items."
+       The buyer paid at the shop, so the order a shop run becomes is paid. */
+    public function test_a_shop_run_turned_into_a_purchase_is_already_paid(): void
+    {
+        $id = $this->boughtRequest();
+
+        $this->postJson("/api/purchase-requests/{$id}/convert-to-purchase")->assertOk();
+
+        $purchase = \App\Models\Purchase::findOrFail(PurchaseRequest::findOrFail($id)->purchase_id);
+        $this->assertSame('received', $purchase->status);
+        $this->assertEquals(10.0, (float) $purchase->total);
+        $this->assertSame('paid', $purchase->payment_status);
+        $this->assertEquals(0.0, $purchase->owed);
+        $this->assertSame('cash', $purchase->payment_method);
+
+        $this->getJson('/api/purchasing/payables')->assertOk()->assertJsonPath('orders', 0);
+    }
+
     public function test_a_request_that_became_a_purchase_cannot_also_become_an_expense(): void
     {
         $id = $this->boughtRequest();

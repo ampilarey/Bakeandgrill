@@ -70,6 +70,78 @@ class SupplierPaymentsTest extends TestCase
         $this->postJson("/api/purchases/{$po->id}/payment", ['amount' => 1])->assertStatus(422);
     }
 
+    /* Owner, 2026-11-15: "it says I owe to the shops. But I pay and bring items." */
+    public function test_a_purchase_paid_in_full_in_cash_stays_paid_when_it_is_corrected(): void
+    {
+        $po = $this->order($this->agora, 'PO-1', 300);
+        $po->forceFill(['paid_amount' => 300, 'payment_method' => 'cash', 'paid_at' => now()->toDateString()])->save();
+
+        // A price put right afterwards: the shop was paid at the counter.
+        $po->update(['subtotal' => 360, 'total' => 360]);
+        $this->assertSame('paid', $po->fresh()->payment_status);
+        $this->assertEquals(360.0, (float) $po->fresh()->paid_amount);
+
+        $po->update(['subtotal' => 250, 'total' => 250]);
+        $this->assertEquals(250.0, (float) $po->fresh()->paid_amount);
+    }
+
+    public function test_a_part_payment_and_an_exact_transfer_are_not_stretched(): void
+    {
+        $part = $this->order($this->agora, 'PO-1', 300);
+        $part->forceFill(['paid_amount' => 100, 'payment_method' => 'cash'])->save();
+        $part->update(['total' => 360]);
+        $this->assertEquals(100.0, (float) $part->fresh()->paid_amount);
+        $this->assertEquals(260.0, $part->fresh()->owed);
+
+        $transfer = $this->order($this->fahi, 'PO-2', 300);
+        $transfer->forceFill(['paid_amount' => 300, 'payment_method' => 'transfer'])->save();
+        $transfer->update(['total' => 360]);
+        $this->assertEquals(60.0, $transfer->fresh()->owed);
+    }
+
+    public function test_one_shop_or_every_shop_is_marked_paid_together(): void
+    {
+        $a1 = $this->order($this->agora, 'PO-1', 300, 'received', '9');
+        $a2 = $this->order($this->agora, 'PO-2', 120);
+        $a2->forceFill(['paid_amount' => 20, 'payment_method' => 'cash'])->save();
+        $f1 = $this->order($this->fahi, 'PO-3', 80);
+        $typed = $this->order(null, 'PO-4', 50, 'received', '5', 'Corner Shop');
+        $draft = $this->order($this->agora, 'PO-5', 999, 'draft');
+        Sanctum::actingAs($this->makeManager(), ['staff']);
+
+        // Which shop must be said.
+        $this->postJson('/api/purchasing/payables/settle', [])->assertStatus(422);
+
+        $res = $this->postJson('/api/purchasing/payables/settle', ['supplier_id' => $this->agora->id])->assertOk();
+        $this->assertSame(2, $res->json('settled'));
+        $this->assertEquals(400.0, $res->json('total'));
+        $this->assertSame('paid', $a1->fresh()->payment_status);
+        // Dated the day it was bought, in cash, and marked as a batch.
+        $this->assertSame($a1->purchase_date->toDateString(), $a1->fresh()->paid_at->toDateString());
+        $this->assertSame('cash', $a1->fresh()->payment_method);
+        $this->assertSame('Marked paid together', $a1->fresh()->payment_ref);
+        $this->assertEquals(120.0, (float) $a2->fresh()->paid_amount);
+        // Another shop's orders, and a draft, are untouched.
+        $this->assertSame('unpaid', $f1->fresh()->payment_status);
+        $this->assertEquals(0.0, (float) $draft->fresh()->paid_amount);
+
+        // A shop with no supplier record goes by the name typed on the order.
+        $this->postJson('/api/purchasing/payables/settle', ['name' => 'corner shop'])->assertOk()->assertJsonPath('settled', 1);
+        $this->assertSame('paid', $typed->fresh()->payment_status);
+
+        $this->postJson('/api/purchasing/payables/settle', ['all' => true])->assertOk()->assertJsonPath('settled', 1);
+        $this->getJson('/api/purchasing/payables')->assertOk()->assertJsonPath('orders', 0)->assertJsonPath('total_owed', 0);
+        $this->postJson('/api/purchasing/payables/settle', ['all' => true])->assertOk()->assertJsonPath('settled', 0);
+    }
+
+    public function test_marking_paid_together_needs_the_purchasing_permission(): void
+    {
+        $this->order($this->agora, 'PO-1', 300);
+        Sanctum::actingAs($this->makeStaff(), ['staff']);
+
+        $this->postJson('/api/purchasing/payables/settle', ['all' => true])->assertForbidden();
+    }
+
     public function test_more_than_is_owed_is_refused_and_a_draft_has_nothing_to_pay(): void
     {
         $po = $this->order($this->agora, 'PO-1', 300);

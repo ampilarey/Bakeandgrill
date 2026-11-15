@@ -1178,6 +1178,21 @@ off unless switched on (it takes a number from the GST series and posts to the G
 badly gets a case in `readPo()` and a fixture in `readPo.test.ts` (with the supplier's own details changed), never a
 second reader. `InvoiceFromPoTest`, `readPo.test.ts`, `ocrText.test.ts`, `PoInvoiceModal.test.tsx`.
 
+## A shop paid at the counter is not owed
+
+Owner, 2026-11-15 ("when I create a manual PO… it says I owe to the shops. But I pay and bring items"; the third time
+this has come up, after 2026-09-21 and 2026-10-23). `purchases.paid_amount` against `total` is what "Owed to suppliers"
+adds up (`Purchase::owed`, `SupplierProfileService::payables()`), so every way an order is made or changed has to leave
+a cash-and-carry order paid: the manual PO's Did you pay? starts on Paid in full (`recordPaidAtPurchase`); **a purchase
+paid in full in cash stays paid in full when its total changes** (`Purchase::booted`, `PAID_ON_THE_SPOT`; a part payment
+and a transfer of an exact sum are left as they were); **a shop run turned into a purchase is paid** by the buyer
+(`PurchaseRequestVerificationService::convertToPurchase`); and what still shows is cleared in a tap on the card,
+Purchasing → Suppliers → Owed to suppliers → **Paid** beside a shop or **All paid** (`POST /purchasing/payables/settle`,
+`PayablesSettleController`, `suppliers.purchases`: `supplier_id`, the typed `name` for a shop with no record, or `all`;
+each order dated its own purchase day, cash, `payment_ref` "Marked paid together", one audit entry for the lot). A new
+way to create or re-total a purchase goes through these, never leaves `paid_amount` behind. `SupplierPaymentsTest`,
+`OneShopRunOnePotTest`.
+
 ## QR and card payments are checked by hand
 
 Owner, 2026-10-28: a QR customer types the bill amount themselves and the cashier keys the card

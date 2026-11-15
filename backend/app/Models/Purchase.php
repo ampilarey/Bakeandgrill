@@ -89,6 +89,35 @@ class Purchase extends Model
 
     protected $appends = ['owed', 'payment_status'];
 
+    /**
+     * A purchase paid in full in cash stays paid in full when its lines are
+     * changed afterwards (owner, 2026-11-15: "it says I owe to the shops. But I
+     * pay and bring items"). The shop was paid at the counter, so a price or a
+     * quantity put right later is a correction of what was written down, not
+     * new money owed. A part payment, and a transfer of an exact sum, are left
+     * as they were.
+     */
+    protected static function booted(): void
+    {
+        static::updating(function (Purchase $purchase): void {
+            if (!$purchase->isDirty('total') || $purchase->isDirty('paid_amount')) {
+                return;
+            }
+            $was = (float) $purchase->getOriginal('total');
+            $paid = (float) $purchase->getOriginal('paid_amount');
+            if ($was <= 0 || $paid <= 0 || $paid + 0.005 < $was) {
+                return;
+            }
+            if (!in_array((string) $purchase->payment_method, self::PAID_ON_THE_SPOT, true)) {
+                return;
+            }
+            $purchase->paid_amount = round((float) $purchase->total, 2);
+        });
+    }
+
+    /** Ways of paying where the whole bill was handed over at the counter. */
+    public const PAID_ON_THE_SPOT = ['cash', 'pre-system', ''];
+
     /** What is still to pay: the total less what has been paid, never below zero. */
     public function getOwedAttribute(): float
     {

@@ -131,6 +131,8 @@ Route::middleware(['auth:sanctum', 'permission.any:suppliers.purchases,suppliers
 
 Route::middleware(['auth:sanctum', 'permission:suppliers.purchases'])->group(function () {
     Route::post('/purchasing/payables/legacy/settle', [App\Http\Controllers\Api\LegacyPayablesController::class, 'settle']);
+    // "I paid these": every order still showing as owed, for one shop or all of them.
+    Route::post('/purchasing/payables/settle', [App\Http\Controllers\Api\PayablesSettleController::class, 'settle']);
 });
 
 // ─── Supplier Intelligence ─────────────────────────────────────────────────

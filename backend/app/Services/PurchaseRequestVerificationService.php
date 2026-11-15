@@ -191,6 +191,19 @@ final class PurchaseRequestVerificationService
             }
             app(\App\Domains\Gst\Services\PurchaseGstService::class)->rollup($purchase->fresh('items'));
 
+            // The buyer paid at the shop and ticked each item off with the price
+            // paid, so the order starts paid in full (owner, 2026-11-15: bought
+            // and paid for, yet "it says I owe to the shops").
+            $purchase->refresh();
+            if ((float) $purchase->total > 0) {
+                $purchase->forceFill([
+                    'paid_amount' => round((float) $purchase->total, 2),
+                    'paid_at' => $purchase->purchase_date ?? now()->toDateString(),
+                    'payment_method' => 'cash',
+                    'payment_ref' => 'Paid by the buyer, request ' . $pr->request_no,
+                ])->save();
+            }
+
             $pr->update(['purchase_id' => $purchase->id]);
 
             $this->audit->log('purchase_request.converted_purchase', 'PurchaseRequest', $pr->id, [], ['purchase_id' => $purchase->id], [

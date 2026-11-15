@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   getSupplierPerformance, rateSupplier, getPriceComparison,
   fetchSuppliers, createSupplier, updateSupplier, deleteSupplier, fetchPayables,
-  fetchLegacyPayables, settleLegacyPayables,
+  fetchLegacyPayables, settleLegacyPayables, settlePayables,
   type SupplierPerf, type Supplier, type PayableRow, type LegacyPayables,
 } from '../api';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -49,6 +49,33 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
   const [legacyOpen, setLegacyOpen] = useState(false);
   const [settling, setSettling] = useState(false);
   const [settleMsg, setSettleMsg] = useState('');
+  /*
+   * Owner, 2026-11-15: "it says I owe to the shops. But I pay and bring items."
+   * A shop paid at the counter whose order was saved as not paid sat here until
+   * each order was opened and marked. Paid marks a shop's orders together, and
+   * All paid the whole card; each asks first.
+   */
+  const [paidAsk, setPaidAsk] = useState<{ row: PayableRow | null } | null>(null);
+  const [paidBusy, setPaidBusy] = useState(false);
+  const [paidMsg, setPaidMsg] = useState('');
+  const confirmPaid = async () => {
+    if (!paidAsk) return;
+    setPaidBusy(true);
+    try {
+      const res = await settlePayables(paidAsk.row
+        ? (paidAsk.row.supplier_id ? { supplier_id: paidAsk.row.supplier_id } : { name: paidAsk.row.name })
+        : { all: true });
+      setPaidMsg(res.message);
+      setPaidAsk(null);
+      void loadPayables();
+    } catch (e) {
+      setPaidMsg(e instanceof Error ? e.message : 'Could not mark those orders as paid.');
+      setPaidAsk(null);
+    } finally {
+      setPaidBusy(false);
+    }
+  };
+
   const loadPayables = async () => {
     await Promise.all([
       fetchPayables().then(setPayables).catch(() => setPayables(null)),
@@ -294,6 +321,15 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                 : 'Nothing owed. Every placed order is paid.'}
             </p>
           </div>
+          {paidMsg && <p data-testid="payables-paid-result" style={{ fontSize: 13, color: 'var(--color-primary)', margin: '0 0 10px' }}>{paidMsg}</p>}
+          {canSettleLegacy && payables.total_owed > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', margin: '0 0 12px', padding: '8px 10px', borderRadius: 8, background: 'var(--color-bg)', fontSize: 12.5, color: 'var(--color-text-secondary)' }}>
+              <span>Paid at the shop already? Tap Paid beside a shop, or mark them all.</span>
+              <Btn small variant="secondary" onClick={() => { setPaidMsg(''); setPaidAsk({ row: null }); }} data-testid="payables-all-paid">
+                All paid
+              </Btn>
+            </div>
+          )}
           {canSettleLegacy && legacy && legacy.orders > 0 && (
             <div
               data-testid="legacy-payables-note"
@@ -324,11 +360,34 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                       space-between puts it at the left margin under the name
                       (owner's screenshot, 2026-09-22). */}
                   <strong style={{ fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' }}>MVR {r.owed.toFixed(2)}</strong>
+                  {canSettleLegacy && (
+                    <Btn small variant="secondary" onClick={() => { setPaidMsg(''); setPaidAsk({ row: r }); }} aria-label={`Mark ${r.name} as paid`} data-testid="payables-paid">
+                      Paid
+                    </Btn>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </Card>
+      )}
+
+      {paidAsk && payables && (
+        <Modal title={paidAsk.row ? `Mark ${paidAsk.row.name} as paid` : 'Mark every shop as paid'} onClose={() => setPaidAsk(null)} maxWidth={440}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 12px' }} data-testid="payables-paid-ask">
+            {paidAsk.row
+              ? <>This marks {paidAsk.row.orders} order{paidAsk.row.orders === 1 ? '' : 's'} from {paidAsk.row.name} as paid in cash, MVR {paidAsk.row.owed.toFixed(2)} in all.</>
+              : <>This marks all {payables.orders} order{payables.orders === 1 ? '' : 's'} on this card as paid in cash, MVR {payables.total_owed.toFixed(2)} in all.</>}
+            {' '}Each is dated the day it was bought.
+          </p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
+            If one is still owed, open the shop&rsquo;s page and undo that order&rsquo;s payment.
+          </p>
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setPaidAsk(null)}>Cancel</Btn>
+            <Btn onClick={() => void confirmPaid()} disabled={paidBusy} data-testid="payables-paid-confirm">{paidBusy ? 'Marking…' : 'Yes, paid'}</Btn>
+          </ModalActions>
+        </Modal>
       )}
 
       {legacyOpen && legacy && (

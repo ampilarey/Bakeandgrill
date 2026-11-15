@@ -869,6 +869,27 @@ export const GUIDES: Guide[] = [
     words: 'purchase order supplier buy receive po request',
   },
   {
+    id: 'suppliers-paid',
+    page: '/purchasing',
+    title: 'Stop a shop showing as owed when you already paid',
+    about: 'You pay at the shop and bring the goods, so nothing is owed. This is how to say so.',
+    open: { to: '/purchasing/suppliers', label: 'Open Suppliers' },
+    steps: [
+      'For a new order: in + Create Manual PO, under Did you pay?, keep Paid in full. It is the choice it starts on, and it remembers your last one.',
+      'For orders already showing as owed: open Purchasing → Suppliers and find the Owed to suppliers card.',
+      'Tap Paid beside a shop to mark all of its orders as paid, or All paid for every shop on the card.',
+      'Tap Yes, paid.',
+    ],
+    notes: [
+      'Each order is marked paid in cash on the day it was bought.',
+      'An order paid in full in cash stays paid if you correct its price or quantity afterwards.',
+      'A shop run from Requests that is turned into a purchase order is already paid, as the buyer paid at the shop.',
+      'If one order really is still owed, open the shop\'s page and undo that order\'s payment.',
+      'Choose Not paid yet only for a shop that gives you credit.',
+    ],
+    words: 'owe owed supplier shop paid pay cash payable debt purchase order po mark paid',
+  },
+  {
     id: 'wholesale-invoice',
     page: '/wholesale',
     title: 'Invoice a shop for its deliveries',

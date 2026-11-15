@@ -223,6 +223,14 @@ export async function settleLegacyPayables(data: { before?: string; except?: str
   return req('/purchasing/payables/legacy/settle', { method: 'POST', body: JSON.stringify(data) });
 }
 
+/**
+ * "I paid these" (owner, 2026-11-15): every order still showing as owed, for
+ * one shop (by its supplier id, or by the name typed on its orders) or for all.
+ */
+export async function settlePayables(data: { all?: boolean; supplier_id?: number | null; name?: string }): Promise<{ message: string; settled: number; total: number }> {
+  return req('/purchasing/payables/settle', { method: 'POST', body: JSON.stringify(data) });
+}
+
 export type PurchasePaymentMethod = 'cash' | 'transfer' | 'other';
 
 /** Record money out against an order. No amount means the rest of it. */
