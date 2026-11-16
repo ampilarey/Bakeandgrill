@@ -47,7 +47,7 @@ class ShiftOpenCloseAlertsTest extends TestCase
         $logs = SmsLog::where('type', 'owner_shift_opened')->get();
         $this->assertCount(1, $logs, 'once per shift and person');
         $this->assertSame('+9607770001', $logs->first()->to);
-        $this->assertSame('Ariya opened a shift on Front till at 9:02 AM with MVR 300.00 in the drawer.', $logs->first()->message);
+        $this->assertSame("Shift #{$shift->id} opened by Ariya on Front till at 9:02 AM. Starting cash MVR 300.00.", $logs->first()->message);
     }
 
     public function test_the_person_who_opened_it_is_not_told(): void
@@ -64,9 +64,16 @@ class ShiftOpenCloseAlertsTest extends TestCase
 
         $log = SmsLog::where('type', 'owner_shift_closed')->firstOrFail();
         $this->assertSame('+9607770001', $log->to);
-        $this->assertStringContainsString('Ariya closed the shift on Front till at ', (string) $log->message);
-        $this->assertStringContainsString(' after 8h 20m. 12 orders, sales MVR 3,000.00. Cash counted MVR 1,240.00, expected MVR 1,250.00 (short MVR 10.00).', (string) $log->message);
+        $this->assertStringContainsString("Shift #{$shift->id} closed by Ariya on Front till at ", (string) $log->message);
+        $this->assertStringContainsString(' (open 8h 20m). Cash is SHORT by MVR 10.00 (expected MVR 1,250.00, counted MVR 1,240.00). Started with MVR 300.00. 12 orders, sales MVR 3,000.00. See Shifts.', (string) $log->message);
         $this->assertSame(0, SmsLog::where('type', 'owner_shift_variance')->count(), 'under the variance threshold');
+    }
+
+    public function test_a_close_that_matches_says_so(): void
+    {
+        $shift = Shift::create(['user_id' => $this->cashier->id, 'device_id' => $this->till->id, 'opened_at' => now()->subHour(), 'closed_at' => now(), 'opening_cash' => 300]);
+        event(new ShiftClosed(new ShiftClosedData(shiftId: $shift->id, userId: $this->cashier->id, userName: 'Ariya', expectedCash: 940.0, actualCash: 940.0, variance: 0.0, orderCount: 1, totalRevenue: 640.0)));
+        $this->assertStringContainsString('Cash MATCHES (expected MVR 940.00, counted MVR 940.00). Started with MVR 300.00. 1 order, sales MVR 640.00.', (string) SmsLog::where('type', 'owner_shift_closed')->firstOrFail()->message);
     }
 
     public function test_a_close_over_the_variance_threshold_is_one_message_not_two(): void

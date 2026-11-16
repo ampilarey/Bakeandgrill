@@ -38,23 +38,27 @@ class TellOwnersShiftClosedListener
         $open = '';
         if ($shift?->opened_at) {
             $minutes = (int) max(0, $shift->opened_at->diffInMinutes($closed, true));
-            $open = sprintf(' after %dh %02dm', intdiv($minutes, 60), $minutes % 60);
+            $open = sprintf(' (open %dh %02dm)', intdiv($minutes, 60), $minutes % 60);
         }
+        // Owner, 2026-11-16: the cash in the words of the variance alert, matching or not.
         $cash = abs($d->variance) < 0.01
-            ? 'matches'
-            : sprintf('%s MVR %s', $d->variance < 0 ? 'short' : 'over', number_format(abs($d->variance), 2));
+            ? 'Cash MATCHES'
+            : sprintf('Cash is %s by MVR %s', $d->variance < 0 ? 'SHORT' : 'OVER', number_format(abs($d->variance), 2));
+        $start = $shift !== null ? sprintf(' Started with MVR %s.', number_format((float) $shift->opening_cash, 2)) : '';
         $body = sprintf(
-            '%s closed the shift on %s at %s%s. %d %s, sales MVR %s. Cash counted MVR %s, expected MVR %s (%s).',
+            'Shift #%d closed by %s on %s at %s%s. %s (expected MVR %s, counted MVR %s).%s %d %s, sales MVR %s. See Shifts.',
+            $d->shiftId,
             $d->userName,
             $till,
             $closed->format('g:i A'),
             $open,
+            $cash,
+            number_format($d->expectedCash, 2),
+            number_format($d->actualCash, 2),
+            $start,
             $d->orderCount,
             $d->orderCount === 1 ? 'order' : 'orders',
             number_format($d->totalRevenue, 2),
-            number_format($d->actualCash, 2),
-            number_format($d->expectedCash, 2),
-            $cash,
         );
 
         // The variance alert already tells its people about this close.

@@ -32,7 +32,7 @@ class TellOwnersShiftOpenedListener
         $shift = Shift::query()->with('device:id,name')->find($d->shiftId);
         $till = trim((string) ($shift?->device?->name ?? '')) ?: 'a till';
         $at = ($shift?->opened_at ?? now())->timezone(config('app.timezone'))->format('g:i A');
-        $body = sprintf('%s opened a shift on %s at %s with MVR %s in the drawer.', $d->userName, $till, $at, number_format($d->openingCash, 2));
+        $body = sprintf('Shift #%d opened by %s on %s at %s. Starting cash MVR %s.', $d->shiftId, $d->userName, $till, $at, number_format($d->openingCash, 2));
 
         try {
             foreach (ShiftAlertPeople::except(OwnerPhones::for(self::TYPE), $d->userId) as $to) {
