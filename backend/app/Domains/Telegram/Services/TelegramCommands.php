@@ -245,7 +245,9 @@ class TelegramCommands
         }
 
         $tickets = $orders->filter(fn (Order $o): bool => ActiveOrders::isUnpaidTicket((string) $o->type, $o->payment_status));
-        $online = $orders->count() - $tickets->count();
+        // The rest is being made or on its way: a delivery or pickup rung at the till as well as an order from the
+        // app (owner, 2026-11-16: "It says online but actually its pos delivery order"). Staff on the order is the till.
+        $moving = $orders->reject(fn (Order $o): bool => ActiveOrders::isUnpaidTicket((string) $o->type, $o->payment_status));
         $payments = app(PaymentService::class);
         $rows = $tickets->map(fn (Order $o): array => ['order' => $o, 'due' => $payments->getRemainingBalanceLaar($o) / 100]);
         $due = (float) $rows->sum('due');
@@ -263,8 +265,16 @@ class TelegramCommands
                 $lines[] = '…and ' . ($tickets->count() - $show) . ' more';
             }
         }
-        if ($online > 0) {
-            $lines[] = '<b>Online in progress</b> ' . $online;
+        if ($moving->isNotEmpty()) {
+            $lines[] = '<b>Being made or on the way</b> ' . $moving->count();
+            foreach ($moving->take($show) as $o) {
+                $lines[] = '• #' . T::e((string) $o->order_number) . ' · ' . T::e($this->typeLabel((string) $o->type))
+                    . ' · ' . ($o->user_id ? 'till' : 'online') . ' · ' . $this->stageWord((string) $o->status)
+                    . ' · open ' . T::ago($o->created_at);
+            }
+            if ($moving->count() > $show) {
+                $lines[] = '…and ' . ($moving->count() - $show) . ' more';
+            }
         }
 
         return $lines;
@@ -1008,6 +1018,18 @@ class TelegramCommands
             'ready' => 'Ready',
             'out_for_delivery', 'on_the_way' => 'On the way',
             default => ucfirst(str_replace('_', ' ', $status)),
+        };
+    }
+
+    /** Where an order is, in the till's words. */
+    private function stageWord(string $status): string
+    {
+        return match ($status) {
+            'pending', 'confirmed', 'paid', 'held' => 'waiting',
+            'in_progress', 'preparing', 'fired' => 'cooking',
+            'ready' => 'ready',
+            'out_for_delivery', 'picked_up', 'on_the_way' => 'on the way',
+            default => str_replace('_', ' ', $status),
         };
     }
 

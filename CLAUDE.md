@@ -617,8 +617,9 @@ Telegram-only alerts (order cancelled at the till, cash out). 📊 Today ends, w
 with the open tickets (owner, 2026-11-07: "How about adding the open/saved orders in this"):
 the till's own Active orders through `App\Domains\Orders\Support\ActiveOrders::apply()`, the one
 rule `GET /api/orders?active_only=1` uses too, each saved ticket with its seat or name, what is
-left to pay and how long it has been open, and online orders still in progress as a count
-(`TelegramCommands::openOrderLines()`). See `docs/TELEGRAM_BOTS.md`.
+left to pay and how long it has been open, then Being made or on the way: every delivery and pickup not yet done,
+each with its number, type, till or online (staff on the order is the till; owner, 2026-11-16: "It says online but
+actually its pos delivery order") and its stage (`TelegramCommands::openOrderLines()`, `stageWord()`). See `docs/TELEGRAM_BOTS.md`.
 
 ## Alert channels per role and person
 

@@ -210,7 +210,7 @@ class TelegramOwnerBotTest extends TestCase
     /**
      * Owner, 2026-11-07: "How about adding the open/saved orders in this". Today lists the till's
      * own Active orders: a saved ticket with its seat and what is left to pay, never a paid sale,
-     * and online orders still in the kitchen as a count.
+     * and the deliveries and pickups still being made or on the way, each saying whether it came from the till or online.
      */
     public function test_today_lists_the_open_tickets_and_what_is_left_to_pay(): void
     {
@@ -225,7 +225,9 @@ class TelegramOwnerBotTest extends TestCase
         Payment::create(['order_id' => $saved->id, 'method' => 'cash', 'amount' => 20, 'amount_laar' => 2000, 'status' => 'paid', 'processed_at' => now()]);
         Order::factory()->takeaway()->create(['status' => 'pending', 'payment_status' => 'unpaid', 'ticket_name' => 'Ahmed', 'total' => 15, 'total_laar' => 1500, 'user_id' => $owner->id]);
         Order::factory()->paid()->create(['payment_status' => 'paid', 'total' => 150, 'total_laar' => 15000, 'type' => 'takeaway', 'user_id' => $owner->id]);
-        Order::factory()->onlinePickup()->create(['status' => 'in_progress', 'payment_status' => 'paid']);
+        $app = Order::factory()->onlinePickup()->create(['status' => 'in_progress', 'payment_status' => 'paid', 'user_id' => null]);
+        // Owner, 2026-11-16: a delivery rung at the till is not "online".
+        $till = Order::factory()->create(['type' => 'delivery', 'status' => 'ready', 'payment_status' => 'paid', 'user_id' => $owner->id]);
 
         $this->telegramText($bot, '5550001', '📊 Today')->assertOk();
 
@@ -233,7 +235,10 @@ class TelegramOwnerBotTest extends TestCase
         $this->assertStringContainsString('<b>Open tickets</b> 2 · MVR 55.00 to pay', $text);
         $this->assertStringContainsString('• No. 4 · Dine in · MVR 40.00 · open 25m', $text);
         $this->assertStringContainsString('• Ahmed · Takeaway · MVR 15.00', $text);
-        $this->assertStringContainsString('<b>Online in progress</b> 1', $text);
+        $this->assertStringContainsString('<b>Being made or on the way</b> 2', $text);
+        $this->assertStringContainsString('• #' . $app->order_number . ' · Online pickup · online · cooking', $text);
+        $this->assertStringContainsString('• #' . $till->order_number . ' · Delivery · till · ready', $text);
+        $this->assertStringNotContainsString('Online in progress', $text);
         $this->assertStringNotContainsString('MVR 150.00 ·', $text, 'a paid sale is not an open ticket');
     }
 
