@@ -847,6 +847,29 @@ final class PouchDesign
         }
     }
 
+    /** @var array<string, bool> */
+    private static array $cutouts = [];
+
+    /** A cut-out: a picture lifted off its background, its corners clear. */
+    public static function isCutout(string $uri): bool
+    {
+        $key = md5($uri);
+        if (isset(self::$cutouts[$key])) {
+            return self::$cutouts[$key];
+        }
+        $is = false;
+        if (preg_match('#^data:image/(png|webp|gif);base64,#', $uri, $m) && function_exists('imagecreatefromstring')) {
+            $src = @imagecreatefromstring((string) base64_decode(substr($uri, strlen($m[0])), true));
+            if ($src !== false) {
+                $sw = imagesx($src);
+                $sh = imagesy($src);
+                $is = (((int) imagecolorat($src, 0, 0)) >> 24 & 0x7F) > 100 && (((int) imagecolorat($src, $sw - 1, $sh - 1)) >> 24 & 0x7F) > 100;
+            }
+        }
+
+        return self::$cutouts[$key] = $is;
+    }
+
     /**
      * A picture cut to a circle: the middle square of it, the corners clear.
      * Cached, as the pictures themselves are.

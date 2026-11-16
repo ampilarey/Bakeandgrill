@@ -527,7 +527,9 @@ details"): `custom_labels.label_part` (`lid` | `side`, `App\Domains\Labels\TubSe
 size draws `StickerDesign::lid()` (the cap, the photo large in a rust ring, else the mark or the logo, the name, the
 heading and what the pack holds, and `roundFoot()`, the foot the full round design shares): no ingredients, no dates, no
 QR, and `dropped()` reports none of them, nor the photo a side label leaves out, since the other label carries each. A
-side label is an ordinary rectangular label. Both print the name without "(Lid)" / "(Side)" (`TubSet::printName`). Lid
+side label is an ordinary rectangular label. The lid's picture is as big as the circle allows (owner, 2026-11-16: "Make the
+picture big as much as possible"): a slim cap, tight rows, and a cut-out (`PouchDesign::isCutout()`) drawn whole with no
+ring, across the circle's width. Both print the name without "(Lid)" / "(Side)" (`TubSet::printName`). Lid
 and side labels (`TubSetModal`, beside Pouch labels in every size on the wizard's Something else and Custom labels;
 `POST /labels/tub-set`, `labels.manage`) makes the two with a saved label each, from the form's words over a built-in
 template's (`TubSet::templates()`: a `BUILTIN` row with a `product` that is not a pouch or a wrap); the editor's Lid or

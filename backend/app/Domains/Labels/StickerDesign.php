@@ -1267,11 +1267,12 @@ final class StickerDesign
         $text = fn (float $y, float $w, string $font, float $pt, string $color, string $t, float $bold = 0.0) => ['t' => 'text', 'x' => ($D - $w) / 2, 'base' => $y, 'w' => $w, 'align' => 'c', 'font' => $font, 'pt' => $pt, 'color' => $color, 'text' => $t] + ($bold > 0 ? ['bold' => $bold] : []);
         $brand = $d['brand'];
         $p[] = LabelSpots::open('brand');
-        array_push($p, ...self::cap($D, 0.0, 7.6 * $k, self::PRIMARY));
-        $w = $chord(3.4 * $k);
+        // A slim cap: the lid's room is the picture's (owner, 2026-11-16: "Make the picture big as much as possible").
+        array_push($p, ...self::cap($D, 0.0, 6.4 * $k, self::PRIMARY));
+        $w = $chord(3.0 * $k);
         $p[] = $dv
-            ? $text(5.9 * $k, $w, 'dv', LabelText::fitPt($brand['name_dv'], 'dv', $w, 5.6 * $f, 3.2), self::CREAM, $brand['name_dv'], 0.6)
-            : $text(5.5 * $k, $w, 'j7', LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', $w, 4.6 * $f, 2.8), self::CREAM, self::spaced(mb_strtoupper($brand['name'])));
+            ? $text(5.0 * $k, $w, 'dv', LabelText::fitPt($brand['name_dv'], 'dv', $w, 5.2 * $f, 3.2), self::CREAM, $brand['name_dv'], 0.6)
+            : $text(4.7 * $k, $w, 'j7', LabelText::fitPt(self::spaced(mb_strtoupper($brand['name'])), 'j7', $w, 4.2 * $f, 2.8), self::CREAM, self::spaced(mb_strtoupper($brand['name'])));
 
         $both = !$dv && !empty($d['both']) && $d['name_dv'] !== '';
         $head = trim((string) ($dv ? $d['header_line_dv'] : $d['header_line']));
@@ -1295,13 +1296,18 @@ final class StickerDesign
         if ($bar) {
             $subs = array_slice($pack !== '' ? [[$pack, 'qty']] : $subs, 0, 1);
         }
-        $barH = $bar ? 7.4 * $k : 0.0;
+        $barH = $bar ? 6.3 * $k : 0.0;
         $rows = ($both ? 2 : 1) + count($subs);
-        $top = 8.8 * $k;
-        $bottom = (40.0 - 3.3 * $rows - 1.4) * $k - $barH;
+        $top = 7.0 * $k;
+        $bottom = (40.0 - 3.1 * $rows - 0.9) * $k - $barH;
         $side = $bottom - $top;
         $cx = $D / 2;
-        if ($d['photo']) {
+        if ($d['photo'] && PouchDesign::isCutout($d['photo'])) {
+            // A cut-out stands by itself, as wide and as tall as the lid has room for: no ring to shrink it into.
+            [$pw, $ph] = self::fit((float) ($d['photo_ratio'] ?? 1.0), min($chord($top), $chord($bottom)) + 1.0 * $k, $side);
+            $p[] = LabelSpots::open('photo');
+            $p[] = ['t' => 'img', 'x' => $cx - $pw / 2, 'y' => $top + ($side - $ph) / 2, 'w' => $pw, 'h' => $ph, 'src' => $d['photo']];
+        } elseif ($d['photo']) {
             $p[] = LabelSpots::open('photo');
             $p[] = ['t' => 'rect', 'x' => $cx - $side / 2, 'y' => $top, 'w' => $side, 'h' => $side, 'fill' => self::PRIMARY, 'r' => $side / 2];
             $edge = max(0.45, 0.5 * $k);
@@ -1314,23 +1320,23 @@ final class StickerDesign
         }
 
         // The name, as large as the circle allows at its height.
-        $y = $bottom + 3.9 * $k;
+        $y = $bottom + 3.5 * $k;
         $p[] = LabelSpots::open('name');
         if ($both) {
             [$npt, $ntext] = LabelText::fitted($d['name'], 'dsi', $chord($y - 2.5 * $k) - 1, 12.0 * $f, 5.0);
             $p[] = $text($y - 0.4 * $k, $chord($y - 2.5 * $k), 'dsi', $npt, self::PRIMARY, $ntext);
-            $y += 3.3 * $k;
+            $y += 3.1 * $k;
             [$npt, $ntext] = LabelText::fitted($d['name_dv'], 'dv', $chord($y) - 1, 7.6 * $f, 4.6);
             $p[] = $text($y, $chord($y), 'dv', $npt, self::PRIMARY, $ntext, 0.6);
         } else {
             $name = $dv && $d['name_dv'] !== '' ? $d['name_dv'] : $d['name'];
             $nf = $dv && $d['name_dv'] !== '' ? 'dv' : 'dsi';
             $w = $chord($y - 2.5 * $k);
-            [$npt, $ntext] = LabelText::fitted($name, $nf, $w - 1, 14.0 * $f, 5.0);
+            [$npt, $ntext] = LabelText::fitted($name, $nf, $w - 1, 12.5 * $f, 5.0);
             $p[] = $text($y, $w, $nf, $npt, self::PRIMARY, $ntext, $nf === 'dv' ? 0.7 : 0.0);
         }
         foreach ($subs as [$line, $spot]) {
-            $y += 3.3 * $k;
+            $y += 3.1 * $k;
             $w = $chord($y) - 1;
             $p[] = LabelSpots::open($spot);
             if ($spot === 'heading') {
@@ -1343,11 +1349,11 @@ final class StickerDesign
         }
         if ($bar) {
             $bw = 19.0 * $k;
-            $bars = 4.6 * $k;
-            $by = 39.6 * $k - $barH + 0.6 * $k;
+            $bars = 3.9 * $k;
+            $by = 39.7 * $k - $barH + 0.5 * $k;
             $p[] = LabelSpots::open('barcode');
             $p[] = ['t' => 'img', 'x' => ($D - $bw) / 2, 'y' => $by, 'w' => $bw, 'h' => $bars, 'src' => $d['barcode']];
-            $p[] = ['t' => 'text', 'x' => ($D - $bw) / 2, 'base' => $by + $bars + 1.5 * $k, 'w' => $bw, 'align' => 'c', 'font' => 'j5', 'pt' => 3.6 * $f, 'color' => self::TEXT, 'text' => (string) ($d['barcode_text'] ?? '')];
+            $p[] = ['t' => 'text', 'x' => ($D - $bw) / 2, 'base' => $by + $bars + 1.4 * $k, 'w' => $bw, 'align' => 'c', 'font' => 'j5', 'pt' => 3.6 * $f, 'color' => self::TEXT, 'text' => (string) ($d['barcode_text'] ?? '')];
         }
         array_push($p, ...self::roundFoot($d, $dv, $D));
         $p[] = LabelSpots::close();
