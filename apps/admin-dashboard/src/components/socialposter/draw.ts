@@ -1501,9 +1501,380 @@ const ribbon: Layout = (s) => {
   footer(ctx, s.foot, s.spec, s.A, P.ink, isDark(P.bg), P.alt, P.altInk);
 };
 
+// ── More designs (owner, 2026-11-16: "Can u add more designs to social hub") ──
+
+/** Words beside the dish on a wide picture, else above or below it: the share most designs use. */
+function twoUp(s: Stage, photoFirst: boolean, share: number, room = 0): { T: Rect; Pb: Rect; d: number } {
+  const { body, u, wide } = s;
+  // `room`: what a design draws round the photo (rings, a frame), kept inside the picture.
+  const inset = (box: Rect): Rect => ({ x: box.x + room, y: box.y + room, w: box.w - 2 * room, h: box.h - 2 * room });
+  if (wide) {
+    const d = Math.min(body.w * 0.42, body.h * 0.94);
+    const Pb = inset({ x: body.x + body.w - d, y: body.y + (body.h - d) / 2, w: d, h: d });
+    return { d: Pb.w, Pb, T: { x: body.x, y: body.y, w: body.w - d - 6 * u, h: body.h } };
+  }
+  const d = Math.min(body.w * 0.78, body.h * share);
+  const gap = 4 * u;
+  if (photoFirst) {
+    const Pb = inset({ x: body.x + (body.w - d) / 2, y: body.y, w: d, h: d });
+    return { d: Pb.w, Pb, T: { x: body.x, y: body.y + d + gap, w: body.w, h: body.h - d - gap } };
+  }
+  const Pb = inset({ x: body.x + (body.w - d) / 2, y: body.y + body.h - d, w: d, h: d });
+  return { d: Pb.w, Pb, T: { x: body.x, y: body.y, w: body.w, h: body.h - d - gap } };
+}
+
+/** A wavy edge across the picture at `y`, filled down to the bottom. */
+function wavePath(ctx: Ctx, W: number, H: number, y: number, amp: number, len: number, phase: number): void {
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let x = 0; x <= W + 1; x += Math.max(2, len / 24)) ctx.lineTo(x, y + Math.sin((x / len) * Math.PI * 2 + phase) * amp);
+  ctx.lineTo(W, H);
+  ctx.closePath();
+}
+
+/** A scalloped disc, like a paper doily or a seal. */
+function scallopPath(ctx: Ctx, cx: number, cy: number, r: number, n: number, depth: number): void {
+  ctx.beginPath();
+  for (let i = 0; i <= 360; i++) {
+    const a = (i / 360) * Math.PI * 2;
+    const rr2 = r * (1 - depth + depth * Math.abs(Math.cos((a * n) / 2)));
+    const x = cx + Math.cos(a) * rr2;
+    const y = cy + Math.sin(a) * rr2;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+/** The colour that stands out on `ground`: the highlight, else the second colour. */
+function popOn(P: Palette, ground: string): [string, string] {
+  return isDark(P.pop) === isDark(ground) ? [P.alt, P.altInk] : [P.pop, P.popInk];
+}
+
+/** A postage stamp with a perforated edge holds the dish. */
+const stamp: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  ctx.fillStyle = P.alt;
+  ctx.fillRect(0, 0, W, H);
+  stripes(ctx, W, H, 12 * u, 0.5 * u, alpha(P.altInk, 0.08));
+  const pad = 3 * u;
+  const { T, Pb, d } = twoUp(s, false, 0.56, pad + 1 * u);
+  const C: Rect = { x: Pb.x - pad, y: Pb.y - pad, w: d + 2 * pad, h: d + 2 * pad };
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.25)';
+  ctx.shadowBlur = 4 * u;
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(C.x, C.y, C.w, C.h);
+  ctx.restore();
+  // The perforations: half circles bitten out of every edge.
+  const step = 3.4 * u;
+  ctx.fillStyle = P.alt;
+  for (let x = C.x + step / 2; x < C.x + C.w; x += step) {
+    ctx.beginPath(); ctx.arc(x, C.y, step * 0.32, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, C.y + C.h, step * 0.32, 0, Math.PI * 2); ctx.fill();
+  }
+  for (let y = C.y + step / 2; y < C.y + C.h; y += step) {
+    ctx.beginPath(); ctx.arc(C.x, y, step * 0.32, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(C.x + C.w, y, step * 0.32, 0, Math.PI * 2); ctx.fill();
+  }
+  photo(ctx, { x: Pb.x + pad * 0.6, y: Pb.y + pad * 0.6, w: d - pad * 1.2, h: d - pad * 1.2 }, s.spec, s.A, { shape: 'rounded', radius: 0.6 * u, disc: mix(P.alt, P.bg, 0.8) }, u);
+  priceSticker(ctx, C.x + 4 * u, C.y + C.h - 4 * u, d * 0.2, s.spec, P.pop, P.popInk, -0.12, 'circle');
+  sticker(ctx, C.x + C.w - 4 * u, C.y + 4 * u, d * 0.15, badgeOn(s), P.ink, P.bg, 0.2, 'burst');
+  const [pop, popInk] = popOn(P, P.alt);
+  stack(ctx, T, s.spec, { align: wide ? 'left' : 'center', valign: 'middle', head: 'serif', ink: P.altInk, ground: P.alt, pop, popInk, price: 'plain', cta: 'solid', kicker: 'plain' }, ['kicker', 'headline', 'tagline', 'cta'], u);
+  footer(ctx, s.foot, s.spec, s.A, P.altInk, isDark(P.alt), P.bg, P.ink);
+};
+
+/** A picnic cloth, the dish on a white plate and the words on a card. */
+const picnic: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(0, 0, W, H);
+  const band = 9 * u;
+  ctx.fillStyle = alpha(P.alt, 0.16);
+  for (let x = 0; x < W; x += band * 2) ctx.fillRect(x, 0, band, H);
+  for (let y = 0; y < H; y += band * 2) ctx.fillRect(0, y, W, band);
+  const { T, Pb } = twoUp(s, true, s.tall ? 0.5 : 0.44, 2 * u);
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: '#FFFFFF', ring: '#FFFFFF', ringW: 3 * u }, u);
+  const card: Rect = { x: T.x, y: T.y + 1 * u, w: T.w, h: T.h - 2 * u };
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.18)';
+  ctx.shadowBlur = 4 * u;
+  rr(ctx, card.x, card.y, card.w, card.h, 3 * u);
+  ctx.fillStyle = P.bg;
+  ctx.fill();
+  ctx.restore();
+  const pad = 3 * u;
+  stack(ctx, { x: card.x + pad, y: card.y + pad, w: card.w - 2 * pad, h: card.h - 2 * pad }, s.spec, base(s, { head: 'script', align: wide ? 'left' : 'center', valign: 'middle', firstWord: P.alt }), ALL, u);
+  sticker(ctx, Pb.x + Pb.w * 0.14, Pb.y + Pb.h * 0.16, Math.min(Pb.w, Pb.h) * 0.16, badgeOn(s), P.pop, P.popInk, -0.2, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, P.ink, isDark(P.bg), P.alt, P.altInk);
+};
+
+/** A chalkboard with a drawn frame: the café's specials board. */
+const chalk: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  const board = isDark(P.bg) ? P.bg : mix(P.alt, '#000000', 0.78);
+  const chalkInk = '#F4F0E6';
+  ctx.fillStyle = board;
+  ctx.fillRect(0, 0, W, H);
+  // Chalk dust.
+  const r = rng(91);
+  ctx.fillStyle = alpha(chalkInk, 0.035);
+  for (let i = 0; i < 260; i++) ctx.fillRect(r() * W, r() * H, (0.3 + r() * 1.2) * u, (0.3 + r() * 1.2) * u);
+  const m = 3 * u;
+  ctx.strokeStyle = alpha(chalkInk, 0.75);
+  ctx.lineWidth = 0.5 * u;
+  ctx.strokeRect(m, m, W - 2 * m, H - 2 * m);
+  ctx.strokeStyle = alpha(P.pop, 0.85);
+  ctx.strokeRect(m + 1.6 * u, m + 1.6 * u, W - 2 * m - 3.2 * u, H - 2 * m - 3.2 * u);
+  const { T, Pb, d } = twoUp(s, false, 0.5);
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: alpha(chalkInk, 0.08), ring: alpha(chalkInk, 0.85), ringW: 0.6 * u }, u);
+  const [pop, popInk] = popOn(P, board);
+  stack(ctx, T, s.spec, { align: wide ? 'left' : 'center', valign: 'middle', head: 'script', ink: chalkInk, ground: board, pop, popInk, price: 'plain', cta: 'outline', kicker: 'plain' }, ['kicker', 'headline', 'tagline', 'cta'], u);
+  priceSticker(ctx, Pb.x + d * 0.88, Pb.y + d * 0.82, d * 0.2, s.spec, pop, popInk, 0.1, 'circle');
+  sticker(ctx, Pb.x + d * 0.12, Pb.y + d * 0.14, d * 0.15, badgeOn(s), chalkInk, board, -0.18, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, chalkInk, true, pop, popInk);
+};
+
+/** Glowing tubes of light round the dish on a dark ground: the late-night one. */
+const neon: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  const dark = mix(isDark(P.bg) ? P.bg : P.alt, '#000000', 0.82);
+  ctx.fillStyle = dark;
+  ctx.fillRect(0, 0, W, H);
+  // The tubes are always light, whatever the colours: a dark colour is lifted towards white.
+  const lit = (c: string) => (isDark(c) ? mix(c, '#FFFFFF', 0.5) : c);
+  const glowA = lit(isDark(P.pop) && !isDark(P.alt) ? P.alt : P.pop);
+  const glowB = lit(glowA === lit(P.alt) ? P.pop : P.alt);
+  const { T, Pb, d } = twoUp(s, false, 0.5);
+  const cx = Pb.x + d / 2;
+  const cy = Pb.y + d / 2;
+  const tube = (rad: number, color: string, w: number) => {
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 4 * u;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.stroke();
+    ctx.restore();
+  };
+  tube(d / 2 + 2.6 * u, glowA, 0.9 * u);
+  tube(d / 2 + 5.4 * u, glowB, 0.5 * u);
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: alpha(glowB, 0.12) }, u);
+  stack(ctx, T, s.spec, { align: wide ? 'left' : 'center', valign: 'middle', head: 'caps', ink: '#FFFFFF', ground: dark, pop: glowA, popInk: isDark(glowA) ? '#FFFFFF' : '#111111', price: 'pill', cta: 'outline', kicker: 'plain', firstWord: glowA }, ALL, u);
+  sticker(ctx, Pb.x + d * 0.88, Pb.y + d * 0.12, d * 0.16, badgeOn(s), glowA, isDark(glowA) ? '#FFFFFF' : '#111111', 0.18, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, '#FFFFFF', true, glowA, isDark(glowA) ? '#FFFFFF' : '#111111');
+};
+
+/** Bold rings round the dish like a target. */
+const target: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(0, 0, W, H);
+  const { T, Pb, d } = twoUp(s, true, 0.54, 6 * u);
+  const cx = Pb.x + d / 2;
+  const cy = Pb.y + d / 2;
+  const colours = [P.alt, P.bg, P.pop, P.bg, P.alt];
+  for (let i = colours.length - 1; i >= 0; i--) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, d / 2 + (i + 1) * 2.2 * u, 0, Math.PI * 2);
+    ctx.fillStyle = colours[i];
+    ctx.fill();
+  }
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: mix(P.alt, P.bg, 0.8), ring: P.bg, ringW: 1 * u }, u);
+  const [pop, popInk] = popOn(P, P.bg);
+  stack(ctx, T, s.spec, base(s, { head: 'caps', align: wide ? 'left' : 'center', valign: 'middle', pop, popInk }), ['kicker', 'headline', 'tagline', 'cta'], u);
+  priceSticker(ctx, cx + d * 0.42, cy + d * 0.4, d * 0.2, s.spec, P.ink, P.bg, 0.12, 'burst');
+  sticker(ctx, cx - d * 0.42, cy - d * 0.38, d * 0.16, badgeOn(s), P.pop, P.popInk, -0.2, 'circle');
+  footer(ctx, s.foot, s.spec, s.A, P.ink, isDark(P.bg), P.alt, P.altInk);
+};
+
+/** Zigzag borders top and bottom, the dish between them. */
+const zigzag: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  ctx.fillStyle = P.alt;
+  ctx.fillRect(0, 0, W, H);
+  const tooth = 4 * u;
+  const edge = (y: number, down: boolean) => {
+    ctx.beginPath();
+    ctx.moveTo(0, down ? 0 : H);
+    for (let x = 0, i = 0; x <= W + tooth; x += tooth, i++) ctx.lineTo(x, y + (i % 2 ? (down ? tooth : -tooth) : 0));
+    ctx.lineTo(W, down ? 0 : H);
+    ctx.closePath();
+    ctx.fillStyle = P.pop;
+    ctx.fill();
+  };
+  edge(s.body.y - 2 * u, true);
+  // Below the footer, its teeth clear of the footer's last line.
+  edge(Math.min(H - 1 * u, s.foot.y + s.foot.h + tooth + 1.5 * u), false);
+  const { T, Pb, d } = twoUp(s, false, 0.5);
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: alpha(P.bg, 0.18), ring: P.bg, ringW: 1.5 * u }, u);
+  const [pop, popInk] = isDark(P.pop) === isDark(P.alt) ? [P.bg, P.ink] : [P.pop, P.popInk];
+  stack(ctx, T, s.spec, { align: wide ? 'left' : 'center', valign: 'middle', head: 'sans', ink: P.altInk, ground: P.alt, pop, popInk, price: 'pill', cta: 'solid', kicker: 'pill' }, ALL, u);
+  sticker(ctx, Pb.x + d * 0.86, Pb.y + d * 0.14, d * 0.16, badgeOn(s), P.bg, P.ink, 0.2, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, P.altInk, isDark(P.alt), P.bg, P.ink);
+};
+
+/** Confetti scattered over a light ground: for an opening, a birthday or a launch. */
+const confetti: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(0, 0, W, H);
+  const r = rng(53);
+  const colours = [P.alt, P.pop, mix(P.alt, P.pop, 0.5), P.ink];
+  for (let i = 0; i < 70; i++) {
+    ctx.save();
+    ctx.translate(r() * W, r() * H);
+    ctx.rotate(r() * Math.PI);
+    ctx.fillStyle = alpha(colours[i % colours.length], 0.55);
+    if (i % 3 === 0) { ctx.beginPath(); ctx.arc(0, 0, (0.6 + r()) * u, 0, Math.PI * 2); ctx.fill(); }
+    else ctx.fillRect(-1.6 * u, -0.5 * u, 3.2 * u, 1 * u);
+    ctx.restore();
+  }
+  const { T, Pb, d } = twoUp(s, true, 0.52, 3 * u);
+  blobPath(ctx, Pb.x + d / 2, Pb.y + d / 2, d * 0.56, 19);
+  ctx.fillStyle = alpha(P.alt, 0.9);
+  ctx.fill();
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: null, ring: P.bg, ringW: 1.4 * u }, u);
+  const [pop, popInk] = popOn(P, P.bg);
+  stack(ctx, T, s.spec, base(s, { head: 'script', align: wide ? 'left' : 'center', valign: 'middle', pop, popInk, firstWord: P.alt }), ALL, u);
+  sticker(ctx, Pb.x + d * 0.1, Pb.y + d * 0.14, d * 0.17, badgeOn(s), P.pop, P.popInk, -0.22, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, P.ink, isDark(P.bg), P.alt, P.altInk);
+};
+
+/** A sun rising behind the dish with its rays. */
+const sunrise: Layout = (s) => {
+  const { ctx, W, H, u, P, wide, body } = s;
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(0, 0, W, H);
+  const { T, Pb, d } = twoUp(s, false, 0.52);
+  const cx = Pb.x + d / 2;
+  const cy = wide ? Pb.y + d / 2 : Pb.y + d * 0.62;
+  rays(ctx, cx, cy, Math.max(W, H), 18, alpha(P.alt, 0.12));
+  ctx.beginPath();
+  ctx.arc(cx, cy, d * 0.62, 0, Math.PI * 2);
+  ctx.fillStyle = alpha(P.pop, 0.85);
+  ctx.fill();
+  if (!wide) {
+    // The horizon: the ground under the sun, where the price and the footer sit.
+    ctx.fillStyle = P.alt;
+    ctx.fillRect(0, body.y + body.h - d * 0.22, W, H);
+  }
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: null, ring: P.bg, ringW: 1.4 * u }, u);
+  const [pop, popInk] = popOn(P, P.bg);
+  stack(ctx, T, s.spec, base(s, { head: 'serif', align: wide ? 'left' : 'center', valign: 'middle', pop, popInk, firstWord: P.alt }), ALL, u);
+  sticker(ctx, Pb.x + d * 0.88, Pb.y + d * 0.12, d * 0.16, badgeOn(s), P.alt, P.altInk, 0.2, 'burst');
+  if (wide) footer(ctx, s.foot, s.spec, s.A, P.ink, isDark(P.bg), P.alt, P.altInk);
+  else footer(ctx, s.foot, s.spec, s.A, P.altInk, isDark(P.alt), P.bg, P.ink);
+};
+
+/** The dish in a tall rounded pill beside the words. */
+const capsule: Layout = (s) => {
+  const { ctx, W, H, u, P, body, wide } = s;
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(0, 0, W, H);
+  dots(ctx, W, H, 5 * u, 0.36 * u, alpha(P.ink, 0.08));
+  const pw = wide ? body.w * 0.34 : body.w * 0.46;
+  const ph = body.h;
+  const Pb: Rect = { x: body.x + body.w - pw, y: body.y, w: pw, h: ph };
+  rr(ctx, Pb.x + 2.4 * u, Pb.y + 2.4 * u, pw, ph, pw / 2);
+  ctx.fillStyle = P.alt;
+  ctx.fill();
+  photo(ctx, Pb, s.spec, s.A, { shape: 'rounded', radius: pw / 2, disc: mix(P.alt, P.bg, 0.75) }, u);
+  const T: Rect = { x: body.x, y: body.y, w: body.w - pw - 5 * u, h: body.h };
+  const [pop, popInk] = popOn(P, P.bg);
+  stack(ctx, T, s.spec, base(s, { head: 'caps', valign: 'middle', pop, popInk, firstWord: P.alt }), ALL, u);
+  sticker(ctx, Pb.x + pw * 0.72, Pb.y + pw * 0.32, Math.min(pw * 0.24, 9 * u), badgeOn(s), P.pop, P.popInk, 0.2, 'burst');
+  footer(ctx, { ...s.foot, w: T.w }, s.spec, s.A, P.ink, isDark(P.bg), P.alt, P.altInk);
+};
+
+/** Comic-book halftone dots and a hard shadow under the photo. */
+const popart: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  ctx.fillStyle = P.pop;
+  ctx.fillRect(0, 0, W, H);
+  // Halftone: dots that grow towards one corner.
+  const step = 3.2 * u;
+  ctx.fillStyle = alpha(P.alt, 0.35);
+  for (let y = 0; y < H + step; y += step) {
+    for (let x = 0; x < W + step; x += step) {
+      const k = (x / W + y / H) / 2;
+      ctx.beginPath();
+      ctx.arc(x + ((y / step) % 2 ? step / 2 : 0), y, step * 0.45 * k, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  const { T, Pb, d } = twoUp(s, false, 0.52, 3 * u);
+  const off = 2.4 * u;
+  ctx.fillStyle = P.popInk;
+  ctx.fillRect(Pb.x + off, Pb.y + off, d, d);
+  ctx.fillStyle = P.popInk;
+  ctx.fillRect(Pb.x - 0.8 * u, Pb.y - 0.8 * u, d + 1.6 * u, d + 1.6 * u);
+  photo(ctx, Pb, s.spec, s.A, { shape: 'cover', disc: P.bg }, u);
+  stack(ctx, T, s.spec, { align: wide ? 'left' : 'center', valign: 'middle', head: 'caps', ink: P.popInk, ground: P.pop, pop: P.alt, popInk: P.altInk, price: 'pill', cta: 'solid', kicker: 'pill', headScale: 1.1 }, ['kicker', 'headline', 'tagline', 'cta'], u);
+  priceSticker(ctx, Pb.x + 3 * u, Pb.y + d - 3 * u, d * 0.2, s.spec, P.alt, P.altInk, -0.14, 'burst');
+  sticker(ctx, Pb.x + d - 3 * u, Pb.y + 3 * u, d * 0.15, badgeOn(s), P.bg, P.ink, 0.2, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, P.popInk, isDark(P.pop), P.alt, P.altInk);
+};
+
+/** Waves rolling in along the bottom: the island one. */
+const waves: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(0, 0, W, H);
+  const footTop = s.foot.h > 0 ? s.foot.y - 4 * u : H - 10 * u;
+  const len = W / 2.2;
+  wavePath(ctx, W, H, footTop - 6 * u, 2.2 * u, len, 0.4);
+  ctx.fillStyle = alpha(P.alt, 0.35);
+  ctx.fill();
+  wavePath(ctx, W, H, footTop - 2.5 * u, 2.4 * u, len * 0.9, 2.1);
+  ctx.fillStyle = alpha(P.alt, 0.65);
+  ctx.fill();
+  wavePath(ctx, W, H, footTop + 1 * u, 2 * u, len * 1.1, 3.8);
+  ctx.fillStyle = P.alt;
+  ctx.fill();
+  const body: Rect = { ...s.body, h: Math.min(s.body.h, footTop - 7 * u - s.body.y) };
+  const { T, Pb, d } = twoUp({ ...s, body }, true, 0.54);
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: mix(P.alt, P.bg, 0.82), ring: P.alt, ringW: 1.2 * u }, u);
+  const [pop, popInk] = popOn(P, P.bg);
+  stack(ctx, T, s.spec, base(s, { head: 'script', align: wide ? 'left' : 'center', valign: 'middle', pop, popInk, firstWord: P.alt }), ['kicker', 'headline', 'tagline', 'cta'], u);
+  priceSticker(ctx, Pb.x + d * 0.88, Pb.y + d * 0.8, d * 0.2, s.spec, P.pop, P.popInk, 0.12, 'circle');
+  sticker(ctx, Pb.x + d * 0.1, Pb.y + d * 0.14, d * 0.16, badgeOn(s), P.alt, P.altInk, -0.2, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, P.altInk, isDark(P.alt), P.bg, P.ink);
+};
+
+/** The dish on a scalloped doily, like a bakery window. */
+const scallop: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  ctx.fillStyle = P.alt;
+  ctx.fillRect(0, 0, W, H);
+  dots(ctx, W, H, 6 * u, 0.4 * u, alpha(P.altInk, 0.1));
+  const { T, Pb, d } = twoUp(s, true, 0.56, 6 * u);
+  const cx = Pb.x + d / 2;
+  const cy = Pb.y + d / 2;
+  scallopPath(ctx, cx, cy, d * 0.62, 18, 0.07);
+  ctx.fillStyle = P.bg;
+  ctx.fill();
+  ctx.setLineDash([0.8 * u, 1.2 * u]);
+  ctx.beginPath();
+  ctx.arc(cx, cy, d * 0.55, 0, Math.PI * 2);
+  ctx.strokeStyle = alpha(P.alt, 0.6);
+  ctx.lineWidth = 0.4 * u;
+  ctx.stroke();
+  ctx.setLineDash([]);
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: null }, u);
+  const [pop, popInk] = isDark(P.pop) === isDark(P.alt) ? [P.bg, P.ink] : [P.pop, P.popInk];
+  stack(ctx, T, s.spec, { align: wide ? 'left' : 'center', valign: 'middle', head: 'serif', ink: P.altInk, ground: P.alt, pop, popInk, price: 'pill', cta: 'solid', kicker: 'plain' }, ALL, u);
+  sticker(ctx, cx + d * 0.42, cy - d * 0.4, d * 0.16, badgeOn(s), P.pop, P.popInk, 0.2, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, P.altInk, isDark(P.alt), P.bg, P.ink);
+};
+
 export const LAYOUT_DRAW: Record<string, Layout> = {
   splash, spotlight, diagonal, photo: fullPhoto, frame, bigtype: bigType, band, sticker: stickers, arch, side,
   block, bigcircle: bigCircle, ticket, glow, bands, tilt, corners, editorial, starburst, ribbon,
+  stamp, picnic, chalk, neon, target, zigzag, confetti, sunrise, capsule, popart, waves, scallop,
 };
 
 /** A moment of an animated post: which motion, how far in (seconds) and how long the whole clip is. */

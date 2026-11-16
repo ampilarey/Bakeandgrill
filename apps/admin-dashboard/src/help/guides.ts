@@ -1154,6 +1154,7 @@ export const GUIDES: Guide[] = [
       'Under What is it for?, search the menu and pick the dish. Its name, price and photo fill in. Or type a Headline and a Price yourself.',
       'Under Pick a design, tap a ready-made post such as New dish, Today\'s offer or Free delivery. It sets the design, the colour, the parts and the usual words in one tap.',
       'Or tap any design, then any colour. The words stay the same. Surprise me picks one for you.',
+      'There are 32 designs, among them Chalkboard, Neon, Picnic, Stamp, Pop art, Waves and Doily, and ready-made posts for a special board, late night, a celebration, breakfast, a big deal and the bakery.',
       'Under Add or remove parts, switch on what you want: Price, Old price, Sticker, Order button, Second button, Phone number, Website, Logo, QR code.',
       'Tap Feed post, Square, Story or Wide to see each shape.',
       'Tap Save or share. All four sizes appear, each with its own button, and one button for all four.',

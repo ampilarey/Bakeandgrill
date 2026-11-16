@@ -111,6 +111,18 @@ export const LAYOUTS: LayoutInfo[] = [
   { key: 'editorial', name: 'Magazine' },
   { key: 'starburst', name: 'Starburst' },
   { key: 'ribbon', name: 'Ribbon' },
+  { key: 'stamp', name: 'Stamp' },
+  { key: 'picnic', name: 'Picnic' },
+  { key: 'chalk', name: 'Chalkboard' },
+  { key: 'neon', name: 'Neon' },
+  { key: 'target', name: 'Rings' },
+  { key: 'zigzag', name: 'Zigzag' },
+  { key: 'confetti', name: 'Confetti' },
+  { key: 'sunrise', name: 'Sunrise' },
+  { key: 'capsule', name: 'Pill' },
+  { key: 'popart', name: 'Pop art' },
+  { key: 'waves', name: 'Waves' },
+  { key: 'scallop', name: 'Doily' },
 ];
 
 export interface PostSize { key: string; name: string; hint: string; w: number; h: number }
@@ -154,6 +166,12 @@ export const TEMPLATES: PostTemplate[] = [
   { key: 'frozen-pack', name: 'Frozen pack', layout: 'splash', palette: 'bee', show: { badge: true, tagline: true, kicker: false }, words: { badge: 'Microwave & Eat', tagline: 'Steamed, frozen, handmade', cta: 'Order now' } },
   { key: 'limited', name: 'Limited time', layout: 'tilt', palette: 'coral', show: { badge: true, cta2: true }, words: { badge: 'Limited time', cta: 'Order now', cta2: 'Pick up today' } },
   { key: 'simple', name: 'Simple and clean', layout: 'arch', palette: 'mono', show: { badge: false, kicker: false, was: false, cta2: false }, words: { cta: 'Order now' } },
+  { key: 'todays-special', name: "Today's special board", layout: 'chalk', palette: 'cocoa', show: { kicker: true, badge: false }, words: { kicker: "Today's special", cta: 'Order now' } },
+  { key: 'late-night', name: 'Late night', layout: 'neon', palette: 'night', show: { kicker: true, badge: false }, words: { kicker: 'Open late', cta: 'Order now' } },
+  { key: 'grand-opening', name: 'Celebration', layout: 'confetti', palette: 'candy', show: { badge: true, kicker: true }, words: { kicker: "Let's celebrate", badge: 'New', cta: 'Order now' } },
+  { key: 'breakfast', name: 'Breakfast', layout: 'sunrise', palette: 'rust', show: { kicker: true, badge: false }, words: { kicker: 'Good morning', cta: 'Order breakfast' } },
+  { key: 'big-deal', name: 'Big deal', layout: 'popart', palette: 'sunny', show: { badge: true, was: true }, words: { badge: 'Deal', cta: 'Order now' } },
+  { key: 'bakery', name: 'From the bakery', layout: 'scallop', palette: 'blush', show: { kicker: true, badge: false }, words: { kicker: 'Fresh from the oven', cta: 'Order now' } },
 ];
 
 /** The post with a template laid over it: its design, its parts and its usual words. */

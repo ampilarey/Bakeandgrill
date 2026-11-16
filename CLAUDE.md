@@ -1729,7 +1729,7 @@ a tab of `SocialHubPage`): pick a dish (name, price, offer price and photo fill 
 which now carries `cutout_url` and `photo_url`) or type the words, tap a design and a colour, switch parts on and off
 (`PART_ORDER`: price, old price, sticker, order button, second button, phone, website, logo, QR code, small line above, line below).
 The post is a `PostSpec` (`types.ts`), drawn in the browser on a canvas by `renderPost()` (`draw.ts`) with any of
-`LAYOUTS` (20) in any of `PALETTES` (20) at any of `SIZES` (feed 1080 × 1350, square 1080 × 1080, story 1080 × 1920,
+`LAYOUTS` (32; the twelve added 2026-11-16, owner: "Can u add more designs", lay out through `twoUp()`, words beside the dish on a wide picture and above or below it otherwise, with `room` kept round the photo for a frame or rings) in any of `PALETTES` (20) at any of `SIZES` (feed 1080 × 1350, square 1080 × 1080, story 1080 × 1920,
 wide 1200 × 630), so **a design is a pair of keys, never a copy of the words**. Every length is a share of the
 picture (`u`), each layout places its parts by the picture's shape (`wide`, `tall`), never by cropping, and the word
 stack (`stack()`) shrinks as one until it fits, so nothing is cut. A cut-out photo is drawn whole and, in a circle, inside it whatever its shape (owner, 2026-11-15: a tall can ran over the ring and the price sticker; `photo()` fits it so neither its width nor its height passes the ring); a story keeps its
