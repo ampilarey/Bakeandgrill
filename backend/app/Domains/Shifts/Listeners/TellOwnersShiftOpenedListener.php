@@ -29,10 +29,10 @@ class TellOwnersShiftOpenedListener
         if (!AlertSwitch::isOn(self::TYPE)) {
             return;
         }
-        $shift = Shift::query()->with('device:id,name')->find($d->shiftId);
-        $till = trim((string) ($shift?->device?->name ?? '')) ?: 'a till';
+        // Owner, 2026-11-16: short lines, plain letters only so it stays one SMS, no till name.
+        $shift = Shift::query()->find($d->shiftId);
         $at = ($shift?->opened_at ?? now())->timezone(config('app.timezone'))->format('g:i A');
-        $body = sprintf('Shift #%d opened by %s on %s at %s. Starting cash MVR %s.', $d->shiftId, $d->userName, $till, $at, number_format($d->openingCash, 2));
+        $body = sprintf("Shift #%d opened - %s\n%s\nStart cash MVR %s", $d->shiftId, $d->userName, $at, number_format($d->openingCash, 2));
 
         try {
             foreach (ShiftAlertPeople::except(OwnerPhones::for(self::TYPE), $d->userId) as $to) {

@@ -47,7 +47,7 @@ class ShiftOpenCloseAlertsTest extends TestCase
         $logs = SmsLog::where('type', 'owner_shift_opened')->get();
         $this->assertCount(1, $logs, 'once per shift and person');
         $this->assertSame('+9607770001', $logs->first()->to);
-        $this->assertSame("Shift #{$shift->id} opened by Ariya on Front till at 9:02 AM. Starting cash MVR 300.00.", $logs->first()->message);
+        $this->assertSame("Shift #{$shift->id} opened - Ariya\n9:02 AM\nStart cash MVR 300.00", $logs->first()->message);
     }
 
     public function test_the_person_who_opened_it_is_not_told(): void
@@ -64,15 +64,20 @@ class ShiftOpenCloseAlertsTest extends TestCase
 
         $log = SmsLog::where('type', 'owner_shift_closed')->firstOrFail();
         $this->assertSame('+9607770001', $log->to);
-        $this->assertStringContainsString("Shift #{$shift->id} closed by Ariya on Front till at ", (string) $log->message);
-        $this->assertStringContainsString(' (open 8h 20m). Cash is SHORT by MVR 10.00 (expected MVR 1,250.00, counted MVR 1,240.00). Started with MVR 300.00. 12 orders, sales MVR 3,000.00. See Shifts.', (string) $log->message);
+        $lines = explode("\n", (string) $log->message);
+        $this->assertSame("Shift #{$shift->id} closed - Ariya", $lines[0]);
+        $this->assertStringEndsWith(', open 8h 20m', $lines[1]);
+        $this->assertSame(['Cash SHORT MVR 10.00', 'Expected 1,250.00', 'Counted 1,240.00', 'Start cash 300.00', '12 orders, MVR 3,000.00'], array_slice($lines, 2));
+        $this->assertStringNotContainsString('Front till', (string) $log->message);
+        $this->assertLessThanOrEqual(160, strlen((string) $log->message), 'one SMS');
+        $this->assertSame(1, preg_match('/^[\x0A\x20-\x7E]+$/', (string) $log->message), 'plain characters only');
     }
 
     public function test_a_close_that_matches_says_so(): void
     {
         $shift = Shift::create(['user_id' => $this->cashier->id, 'device_id' => $this->till->id, 'opened_at' => now()->subHour(), 'closed_at' => now(), 'opening_cash' => 300]);
         event(new ShiftClosed(new ShiftClosedData(shiftId: $shift->id, userId: $this->cashier->id, userName: 'Ariya', expectedCash: 940.0, actualCash: 940.0, variance: 0.0, orderCount: 1, totalRevenue: 640.0)));
-        $this->assertStringContainsString('Cash MATCHES (expected MVR 940.00, counted MVR 940.00). Started with MVR 300.00. 1 order, sales MVR 640.00.', (string) SmsLog::where('type', 'owner_shift_closed')->firstOrFail()->message);
+        $this->assertStringContainsString("Cash MATCHES\nExpected 940.00\nCounted 940.00\nStart cash 300.00\n1 order, MVR 640.00", (string) SmsLog::where('type', 'owner_shift_closed')->firstOrFail()->message);
     }
 
     public function test_each_row_switched_off_stops_its_alert(): void

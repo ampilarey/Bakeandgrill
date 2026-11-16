@@ -30,35 +30,29 @@ class TellOwnersShiftClosedListener
         if (!AlertSwitch::isOn(self::TYPE)) {
             return;
         }
-        $shift = Shift::query()->with('device:id,name')->find($d->shiftId);
-        $till = trim((string) ($shift?->device?->name ?? '')) ?: 'a till';
-        $tz = (string) config('app.timezone');
-        $closed = ($shift?->closed_at ?? now())->timezone($tz);
-        $open = '';
+        // Owner, 2026-11-16: short lines, plain letters only so it stays one SMS, no till name.
+        $shift = Shift::query()->find($d->shiftId);
+        $closed = ($shift?->closed_at ?? now())->timezone((string) config('app.timezone'));
+        $when = $closed->format('g:i A');
         if ($shift?->opened_at) {
             $minutes = (int) max(0, $shift->opened_at->diffInMinutes($closed, true));
-            $open = sprintf(' (open %dh %02dm)', intdiv($minutes, 60), $minutes % 60);
+            $when .= sprintf(', open %dh %02dm', intdiv($minutes, 60), $minutes % 60);
         }
-        // Owner, 2026-11-16: the cash in the words of the variance alert, matching or not.
         $cash = abs($d->variance) < 0.01
             ? 'Cash MATCHES'
-            : sprintf('Cash is %s by MVR %s', $d->variance < 0 ? 'SHORT' : 'OVER', number_format(abs($d->variance), 2));
-        $start = $shift !== null ? sprintf(' Started with MVR %s.', number_format((float) $shift->opening_cash, 2)) : '';
-        $body = sprintf(
-            'Shift #%d closed by %s on %s at %s%s. %s (expected MVR %s, counted MVR %s).%s %d %s, sales MVR %s. See Shifts.',
-            $d->shiftId,
-            $d->userName,
-            $till,
-            $closed->format('g:i A'),
-            $open,
+            : sprintf('Cash %s MVR %s', $d->variance < 0 ? 'SHORT' : 'OVER', number_format(abs($d->variance), 2));
+        $lines = [
+            sprintf('Shift #%d closed - %s', $d->shiftId, $d->userName),
+            $when,
             $cash,
-            number_format($d->expectedCash, 2),
-            number_format($d->actualCash, 2),
-            $start,
-            $d->orderCount,
-            $d->orderCount === 1 ? 'order' : 'orders',
-            number_format($d->totalRevenue, 2),
-        );
+            'Expected ' . number_format($d->expectedCash, 2),
+            'Counted ' . number_format($d->actualCash, 2),
+        ];
+        if ($shift !== null) {
+            $lines[] = 'Start cash ' . number_format((float) $shift->opening_cash, 2);
+        }
+        $lines[] = sprintf('%d %s, MVR %s', $d->orderCount, $d->orderCount === 1 ? 'order' : 'orders', number_format($d->totalRevenue, 2));
+        $body = implode("\n", $lines);
 
         try {
             foreach (ShiftAlertPeople::except(OwnerPhones::for(self::TYPE), $d->userId) as $to) {

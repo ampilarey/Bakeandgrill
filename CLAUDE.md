@@ -625,8 +625,8 @@ actually its pos delivery order") and its stage (`TelegramCommands::openOrderLin
 
 Owner, 2026-11-16 ("I need an notification so that i know when the shift is opened and closed"). Rows
 `owner_shift_opened` and `owner_shift_closed` (owners and managers, SMS, Email and Telegram), from
-`TellOwnersShiftOpenedListener` / `TellOwnersShiftClosedListener` on `ShiftOpened` / `ShiftClosed`: who, which till,
-when, the float; on close how long, orders, sales and cash counted against expected. Never the person who did it
+`TellOwnersShiftOpenedListener` / `TellOwnersShiftClosedListener` on `ShiftOpened` / `ShiftClosed`, in short lines of plain characters so a close stays one SMS (no till name; owner, 2026-11-16): who,
+when, the start cash; on close how long, orders, sales and cash counted against expected. Never the person who did it
 (`ShiftAlertPeople::except`). Every close says Cash MATCHES or SHORT / OVER by how much, so the cash-variance alert
 `owner_shift_variance` is retired (owner, 2026-11-16); never bring back a second message for one close. The opening float is never compared with the last close (retired 2026-11-16). `ShiftOpenCloseAlertsTest`.
 
