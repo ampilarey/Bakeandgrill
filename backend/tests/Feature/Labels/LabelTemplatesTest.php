@@ -155,7 +155,6 @@ class LabelTemplatesTest extends TestCase
         $this->assertSame(LabelTemplates::JHOL_MOMO_INGREDIENTS, $t['fields']['label_ingredients']);
         $this->assertStringContainsString('roasted peanuts', $t['fields']['label_ingredients']);
         $this->assertSame('Wheat, Sesame, Peanuts', $t['fields']['label_allergens']);
-        $this->assertSame('Wheat, Sesame', $t['fields']['label_allergens']);
         $this->assertNotEmpty($t['photo'] ?? null);
     }
 }

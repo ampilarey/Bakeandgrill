@@ -55,7 +55,7 @@ class TubSetTest extends TestCase
         $this->assertStringContainsString('MOMO IN SPICY JHOL', $lid);
         $this->assertStringContainsString('8 PCS', $lid);
         $this->assertStringNotContainsString('EXP DATE', $lid);
-        $this->assertStringNotContainsString('Wheat flour', $lid);
+        $this->assertStringNotContainsString('wheat flour', $lid);
         $summary = $this->postJson('/api/labels/stickers/url', $made[0]['request'] + ['preview' => true])->assertOk()->json('summary');
         $this->assertSame([], $summary['dropped'] ?? [], 'the lid leaves the list and the pack code to the side label');
 
@@ -64,7 +64,8 @@ class TubSetTest extends TestCase
         $this->assertStringNotContainsString('(Side)', $side);
         $this->assertStringContainsString('Frozen Jhol Momo', $side);
         $this->assertStringContainsString('EXP', $side);
-        $this->assertStringContainsString('Wheat', $side);
+        $this->assertStringContainsString('wheat', $side);
+        $this->assertStringContainsString('timur pepper.', $side, 'the whole list, momo and jhol, fits the side label');
     }
 
     public function test_typed_details_win_over_the_template_and_sizes_are_held_to_their_shape(): void
