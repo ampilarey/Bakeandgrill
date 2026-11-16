@@ -260,8 +260,11 @@ final class StickerLayouts
         return $best;
     }
 
-    /** The gap between a lid and its side label on a pair sheet, and between two pairs. */
-    public const PAIR_GAP = 3.0;
+    /**
+     * The gap between a lid and its side label on a pair sheet, and between two pairs: room for scissors
+     * (owner, 2026-11-16: "Did u add proper layout so it can be easier to cut?"; it was 3 mm).
+     */
+    public const PAIR_GAP = 6.0;
 
     /**
      * A pair sheet (owner, 2026-11-16: "Circular one and rectangular one come side by side?"):
@@ -296,6 +299,23 @@ final class StickerLayouts
         $ox = ($pageW - ($cols * $cellW + ($cols - 1) * self::PAIR_GAP)) / 2;
         $oy = ($pageH - ($rows * $cellH + ($rows - 1) * self::PAIR_GAP)) / 2;
         $slots = [];
+        // Straight cut lines down the middle of each gap, edge to edge: cut the page into strips, a strip into its
+        // lid and its side, then round each one along its own dashed outline.
+        $half = self::PAIR_GAP / 2;
+        $guides = [];
+        for ($r = 1; $r < $rows; $r++) {
+            $guides[] = ['x' => 0.0, 'y' => round($oy + $r * ($cellH + self::PAIR_GAP) - $half, 3), 'w' => $pageW, 'h' => 0.0];
+        }
+        for ($c = 0; $c < $cols; $c++) {
+            $x = $ox + $c * ($cellW + self::PAIR_GAP);
+            if ($c > 0) {
+                $guides[] = ['x' => round($x - $half, 3), 'y' => 0.0, 'w' => 0.0, 'h' => $pageH];
+            }
+            for ($r = 0; $r < $rows; $r++) {
+                $y = $oy + $r * ($cellH + self::PAIR_GAP);
+                $guides[] = ['x' => round($x + $D + $half, 3), 'y' => round(max(0.0, $y - $half), 3), 'w' => 0.0, 'h' => round(min($pageH, $cellH + self::PAIR_GAP), 3)];
+            }
+        }
         for ($r = 0; $r < $rows; $r++) {
             for ($c = 0; $c < $cols; $c++) {
                 $x = $ox + $c * ($cellW + self::PAIR_GAP);
@@ -313,6 +333,7 @@ final class StickerLayouts
             'slots' => $slots,
             'per_page' => count($slots),
             'cut' => true,
+            'guides' => $guides,
             'pair' => ['w' => $side['w'], 'h' => $side['h'], 'pairs' => $pairs, 'side' => $side],
         ] + $lid;
     }

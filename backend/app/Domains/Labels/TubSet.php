@@ -39,6 +39,28 @@ final class TubSet
         return isset(self::PARTS[$part]) ? $part : null;
     }
 
+    /**
+     * The other label of the tub: "Frozen Jhol Momo (Side)" for "Frozen Jhol Momo (Lid)", so a pair sheet prints each
+     * half from its own label (owner, 2026-11-16: the lid keeps the barcode, the side the badges). Null when there is
+     * none, or the name has lost its bracket, and the pair is drawn from the one label.
+     */
+    public static function partnerOf(mixed $item): ?CustomLabel
+    {
+        $part = self::partOf($item);
+        if ($part === null || !$item->exists) {
+            return null;
+        }
+        $base = self::printName((string) $item->name, $part);
+        if ($base === (string) $item->name) {
+            return null;
+        }
+        $other = $part === 'lid' ? 'side' : 'lid';
+
+        return CustomLabel::query()->with(['labelType.brand', 'brand', 'footer'])
+            ->where('label_part', $other)->where('name', $base . ' (' . self::PARTS[$other] . ')')
+            ->whereKeyNot($item->getKey())->orderByDesc('id')->first();
+    }
+
     /** "Frozen Jhol Momo (Lid)" prints as "Frozen Jhol Momo". */
     public static function printName(string $name, ?string $part): string
     {

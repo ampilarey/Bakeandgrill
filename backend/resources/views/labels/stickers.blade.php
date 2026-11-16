@@ -73,6 +73,8 @@
         .tx { white-space: pre; overflow: visible; }
         .latin { font-size: 0.82em; direction: ltr; unicode-bidi: isolate; }
         .cut { position: absolute; border: 0.14mm dashed {{ \App\Domains\Labels\StickerDesign::BORDER }}; }
+        /* A pair sheet's straight cut lines (2026-11-16): across the gaps, darker than the outlines, cut first. */
+        .guide { position: absolute; background: #9C8E7E; }
         /* Crop marks (round C): hairlines 3 mm long, 1 mm off each corner, for a print shop's trimmer. */
         .mark { position: absolute; background: #000; }
         @if ($scene)
@@ -137,6 +139,16 @@
     @endif
     @foreach ($scene ? [] : $pages as $pi => $page)
         <div class="page" data-testid="labels-page">
+            @if (!$preview)
+                @foreach ($sheet['guides'] ?? [] as $g)
+                    {{-- Drawn as filled dashes: dompdf leaves out a dashed border on a box with no width. --}}
+                    <div data-testid="cut-guide" style="display:none"></div>
+                    @php $len = max($g['w'], $g['h']); $across = $g['w'] > 0; @endphp
+                    @for ($t = 0.0; $t < $len; $t += 2.4)
+                        <div class="guide" style="left:{{ $mm($across ? $g['x'] + $t : $g['x'] - 0.1) }};top:{{ $mm($across ? $g['y'] - 0.1 : $g['y'] + $t) }};width:{{ $mm($across ? min(1.2, $len - $t) : 0.2) }};height:{{ $mm($across ? 0.2 : min(1.2, $len - $t)) }};"></div>
+                    @endfor
+                @endforeach
+            @endif
             @foreach ($sheet['slots'] as $si => $slot)
                 @if ($sheet['cut'])
                     <div class="cut" style="left:{{ $mm($slot['x']) }};top:{{ $mm($slot['y']) }};width:{{ $mm($slot['w']) }};height:{{ $mm($slot['h']) }};{{ ($slot['shape'] ?? $sheet['shape']) === 'circle' ? 'border-radius:50%;' : ($rounded ?? false ? 'border-radius:3mm;' : '') }}"></div>

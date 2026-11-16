@@ -127,10 +127,13 @@ class TubSetTest extends TestCase
         $this->assertSame(3, substr_count($html, 'border-radius:50%'), 'three round cut lines');
         $this->assertSame(6, substr_count($html, '>Chicken Curry<'), 'the name on each');
         $this->assertSame(3, substr_count($html, '>EXP DATE<'), 'the dates on the side labels only');
+        // Easy to cut (owner, 2026-11-16): straight lines between the rows and between each lid and its side label.
+        $this->assertSame(5, substr_count($html, 'data-testid="cut-guide"'), 'two across the page, one between each lid and its side');
 
         // The live preview is the first pair, not the lid alone.
         $one = (string) $this->get($res->json('one_url'))->assertOk()->getContent();
         $this->assertSame(2, substr_count($one, 'data-testid="sticker"'));
+        $this->assertStringNotContainsString('cut-guide', $one, 'the preview has no cut lines');
 
         // Two sizes that cannot sit side by side on A4 are refused with the reason.
         $this->postJson('/api/labels/stickers/url', ['w' => 200, 'pair_w' => 150, 'pair_h' => 100] + $body)->assertStatus(422);
@@ -180,5 +183,27 @@ class TubSetTest extends TestCase
         // A side label under 86 mm wide has room for one code: the pack's.
         $narrow = $this->make(['name' => 'Narrow', 'side' => 'r70x50']);
         $this->assertStringNotContainsString('FEEDBACK', (string) $this->get($narrow[1]['view_url'])->assertOk()->getContent());
+    }
+
+    /** Owner, 2026-11-16: "Do it": a pair sheet prints each half from its own label, the lid's barcode and the side's badges. */
+    public function test_a_pair_sheet_from_a_tub_takes_each_half_from_its_own_label(): void
+    {
+        $made = $this->make(['label_barcode' => '2000000123455', 'label_badges' => ['halal']]);
+        $badge = \App\Domains\Labels\LabelBadges::CATALOGUE['halal'][0];
+        foreach ($made as $i => $row) {
+            $body = ['items' => [['id' => $row['label']['id'], 'kind' => 'custom', 'copies' => 1]], 'lang' => 'en', 'fill' => true, 'layout' => 'a4-round-custom', 'w' => 80, 'pair_w' => 100, 'pair_h' => 50];
+            $res = $this->postJson('/api/labels/stickers/url', $body)->assertOk();
+            $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
+            $this->assertStringContainsString('2 000000 123455', $html, "the lid's barcode, printed from the {$row['part']} label");
+            $this->assertStringContainsStringIgnoringCase($badge, $html, "the side's badge, printed from the {$row['part']} label");
+            $this->assertSame(1, substr_count($html, 'data-testid="sticker"') / 2);
+            $this->assertSame(1, \App\Models\LabelPrint::query()->count() - $i, 'one print, one code for the pair');
+        }
+
+        // A label renamed without its bracket has no partner: the pair comes from it alone.
+        CustomLabel::query()->whereKey($made[0]['label']['id'])->update(['name' => 'Jhol Momo lid']);
+        $body = ['items' => [['id' => $made[0]['label']['id'], 'kind' => 'custom', 'copies' => 1]], 'lang' => 'en', 'fill' => true, 'layout' => 'a4-round-custom', 'w' => 80, 'pair_w' => 100, 'pair_h' => 50];
+        $html = (string) $this->get($this->postJson('/api/labels/stickers/url', $body)->assertOk()->json('view_url'))->getContent();
+        $this->assertStringNotContainsStringIgnoringCase('>' . $badge . '<', $html);
     }
 }

@@ -359,9 +359,16 @@ final class StickerSheet
         $vectors = [];
         // One sticker of the sheet, or on a pair sheet the lid and then its side label.
         $side = $sheet['pair']['side'] ?? null;
-        $draw = fn (array $data): array => $side === null
-            ? [LabelSpots::strip($this->pieces($sheet, $data, $dv))]
-            : [LabelSpots::strip($this->pieces($sheet, ['part' => 'lid'] + $data, $dv)), LabelSpots::strip($this->pieces($side, ['part' => 'side'] + $data, $dv))];
+        // $halves: the lid's data and the side's when each half has a label of its own (pairHalves()).
+        $draw = function (array $data, ?array $halves = null) use ($side, $sheet, $dv): array {
+            if ($side === null) {
+                return [LabelSpots::strip($this->pieces($sheet, $data, $dv))];
+            }
+            $copy = array_intersect_key($data, ['pack_no' => 1, 'pack_of' => 1]);
+            [$lid, $sideData] = $halves === null ? [$data, $data] : [$copy + $halves[0], $copy + $halves[1]];
+
+            return [LabelSpots::strip($this->pieces($sheet, ['part' => 'lid'] + $lid, $dv)), LabelSpots::strip($this->pieces($side, ['part' => 'side'] + $sideData, $dv))];
+        };
         foreach ($req['items'] as $row) {
             $product = $products[self::key($row)] ?? null;
             if ($product === null) {
@@ -370,13 +377,18 @@ final class StickerSheet
             $rowReq = self::rowRequest($req, $row);
             $data = $this->stickerData($product, $rowReq, $common, $production);
             $vectors += $data['vector'];
+            // Each half of a pair from its own label: the lid keeps the barcode, the side the badges.
+            $halves = $side !== null ? $this->pairHalves($product, $row, $rowReq, $common, $production, $data) : null;
+            if ($halves !== null) {
+                $vectors += $halves[0]['vector'] + $halves[1]['vector'];
+            }
             if (!empty($req['number'])) {
                 // Pack numbering (round C): each copy its own sticker, "Pack 3 of 40".
                 for ($i = 1; $i <= $row['copies']; $i++) {
-                    array_push($stickers, ...$draw($data + ['pack_no' => $i, 'pack_of' => (int) $row['copies']]));
+                    array_push($stickers, ...$draw($data + ['pack_no' => $i, 'pack_of' => (int) $row['copies']], $halves));
                 }
             } else {
-                $pieces = $draw($data);
+                $pieces = $draw($data, $halves);
                 for ($i = 0; $i < $row['copies']; $i++) {
                     array_push($stickers, ...$pieces);
                 }
@@ -393,6 +405,30 @@ final class StickerSheet
             'rounded' => $sheet['shape'] === 'rect' && $req['rounded'],
             'vectors' => $vectors,
         ];
+    }
+
+    /**
+     * A pair sheet printed from a tub's lid or side label: the lid's data and the side's, each from its own label
+     * (TubSet::partnerOf), with the dates, batch and pack code of the label that was printed. Null when the label
+     * has no partner, and both halves come from it.
+     *
+     * @param array<string, mixed> $row
+     * @param array<string, mixed> $rowReq
+     * @param array<string, mixed> $common
+     * @param array<string, mixed> $data the printed label's own sticker data
+     * @return array{0: array<string, mixed>, 1: array<string, mixed>}|null lid, side
+     */
+    private function pairHalves(mixed $product, array $row, array $rowReq, array $common, ?KitchenProductionItem $production, array $data): ?array
+    {
+        $partner = TubSet::partnerOf($product);
+        if ($partner === null) {
+            return null;
+        }
+        // The pack's code is the printed label's: the partner reads it under the same row key.
+        $partnerReq = ['row' => $rowReq['row'] ?? self::key($row)] + $rowReq;
+        $other = $this->stickerData($partner, $partnerReq, $common, $production);
+
+        return TubSet::partOf($product) === 'lid' ? [$data, $other] : [$other, $data];
     }
 
     /**
@@ -671,7 +707,7 @@ final class StickerSheet
             }
             $data = $this->stickerData($first, $rowReq, $this->common() + ['both' => $req['lang'] === 'both'], $production);
             if ($side !== null) {
-                $data = ['part' => 'lid'] + $data;
+                $data = ['part' => 'lid'] + ($this->pairHalves($first, $req['items'][0], $rowReq, $this->common() + ['both' => $req['lang'] === 'both'], $production, $data)[0] ?? $data);
             }
             // The first product's own design: a pouch label where the product is one.
             $summary['design'] = $design = self::designOf($sheet, $data);
@@ -684,7 +720,8 @@ final class StickerSheet
             $summary['dropped'] = self::dropped($sheet, $data, $req['lang'], $pieces, $summary['wrap']['left_out'] ?? []);
             if ($side !== null) {
                 // What the side label left out too: the pair is one print.
-                $sideData = ['part' => 'side'] + $data;
+                $halves = $this->pairHalves($first, $req['items'][0], $rowReq, $this->common() + ['both' => $req['lang'] === 'both'], $production, $data);
+                $sideData = ['part' => 'side'] + ($halves[1] ?? $data);
                 $sidePieces = $this->pieces($side, $sideData, $dv);
                 $leftOut = self::designOf($side, $sideData) === 'wrap' ? (WrapDesign::strips($sideData, $dv, (float) $side['w'], (float) $side['h'])['left_out'] ?? []) : [];
                 $summary['dropped'] = array_values(array_unique([...$summary['dropped'], ...self::dropped($side, $sideData, $req['lang'], $sidePieces, $leftOut)]));

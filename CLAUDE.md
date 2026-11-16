@@ -552,7 +552,14 @@ whichever way holds more, slots alternating lid and side, each slot with its own
 `stickers.blade.php` reads before the sheet's; `StickerSheet::sheetOf()` is the one place a request becomes a sheet.
 `build()` draws each copy as the lid (`part` lid) then the side (`part` side, on `pair.side`); a copy is a pair, the
 summary carries `pair` (size, pairs a page), counts pages in pairs and merges what either label left out; the live
-preview is the first pair; never counted off a roll. Lid and side together under Which label in `PrintLabelModal`
+preview is the first pair; never counted off a roll. Easy to cut (owner, 2026-11-16: "Did u add proper layout so it can be
+easier to cut?"): 6 mm between a lid and its side and between pairs (`PAIR_GAP`), and `paired()` returns `guides`, straight
+lines down the middle of each gap, edge to edge across the page and between each lid and its side, drawn by
+`stickers.blade.php` as filled grey dashes (dompdf leaves out a dashed border on a box with no width), never on the
+one-pair preview. Each half prints from its own label when the tub has both (owner: "Do it"): `TubSet::partnerOf()` finds
+"Name (Side)" for "Name (Lid)" and back, and `StickerSheet::pairHalves()` draws the lid from the lid label (barcode, price)
+and the side from the side label (badges), with the printed label's dates, batch and pack code; a label renamed without
+its bracket has no partner and draws both. Lid and side together under Which label in `PrintLabelModal`
 (a menu item, and a custom label with a part) with Side label size and How many pairs. dompdf broke an ingredients
 line after a bold allergen that made it a hair wider than its box; the PDF's box for a line with `bold_words` has
 12 mm to spare (`pieces.blade.php`). **The complaints code stands beside the pack's on a wide small label** (owner, 2026-11-16: "still there is no complain qr"
