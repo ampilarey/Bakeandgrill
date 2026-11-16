@@ -140,6 +140,10 @@ export type TubSetBody = {
   name_dv?: string | null; label_barcode?: string | null; label_heading?: string | null; label_storage?: string | null;
   label_how_to_use?: string | null; label_note?: string | null; label_ingredients_dv?: string | null; label_lang?: string | null; brand_id?: number | null;
   label_pack_qty?: number | null; label_net_weight?: string | null; label_price?: number | null;
+  /** What the custom label editor has (2026-11-16): type, unit, nutrition, badges (side), Dhivehi wording, bottom strip, complaints QR. */
+  label_type_id?: number | null; label_pack_unit?: string | null; label_nutrition?: string | null; label_badges?: string[];
+  label_heading_dv?: string | null; label_storage_line?: string | null; label_storage_line_dv?: string | null;
+  label_note_dv?: string | null; label_how_to_use_dv?: string | null; footer_id?: number | null; label_show_qr?: boolean | null;
 };
 export type WrapCatalogue = {
   parts: { key: WrapPartKey; label: string; hint: string }[];

@@ -28,7 +28,7 @@ final class TubSet
         'label_storage', 'label_heading', 'label_heading_dv', 'label_storage_line', 'label_storage_line_dv',
         'label_ingredients', 'label_ingredients_dv', 'label_how_to_use', 'label_how_to_use_dv', 'label_note', 'label_note_dv',
         'label_lang', 'label_shelf_life_days', 'label_pack_qty', 'label_pack_unit', 'label_net_weight', 'label_allergens', 'label_price',
-        'brand_id', 'footer_id',
+        'brand_id', 'footer_id', 'label_type_id', 'label_show_qr', 'label_nutrition',
     ];
 
     /** A custom label's part, or null for an ordinary label. */
@@ -97,6 +97,8 @@ final class TubSet
                 'label_part' => $part,
                 // The shop scans the lid (owner, 2026-11-16): the item's barcode goes there, and the side keeps the QR codes.
                 'label_barcode' => $part === 'lid' ? (($in['label_barcode'] ?? null) ?: null) : null,
+                // Badges are pills under the name of the side label; the lid has the photo there.
+                'label_badges' => $part === 'side' ? (LabelBadges::clean($in['label_badges'] ?? []) ?: null) : null,
                 'label_size' => StickerLayouts::sizeOfPreset($preset),
                 'label_photo_media_id' => $in['photo_media_id'] ?? null,
                 'created_by' => $userId,

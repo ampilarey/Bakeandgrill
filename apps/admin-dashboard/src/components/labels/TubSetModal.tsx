@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ImagePlus, Pencil, Printer, Upload } from 'lucide-react';
 import {
-  createTubSet, fetchLabelBrands, fetchLabelLayouts, openLabelSheet, printLabelJob,
-  type LabelBrand, type LabelPreset, type TubSetCatalogue, type TubSetRow,
+  createTubSet, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelTypes, openLabelSheet, printLabelJob,
+  type LabelBadge, type LabelBrand, type LabelFooter, type LabelPreset, type LabelType, type TubSetCatalogue, type TubSetRow,
 } from '../../api';
 import { Btn, Modal, ModalActions } from '../SharedUI';
 import { useToast } from '../ui';
@@ -11,6 +11,8 @@ import { SheetPreview } from './SheetPreview';
 import { PhotoDrop } from './PhotoDrop';
 import { CustomLabelModal } from './CustomLabels';
 import { inHouseBarcode } from './labelDrafts';
+import { BadgePicker } from './BadgePicker';
+import { FooterPicker } from './FooterPicker';
 
 /*
  * A tub's two labels in one go (owner, 2026-11-16: "on the top of the container
@@ -54,6 +56,21 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
   const [lang, setLang] = useState('');
   const [brandId, setBrandId] = useState('');
   const [brands, setBrands] = useState<LabelBrand[]>([]);
+  // What the custom label editor has and this form lacked (owner, 2026-11-16: "compare the features… add missing components").
+  const [typeId, setTypeId] = useState('');
+  const [types, setTypes] = useState<LabelType[]>([]);
+  const [unit, setUnit] = useState('');
+  const [nutrition, setNutrition] = useState('');
+  const [badges, setBadges] = useState<string[]>([]);
+  const [badgeList, setBadgeList] = useState<LabelBadge[]>([]);
+  const [headingDv, setHeadingDv] = useState('');
+  const [line, setLine] = useState('');
+  const [lineDv, setLineDv] = useState('');
+  const [noteDv, setNoteDv] = useState('');
+  const [howToDv, setHowToDv] = useState('');
+  const [footerId, setFooterId] = useState<number | null>(null);
+  const [footers, setFooters] = useState<LabelFooter[]>([]);
+  const [showQr, setShowQr] = useState<'' | 'on' | 'off'>('');
   const [editing, setEditing] = useState<TubSetRow | null>(null);
   const [rev, setRev] = useState(0);
   const [lid, setLid] = useState(SET_FALLBACK.lid);
@@ -68,9 +85,12 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
   useEffect(() => {
     fetchLabelLayouts().then((r) => {
       setPresets(r.presets);
+      setBadgeList(r.badges ?? []);
       if (r.tub_set) { setSet(r.tub_set); setLid(r.tub_set.lid); setSide(r.tub_set.side); }
     }).catch(() => undefined);
     fetchLabelBrands().then((r) => setBrands(r.data)).catch(() => undefined);
+    fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active))).catch(() => undefined);
+    fetchLabelFooters().then((r) => setFooters(r.data)).catch(() => undefined);
   }, []);
 
   const picked = set.templates.find((t) => t.id === template);
@@ -113,6 +133,10 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
         label_barcode: barcode.trim() || null, name_dv: nameDv.trim() || null, label_heading: heading.trim() || null,
         label_storage: storage || null, label_how_to_use: howTo.trim() || null, label_note: note.trim() || null,
         label_ingredients_dv: ingredientsDv.trim() || null, label_lang: lang || null, brand_id: brandId ? Number(brandId) : null,
+        label_type_id: typeId ? Number(typeId) : null, label_pack_unit: unit.trim() || null, label_nutrition: nutrition.trim() || null,
+        label_badges: badges, label_heading_dv: headingDv.trim() || null, label_storage_line: line.trim() || null,
+        label_storage_line_dv: lineDv.trim() || null, label_note_dv: noteDv.trim() || null, label_how_to_use_dv: howToDv.trim() || null,
+        footer_id: footerId, label_show_qr: showQr === '' ? null : showQr === 'on',
       });
       setMade(r.data);
       onMade?.(r.data);
@@ -236,6 +260,10 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
               <input id="ts-qty" type="number" inputMode="numeric" min={1} value={qty} onChange={(e) => setQty(e.target.value)} className={fieldClass} />
             </div>
             <div>
+              <label className={labelClass} htmlFor="ts-unit">Unit after the pieces</label>
+              <input id="ts-unit" value={unit} maxLength={10} onChange={(e) => setUnit(e.target.value.toUpperCase())} className={fieldClass} placeholder="PCS" />
+            </div>
+            <div>
               <label className={labelClass} htmlFor="ts-weight">Net weight</label>
               <input id="ts-weight" value={weight} maxLength={20} onChange={(e) => setWeight(e.target.value)} className={fieldClass} placeholder="300 g" />
             </div>
@@ -282,6 +310,20 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
                   <option value="both">Both</option>
                 </select>
               </div>
+              <div>
+                <label className={labelClass} htmlFor="ts-heading-dv">Heading in Dhivehi</label>
+                <input id="ts-heading-dv" dir="rtl" value={headingDv} maxLength={40} onChange={(e) => setHeadingDv(e.target.value)} className={fieldClass} />
+              </div>
+              {types.length > 0 && (
+                <div>
+                  <label className={labelClass} htmlFor="ts-type">Label type</label>
+                  <select id="ts-type" value={typeId} onChange={(e) => setTypeId(e.target.value)} className={fieldClass} data-testid="tub-set-type">
+                    <option value="">No type (usual wording)</option>
+                    {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-1">Brings the heading, storage, dates wording and shelf life. Anything typed here prints instead.</p>
+                </div>
+              )}
               {brands.length > 0 && (
                 <div>
                   <label className={labelClass} htmlFor="ts-brand">Brand</label>
@@ -305,8 +347,48 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
                 <label className={labelClass} htmlFor="ts-ing-dv">Ingredients in Dhivehi</label>
                 <textarea id="ts-ing-dv" dir="rtl" rows={2} maxLength={500} value={ingredientsDv} onChange={(e) => setIngredientsDv(e.target.value)} className={areaClass} />
               </div>
+              <div>
+                <label className={labelClass} htmlFor="ts-how-dv">How to use in Dhivehi</label>
+                <textarea id="ts-how-dv" dir="rtl" rows={2} maxLength={200} value={howToDv} onChange={(e) => setHowToDv(e.target.value)} className={areaClass} />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="ts-note-dv">Note in Dhivehi</label>
+                <input id="ts-note-dv" dir="rtl" value={noteDv} maxLength={120} onChange={(e) => setNoteDv(e.target.value)} className={fieldClass} />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="ts-line">Storage line (the coloured line above the bottom strip)</label>
+                <input id="ts-line" value={line} maxLength={160} onChange={(e) => setLine(e.target.value)} className={fieldClass} placeholder="Keep frozen at -18°C or below" />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="ts-line-dv">Storage line in Dhivehi</label>
+                <input id="ts-line-dv" dir="rtl" value={lineDv} maxLength={160} onChange={(e) => setLineDv(e.target.value)} className={fieldClass} />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="ts-nutrition">Nutrition per 100 g</label>
+                <input id="ts-nutrition" value={nutrition} maxLength={200} onChange={(e) => setNutrition(e.target.value)} className={fieldClass} placeholder="Energy 210 kcal, protein 9 g, fat 8 g, carbohydrate 25 g" />
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">One line. It prints on a full-size side label; a small one has no room for it.</p>
+              </div>
+              <div data-testid="tub-set-badges">
+                <span className={labelClass}>Badges (on the side label)</span>
+                <BadgePicker value={badges} onChange={setBadges} catalogue={badgeList} idPrefix="ts-badges" />
+              </div>
             </div>
-            <p className="text-xs text-[var(--color-text-muted)] mt-2">Anything not here (badges, the bottom strip, nutrition, moving parts by hand) is under Edit on each label once the two are made.</p>
+            <div className="grid gap-3 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>
+              <div>
+                <label className={labelClass} htmlFor="ts-footer">Bottom strip</label>
+                <FooterPicker id="ts-footer" footers={footers} value={footerId} onChange={setFooterId} onFootersChange={setFooters} noneLabel={footers.find((f) => f.is_default)?.name ?? 'Standard'} fallback={footers.find((f) => f.is_default) ?? null} canManage />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="ts-qr">Complaints QR (on the side label)</label>
+                <select id="ts-qr" value={showQr} onChange={(e) => setShowQr(e.target.value as '' | 'on' | 'off')} className={fieldClass} data-testid="tub-set-qr">
+                  <option value="">As the bottom strip</option>
+                  <option value="on">Print it</option>
+                  <option value="off">Leave it off</option>
+                </select>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">A side label 86 mm wide or more prints two codes: FEEDBACK for complaints and PACK INFO for this pack's dates and batch. A narrower one has room for the pack's code only.</p>
+              </div>
+            </div>
+            <p className="text-xs text-[var(--color-text-muted)] mt-2">What is left (the hand-lettered name, moving parts by hand, the legal sign-off) is under Edit on each label once the two are made.</p>
           </details>
 
           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))' }}>

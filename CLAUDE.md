@@ -555,7 +555,15 @@ summary carries `pair` (size, pairs a page), counts pages in pairs and merges wh
 preview is the first pair; never counted off a roll. Lid and side together under Which label in `PrintLabelModal`
 (a menu item, and a custom label with a part) with Side label size and How many pairs. dompdf broke an ingredients
 line after a bold allergen that made it a hair wider than its box; the PDF's box for a line with `bold_words` has
-12 mm to spare (`pieces.blade.php`). `TubSetTest`, `TubSetModal.test.tsx`, `PrintLabelModal.test.tsx`. How to
+12 mm to spare (`pieces.blade.php`). **The complaints code stands beside the pack's on a wide small label** (owner, 2026-11-16: "still there is no complain qr"
+on the 100 × 50 mm side label, whose one QR place went to the pack's code): `SmallStickerDesign::rect()` keeps the
+complaints code as `qr_complaints` before `packQr()` takes the place, and `wide()` draws both at the header's end from
+86 mm wide (`$pair`), FEEDBACK and PACK INFO under them when the band has the room; narrower, the pack's alone as before,
+and `label_show_qr` off leaves the complaints one out. The set form has the custom label editor's boxes (owner: "compare
+the features… add missing components"): Label type, Unit after the pieces, Nutrition, Badges (kept on the side label
+only), the Dhivehi heading, note and how to use, the Storage line, the Bottom strip (`FooterPicker`) and Complaints QR;
+a new box on the custom label editor that suits a tub goes into `TubSet::FIELDS`, `storeTubSet()`'s rules and the form.
+`TubSetTest`, `TubSetModal.test.tsx`, `PrintLabelModal.test.tsx`. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

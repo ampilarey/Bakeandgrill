@@ -33,7 +33,10 @@ final class SmallStickerDesign
      */
     public static function rect(array $d, bool $dv, float $w, float $h): array
     {
-        $s = new self(StickerDesign::packQr($d), $dv, $w);
+        // The complaints code beside the pack's (owner, 2026-11-16: "still there is no complain qr" on a tub's side
+        // label): packQr() gives the one QR place to the pack, so a wide label with room for two keeps the other here.
+        $complaints = !empty($d['show_qr']) && !empty($d['qr']) && !empty($d['batch_qr']) ? $d['qr'] : null;
+        $s = new self(['qr_complaints' => $complaints] + StickerDesign::packQr($d), $dv, $w);
         if ($h < 24) {
             $s->tiny($h);
         } elseif ($w >= 1.2 * $h) {
@@ -173,6 +176,11 @@ final class SmallStickerDesign
 
         $hb = self::clamp($short * 0.22, 5.4, 12.0);
         $qr = $this->qrFits() && $hb - 1.4 >= 8.0 && $iw >= 56 ? $hb - 1.4 : 0.0;
+        // Two codes from 86 mm wide: the pack's and the complaints one, each with its word under it when the band is tall enough.
+        $pair = $qr > 0 && !empty($this->d['qr_complaints']) && $iw >= 80;
+        if ($pair && $hb - 2.9 >= 8.0) {
+            $qr = $hb - 2.9;
+        }
         $bh = self::clamp($short * 0.19, 5.0, 9.0);
         $sh = $this->stripHeight($iw, self::clamp($short * 0.08, 2.6, 4.2));
         $fh = self::clamp($short * 0.12, 3.8, 6.0);
@@ -187,7 +195,7 @@ final class SmallStickerDesign
         $batch = $this->take($free, $line);
 
         $y = $pad;
-        $this->header($pad, $y, $iw, $hb, $qr, $k);
+        $this->header($pad, $y, $iw, $hb, $qr, $k, $pair);
         $y += $hb + $gap;
 
         $bottom = $h - $pad;
@@ -389,7 +397,7 @@ final class SmallStickerDesign
         $this->p[] = LabelSpots::open($key);
     }
 
-    private function header(float $x, float $y, float $bw, float $hb, float $qr, float $k): void
+    private function header(float $x, float $y, float $bw, float $hb, float $qr, float $k, bool $pair = false): void
     {
         $d = $this->d;
         $brand = $d['brand'];
@@ -401,16 +409,27 @@ final class SmallStickerDesign
             [$lw, $lh] = StickerDesign::fit($brand['logo'] ? $brand['logo_ratio'] : $d['mark_ratio'], $hb * 1.25, $hb - 1.4);
             $this->img($this->X($x + 0.9, $lw), $y + ($hb - $lh) / 2, $lw, $lh, $logo);
         }
+        $qrs = 0.0;
         if ($qr > 0) {
-            $qy = $y + ($hb - $qr) / 2;
+            // With two codes each has its word under it, when the band leaves the word room.
+            $words = $pair && $hb - $qr >= 2.8;
+            $qy = $words ? $y + 0.6 : $y + ($hb - $qr) / 2;
             $qx = $x + $bw - 0.7 - $qr;
             // The complaints QR is the footer's: its tap opens the footer.
-            $this->mark('footer');
-            $this->box($this->X($qx - 0.35, $qr + 0.7), $qy - 0.35, $qr + 0.7, $qr + 0.7, StickerDesign::CREAM, 0.5);
-            $this->img($this->X($qx, $qr), $qy, $qr, $qr, $d['qr']);
+            foreach ($pair ? [['batch_qr', $d['qr'], 'PACK INFO'], ['footer', $d['qr_complaints'], 'FEEDBACK']] : [['footer', $d['qr'], '']] as [$spot, $src, $word]) {
+                $this->mark($spot);
+                $this->box($this->X($qx - 0.35, $qr + 0.7), $qy - 0.35, $qr + 0.7, $qr + 0.7, StickerDesign::CREAM, 0.5);
+                $this->img($this->X($qx, $qr), $qy, $qr, $qr, $src);
+                if ($words) {
+                    $pt = LabelText::fitPt($word, 'j8', $qr + 0.6, 3.0, 2.2);
+                    $this->text($this->X($qx - 0.3, $qr + 0.6), $y + $hb - 0.55, $qr + 0.6, 'c', 'j8', $pt, StickerDesign::DARK, $word);
+                }
+                $qx -= $qr + 1.3;
+                $qrs += $qr + ($qrs > 0 ? 1.3 : 1.1);
+            }
         }
         $tx = $x + 0.9 + ($lw > 0 ? $lw + 1.3 : 0.4);
-        $tw = $x + $bw - 0.9 - ($qr > 0 ? $qr + 1.1 : 0.0) - $tx;
+        $tw = $x + $bw - 0.9 - $qrs - $tx;
         $two = $hb >= 7.6;
         if ($this->both() && $d['header_line_dv'] !== '' && $tw >= 30) {
             // Both languages (2026-10-12): the English heading and the Dhivehi

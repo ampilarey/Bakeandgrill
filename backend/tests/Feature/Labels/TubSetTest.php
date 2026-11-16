@@ -158,4 +158,27 @@ class TubSetTest extends TestCase
 
         $this->postJson('/api/labels/tub-set', ['name' => 'X', 'lid' => 'c80', 'side' => 'r100x50', 'label_barcode' => '123'])->assertStatus(422)->assertJsonValidationErrors('label_barcode');
     }
+
+    /** Owner, 2026-11-16: "still there is no complain qr… compare the features of new custom label with lid and side label and add missing components". */
+    public function test_the_side_label_prints_the_complaints_code_beside_the_packs_and_takes_the_editors_boxes(): void
+    {
+        $made = $this->make(['label_badges' => ['halal'], 'label_nutrition' => 'Energy 210 kcal', 'label_storage_line' => 'Keep frozen', 'label_pack_unit' => 'PCS']);
+        $this->assertNull($made[0]['label']['label_badges'] ?: null, 'badges are the side label\'s');
+        $this->assertSame(['halal'], $made[1]['label']['label_badges']);
+        $this->assertSame('Energy 210 kcal', $made[1]['label']['label_nutrition']);
+        $this->assertSame('Keep frozen', $made[1]['label']['label_storage_line']);
+
+        $side = (string) $this->get($made[1]['view_url'])->assertOk()->getContent();
+        $this->assertStringContainsString('FEEDBACK', $side);
+        $this->assertStringContainsString('PACK INFO', $side);
+
+        // Switched off, only the pack's code prints.
+        $off = $this->make(['name' => 'Other', 'label_show_qr' => false]);
+        $this->assertFalse($off[1]['label']['label_show_qr']);
+        $this->assertStringNotContainsString('FEEDBACK', (string) $this->get($off[1]['view_url'])->assertOk()->getContent());
+
+        // A side label under 86 mm wide has room for one code: the pack's.
+        $narrow = $this->make(['name' => 'Narrow', 'side' => 'r70x50']);
+        $this->assertStringNotContainsString('FEEDBACK', (string) $this->get($narrow[1]['view_url'])->assertOk()->getContent());
+    }
 }

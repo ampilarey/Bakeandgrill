@@ -10,6 +10,8 @@ vi.mock('../../api', async (orig) => ({
   createTubSet: vi.fn(),
   uploadLabelPicture: vi.fn(),
   fetchLabelBrands: vi.fn(),
+  fetchLabelTypes: vi.fn(),
+  fetchLabelFooters: vi.fn(),
   printLabelJob: vi.fn(),
 }));
 vi.mock('../MediaPicker', () => ({ MediaPicker: () => null }));
@@ -28,6 +30,8 @@ beforeEach(() => {
   } as unknown as Awaited<ReturnType<typeof api.fetchLabelLayouts>>);
   vi.mocked(api.createTubSet).mockReset();
   vi.mocked(api.fetchLabelBrands).mockResolvedValue({ data: [] });
+  vi.mocked(api.fetchLabelTypes).mockResolvedValue({ data: [{ id: 4, name: 'Frozen Hedhika', is_active: true }] } as unknown as Awaited<ReturnType<typeof api.fetchLabelTypes>>);
+  vi.mocked(api.fetchLabelFooters).mockResolvedValue({ data: [{ id: 1, name: 'Standard', is_default: true, style: 'dark', effective: { name: 'Bake & Grill', tagline: '', phone: '+960 912 0011', website: 'bakeandgrill.mv' } }] } as unknown as Awaited<ReturnType<typeof api.fetchLabelFooters>>);
 });
 
 describe('TubSetModal', () => {
@@ -116,5 +120,23 @@ describe('TubSetModal', () => {
     }));
     fireEvent.click(screen.getByTestId('tub-set-edit-lid'));
     expect(screen.getByTestId('full-editor').textContent).toBe('Garlic Sauce (Lid)');
+  });
+
+  it('has the custom label editor\'s boxes: type, unit, nutrition, Dhivehi wording, bottom strip and the complaints QR', async () => {
+    vi.mocked(api.createTubSet).mockResolvedValue({ data: [], expires_in_minutes: 30 } as unknown as Awaited<ReturnType<typeof api.createTubSet>>);
+    show();
+    await screen.findByRole('option', { name: 'Frozen Hedhika' });
+    fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Garlic sauce' } });
+    fireEvent.change(screen.getByTestId('tub-set-type'), { target: { value: '4' } });
+    fireEvent.change(screen.getByLabelText('Unit after the pieces'), { target: { value: 'ml' } });
+    fireEvent.change(screen.getByLabelText('Nutrition per 100 g'), { target: { value: 'Energy 210 kcal' } });
+    fireEvent.change(screen.getByLabelText('Storage line (the coloured line above the bottom strip)'), { target: { value: 'Keep chilled' } });
+    fireEvent.change(screen.getByLabelText('Note in Dhivehi'), { target: { value: 'ނޯޓް' } });
+    fireEvent.change(screen.getByTestId('tub-set-qr'), { target: { value: 'off' } });
+    fireEvent.click(screen.getByTestId('tub-set-make'));
+    await waitFor(() => expect(api.createTubSet).toHaveBeenCalled());
+    expect(vi.mocked(api.createTubSet).mock.calls[0][0]).toMatchObject({
+      label_type_id: 4, label_pack_unit: 'ML', label_nutrition: 'Energy 210 kcal', label_storage_line: 'Keep chilled', label_note_dv: 'ނޯޓް', label_show_qr: false, footer_id: null, label_badges: [],
+    });
   });
 });
