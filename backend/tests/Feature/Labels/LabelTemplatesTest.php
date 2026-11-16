@@ -151,7 +151,10 @@ class LabelTemplatesTest extends TestCase
         $this->assertSame('Frozen Jhol Momo', $t['product']);
         $this->assertSame(['shape' => 'circle', 'preset' => 'c80', 'on' => 'sheet'], array_intersect_key($t['size'], array_flip(['shape', 'preset', 'on'])));
         $this->assertSame('frozen', $t['fields']['label_storage']);
-        $this->assertSame(LabelTemplates::MOMO_INGREDIENTS, $t['fields']['label_ingredients']);
+        // The owner's own recipes (2026-11-16): the momo and its jhol, with the peanuts in the jhol as an allergen.
+        $this->assertSame(LabelTemplates::JHOL_MOMO_INGREDIENTS, $t['fields']['label_ingredients']);
+        $this->assertStringContainsString('roasted peanuts', $t['fields']['label_ingredients']);
+        $this->assertSame('Wheat, Sesame, Peanuts', $t['fields']['label_allergens']);
         $this->assertSame('Wheat, Sesame', $t['fields']['label_allergens']);
         $this->assertNotEmpty($t['photo'] ?? null);
     }

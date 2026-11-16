@@ -46,6 +46,12 @@ final class LabelTemplates
      * oil, 80 g sesame seeds, 50 g garlic, 40 g coriander, about 30 g salt, 10 g ginger. The owner's list leaves
      * the recipe's ajinomoto (MSG) out.
      */
+    /**
+     * Frozen Jhol Momo, from the owner's own two recipes (2026-11-16): the momo and its jhol, each in order of
+     * weight. Ajinomoto is written as what it is, and the jhol's peanuts make a third allergen.
+     */
+    public const JHOL_MOMO_INGREDIENTS = 'Momo: wheat flour, chicken, onion, vegetable oil, coriander leaves, salt, ginger, flavour enhancer (monosodium glutamate). Jhol: water, tomato, onion, sesame seeds, roasted peanuts, garlic, ginger, coriander leaves, lemon juice, vegetable oil, salt, dried red chilli, cumin, timur pepper.';
+
     public const MOMO_INGREDIENTS = 'Wheat flour, chicken, onion, tomato, dried chilli, vegetable oil, sesame seeds, garlic, coriander, salt, ginger.';
 
     /**
@@ -137,13 +143,14 @@ final class LabelTemplates
         // momo with its jhol, the sesame and tomato sauce it is served in. A round label for the tub's lid, with the
         // momo plate, the one list for momo and jhol, and the price. 30 days, as the other frozen momo.
         [
-            'photo' => PouchSet::MOMO_PHOTO, 'id' => 'jhol-momo-round', 'name' => 'Frozen Jhol Momo (round)', 'blurb' => 'Frozen momo with its jhol sauce: a round label for the tub\'s lid, with the photo, ingredients, dates and price.',
+            // The owner's own picture of the dish (2026-11-16): the bowl of momo in jhol, cut out.
+            'photo' => 'brand/photos/jhol-momo/jhol-momo-bowl.png', 'id' => 'jhol-momo-round', 'name' => 'Frozen Jhol Momo (round)', 'blurb' => 'Frozen momo with its jhol sauce: a round label for the tub\'s lid, with the photo, ingredients, dates and price.',
             'product' => 'Frozen Jhol Momo',
             'fields' => [
                 'label_storage' => 'frozen', 'label_heading' => 'MOMO IN SPICY JHOL',
-                'label_ingredients' => self::MOMO_INGREDIENTS, 'label_allergens' => 'Wheat, Sesame',
+                'label_ingredients' => self::JHOL_MOMO_INGREDIENTS, 'label_allergens' => 'Wheat, Sesame, Peanuts',
                 'label_how_to_use' => 'Steam the momo from frozen for 8 to 10 minutes, or microwave for 2 to 3 minutes, until steaming hot. Warm the jhol and pour it over.',
-                'label_note' => 'Contains wheat and sesame.',
+                'label_note' => 'Contains wheat, sesame and peanuts.',
                 'label_shelf_life_days' => 30, 'label_pack_unit' => 'PCS', 'label_pack_qty' => 8,
                 'label_show_price' => true, 'label_lang' => 'en',
             ],

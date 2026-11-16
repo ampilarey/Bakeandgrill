@@ -518,7 +518,10 @@ type stepping down a little before a line is cut and the word INGREDIENTS giving
 45 mm (`SmallStickerDesign::circle`) the same cap and foot with the dates on two lines. A new part on a round sticker
 sits between the cap and the foot, never on them. The built-in template `jhol-momo-round` (Frozen Jhol Momo, a round
 80 mm label for the tub's lid: the momo plate, the one list for momo and jhol, wheat and sesame, 30 days, the price)
-came with it. **Lid and side labels** (owner,
+came with it; since 2026-11-16 it carries the owner's own picture (`brand/photos/jhol-momo/jhol-momo-bowl.png`, a cut-out) and
+the list from the owner's two recipes (`LabelTemplates::JHOL_MOMO_INGREDIENTS`: "Momo: …. Jhol: ….", each by weight,
+Ajinomoto as monosodium glutamate, peanuts a third allergen). The whole list fits the side labels; a single round label
+cuts it and says so. **Lid and side labels** (owner,
 2026-11-16: "on the top of the container circular label with name and photo. At the side rectangular label with other
 details"): `custom_labels.label_part` (`lid` | `side`, `App\Domains\Labels\TubSet`; custom labels only). A lid on a round
 size draws `StickerDesign::lid()` (the cap, the photo large in a rust ring, else the mark or the logo, the name, the
