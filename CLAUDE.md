@@ -621,6 +621,15 @@ left to pay and how long it has been open, then Being made or on the way: every 
 each with its number, type, till or online (staff on the order is the till; owner, 2026-11-16: "It says online but
 actually its pos delivery order") and its stage (`TelegramCommands::openOrderLines()`, `stageWord()`). See `docs/TELEGRAM_BOTS.md`.
 
+## Shift opened and closed alerts
+
+Owner, 2026-11-16 ("I need an notification so that i know when the shift is opened and closed"). Rows
+`owner_shift_opened` and `owner_shift_closed` (owners and managers, SMS, Email and Telegram), from
+`TellOwnersShiftOpenedListener` / `TellOwnersShiftClosedListener` on `ShiftOpened` / `ShiftClosed`: who, which till,
+when, the float; on close how long, orders, sales and cash counted against expected. Never the person who did it
+(`ShiftAlertPeople::except`), and a close over the variance threshold is the variance alert alone for its people. The
+opening float is never compared with the last close (retired 2026-11-16). `ShiftOpenCloseAlertsTest`.
+
 ## Alert channels per role and person
 
 Staff and owner alerts go to **people**, by channel (SMS, Email, Telegram): the

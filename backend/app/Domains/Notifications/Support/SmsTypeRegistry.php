@@ -212,6 +212,9 @@ final class SmsTypeRegistry
             self::def('owner_deposit_large_topup', 'Owner: large wallet top-up by card', 'staff', true, false, null, 'sms_owner_deposit_large_topup_enabled', null, false, 'Owners & managers', false),
             // Ops audit, 2026-09-25: nothing watched a till left open overnight or a close that landed short.
             self::def('owner_shift_left_open', 'Owner: shift left open', 'staff', true, false, null, 'sms_owner_shift_left_open_enabled', null, false, 'Owners & managers', false),
+            // Owner, 2026-11-16: "I need an notification so that i know when the shift is opened and closed".
+            self::def('owner_shift_opened', 'Owner: a shift is opened', 'staff', true, false, null, 'sms_owner_shift_opened_enabled', null, false, 'Owners & managers', false),
+            self::def('owner_shift_closed', 'Owner: a shift is closed', 'staff', true, false, null, 'sms_owner_shift_closed_enabled', null, false, 'Owners & managers', false),
             self::def('owner_shift_variance', 'Owner: shift closed with a cash variance', 'staff', true, false, null, 'sms_owner_shift_variance_enabled', null, false, 'Owners & managers', false),
             // Complaints — owner alert never suppressed by customer opt-out; customer ack/resolved honour opt-out.
             self::def('owner_complaint_received', 'Owner: complaint received', 'staff', true, false, 'owner_complaint_received', 'sms_owner_complaint_received_enabled', 'sms.transactional.manage', false, 'Owner phone(s)', false),

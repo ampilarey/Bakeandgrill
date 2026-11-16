@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Telegram;
 
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Shifts\DTOs\ShiftClosedData;
 use App\Domains\Shifts\Events\ShiftClosed;
 use App\Domains\Telegram\Listeners\SendDayReportOnLastShiftClose;
@@ -107,6 +108,7 @@ class TelegramOwnerExtrasTest extends TestCase
 
     public function test_the_days_report_arrives_when_the_last_shift_closes_once(): void
     {
+        AlertSwitch::setAll('owner_shift_closed', false); // its own alert, tested in ShiftOpenCloseAlertsTest
         $this->linked();
         $cashier = $this->staff('staff', '+9607001001', 'Mariyam');
         $device = Device::create(['name' => 'Till', 'identifier' => 'TG-EOD', 'type' => 'pos', 'is_active' => true, 'status' => 'approved']);

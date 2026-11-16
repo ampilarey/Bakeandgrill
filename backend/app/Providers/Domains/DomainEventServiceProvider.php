@@ -156,11 +156,13 @@ class DomainEventServiceProvider extends EventServiceProvider
 
         ShiftOpened::class => [
             DispatchWebhookOnDomainEvent::class,
+            \App\Domains\Shifts\Listeners\TellOwnersShiftOpenedListener::class,
         ],
 
         ShiftClosed::class => [
             DispatchWebhookOnDomainEvent::class,
             \App\Domains\Shifts\Listeners\AlertOwnerOnShiftVarianceListener::class,
+            \App\Domains\Shifts\Listeners\TellOwnersShiftClosedListener::class,
             // The day's report on Telegram when the last shift closes (2026-10-07).
             \App\Domains\Telegram\Listeners\SendDayReportOnLastShiftClose::class,
         ],

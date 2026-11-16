@@ -7,6 +7,7 @@ namespace Tests\Feature\Telegram;
 use App\Domains\Notifications\Contracts\SmsProviderInterface;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Shifts\DTOs\ShiftClosedData;
 use App\Domains\Shifts\Events\ShiftClosed;
 use App\Models\Device;
@@ -40,6 +41,7 @@ class TelegramManagerTest extends TestCase
 
     private function closeTheDay(): void
     {
+        AlertSwitch::setAll('owner_shift_closed', false); // its own alert, tested in ShiftOpenCloseAlertsTest
         $device = Device::create(['name' => 'Till', 'identifier' => 'TG-MGR', 'type' => 'pos', 'is_active' => true, 'status' => 'approved']);
         $cashier = $this->staff('staff', '+9607001001', 'Mariyam');
         $shift = Shift::create(['user_id' => $cashier->id, 'device_id' => $device->id, 'opened_at' => now()->subHours(8), 'opening_cash' => 0, 'closed_at' => now(), 'variance' => 0]);

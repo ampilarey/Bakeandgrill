@@ -184,6 +184,9 @@ class OneAlertOneMessageTest extends TestCase
         DeferAfterResponse::flushTestingCallbacks();
 
         $this->assertCount(0, array_filter($this->sent('5550001'), fn ($m) => str_contains((string) ($m['text'] ?? json_encode($m)), 'last close')));
-        $this->assertSame([], $this->smsSentTo);
+        // Owner, 2026-11-16: the opening itself is told, once, with nothing about the last close.
+        $opened = array_values(array_filter($this->sent('5550001'), fn ($m) => str_contains((string) ($m['text'] ?? json_encode($m)), 'opened a shift')));
+        $this->assertCount(1, $opened);
+        $this->assertStringContainsString('Ariya opened a shift on Front till', (string) ($opened[0]['text'] ?? json_encode($opened[0])));
     }
 }

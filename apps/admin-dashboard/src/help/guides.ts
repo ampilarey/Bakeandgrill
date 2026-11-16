@@ -713,8 +713,9 @@ export const GUIDES: Guide[] = [
     ],
     notes: [
       'The row is the only switch for that alert. There is no second one elsewhere.',
+      'To hear when a till opens or closes its shift, use "Owner: a shift is opened" and "Owner: a shift is closed". The closing one carries the cash counted against expected, the orders and the sales.',
     ],
-    words: 'sms email telegram alert notification switch off stop',
+    words: 'sms email telegram alert notification switch off stop shift opened closed',
   },
   {
     id: 'alert-who',
