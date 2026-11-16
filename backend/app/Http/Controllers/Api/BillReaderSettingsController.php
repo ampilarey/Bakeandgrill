@@ -74,6 +74,12 @@ class BillReaderSettingsController extends Controller
             $read = $reader->trial($data['provider']);
         } catch (BillUnreadable $e) {
             return response()->json(['ok' => false, 'message' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            // Owner, 2026-11-16: Test answered "Server error (500)" and nothing more. The screen is the
+            // owner's own, so it says what broke (never a key: that travels in a header, not a message).
+            report($e);
+
+            return response()->json(['ok' => false, 'message' => 'The test broke on the server: ' . class_basename($e) . ': ' . mb_substr($e->getMessage(), 0, 240)]);
         }
         $label = BillReaderSettings::PROVIDERS[$data['provider']]['label'];
         $ok = $read['lines'] >= 2 && abs($read['total'] - 234.0) < 0.01;

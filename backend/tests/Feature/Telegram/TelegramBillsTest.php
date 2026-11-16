@@ -58,7 +58,7 @@ class TelegramBillsTest extends TestCase
                 return $this->on;
             }
 
-            public function read(string $bytes, string $mime, string $context, ?string $provider = null): array
+            public function read(string $bytes, string $mime, string $context, ?string $provider = null, int $timeout = 150): array
             {
                 if ($this->answer instanceof BillUnreadable) {
                     throw $this->answer;

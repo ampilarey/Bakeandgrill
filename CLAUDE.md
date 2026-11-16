@@ -1266,6 +1266,7 @@ owner, 2026-11-15: "Akuru is main company. Bake and grill is under akuru"), so a
 is ours and is never the shop nor worth a note. A new service is a row in `PROVIDERS` and a reader class
 `BillVision::read()` dispatches to, answering in `SCHEMA`; never a second place to type a key.
 A reading takes longer than the 20 seconds the admin gives every other call (owner, 2026-11-16: Test said "The server took too long to answer" with a good Google key), so Test and Read wait `BILL_READ_TIMEOUT_MS` (170 s, `api/purchasing.ts`), a little past the 150 s the server allows the service; a new call that waits on a reading takes it too.
+Test then answered "Server error (500)" (owner, 2026-11-16): Google is asked for little thinking (`thinkingConfig.thinkingLevel` low, asked again without it when a model refuses that), Test sends no inventory list and waits `BillReader::TRIAL_SECONDS` (40) so a slow service is a message and never the host cutting the request off, a 400 says Google's own words, and anything else that breaks in Test is said on the screen (`BillReaderSettingsController::test` catches `Throwable`).
 `BillReaderSettingsTest`, `BillReaderCard.test.tsx`. **Bills through the staff bot** (owner, 2026-11-15: "Can I upload and
 approve slip via telegram"): a photo or a PDF sent to the bot in a private chat is a bill
 (`TelegramUpdateHandler` → `TelegramBills::receive()`, `suppliers.purchases`): fetched with `TelegramClient::download()`,

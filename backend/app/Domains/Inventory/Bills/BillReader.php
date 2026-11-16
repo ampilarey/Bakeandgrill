@@ -28,6 +28,9 @@ class BillReader
     /** A reading that started this long ago and never finished was killed: it goes back in the queue. */
     public const STALE_MINUTES = 5;
 
+    /** How long Test waits for the service: under what a web host allows a request. */
+    public const TRIAL_SECONDS = 40;
+
     /** The long edge a photo is sent at: enough for small print, well under the API's limits. */
     private const MAX_EDGE = 2200;
 
@@ -320,7 +323,9 @@ class BillReader
         imagejpeg($image, null, 90);
         $jpeg = (string) ob_get_clean();
 
-        $data = $this->tidy($this->vision->read($jpeg, 'image/jpeg', $this->context(), $provider));
+        // The key is what is being tried, not the matching: no inventory list goes with it, and the wait is
+        // short, so a slow answer is a message on the screen and never the host cutting the request off.
+        $data = $this->tidy($this->vision->read($jpeg, 'image/jpeg', 'This is a test bill. Nothing is on file: give every line a name and no item id.', $provider, self::TRIAL_SECONDS));
 
         return ['shop' => $data['shop'], 'lines' => count($data['lines']), 'total' => $data['total']];
     }

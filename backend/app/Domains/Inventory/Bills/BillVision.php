@@ -95,7 +95,7 @@ class BillVision
      *
      * @throws BillUnreadable
      */
-    public function read(string $bytes, string $mime, string $context, ?string $provider = null): array
+    public function read(string $bytes, string $mime, string $context, ?string $provider = null, int $timeout = 150): array
     {
         $provider ??= $this->settings->provider();
         $key = $this->settings->key($provider);
@@ -105,13 +105,13 @@ class BillVision
         $model = $this->settings->model($provider);
 
         return match ($provider) {
-            'google' => app(GeminiVision::class)->read($bytes, $mime, $context, $key, $model),
-            default => $this->readWithClaude($bytes, $mime, $context, $key, $model),
+            'google' => app(GeminiVision::class)->read($bytes, $mime, $context, $key, $model, $timeout),
+            default => $this->readWithClaude($bytes, $mime, $context, $key, $model, $timeout),
         };
     }
 
     /** @return array<string, mixed> */
-    private function readWithClaude(string $bytes, string $mime, string $context, string $key, string $model): array
+    private function readWithClaude(string $bytes, string $mime, string $context, string $key, string $model, int $timeout = 150): array
     {
         $base = trim((string) config('services.anthropic.base_url'));
         $client = new Client(apiKey: $key, baseUrl: $base !== '' ? $base : null);
@@ -141,7 +141,7 @@ class BillVision
                 // If the model declines a bill, the API tries its fallback model in the same call.
                 betas: ['server-side-fallback-2026-07-01'],
                 fallbacks: 'default',
-                requestOptions: ['timeout' => 150.0, 'maxRetries' => 1],
+                requestOptions: ['timeout' => (float) $timeout, 'maxRetries' => 1],
             );
         } catch (AuthenticationException|PermissionDeniedException $e) {
             Log::warning('Bill reading: the Claude key was refused', ['error' => $e->getMessage()]);

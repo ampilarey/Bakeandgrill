@@ -132,6 +132,36 @@ class BillReaderSettingsTest extends TestCase
         $this->assertStringNotContainsString('additionalProperties', json_encode(GeminiVision::schema(BillVision::SCHEMA)));
     }
 
+    /** Owner, 2026-11-16: the Test ran past a minute and came back "Server error (500)". */
+    public function test_google_is_asked_to_think_little_and_asked_again_when_a_model_refuses_that(): void
+    {
+        Http::fakeSequence('generativelanguage.googleapis.com/*')
+            ->push(['error' => ['code' => 400, 'message' => 'Thinking level is not supported for this model.']], 400)
+            ->push($this->geminiAnswer());
+        app(BillReaderSettings::class)->setKey('google', 'AIza-key');
+
+        $out = app(BillVision::class)->read('JPEGBYTES', 'image/jpeg', '', 'google');
+
+        $this->assertCount(2, $out['lines']);
+        $sent = Http::recorded()->map(fn ($pair) => $pair[0]->data()['generationConfig'])->all();
+        $this->assertSame(['thinkingLevel' => 'low'], $sent[0]['thinkingConfig']);
+        $this->assertArrayNotHasKey('thinkingConfig', $sent[1]);
+    }
+
+    public function test_a_request_google_refuses_says_why_and_a_broken_test_says_what_broke(): void
+    {
+        Http::fake(['*' => Http::response(['error' => ['code' => 400, 'message' => 'Invalid JSON payload received.']], 400)]);
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $this->putJson('/api/purchasing/bill-reader', ['keys' => ['google' => 'AIza-key']])->assertOk();
+        $this->postJson('/api/purchasing/bill-reader/test', ['provider' => 'google'])->assertOk()
+            ->assertJsonPath('ok', false)->assertJsonPath('message', 'Google refused the request: Invalid JSON payload received.');
+
+        // Anything else that breaks is said on the screen, never a bare "Server error (500)".
+        Http::fake(fn () => throw new \RuntimeException('Something unexpected'));
+        $this->postJson('/api/purchasing/bill-reader/test', ['provider' => 'google'])->assertOk()
+            ->assertJsonPath('ok', false)->assertJsonPath('message', 'The test broke on the server: RuntimeException: Something unexpected');
+    }
+
     public function test_a_refused_google_key_says_so(): void
     {
         Http::fake(['*' => Http::response(['error' => ['code' => 400, 'message' => 'API key not valid. Please pass a valid API key.']], 400)]);
