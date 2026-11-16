@@ -289,7 +289,6 @@ export const GUIDES: Guide[] = [
       'Tap a row to see the cash put in and taken out during the shift.',
     ],
     notes: [
-      'A line under Opening such as "Short MVR 60.00 vs last close" means the drawer started with less than the last shift left.',
       'Cashiers open and close their own shift on the till, not here.',
     ],
     words: 'cash drawer short over variance close shift count',

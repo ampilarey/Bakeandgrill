@@ -79,7 +79,6 @@ function AdminShiftTable({
             const highlighted = highlightId != null && s.id === highlightId;
             const colSpan = 8 + (showForceClose ? 1 : 0);
             const movements = s.cash_movements ?? [];
-            const floatVar = s.opening_float_variance == null ? null : Number(s.opening_float_variance);
             const hasDetail = !!(s.cash_count_breakdown || (s.foreign_currency_held?.length ?? 0) > 0 || s.cash_count_method || movements.length > 0);
             const expanded = expandedId === s.id;
             const variance = Number(s.variance ?? 0);
@@ -119,11 +118,6 @@ function AdminShiftTable({
               </td>
               <td style={TD}>
                 <span style={{ whiteSpace: 'nowrap' }}>{formatMVR(s.opening_cash)}</span>
-                {floatVar != null && Math.abs(floatVar) >= 0.01 && (
-                  <div data-testid={`float-variance-${s.id}`} style={{ fontSize: 11, color: floatVar < 0 ? 'var(--color-danger-strong)' : 'var(--color-tone-gold-text)', fontWeight: 600, marginTop: 2 }}>
-                    {floatVar < 0 ? 'Short' : 'Over'} {formatMVR(Math.abs(floatVar))} vs last close {formatMVR(s.opening_float_expected)}
-                  </div>
-                )}
               </td>
               <td style={TD_NOWRAP}>{formatMVR(s.closing_cash)}</td>
               <td style={TD}>

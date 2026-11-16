@@ -55,11 +55,6 @@ export const TIMING: Record<string, TimingDef> = {
   owner_shift_left_open: { kind: 'ops', field: 'shift_open_alert_hours', label: 'When a shift has been open for (hours)', min: 1, max: 72 },
   owner_shift_variance: {
     kind: 'ops', field: 'shift_variance_alert_mvr', label: 'When the cash at close is off by at least (MVR)', min: 1, max: 1000000,
-    note: 'The same amount sends "opening float differs from the last close".',
-  },
-  owner_shift_float_mismatch: {
-    kind: 'ops', field: 'shift_variance_alert_mvr', label: 'When the opening float is off by at least (MVR)', min: 1, max: 1000000,
-    note: 'The same amount sends "shift closed with a cash variance".',
   },
   owner_order_unstarted: { kind: 'ops', field: 'unstarted_order_alert_minutes', label: 'When a paid order is still not started after (minutes)', min: 1, max: 120 },
   owner_complaint_stale: { kind: 'complaints', label: 'When a complaint is still unread after (days)', min: 1, max: 30 },

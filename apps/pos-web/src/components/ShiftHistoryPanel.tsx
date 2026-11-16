@@ -227,7 +227,6 @@ function ShiftDetail({
   const hasReconciliation = shift.expected_cash != null && shift.variance != null;
   const showExpectedMath = (isClosed && hasReconciliation)
     || (!isClosed && canSeeOpenShiftExpectedCash(staffRole));
-  const floatVar = shift.opening_float_variance == null ? null : Number(shift.opening_float_variance);
 
   const [forcing, setForcing] = useState(false);
   const [forceNotes, setForceNotes] = useState("");
@@ -301,13 +300,6 @@ function ShiftDetail({
 
       <Section title="Cash drawer">
         <Row label="Opening cash" value={Number(shift.opening_cash)} />
-        {shift.opening_float_expected != null && (
-          <div data-testid="shift-history-float-check" style={{ fontSize: 11, marginTop: -2, marginBottom: 4, color: floatVar != null && Math.abs(floatVar) >= 0.01 ? "#92400E" : "#64748B", fontWeight: 600 }}>
-            {floatVar != null && Math.abs(floatVar) >= 0.01
-              ? `${floatVar < 0 ? "Short" : "Over"} MVR ${Math.abs(floatVar).toFixed(2)} against the last close on this till (MVR ${Number(shift.opening_float_expected).toFixed(2)})`
-              : `Matches the last close on this till (MVR ${Number(shift.opening_float_expected).toFixed(2)})`}
-          </div>
-        )}
         {showExpectedMath && summary && <Row label="+ Cash sales" value={summary.cash_drawer.cash_sales} />}
         {showExpectedMath && summary && summary.cash_drawer.paid_in > 0 && (
           <Row label="+ Paid in" value={summary.cash_drawer.paid_in} />

@@ -637,23 +637,17 @@ class ShiftController extends Controller
                 $overrode = $onTill;
             }
 
-            // Ops audit, 2026-09-25: the float typed at open is compared with
-            // the last close on this till, so cash that went missing between
-            // shifts is seen at the start of the next one, not at its end.
-            $previousClose = $deviceId
-                ? Shift::where('device_id', $deviceId)->whereNotNull('closed_at')->orderByDesc('closed_at')->first()
-                : null;
+            // The opening float is not compared with the last close (owner, 2026-11-16: "New shift opening and last
+            // shift closing has no relation"): the takings leave the drawer after the close count, so the counted
+            // cash is never what the next shift finds. The close's own count against the expected cash stays.
             $count = $request->openingCount();
             $openingCash = $count['opening_cash'];
-            $expectedFloat = $previousClose ? round((float) $previousClose->closing_cash, 2) : null;
 
             return Shift::create([
                 'user_id' => $userId,
                 'device_id' => $deviceId,
                 'opened_at' => now(),
                 'opening_cash' => $openingCash,
-                'opening_float_expected' => $expectedFloat,
-                'opening_float_variance' => $expectedFloat === null ? null : round($openingCash - $expectedFloat, 2),
                 'opening_count_method' => $count['method'],
                 'opening_count_breakdown' => $count['breakdown'],
                 'notes' => trim((string) $request->input('notes') . ($overrode !== null
@@ -699,8 +693,6 @@ class ShiftController extends Controller
             );
         }
 
-        $floatCheck = $this->floatCheck($shift, $request->user()?->name ?? 'Unknown');
-
         app(AuditLogService::class)->log(
             'shift.opened',
             'Shift',
@@ -718,59 +710,7 @@ class ShiftController extends Controller
             openingCash: (float) ($shift->opening_cash ?? 0),
         )));
 
-        return response()->json(['shift' => $shift, 'float_check' => $floatCheck], 201);
-    }
-
-    /**
-     * @return array{expected: float|null, variance: float|null, message: string|null}
-     */
-    private function floatCheck(Shift $shift, string $userName): array
-    {
-        $expected = $shift->opening_float_expected === null ? null : (float) $shift->opening_float_expected;
-        $variance = $shift->opening_float_variance === null ? null : (float) $shift->opening_float_variance;
-        $message = null;
-        if ($expected !== null && $variance !== null && abs($variance) >= 0.01) {
-            $message = sprintf(
-                'The last close on this till left MVR %s in the drawer; you opened with MVR %s (%s MVR %s).',
-                number_format($expected, 2),
-                number_format((float) $shift->opening_cash, 2),
-                $variance < 0 ? 'short' : 'over',
-                number_format(abs($variance), 2),
-            );
-            $threshold = (float) (app(\App\Domains\Operations\Services\OpsAlertsService::class)->settings()['shift_variance_alert_mvr'] ?? 0);
-            if ($threshold > 0 && abs($variance) >= $threshold && \App\Domains\Notifications\Support\AlertSwitch::isOn('owner_shift_float_mismatch')) {
-                // The owner did not open it: name who did, and which till
-                // (owner, 2026-10-10; the cashier's own warning above keeps "you").
-                $till = trim((string) ($shift->device?->name ?? '')) ?: 'a till';
-                $ownerText = sprintf(
-                    '%s opened shift #%d on %s with MVR %s. The last close on that till left MVR %s, so the drawer is MVR %s %s.',
-                    $userName,
-                    $shift->id,
-                    $till,
-                    number_format((float) $shift->opening_cash, 2),
-                    number_format($expected, 2),
-                    number_format(abs($variance), 2),
-                    $variance < 0 ? 'short' : 'over',
-                );
-                try {
-                    $sms = app(\App\Domains\Notifications\Services\SmsService::class);
-                    foreach (\App\Support\OwnerPhones::for('owner_shift_float_mismatch') as $phone) {
-                        $sms->send(new \App\Domains\Notifications\DTOs\SmsMessage(
-                            to: $phone,
-                            message: $ownerText,
-                            type: 'owner_shift_float_mismatch',
-                            referenceType: 'shift',
-                            referenceId: (string) $shift->id,
-                            idempotencyKey: 'shift-float:' . $shift->id . ':' . $phone,
-                        ));
-                    }
-                } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning('shift.float_alert_failed', ['shift_id' => $shift->id, 'error' => $e->getMessage()]);
-                }
-            }
-        }
-
-        return ['expected' => $expected, 'variance' => $variance, 'message' => $message];
+        return response()->json(['shift' => $shift], 201);
     }
 
     public function close(CloseShiftRequest $request, $id)

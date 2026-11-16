@@ -213,7 +213,6 @@ final class SmsTypeRegistry
             // Ops audit, 2026-09-25: nothing watched a till left open overnight or a close that landed short.
             self::def('owner_shift_left_open', 'Owner: shift left open', 'staff', true, false, null, 'sms_owner_shift_left_open_enabled', null, false, 'Owners & managers', false),
             self::def('owner_shift_variance', 'Owner: shift closed with a cash variance', 'staff', true, false, null, 'sms_owner_shift_variance_enabled', null, false, 'Owners & managers', false),
-            self::def('owner_shift_float_mismatch', 'Owner: opening float differs from the last close', 'staff', true, false, null, 'sms_owner_shift_float_mismatch_enabled', null, false, 'Owners & managers', false),
             // Complaints — owner alert never suppressed by customer opt-out; customer ack/resolved honour opt-out.
             self::def('owner_complaint_received', 'Owner: complaint received', 'staff', true, false, 'owner_complaint_received', 'sms_owner_complaint_received_enabled', 'sms.transactional.manage', false, 'Owner phone(s)', false),
             self::def('customer_complaint_acknowledged', 'Complaint acknowledged', 'transactional', true, true, 'customer_complaint_acknowledged', 'sms_customer_complaint_acknowledged_enabled', 'sms.transactional.manage', false, 'Order / receipt customer phone', false),

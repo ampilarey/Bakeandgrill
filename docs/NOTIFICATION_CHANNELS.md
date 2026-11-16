@@ -161,6 +161,10 @@ alerts honour Rules → Telegram alerts like every other Telegram alert. One
 thing sends less: a catering customer's lifecycle and reminder emails went
 out twice (the message's own email and the copy); they go once now.
 
+> **Retired 2026-11-16.** The opening float is no longer compared with the last close and the alert
+> `owner_shift_float_mismatch` is gone (owner: "New shift opening and last shift closing has no relation": the takings
+> leave the drawer after the close count). The close's own count against the expected cash, `owner_shift_variance`, stays.
+
 ## One alert, one message per person (2026-10-10)
 
 Owner, with a screenshot: "Opening float differs from the last close"

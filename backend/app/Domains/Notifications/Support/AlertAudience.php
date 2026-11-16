@@ -112,7 +112,6 @@ final class AlertAudience
         'owner_deposit_large_topup' => self::OWNERS_MANAGERS,
         'owner_shift_left_open' => self::OWNERS_MANAGERS,
         'owner_shift_variance' => self::OWNERS_MANAGERS,
-        'owner_shift_float_mismatch' => self::OWNERS_MANAGERS,
         'owner_complaint_received' => self::OWNERS_MANAGERS,
         'owner_complaint_box_received' => self::OWNERS_MANAGERS,
         'owner_complaint_stale' => self::OWNERS_MANAGERS,

@@ -65,10 +65,13 @@ describe('ShiftsPage', () => {
     expect(screen.getByText(/POS terminal/i)).toBeTruthy();
   });
 
-  it('shows the float shortfall, lists movements and voids one with a reason (ops audit, 2026-09-25)', async () => {
+  it('lists movements and voids one with a reason, and never compares the opening cash with the last close', async () => {
     renderWithRouter(<ShiftsPage />);
-    expect(await screen.findByTestId('float-variance-1')).toHaveTextContent('Short MVR 60.00 vs last close MVR 160.00');
-    fireEvent.click(screen.getByTestId('float-variance-1')); // any cell expands the row
+    // Owner, 2026-11-16: "New shift opening and last shift closing has no relation".
+    const opening = await screen.findByText('MVR 100.00');
+    expect(screen.queryByTestId('float-variance-1')).toBeNull();
+    expect(screen.queryByText(/vs last close/)).toBeNull();
+    fireEvent.click(opening); // any cell expands the row
     const list = await screen.findByTestId('shift-movements-1');
     expect(list).toHaveTextContent('voided by Owner: Wrong till');
     fireEvent.click(screen.getByLabelText('Void movement 7'));

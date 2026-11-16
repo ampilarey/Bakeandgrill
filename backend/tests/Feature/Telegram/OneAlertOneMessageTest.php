@@ -51,14 +51,14 @@ class OneAlertOneMessageTest extends TestCase
         SiteSetting::bust();
     }
 
-    /** What the opening-float check does: one text per address the alert's audience gives. */
+    /** What the close-count check does: one text per address the alert's audience gives. */
     private function floatAlert(string $message = 'Ariya opened shift #25 on Front till with MVR 818.00.', int $shiftId = 25): void
     {
-        foreach (OwnerPhones::for('owner_shift_float_mismatch') as $to) {
+        foreach (OwnerPhones::for('owner_shift_variance') as $to) {
             app(SmsService::class)->send(new SmsMessage(
                 to: $to,
                 message: $message,
-                type: 'owner_shift_float_mismatch',
+                type: 'owner_shift_variance',
                 referenceType: 'shift',
                 referenceId: (string) $shiftId,
                 idempotencyKey: "shift-float:{$shiftId}:" . $to,
@@ -92,7 +92,7 @@ class OneAlertOneMessageTest extends TestCase
         $owner = $this->staff('owner', '+9607820288', 'Ahmed');
         $this->link($this->bot(), $owner, '5550001');
         $this->staff('staff', '+9609120011', 'Bake & Grill'); // the shop's own login, not on Telegram
-        AlertAudience::save('owner_shift_float_mismatch', ['groups' => ['role:owner', AlertAudience::GROUP_BUSINESS_PHONE]]);
+        AlertAudience::save('owner_shift_variance', ['groups' => ['role:owner', AlertAudience::GROUP_BUSINESS_PHONE]]);
 
         $this->floatAlert();
 
@@ -170,25 +170,20 @@ class OneAlertOneMessageTest extends TestCase
         $this->assertTrue($client::mayHaveArrived('cURL error 56: Recv failure: Connection reset by peer'));
     }
 
-    public function test_the_opening_float_alert_names_the_cashier_and_the_till(): void
+    /** Owner, 2026-11-16: "New shift opening and last shift closing has no relation": opening a shift tells nobody. */
+    public function test_opening_a_shift_sends_no_alert_about_the_last_close(): void
     {
         $owner = $this->staff('owner', '+9607820288', 'Ahmed');
         $this->link($this->bot(), $owner, '5550001');
         $ariya = $this->staff('staff', '+9607001002', 'Ariya');
         $device = Device::create(['name' => 'Front till', 'identifier' => 'pos-front-float', 'type' => 'pos', 'is_active' => true]);
-        Shift::create(['user_id' => $owner->id, 'device_id' => $device->id, 'opened_at' => now()->subDay(), 'closed_at' => now()->subHours(10), 'opening_cash' => 100, 'closing_cash' => 150]);
+        Shift::create(['user_id' => $owner->id, 'device_id' => $device->id, 'opened_at' => now()->subDay(), 'closed_at' => now()->subHours(10), 'opening_cash' => 100, 'closing_cash' => 738]);
 
         Sanctum::actingAs($ariya, ['staff']);
-        $res = $this->withHeader('X-Device-Identifier', $device->identifier)->postJson('/api/shifts/open', ['opening_cash' => 818])->assertCreated();
+        $this->withHeader('X-Device-Identifier', $device->identifier)->postJson('/api/shifts/open', ['opening_cash' => 300])->assertCreated();
         DeferAfterResponse::flushTestingCallbacks();
-        $id = (int) $res->json('shift.id');
 
-        $this->assertCount(1, $this->sent('5550001'));
-        $text = $this->lastText('5550001');
-        $this->assertStringContainsString("Ariya opened shift #{$id} on Front till with MVR 818.00", $text);
-        $this->assertStringContainsString('The last close on that till left MVR 150.00, so the drawer is MVR 668.00 over.', $text);
-        $this->assertStringNotContainsString('you opened', $text, 'the owner did not open it');
-        // The cashier's own warning on the till still speaks to them.
-        $this->assertStringContainsString('you opened with MVR 818.00', (string) $res->json('float_check.message'));
+        $this->assertCount(0, array_filter($this->sent('5550001'), fn ($m) => str_contains((string) ($m['text'] ?? json_encode($m)), 'last close')));
+        $this->assertSame([], $this->smsSentTo);
     }
 }

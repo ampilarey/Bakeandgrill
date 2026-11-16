@@ -110,7 +110,8 @@ describe("ShiftHistoryPanel", () => {
     expect(screen.getByTestId("shift-history-variance").textContent).toMatch(/no cash handled/);
   });
 
-  it("shows the opening float check in the detail", async () => {
+  // Owner, 2026-11-16: "New shift opening and last shift closing has no relation": an old shift's figure is not shown.
+  it("does not compare the opening cash with the last close", async () => {
     getShiftHistory.mockResolvedValue({
       shifts: [{
         id: 8, user_id: 5, device_id: 1, opened_at: "2026-09-29T04:00:00+00:00", closed_at: "2026-09-29T12:00:00+00:00",
@@ -122,8 +123,9 @@ describe("ShiftHistoryPanel", () => {
 
     render(<ShiftHistoryPanel onClose={vi.fn()} staffRole="owner" canViewAll />);
 
-    await waitFor(() => expect(screen.getByTestId("shift-history-float-check")).toBeTruthy());
-    expect(screen.getByTestId("shift-history-float-check").textContent).toMatch(/Short MVR 60\.00 against the last close on this till \(MVR 500\.00\)/);
+    await waitFor(() => expect(getShiftSummary).toHaveBeenCalled());
+    expect(screen.queryByTestId("shift-history-float-check")).toBeNull();
+    expect(screen.queryByText(/against the last close/)).toBeNull();
   });
 
   it("lets an owner force-close an open shift from the detail", async () => {
