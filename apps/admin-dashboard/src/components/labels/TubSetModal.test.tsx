@@ -8,6 +8,7 @@ vi.mock('../../api', async (orig) => ({
   ...(await orig<typeof import('../../api')>()),
   fetchLabelLayouts: vi.fn(),
   createTubSet: vi.fn(),
+  uploadLabelPicture: vi.fn(),
   printLabelJob: vi.fn(),
 }));
 vi.mock('../MediaPicker', () => ({ MediaPicker: () => null }));
@@ -62,5 +63,30 @@ describe('TubSetModal', () => {
     expect(screen.getByText('Round, 80 mm · name and photo')).toBeTruthy();
     expect(screen.getByText('100 × 50 mm · the details')).toBeTruthy();
     expect(screen.getAllByRole('button', { name: /Print/ }).length).toBe(2);
+  });
+
+  /** Owner, 2026-11-16: "no photo add and drop option". */
+  it('takes a photo dropped on the box or picked with Upload a photo, and uses it for the labels', async () => {
+    vi.mocked(api.uploadLabelPicture).mockResolvedValue({ data: { id: 77, url: '/storage/library/labels/a.png' } });
+    vi.mocked(api.createTubSet).mockResolvedValue({ data: [], expires_in_minutes: 30 } as unknown as Awaited<ReturnType<typeof api.createTubSet>>);
+    show();
+    await screen.findByTestId('tub-set-upload');
+    const png = new File(['x'], 'momo.png', { type: 'image/png' });
+
+    fireEvent.drop(screen.getByTestId('tub-set-drop'), { dataTransfer: { files: [png] } });
+    await waitFor(() => expect(api.uploadLabelPicture).toHaveBeenCalledWith(png, 'photo'));
+    await waitFor(() => expect(document.querySelector('img[src="/storage/library/labels/a.png"]')).toBeTruthy());
+
+    fireEvent.change(screen.getByTestId('tub-set-drop-file'), { target: { files: [png] } });
+    await waitFor(() => expect(api.uploadLabelPicture).toHaveBeenCalledTimes(2));
+
+    // Something that is not a picture is refused before anything is sent.
+    fireEvent.drop(screen.getByTestId('tub-set-drop'), { dataTransfer: { files: [new File(['x'], 'bill.pdf', { type: 'application/pdf' })] } });
+    expect(api.uploadLabelPicture).toHaveBeenCalledTimes(2);
+
+    fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Garlic Sauce' } });
+    fireEvent.click(screen.getByTestId('tub-set-make'));
+    await waitFor(() => expect(api.createTubSet).toHaveBeenCalledWith(expect.objectContaining({ name: 'Garlic Sauce', photo: 77 })));
+
   });
 });

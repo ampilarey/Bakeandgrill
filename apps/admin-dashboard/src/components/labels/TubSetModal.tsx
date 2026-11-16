@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ImagePlus, Printer } from 'lucide-react';
+import { ImagePlus, Printer, Upload } from 'lucide-react';
 import {
   createTubSet, fetchLabelLayouts, openLabelSheet, printLabelJob,
   type LabelPreset, type TubSetCatalogue, type TubSetRow,
@@ -8,6 +8,7 @@ import { Btn, Modal, ModalActions } from '../SharedUI';
 import { useToast } from '../ui';
 import { MediaPicker } from '../MediaPicker';
 import { SheetPreview } from './SheetPreview';
+import { PhotoDrop } from './PhotoDrop';
 
 /*
  * A tub's two labels in one go (owner, 2026-11-16: "on the top of the container
@@ -165,6 +166,8 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
 
           <div>
             <span className={labelClass}>Photo (on the lid)</span>
+            <PhotoDrop testId="tub-set-drop" onUploaded={(p) => setPhoto({ kind: 'library', id: p.id, url: p.url })}>
+              {(pick, uploading) => (
             <div className="flex flex-wrap items-center gap-3">
               <span className="w-16 h-16 rounded-full overflow-hidden border-2 border-[var(--color-primary)] bg-[var(--color-bg)] inline-flex items-center justify-center shrink-0">
                 {shownPhoto.kind === 'none'
@@ -173,11 +176,14 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
               </span>
               <div className="flex flex-wrap gap-2">
                 {picked?.has_photo && <Btn small variant={shownPhoto.kind === 'builtin' ? 'primary' : 'secondary'} onClick={() => setPhoto({ kind: 'builtin' })}>The photo that comes with it</Btn>}
+                <Btn small variant="secondary" onClick={pick} disabled={uploading} data-testid="tub-set-upload"><Upload size={14} aria-hidden /> {uploading ? 'Adding…' : 'Upload a photo'}</Btn>
                 <Btn small variant={shownPhoto.kind === 'library' ? 'primary' : 'secondary'} onClick={() => setPicking(true)}>Pick from Library</Btn>
                 <Btn small variant={shownPhoto.kind === 'none' ? 'primary' : 'secondary'} onClick={() => setPhoto({ kind: 'none' })}>No photo</Btn>
               </div>
             </div>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">With no photo the lid shows the logo.</p>
+              )}
+            </PhotoDrop>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">Drop a picture on the box, or tap Upload a photo to take it from this phone or computer. With no photo the lid shows the logo.</p>
           </div>
 
           <div>

@@ -528,7 +528,10 @@ side label is an ordinary rectangular label. Both print the name without "(Lid)"
 and side labels (`TubSetModal`, beside Pouch labels in every size on the wizard's Something else and Custom labels;
 `POST /labels/tub-set`, `labels.manage`) makes the two with a saved label each, from the form's words over a built-in
 template's (`TubSet::templates()`: a `BUILTIN` row with a `product` that is not a pouch or a wrap); the editor's Lid or
-side of a tub fold sets the part on any custom label. A new part of a tub is a row in `TubSet::PARTS`. A menu
+side of a tub fold sets the part on any custom label. A new part of a tub is a row in `TubSet::PARTS`. Both
+set forms take a photo dropped on the box or picked with Upload a photo (owner, 2026-11-16: "no photo add and drop
+option"; `PhotoDrop.tsx`, `POST /labels/pictures`): the server keeps a label picture as a PNG or WebP of at most 4 MB,
+so a phone's JPEG or a bigger file is redrawn in the browser first (`labelPictureFile()`, 1600 px, WebP else PNG). A menu
 item has no part of its own (owner, 2026-11-16: "Need it in menu items also"): the print says which, `part` on the
 sticker request (kept by the saved label, the sheet link and `Reprint::KEYS`; it wins over a custom label's own), picked
 under Which label in `PrintLabelModal` (items only: The usual label, Lid, Side), which moves the size to a round one for

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ImagePlus, Plus, Printer, Trash2 } from 'lucide-react';
+import { ImagePlus, Plus, Printer, Trash2, Upload } from 'lucide-react';
 import {
   createPouchSet, fetchLabelLayouts, openLabelSheet, printLabelJob,
   type LabelPreset, type PouchCatalogue, type PouchSetCatalogue, type PouchSetRow, type PouchSetSize,
@@ -8,6 +8,7 @@ import { Btn, Modal, ModalActions } from '../SharedUI';
 import { useToast } from '../ui';
 import { MediaPicker } from '../MediaPicker';
 import { SheetPreview } from './SheetPreview';
+import { PhotoDrop } from './PhotoDrop';
 import { POUCH_FALLBACK, pouchFits } from './PouchPicker';
 
 /*
@@ -174,6 +175,8 @@ export function PouchSetModal({ onClose, onMade }: { onClose: () => void; onMade
 
           <div>
             <span className={labelClass}>Photo</span>
+            <PhotoDrop testId="pouch-set-drop" onUploaded={(p) => setPhoto({ kind: 'library', id: p.id, url: p.url })}>
+              {(pick, uploading) => (
             <div className="flex flex-wrap items-center gap-3">
               <span className="w-16 h-16 rounded-full overflow-hidden border-2 border-[var(--color-primary)] bg-[var(--color-bg)] inline-flex items-center justify-center shrink-0">
                 {shownPhoto.kind === 'none'
@@ -182,11 +185,14 @@ export function PouchSetModal({ onClose, onMade }: { onClose: () => void; onMade
               </span>
               <div className="flex flex-wrap gap-2">
                 {hasBuiltin && <Btn small variant={shownPhoto.kind === 'builtin' ? 'primary' : 'secondary'} onClick={() => setPhoto({ kind: 'builtin' })}>The momo photo</Btn>}
+                <Btn small variant="secondary" onClick={pick} disabled={uploading} data-testid="pouch-set-upload"><Upload size={14} aria-hidden /> {uploading ? 'Adding…' : 'Upload a photo'}</Btn>
                 <Btn small variant={shownPhoto.kind === 'library' ? 'primary' : 'secondary'} onClick={() => setPicking(true)}>Pick from Library</Btn>
                 <Btn small variant={shownPhoto.kind === 'none' ? 'primary' : 'secondary'} onClick={() => setPhoto({ kind: 'none' })}>No photo</Btn>
               </div>
             </div>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">The same photo goes on every size, in a circle. The size word prints as "Small Pack", so nobody reads it as small momo.</p>
+              )}
+            </PhotoDrop>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">Drop a picture on the box, or tap Upload a photo. The same photo goes on every size, in a circle. The size word prints as "Small Pack", so nobody reads it as small momo.</p>
           </div>
 
           <div>
