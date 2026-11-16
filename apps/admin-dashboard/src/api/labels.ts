@@ -136,6 +136,9 @@ export type TubSetRow = PouchSetRow & { part: 'lid' | 'side' };
 export type TubSetBody = {
   name: string; template?: string | null; photo?: 'builtin' | number | null; on?: 'sheet' | 'printer'; lid: string; side: string;
   label_ingredients?: string | null; label_allergens?: string | null; label_shelf_life_days?: number | null;
+  /** The rest of a custom label's boxes (2026-11-16). The barcode goes on the lid, for the shop's till. */
+  name_dv?: string | null; label_barcode?: string | null; label_heading?: string | null; label_storage?: string | null;
+  label_how_to_use?: string | null; label_note?: string | null; label_ingredients_dv?: string | null; label_lang?: string | null; brand_id?: number | null;
   label_pack_qty?: number | null; label_net_weight?: string | null; label_price?: number | null;
 };
 export type WrapCatalogue = {

@@ -137,4 +137,25 @@ class TubSetTest extends TestCase
         // A pair needs a round lid.
         $this->postJson('/api/labels/stickers/url', ['layout' => 'a4-custom', 'w' => 80, 'h' => 80] + $body)->assertStatus(422);
     }
+
+    /** Owner, 2026-11-16: "on the lid, price and item barcode for shops to use, and in the side label other qr codes, ingredients". */
+    public function test_the_lid_carries_the_price_and_the_barcode_and_the_side_the_rest(): void
+    {
+        $made = $this->make(['label_barcode' => '2000000123455', 'label_price' => 45, 'label_note' => 'Made in a kitchen that handles nuts.', 'name_dv' => 'ޖޯލް މޯމޯ', 'label_lang' => 'en']);
+        $this->assertSame('2000000123455', $made[0]['label']['label_barcode']);
+        $this->assertNull($made[1]['label']['label_barcode'], 'the barcode is the lid\'s');
+        $this->assertSame('Made in a kitchen that handles nuts.', $made[1]['label']['label_note']);
+
+        $lid = (string) $this->get($made[0]['view_url'])->assertOk()->getContent();
+        $this->assertStringContainsString('2 000000 123455', $lid, 'the digits under the bars');
+        $this->assertStringContainsString('MVR 45.00', $lid);
+        $summary = $this->postJson('/api/labels/stickers/url', $made[0]['request'] + ['preview' => true])->assertOk()->json('summary');
+        $this->assertSame([], $summary['dropped'] ?? []);
+
+        // A lid too small for bars that scan leaves the barcode off and says so.
+        $small = $this->postJson('/api/labels/stickers/url', ['layout' => 'single-round-custom', 'w' => 50, 'h' => 50, 'preview' => true] + $made[0]['request'])->assertOk()->json('summary');
+        $this->assertContains('Barcode', $small['dropped']);
+
+        $this->postJson('/api/labels/tub-set', ['name' => 'X', 'lid' => 'c80', 'side' => 'r100x50', 'label_barcode' => '123'])->assertStatus(422)->assertJsonValidationErrors('label_barcode');
+    }
 }

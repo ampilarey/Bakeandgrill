@@ -9,9 +9,11 @@ vi.mock('../../api', async (orig) => ({
   fetchLabelLayouts: vi.fn(),
   createTubSet: vi.fn(),
   uploadLabelPicture: vi.fn(),
+  fetchLabelBrands: vi.fn(),
   printLabelJob: vi.fn(),
 }));
 vi.mock('../MediaPicker', () => ({ MediaPicker: () => null }));
+vi.mock('./CustomLabels', () => ({ CustomLabelModal: ({ label }: { label: { name: string } }) => <div data-testid="full-editor">{label.name}</div> }));
 vi.mock('./SheetPreview', () => ({ SheetPreview: ({ title }: { title: string }) => <div data-testid="preview">{title}</div> }));
 
 const preset = (id: string, shape: string, w: number, h: number) => ({ id, shape, w, h, name: shape === 'circle' ? `${w} mm round` : `${w} × ${h} mm`, cm: '', design: 'small', options: [] });
@@ -25,6 +27,7 @@ beforeEach(() => {
     tub_set: { lid: 'c80', side: 'r100x50', templates: [{ id: 'jhol-momo-round', name: 'Frozen Jhol Momo (round)', product: 'Frozen Jhol Momo', has_photo: true, photo_url: '/brand/photos/momo/momo-plate.png', fields: { label_ingredients: 'Wheat flour, chicken.', label_allergens: 'Wheat, Sesame', label_shelf_life_days: 30, label_pack_qty: 8 } }] },
   } as unknown as Awaited<ReturnType<typeof api.fetchLabelLayouts>>);
   vi.mocked(api.createTubSet).mockReset();
+  vi.mocked(api.fetchLabelBrands).mockResolvedValue({ data: [] });
 });
 
 describe('TubSetModal', () => {
@@ -88,5 +91,30 @@ describe('TubSetModal', () => {
     fireEvent.click(screen.getByTestId('tub-set-make'));
     await waitFor(() => expect(api.createTubSet).toHaveBeenCalledWith(expect.objectContaining({ name: 'Garlic Sauce', photo: 77 })));
 
+  });
+
+  /** Owner, 2026-11-16: "on the lid, price and item barcode for shops to use"; the form had "very few" options. */
+  it('takes a barcode and the rest of the details, and opens the full editor on a made label', async () => {
+    const row = (part: string, id: number, w: number, h: number) => ({ part, label: { id, name: `Garlic Sauce (${part === 'lid' ? 'Lid' : 'Side'})` }, job: { id: id + 100, name: part }, preset: 'p', w, h, one_url: '/one', view_url: '/v', pdf_url: '/p' });
+    vi.mocked(api.createTubSet).mockResolvedValue({ data: [row('lid', 1, 80, 80), row('side', 2, 100, 50)], expires_in_minutes: 30 } as unknown as Awaited<ReturnType<typeof api.createTubSet>>);
+    show();
+    await screen.findByTestId('tub-set-barcode');
+    fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Garlic Sauce' } });
+
+    fireEvent.click(screen.getByTestId('tub-set-make-barcode'));
+    const code = (screen.getByTestId('tub-set-barcode') as HTMLInputElement).value;
+    expect(code).toMatch(/^2\d{11}$/);
+    fireEvent.change(screen.getByLabelText('Name in Dhivehi'), { target: { value: 'ލޮނުމެދު ސޯސް' } });
+    fireEvent.change(screen.getByLabelText('Storage'), { target: { value: 'chilled' } });
+    fireEvent.change(screen.getByLabelText('Note (on the side)'), { target: { value: 'Shake before use.' } });
+    fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'both' } });
+    fireEvent.click(screen.getByTestId('tub-set-make'));
+
+    await screen.findByTestId('tub-set-made');
+    expect(api.createTubSet).toHaveBeenCalledWith(expect.objectContaining({
+      label_barcode: code, name_dv: 'ލޮނުމެދު ސޯސް', label_storage: 'chilled', label_note: 'Shake before use.', label_lang: 'both',
+    }));
+    fireEvent.click(screen.getByTestId('tub-set-edit-lid'));
+    expect(screen.getByTestId('full-editor').textContent).toBe('Garlic Sauce (Lid)');
   });
 });

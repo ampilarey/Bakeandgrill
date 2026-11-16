@@ -531,7 +531,12 @@ side label is an ordinary rectangular label. Both print the name without "(Lid)"
 and side labels (`TubSetModal`, beside Pouch labels in every size on the wizard's Something else and Custom labels;
 `POST /labels/tub-set`, `labels.manage`) makes the two with a saved label each, from the form's words over a built-in
 template's (`TubSet::templates()`: a `BUILTIN` row with a `product` that is not a pouch or a wrap); the editor's Lid or
-side of a tub fold sets the part on any custom label. A new part of a tub is a row in `TubSet::PARTS`. Both
+side of a tub fold sets the part on any custom label. A new part of a tub is a row in `TubSet::PARTS`. The
+lid is what a shop scans (owner, 2026-11-16: "on the lid, price and item barcode for shops to use, and in the side label
+other qr codes, ingredients"): `lid()` draws the label's barcode with its digits over the foot, in the heading's place,
+on a lid of 70 mm or more (smaller, `dropped()` says Barcode), and the set keeps `label_barcode` on the lid label only.
+The form takes the barcode (Make one) and, under More details, the Dhivehi name, heading, storage, language, brand, how
+to use, note and Dhivehi ingredients; Edit on a made label opens the full `CustomLabelModal` for everything else. Both
 set forms take a photo dropped on the box or picked with Upload a photo (owner, 2026-11-16: "no photo add and drop
 option"; `PhotoDrop.tsx`, `POST /labels/pictures`): the server keeps a label picture as a PNG or WebP of at most 4 MB,
 so a phone's JPEG or a bigger file is redrawn in the browser first (`labelPictureFile()`, 1600 px, WebP else PNG). A menu

@@ -1289,9 +1289,16 @@ final class StickerDesign
 
         // The picture: the photo in a ring, else the label's own mark, else the brand's logo.
         // It takes the room the lines under it leave.
+        // The item's barcode for the shop's till (owner, 2026-11-16: "on the lid, price and item barcode for shops
+        // to use"), over the foot, on a lid wide enough for bars that scan. It takes the heading's line.
+        $bar = !empty($d['barcode']) && 19.0 * $k >= 26.0;
+        if ($bar) {
+            $subs = array_slice($pack !== '' ? [[$pack, 'qty']] : $subs, 0, 1);
+        }
+        $barH = $bar ? 7.4 * $k : 0.0;
         $rows = ($both ? 2 : 1) + count($subs);
         $top = 8.8 * $k;
-        $bottom = (40.0 - 3.3 * $rows - 1.4) * $k;
+        $bottom = (40.0 - 3.3 * $rows - 1.4) * $k - $barH;
         $side = $bottom - $top;
         $cx = $D / 2;
         if ($d['photo']) {
@@ -1333,6 +1340,14 @@ final class StickerDesign
                 [$pt, $t] = LabelText::fitted($line, $dv ? 'dv' : 'j7', $w, ($dv ? 6.2 : 4.8) * $f, 3.2);
                 $p[] = $text($y, $w, $dv ? 'dv' : 'j7', $pt, self::TEXT, $t, $dv ? 0.5 : 0.0);
             }
+        }
+        if ($bar) {
+            $bw = 19.0 * $k;
+            $bars = 4.6 * $k;
+            $by = 39.6 * $k - $barH + 0.6 * $k;
+            $p[] = LabelSpots::open('barcode');
+            $p[] = ['t' => 'img', 'x' => ($D - $bw) / 2, 'y' => $by, 'w' => $bw, 'h' => $bars, 'src' => $d['barcode']];
+            $p[] = ['t' => 'text', 'x' => ($D - $bw) / 2, 'base' => $by + $bars + 1.5 * $k, 'w' => $bw, 'align' => 'c', 'font' => 'j5', 'pt' => 3.6 * $f, 'color' => self::TEXT, 'text' => (string) ($d['barcode_text'] ?? '')];
         }
         array_push($p, ...self::roundFoot($d, $dv, $D));
         $p[] = LabelSpots::close();

@@ -1321,6 +1321,17 @@ class LabelsController extends Controller
             'on' => ['sometimes', Rule::in(['sheet', 'printer'])],
             'lid' => ['required', Rule::in(array_keys($presets))],
             'side' => ['required', Rule::in(array_keys($presets))],
+            // The rest of a custom label's own boxes (owner, 2026-11-16: the form had "very few"): the same rules as the editor's.
+            'label_barcode' => 'sometimes|nullable|string|max:20',
+            'label_heading_dv' => 'sometimes|nullable|string|max:60',
+            'label_ingredients_dv' => 'sometimes|nullable|string|max:500',
+            'label_how_to_use_dv' => 'sometimes|nullable|string|max:200',
+            'label_note' => 'sometimes|nullable|string|max:120',
+            'label_note_dv' => 'sometimes|nullable|string|max:120',
+            'label_pack_unit' => 'sometimes|nullable|string|max:10',
+            'label_lang' => ['sometimes', 'nullable', Rule::in(StickerSheet::LANGS)],
+            'brand_id' => 'sometimes|nullable|integer|exists:label_brands,id',
+            'footer_id' => 'sometimes|nullable|integer|exists:label_footers,id',
             'label_storage' => ['sometimes', 'nullable', Rule::in(LabelSettings::STORAGES)],
             'label_heading' => 'sometimes|nullable|string|max:60',
             'label_ingredients' => 'sometimes|nullable|string|max:500',
@@ -1331,6 +1342,9 @@ class LabelsController extends Controller
             'label_net_weight' => 'sometimes|nullable|string|max:20',
             'label_price' => 'sometimes|nullable|numeric|min:0|max:99999999',
         ]);
+        if (($bad = $this->barcodeProblem($data)) !== null) {
+            return $bad;
+        }
         if ($presets[$data['lid']]['shape'] !== 'circle') {
             return response()->json(['message' => 'Pick a round size for the lid.', 'errors' => ['lid' => ['Pick a round size, such as 80 mm.']]], 422);
         }

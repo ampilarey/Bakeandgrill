@@ -933,6 +933,10 @@ final class StickerSheet
                     $out[] = 'Part of the ingredients';
                 }
             }
+            // A lid too small for bars that scan leaves the barcode off, and says so.
+            if ($lid && !empty($data['barcode']) && !isset($spots['barcode'])) {
+                $out[] = 'Barcode';
+            }
             if (!empty($data['photo']) && !isset($spots['photo']) && $part !== 'side') {
                 $out[] = 'Photo';
             }

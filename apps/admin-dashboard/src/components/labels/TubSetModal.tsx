@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
-import { ImagePlus, Printer, Upload } from 'lucide-react';
+import { ImagePlus, Pencil, Printer, Upload } from 'lucide-react';
 import {
-  createTubSet, fetchLabelLayouts, openLabelSheet, printLabelJob,
-  type LabelPreset, type TubSetCatalogue, type TubSetRow,
+  createTubSet, fetchLabelBrands, fetchLabelLayouts, openLabelSheet, printLabelJob,
+  type LabelBrand, type LabelPreset, type TubSetCatalogue, type TubSetRow,
 } from '../../api';
 import { Btn, Modal, ModalActions } from '../SharedUI';
 import { useToast } from '../ui';
 import { MediaPicker } from '../MediaPicker';
 import { SheetPreview } from './SheetPreview';
 import { PhotoDrop } from './PhotoDrop';
+import { CustomLabelModal } from './CustomLabels';
+import { inHouseBarcode } from './labelDrafts';
 
 /*
  * A tub's two labels in one go (owner, 2026-11-16: "on the top of the container
@@ -41,6 +43,19 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
   const [qty, setQty] = useState('');
   const [weight, setWeight] = useState('');
   const [price, setPrice] = useState('');
+  // The rest of a label's own boxes (owner, 2026-11-16: the form had "very few"), behind More details.
+  const [barcode, setBarcode] = useState('');
+  const [nameDv, setNameDv] = useState('');
+  const [heading, setHeading] = useState('');
+  const [storage, setStorage] = useState('');
+  const [howTo, setHowTo] = useState('');
+  const [note, setNote] = useState('');
+  const [ingredientsDv, setIngredientsDv] = useState('');
+  const [lang, setLang] = useState('');
+  const [brandId, setBrandId] = useState('');
+  const [brands, setBrands] = useState<LabelBrand[]>([]);
+  const [editing, setEditing] = useState<TubSetRow | null>(null);
+  const [rev, setRev] = useState(0);
   const [lid, setLid] = useState(SET_FALLBACK.lid);
   const [side, setSide] = useState(SET_FALLBACK.side);
   const [photo, setPhoto] = useState<Photo>({ kind: 'none' });
@@ -55,6 +70,7 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
       setPresets(r.presets);
       if (r.tub_set) { setSet(r.tub_set); setLid(r.tub_set.lid); setSide(r.tub_set.side); }
     }).catch(() => undefined);
+    fetchLabelBrands().then((r) => setBrands(r.data)).catch(() => undefined);
   }, []);
 
   const picked = set.templates.find((t) => t.id === template);
@@ -69,6 +85,10 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
     setDays(text(t.fields.label_shelf_life_days));
     setQty(text(t.fields.label_pack_qty));
     setWeight(text(t.fields.label_net_weight));
+    setHeading(text(t.fields.label_heading));
+    setStorage(text(t.fields.label_storage));
+    setHowTo(text(t.fields.label_how_to_use));
+    setNote(text(t.fields.label_note));
     if (t.has_photo) setPhoto({ kind: 'builtin' });
   };
 
@@ -90,6 +110,9 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
         label_ingredients: ingredients.trim() || null, label_allergens: allergens.trim() || null,
         label_shelf_life_days: days ? Number(days) : null, label_pack_qty: qty ? Number(qty) : null,
         label_net_weight: weight.trim() || null, label_price: price !== '' ? Number(price) : null,
+        label_barcode: barcode.trim() || null, name_dv: nameDv.trim() || null, label_heading: heading.trim() || null,
+        label_storage: storage || null, label_how_to_use: howTo.trim() || null, label_note: note.trim() || null,
+        label_ingredients_dv: ingredientsDv.trim() || null, label_lang: lang || null, brand_id: brandId ? Number(brandId) : null,
       });
       setMade(r.data);
       onMade?.(r.data);
@@ -119,16 +142,17 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
   if (made) {
     return (
       <Modal title="Your lid and side labels" onClose={onClose} maxWidth={760}>
-        <p className="text-sm text-[var(--color-text-secondary)] mb-3">Two labels, each in My labels. Print there to set the dates on the side label; the lid has none. Edit changes the wording of either.</p>
+        <p className="text-sm text-[var(--color-text-secondary)] mb-3">Two labels, each in My labels. Edit opens every option of that label: brand, bottom strip, badges, Dhivehi wording and the rest. Print from My labels to set the dates on the side label; the lid has none.</p>
         <ul className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))' }} data-testid="tub-set-made">
           {made.map((row) => (
             <li key={row.job.id} className="rounded-xl border border-[var(--color-border)] p-3 min-w-0">
-              <SheetPreview url={row.one_url} ratio={row.w / row.h} title={`${row.label.name} preview`} />
+              <SheetPreview key={`${row.job.id}-${rev}`} url={row.one_url} ratio={row.w / row.h} title={`${row.label.name} preview`} />
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-[var(--color-text)] truncate">{row.label.name}</p>
                   <p className="text-xs text-[var(--color-text-muted)]">{row.part === 'lid' ? `Round, ${row.w} mm · name and photo` : `${row.w} × ${row.h} mm · the details`}</p>
                 </div>
+                <Btn small variant="secondary" onClick={() => setEditing(row)} data-testid={`tub-set-edit-${row.part}`}><Pencil size={14} aria-hidden /> Edit</Btn>
                 <Btn small onClick={() => void print(row)} disabled={printing !== null}><Printer size={14} aria-hidden /> {printing === row.job.id ? 'Opening…' : 'Print'}</Btn>
               </div>
             </li>
@@ -138,6 +162,13 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
           <Btn variant="secondary" onClick={() => setMade(null)}>Make another</Btn>
           <Btn onClick={onClose}>Done</Btn>
         </ModalActions>
+        {editing && (
+          <CustomLabelModal
+            label={editing.label}
+            onClose={() => setEditing(null)}
+            onSaved={(c) => { setMade((list) => (list ?? []).map((x) => (x.label.id === c.id ? { ...x, label: c } : x))); setRev((n) => n + 1); }}
+          />
+        )}
       </Modal>
     );
   }
@@ -214,6 +245,70 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
             </div>
           </div>
 
+          <div>
+            <label className={labelClass} htmlFor="ts-barcode">Barcode (on the lid, for the shop's till)</label>
+            <div className="flex flex-wrap gap-2">
+              <input id="ts-barcode" value={barcode} maxLength={20} inputMode="numeric" onChange={(e) => setBarcode(e.target.value)} className={`${fieldClass} flex-1 min-w-[160px]`} placeholder="12 or 13 digits, or 8" data-testid="tub-set-barcode" />
+              <Btn small variant="secondary" onClick={() => setBarcode(inHouseBarcode())} data-testid="tub-set-make-barcode">Make one</Btn>
+            </div>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">The lid prints the price and this barcode under the name. The side label keeps the ingredients, the dates and the QR codes. A lid under 70 mm is too small for a barcode that scans.</p>
+          </div>
+
+          <details className="rounded-xl border border-[var(--color-border)] p-3" data-testid="tub-set-more">
+            <summary className="text-sm font-semibold text-[var(--color-text)] cursor-pointer">More details</summary>
+            <div className="grid gap-3 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>
+              <div>
+                <label className={labelClass} htmlFor="ts-name-dv">Name in Dhivehi</label>
+                <input id="ts-name-dv" dir="rtl" value={nameDv} maxLength={80} onChange={(e) => setNameDv(e.target.value)} className={fieldClass} />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="ts-heading">Heading (the line under the name on the lid)</label>
+                <input id="ts-heading" value={heading} maxLength={40} onChange={(e) => setHeading(e.target.value.toUpperCase())} className={fieldClass} placeholder="MOMO IN SPICY JHOL" />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="ts-storage">Storage</label>
+                <select id="ts-storage" value={storage} onChange={(e) => setStorage(e.target.value)} className={fieldClass}>
+                  <option value="">Frozen (usual)</option>
+                  <option value="frozen">Frozen</option>
+                  <option value="chilled">Chilled</option>
+                  <option value="ambient">Room temperature</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="ts-lang">Language</label>
+                <select id="ts-lang" value={lang} onChange={(e) => setLang(e.target.value)} className={fieldClass}>
+                  <option value="">English</option>
+                  <option value="dv">Dhivehi</option>
+                  <option value="both">Both</option>
+                </select>
+              </div>
+              {brands.length > 0 && (
+                <div>
+                  <label className={labelClass} htmlFor="ts-brand">Brand</label>
+                  <select id="ts-brand" value={brandId} onChange={(e) => setBrandId(e.target.value)} className={fieldClass}>
+                    <option value="">The usual brand</option>
+                    {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+            <div className="grid gap-3 mt-3">
+              <div>
+                <label className={labelClass} htmlFor="ts-how">How to use (on the side)</label>
+                <textarea id="ts-how" rows={2} maxLength={200} value={howTo} onChange={(e) => setHowTo(e.target.value)} className={areaClass} />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="ts-note">Note (on the side)</label>
+                <input id="ts-note" value={note} maxLength={120} onChange={(e) => setNote(e.target.value)} className={fieldClass} placeholder="Contains wheat and sesame." />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="ts-ing-dv">Ingredients in Dhivehi</label>
+                <textarea id="ts-ing-dv" dir="rtl" rows={2} maxLength={500} value={ingredientsDv} onChange={(e) => setIngredientsDv(e.target.value)} className={areaClass} />
+              </div>
+            </div>
+            <p className="text-xs text-[var(--color-text-muted)] mt-2">Anything not here (badges, the bottom strip, nutrition, moving parts by hand) is under Edit on each label once the two are made.</p>
+          </details>
+
           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))' }}>
             <div>
               <label className={labelClass} htmlFor="ts-lid">Lid label (round)</label>
@@ -235,7 +330,7 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
               </select>
             </div>
           </div>
-          <p className="text-xs text-[var(--color-text-muted)]">Measure the lid and the flat part of the side first. Storage, how to use and the rest are changed afterwards with Edit on each label.</p>
+          <p className="text-xs text-[var(--color-text-muted)]">Measure the lid and the flat part of the side first.</p>
         </div>
         <ModalActions>
           <Btn variant="secondary" onClick={onClose}>Close</Btn>
