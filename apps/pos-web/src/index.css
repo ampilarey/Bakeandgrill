@@ -2473,6 +2473,14 @@ html, body, #root {
   color: #E2E8F0;
 }
 
+/* The mismatch pop-up is white at every width: the dark rail's light-on-clear
+ * button vanished there (owner, 2026-11-16: "Count again is invisible"). */
+.close-shift-review .close-shift-btn--secondary {
+  background: #fff;
+  border-color: #CBD5E1;
+  color: #334155;
+}
+
 /* Two-column cells WITH − / + steppers.
  * The footer keypad is gone on phones: counting is increments here, and
  * typing a number is what "Enter total instead" is for.
