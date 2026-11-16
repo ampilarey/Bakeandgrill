@@ -140,7 +140,7 @@ class NotificationChannelsTest extends TestCase
         $this->assertSame([], $this->sent('5550001'));
         $this->assertSame(['+9607820288'], $this->smsSentTo);
 
-        $this->ownerAlert('owner_shift_variance', 'Shift #4 closed MVR 50.00 short.');
+        $this->ownerAlert('owner_shift_closed', 'Shift #4 closed MVR 50.00 short.');
         $this->assertStringContainsString('MVR 50.00 short', $this->lastText('5550001'));
     }
 

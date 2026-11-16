@@ -163,14 +163,15 @@ out twice (the message's own email and the copy); they go once now.
 
 > **Retired 2026-11-16.** The opening float is no longer compared with the last close and the alert
 > `owner_shift_float_mismatch` is gone (owner: "New shift opening and last shift closing has no relation": the takings
-> leave the drawer after the close count). The close's own count against the expected cash, `owner_shift_variance`, stays.
+> leave the drawer after the close count). 
 
 > **Shift opened and closed (2026-11-16).** Owner: "I need an notification so that i know when the shift is opened and
 > closed". `owner_shift_opened` (who, which till, when, the float) and `owner_shift_closed` (who, which till, when, how
 > long open, orders, sales, cash counted against expected and short / over), rows in Notifications → Messages with their
 > SMS, Email and Telegram switches, audience owners and managers, sent by `TellOwnersShiftOpenedListener` and
-> `TellOwnersShiftClosedListener`. The person who opened or closed the shift is not told. One close is one message: whoever
-> gets `owner_shift_variance` for that close does not also get `owner_shift_closed`. A forced close sends neither.
+> `TellOwnersShiftClosedListener`. The person who opened or closed the shift is not told. The cash-variance alert
+> `owner_shift_variance` is retired with it (owner: "no need the previous cash difference alert"): every close says
+> Cash MATCHES or SHORT / OVER by how much. A forced close sends neither.
 
 ## One alert, one message per person (2026-10-10)
 

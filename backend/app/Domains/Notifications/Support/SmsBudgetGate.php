@@ -69,8 +69,8 @@ final class SmsBudgetGate
     }
 
     /**
-     * @param  array{segments: int}  $estimate
-     * @return string|null  Block reason, or null when the send may proceed
+     * @param array{segments: int} $estimate
+     * @return string|null Block reason, or null when the send may proceed
      */
     public static function blockReason(array $estimate, ?int $campaignId, bool $alwaysOn): ?string
     {

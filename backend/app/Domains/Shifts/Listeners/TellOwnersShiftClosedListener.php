@@ -8,7 +8,6 @@ use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\AlertAudience;
 use App\Domains\Notifications\Support\AlertSwitch;
-use App\Domains\Operations\Services\OpsAlertsService;
 use App\Domains\Shifts\Events\ShiftClosed;
 use App\Models\Shift;
 use App\Support\OwnerPhones;
@@ -16,14 +15,14 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Owner, 2026-11-16: "I need an notification so that i know when the shift is opened and closed". Who closed which
- * till, when, how long it was open, the orders and sales, and the cash counted against what should be there. One
- * close is one message: whoever gets the cash-variance alert for this close is left to that one.
+ * till, when, how long it was open, the orders and sales, and the cash counted against what should be there. It
+ * replaced the cash-variance alert (retired 2026-11-16), so the cash check is in it, matching or not.
  */
 class TellOwnersShiftClosedListener
 {
     public const TYPE = 'owner_shift_closed';
 
-    public function __construct(private readonly SmsService $sms, private readonly OpsAlertsService $ops) {}
+    public function __construct(private readonly SmsService $sms) {}
 
     public function handle(ShiftClosed $event): void
     {
@@ -61,16 +60,8 @@ class TellOwnersShiftClosedListener
             number_format($d->totalRevenue, 2),
         );
 
-        // The variance alert already tells its people about this close.
-        $threshold = (float) ($this->ops->settings()['shift_variance_alert_mvr'] ?? 0);
-        $varianceSent = $threshold > 0 && abs($d->variance) >= $threshold && AlertSwitch::isOn('owner_shift_variance');
-        $told = $varianceSent ? OwnerPhones::for('owner_shift_variance')->map(fn ($a) => AlertAudience::addressKey((string) $a))->all() : [];
-
         try {
             foreach (ShiftAlertPeople::except(OwnerPhones::for(self::TYPE), $d->userId) as $to) {
-                if (in_array(AlertAudience::addressKey($to), $told, true)) {
-                    continue;
-                }
                 $this->sms->send(new SmsMessage(
                     to: $to,
                     message: $body,

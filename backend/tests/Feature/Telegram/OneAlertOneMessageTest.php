@@ -54,11 +54,11 @@ class OneAlertOneMessageTest extends TestCase
     /** What the close-count check does: one text per address the alert's audience gives. */
     private function floatAlert(string $message = 'Ariya opened shift #25 on Front till with MVR 818.00.', int $shiftId = 25): void
     {
-        foreach (OwnerPhones::for('owner_shift_variance') as $to) {
+        foreach (OwnerPhones::for('owner_shift_closed') as $to) {
             app(SmsService::class)->send(new SmsMessage(
                 to: $to,
                 message: $message,
-                type: 'owner_shift_variance',
+                type: 'owner_shift_closed',
                 referenceType: 'shift',
                 referenceId: (string) $shiftId,
                 idempotencyKey: "shift-float:{$shiftId}:" . $to,
@@ -92,7 +92,7 @@ class OneAlertOneMessageTest extends TestCase
         $owner = $this->staff('owner', '+9607820288', 'Ahmed');
         $this->link($this->bot(), $owner, '5550001');
         $this->staff('staff', '+9609120011', 'Bake & Grill'); // the shop's own login, not on Telegram
-        AlertAudience::save('owner_shift_variance', ['groups' => ['role:owner', AlertAudience::GROUP_BUSINESS_PHONE]]);
+        AlertAudience::save('owner_shift_closed', ['groups' => ['role:owner', AlertAudience::GROUP_BUSINESS_PHONE]]);
 
         $this->floatAlert();
 

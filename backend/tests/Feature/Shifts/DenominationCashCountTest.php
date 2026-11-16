@@ -201,7 +201,7 @@ class DenominationCashCountTest extends TestCase
         ])->assertOk();
 
         Sanctum::actingAs($owner, ['staff']);
-        $this->getJson('/api/reports/finance/daily-summary?date='.now()->toDateString())
+        $this->getJson('/api/reports/finance/daily-summary?date=' . now()->toDateString())
             ->assertOk()
             ->assertJsonPath('foreign_currency_held.0.currency', 'USD')
             ->assertJsonPath('foreign_currency_held.0.shift_id', $this->shift->id)
