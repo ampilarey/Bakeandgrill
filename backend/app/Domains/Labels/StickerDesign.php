@@ -1187,7 +1187,7 @@ final class StickerDesign
      * @param array<string, mixed> $d
      * @return list<array<string, mixed>>
      */
-    private static function roundFoot(array $d, bool $dv, float $D): array
+    private static function roundFoot(array $d, bool $dv, float $D, bool $lid = false): array
     {
         $p = [];
         $r = $D / 2;
@@ -1203,8 +1203,10 @@ final class StickerDesign
         $sf = $dv ? 'dv' : 'j7';
         // A footer's own tagline takes the website's place.
         [$site, $siteFont] = self::ownFooter($d, $dv) ?? [$ft['website'], 'j7'];
-        $footFor = function (float $w, float $pt = 3.6) use ($ft, $site, $siteFont): string {
-            $foot = $ft['name'] . '  ·  ' . $ft['phone'] . '  ·  ' . $site;
+        // A lid's cap already names the business, and the side label has the whole storage line: its foot keeps the
+        // first clause and the phone and website, at a size that reads (owner, 2026-11-16: the words were too small).
+        $footFor = function (float $w, float $pt = 3.6) use ($ft, $site, $siteFont, $lid): string {
+            $foot = ($lid ? '' : $ft['name'] . '  ·  ') . $ft['phone'] . '  ·  ' . $site;
             if (LabelText::widthMm($foot, $pt, $siteFont) > $w) {
                 $foot = $ft['phone'] . '  ·  ' . $site;
             }
@@ -1213,8 +1215,8 @@ final class StickerDesign
         };
         // A small circle keeps the first clause of a long storage line ("KEEP
         // FROZEN AT -18°C OR BELOW") rather than shrinking it past reading.
-        $short = function (float $w) use ($msg, $sf): string {
-            return LabelText::widthMm($msg, 3.4, $sf) > $w && preg_match('/^(.+?)\s+[•·]\s+/u', $msg, $m) ? trim($m[1]) : $msg;
+        $short = function (float $w) use ($msg, $sf, $lid): string {
+            return ($lid || LabelText::widthMm($msg, 3.4, $sf) > $w) && preg_match('/^(.+?)\s+[•·]\s+/u', $msg, $m) ? trim($m[1]) : $msg;
         };
         if ($pal['band'] === null) {
             $p[] = LabelSpots::open('storage');
@@ -1355,7 +1357,7 @@ final class StickerDesign
             $p[] = ['t' => 'img', 'x' => ($D - $bw) / 2, 'y' => $by, 'w' => $bw, 'h' => $bars, 'src' => $d['barcode']];
             $p[] = ['t' => 'text', 'x' => ($D - $bw) / 2, 'base' => $by + $bars + 1.4 * $k, 'w' => $bw, 'align' => 'c', 'font' => 'j5', 'pt' => 3.6 * $f, 'color' => self::TEXT, 'text' => (string) ($d['barcode_text'] ?? '')];
         }
-        array_push($p, ...self::roundFoot($d, $dv, $D));
+        array_push($p, ...self::roundFoot($d, $dv, $D, lid: true));
         $p[] = LabelSpots::close();
 
         return $p;

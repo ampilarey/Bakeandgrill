@@ -559,7 +559,12 @@ lines down the middle of each gap, edge to edge across the page and between each
 one-pair preview. Each half prints from its own label when the tub has both (owner: "Do it"): `TubSet::partnerOf()` finds
 "Name (Side)" for "Name (Lid)" and back, and `StickerSheet::pairHalves()` draws the lid from the lid label (barcode, price)
 and the side from the side label (badges), with the printed label's dates, batch and pack code; a label renamed without
-its bracket has no partner and draws both. Lid and side together under Which label in `PrintLabelModal`
+its bracket has no partner and draws both. The outline to cut along is a solid grey line (owner, 2026-11-16: "There is no proper
+outline"; it was a pale dashed one), `.cut` drawn over each label so it shows on the coloured bands too, on every sheet
+that has cut lines. A lid's foot keeps the storage line's first clause and the phone and website (`roundFoot(lid: true)`),
+since the cap names the business and the side label carries the whole line, so the words stay large enough to read.
+Words on a coloured band print in pure white (owner: "white fonts are not easily readable"): `crispInk()` turns the
+light inks (`CREAM`, `ON_RUST`, `ON_RUST_SOFT`) to `#FFFFFF`, and `ON_DARK` and `SOFT` under 7 pt too. Lid and side together under Which label in `PrintLabelModal`
 (a menu item, and a custom label with a part) with Side label size and How many pairs. dompdf broke an ingredients
 line after a bold allergen that made it a hair wider than its box; the PDF's box for a line with `bold_words` has
 12 mm to spare (`pieces.blade.php`). **The complaints code stands beside the pack's on a wide small label** (owner, 2026-11-16: "still there is no complain qr"

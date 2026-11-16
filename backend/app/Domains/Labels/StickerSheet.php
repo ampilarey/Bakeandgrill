@@ -466,6 +466,12 @@ final class StickerSheet
      * @param list<array<string, mixed>> $pieces
      * @return list<array<string, mixed>>
      */
+    /** Light text inks, only ever set on a coloured band: printed in white. */
+    private const LIGHT_INKS = [StickerDesign::CREAM, StickerDesign::ON_RUST, StickerDesign::ON_RUST_SOFT];
+
+    /** The rust and tan set on the dark band: white once they are small. */
+    private const DIM_INKS = [StickerDesign::ON_DARK, StickerDesign::SOFT];
+
     public static function crispInk(array $pieces): array
     {
         foreach ($pieces as &$p) {
@@ -473,8 +479,14 @@ final class StickerSheet
                 continue;
             }
             $c = strtoupper($p['color']);
-            if ($c === StickerDesign::TEXT || $c === StickerDesign::DARK || ($c === StickerDesign::MUTED && (float) ($p['pt'] ?? 0) < 6.0)) {
+            $pt = (float) ($p['pt'] ?? 0);
+            if ($c === StickerDesign::TEXT || $c === StickerDesign::DARK || ($c === StickerDesign::MUTED && $pt < 6.0)) {
                 $p['color'] = '#000000';
+            } elseif (in_array($c, self::LIGHT_INKS, true) || (in_array($c, self::DIM_INKS, true) && $pt < 7.0)) {
+                // Words on a rust or dark band in pure white (owner, 2026-11-16: "due to color, white fonts are not
+                // easily readable"): a cream or a pale rust on a printed rust or brown is too close to read at label
+                // sizes, and the light rust and muted tan on the dark band more so.
+                $p['color'] = '#FFFFFF';
             }
         }
         unset($p);

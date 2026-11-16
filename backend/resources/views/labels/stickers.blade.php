@@ -72,7 +72,9 @@
         .pc { position: absolute; margin: 0; padding: 0; }
         .tx { white-space: pre; overflow: visible; }
         .latin { font-size: 0.82em; direction: ltr; unicode-bidi: isolate; }
-        .cut { position: absolute; border: 0.14mm dashed {{ \App\Domains\Labels\StickerDesign::BORDER }}; }
+        /* The line to cut along (owner, 2026-11-16: "There is no proper outline for circle and the rectangle"): a solid
+           grey line drawn over the label's edge, so it shows on white and on the coloured bands alike and goes with the cut. */
+        .cut { position: absolute; border: 0.25mm solid #8B7D6E; }
         /* A pair sheet's straight cut lines (2026-11-16): across the gaps, darker than the outlines, cut first. */
         .guide { position: absolute; background: #9C8E7E; }
         /* Crop marks (round C): hairlines 3 mm long, 1 mm off each corner, for a print shop's trimmer. */
@@ -150,9 +152,6 @@
                 @endforeach
             @endif
             @foreach ($sheet['slots'] as $si => $slot)
-                @if ($sheet['cut'])
-                    <div class="cut" style="left:{{ $mm($slot['x']) }};top:{{ $mm($slot['y']) }};width:{{ $mm($slot['w']) }};height:{{ $mm($slot['h']) }};{{ ($slot['shape'] ?? $sheet['shape']) === 'circle' ? 'border-radius:50%;' : ($rounded ?? false ? 'border-radius:3mm;' : '') }}"></div>
-                @endif
                 @if (!empty($sheet['marks']))
                     @php
                         $mk = 3.0; $gap = 1.0; $sw = 0.15;
@@ -175,6 +174,9 @@
                 @if (isset($page[$si]))
                     <div class="sticker" data-testid="sticker"></div>
                     @include('labels.partials.pieces', ['pieces' => $page[$si], 'ox' => $slot['x'] + ($slot['dx'] ?? $sheet['dx']), 'oy' => $slot['y'] + ($slot['dy'] ?? $sheet['dy']), 's' => $slot['s'] ?? $s])
+                @endif
+                @if ($sheet['cut'])
+                    <div class="cut" style="left:{{ $mm($slot['x']) }};top:{{ $mm($slot['y']) }};width:{{ $mm($slot['w']) }};height:{{ $mm($slot['h']) }};{{ ($slot['shape'] ?? $sheet['shape']) === 'circle' ? 'border-radius:50%;' : ($rounded ?? false ? 'border-radius:3mm;' : '') }}"></div>
                 @endif
             @endforeach
         </div>
