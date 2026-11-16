@@ -299,6 +299,13 @@ export async function fetchPurchaseBills(): Promise<{ enabled: boolean; bills: P
   return req('/purchases/bills');
 }
 
+/**
+ * How long the screen waits for a bill to be read (owner, 2026-11-16: Test said "The server took too long to
+ * answer" with a good Google key). A reading takes longer than the 20 seconds every other call is given, and the
+ * server allows the service 150 seconds, so the screen waits a little longer than that.
+ */
+export const BILL_READ_TIMEOUT_MS = 170_000;
+
 /** Keep one bill (a photo or a PDF). It is not read yet: call readPurchaseBill. */
 export async function sendPurchaseBill(file: File): Promise<{ bill: PurchaseBill }> {
   const body = new FormData();
@@ -308,7 +315,7 @@ export async function sendPurchaseBill(file: File): Promise<{ bill: PurchaseBill
 
 /** Read it now. Takes a few seconds; also "Try again" on one that failed. */
 export async function readPurchaseBill(id: number): Promise<{ bill: PurchaseBill }> {
-  return req(`/purchases/bills/${id}/read`, { method: 'POST' });
+  return req(`/purchases/bills/${id}/read`, { method: 'POST', timeoutMs: BILL_READ_TIMEOUT_MS });
 }
 
 export async function removePurchaseBill(id: number): Promise<{ ok: boolean }> {
@@ -354,5 +361,5 @@ export async function saveBillReader(data: {
 
 /** Sends a made-up bill to the service. Costs one small read. */
 export async function testBillReader(provider: string): Promise<{ ok: boolean; message: string }> {
-  return req('/purchasing/bill-reader/test', { method: 'POST', body: JSON.stringify({ provider }) });
+  return req('/purchasing/bill-reader/test', { method: 'POST', body: JSON.stringify({ provider }), timeoutMs: BILL_READ_TIMEOUT_MS });
 }

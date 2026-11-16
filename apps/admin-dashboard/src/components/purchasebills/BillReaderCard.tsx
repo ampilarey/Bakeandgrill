@@ -80,7 +80,7 @@ function ProviderBlock({ p, inUse, busy, onSave, onUse }: {
         <Btn small variant="secondary" disabled={!p.has_key || testing || busy} onClick={() => void test()} data-testid={`bill-reader-test-${p.key}`}>
           {testing ? 'Testing…' : 'Test'}
         </Btn>
-        <span className="br-help">Sends a made-up bill to check the key. Costs about one bill.</span>
+        <span className="br-help">Sends a made-up bill to check the key. It can take up to a minute. Costs about one bill.</span>
       </div>
       {result && (
         <p className={`po-note${result.ok ? '' : ' po-note--warn'}`} role="status" data-testid={`bill-reader-result-${p.key}`}>{result.message}</p>

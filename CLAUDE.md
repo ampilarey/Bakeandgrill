@@ -1265,6 +1265,7 @@ Test sends a bill drawn on the spot (`BillReader::trial()`). The reader is told 
 owner, 2026-11-15: "Akuru is main company. Bake and grill is under akuru"), so a bill addressed to the parent company
 is ours and is never the shop nor worth a note. A new service is a row in `PROVIDERS` and a reader class
 `BillVision::read()` dispatches to, answering in `SCHEMA`; never a second place to type a key.
+A reading takes longer than the 20 seconds the admin gives every other call (owner, 2026-11-16: Test said "The server took too long to answer" with a good Google key), so Test and Read wait `BILL_READ_TIMEOUT_MS` (170 s, `api/purchasing.ts`), a little past the 150 s the server allows the service; a new call that waits on a reading takes it too.
 `BillReaderSettingsTest`, `BillReaderCard.test.tsx`. **Bills through the staff bot** (owner, 2026-11-15: "Can I upload and
 approve slip via telegram"): a photo or a PDF sent to the bot in a private chat is a bill
 (`TelegramUpdateHandler` → `TelegramBills::receive()`, `suppliers.purchases`): fetched with `TelegramClient::download()`,
