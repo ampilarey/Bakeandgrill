@@ -1,7 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LAYOUT_DRAW } from './draw';
-import { LAYOUTS, MOTIONS, PALETTES, SIZES, TEMPLATES, blankSpec, captionOf, fullSpec, priceWords, withTemplate } from './types';
+import {
+  COLOUR_GROUPS, DESIGN_GROUPS, LAYOUTS, MOTION_GROUPS, MOTIONS, PALETTES, SIZES, TEMPLATE_GROUPS, TEMPLATES, blankSpec, captionOf, fullSpec, priceWords, withTemplate,
+} from './types';
 
 const api = vi.hoisted(() => ({
   fetchSocialPosters: vi.fn(),
@@ -23,8 +25,8 @@ const BRAND = { name: 'Bake & Grill', tagline: 'Fresh Baked, Fire Grilled', phon
 
 describe('the social post designs', () => {
   it('offers many looks: every layout is drawn, in every colour', () => {
-    expect(LAYOUTS.length).toBeGreaterThanOrEqual(44);
-    expect(PALETTES.length).toBeGreaterThanOrEqual(32);
+    expect(LAYOUTS.length).toBeGreaterThanOrEqual(100);
+    expect(PALETTES.length).toBeGreaterThanOrEqual(100);
     for (const l of LAYOUTS) expect(LAYOUT_DRAW[l.key], l.key).toBeTypeOf('function');
     expect(new Set(LAYOUTS.map((l) => l.key)).size).toBe(LAYOUTS.length);
     expect(new Set(PALETTES.map((p) => p.key)).size).toBe(PALETTES.length);
@@ -41,6 +43,20 @@ describe('the social post designs', () => {
     expect(made).toMatchObject({ headline: 'Bajiya', price: '5', photo: '/x.png', badge: 'Free delivery', cta2: 'Call us' });
     expect(made.show.cta2).toBe(true);
     expect(made.show.logo).toBe(true);
+  });
+
+  it('has a hundred of each, every one in a group that is offered (owner, 2026-11-17)', () => {
+    const lists: Array<[string, Array<{ key: string; name: string; group?: string }>, Array<{ key: string }>]> = [
+      ['designs', LAYOUTS, DESIGN_GROUPS], ['colours', PALETTES, COLOUR_GROUPS], ['ready-made', TEMPLATES, TEMPLATE_GROUPS], ['motions', MOTIONS, MOTION_GROUPS],
+    ];
+    for (const [what, list, groups] of lists) {
+      expect(list.length, what).toBe(100);
+      expect(new Set(list.map((x) => x.key)).size, what).toBe(100);
+      expect(new Set(list.map((x) => x.name)).size, what).toBe(100);
+      const keys = new Set(groups.map((g) => g.key));
+      for (const x of list) expect(keys.has(x.group ?? ''), `${what}: ${x.key}`).toBe(true);
+      for (const g of groups) expect(list.some((x) => x.group === g.key), `${what}: ${g.key} is empty`).toBe(true);
+    }
   });
 
   it('has plenty of motions, each moving every part by a known effect', () => {
@@ -92,6 +108,7 @@ describe('Make a post', () => {
     render(<SocialPosterMaker canCompose onSend={() => {}} />);
     fireEvent.change(await screen.findByLabelText('Headline'), { target: { value: 'Bajiya' } });
     fireEvent.click(screen.getByTitle('Spotlight'));
+    fireEvent.click(screen.getByRole('button', { name: /^Bright and bold/ }));
     fireEvent.click(screen.getByTitle('Chilli'));
     expect((screen.getByLabelText('Headline') as HTMLInputElement).value).toBe('Bajiya');
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -125,6 +142,9 @@ describe('Make a post', () => {
   it('takes a ready-made post in one tap, and a second button with its own style', async () => {
     render(<SocialPosterMaker canCompose onSend={() => {}} />);
     fireEvent.change(await screen.findByLabelText('Headline'), { target: { value: 'Bajiya' } });
+    // A list of a hundred opens a group at a time: the ready-made post sits under its own.
+    expect(screen.queryByRole('button', { name: 'Free delivery' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /^Ordering and service/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Free delivery' }));
     expect((screen.getByLabelText('Headline') as HTMLInputElement).value).toBe('Bajiya');
     expect(screen.getByTitle('Half and half').getAttribute('aria-pressed')).toBe('true');
@@ -141,6 +161,7 @@ describe('Make a post', () => {
     render(<SocialPosterMaker canCompose onSend={() => {}} />);
     fireEvent.change(await screen.findByLabelText('Headline'), { target: { value: 'Bajiya' } });
     expect(screen.queryByRole('button', { name: /Make the video/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /^Playful/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Drop and bounce' }));
     expect(screen.getByRole('button', { name: 'Drop and bounce' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: /Make the video/ })).toBeTruthy();

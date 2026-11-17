@@ -1897,9 +1897,26 @@ const scallop: Layout = (s) => {
 
 /** The colour that stands out on `ground` for a word or a line: the second colour, else the highlight, else the ink. */
 function accentOn(P: Palette, ground: string): string {
-  if (isDark(P.alt) !== isDark(ground)) return P.alt;
-  if (isDark(P.pop) !== isDark(ground)) return P.pop;
-  return isDark(ground) ? '#FFFFFF' : '#111111';
+  if (contrast(P.alt, ground) >= 70) return P.alt;
+  if (contrast(P.pop, ground) >= 70) return P.pop;
+  return lum(ground) < 140 ? '#FFFFFF' : '#111111';
+}
+
+/** How bright a colour looks, 0 to 255. */
+function lum(hex: string): number {
+  const [r, g, b] = rgb(hex);
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+function contrast(a: string, b: string): number {
+  return Math.abs(lum(a) - lum(b));
+}
+
+/** The pill colour and its words that stand out most on `ground`, never the ground itself. */
+function popFor(P: Palette, ground: string): [string, string] {
+  const pairs: Array<[string, string]> = [[P.pop, P.popInk], [P.alt, P.altInk], [P.bg, P.ink], [P.ink, P.bg]];
+  const fine = pairs.find(([c]) => c.toLowerCase() !== ground.toLowerCase() && contrast(c, ground) >= 70);
+  return fine ?? pairs.reduce((best, p) => (contrast(p[0], ground) > contrast(best[0], ground) ? p : best));
 }
 
 /** The ink and ground for words on a frosted panel over `under`. */
@@ -2407,11 +2424,348 @@ const marquee: Layout = (s) => {
   footer(ctx, { ...s.foot, x: s.foot.x + 2 * u, y: s.foot.y - 2 * u, w: s.foot.w - 4 * u }, s.spec, s.A, P.ink, isDark(P.bg), P.alt, P.altInk);
 };
 
+// ── Designs built from parts (owner, 2026-11-17: "Make it 100 each") ─────────
+// A recipe names a ground, a pattern over it, a frame round the photo, a font
+// and how the words sit. Every one still lays out by the picture's shape
+// through `twoUp()`, so each works in every size and colour.
+
+type Ground = 'bg' | 'alt' | 'dark' | 'light';
+type Pattern = 'plain' | 'dots' | 'stripes' | 'grid' | 'rays' | 'gingham' | 'split' | 'blobs' | 'waves' | 'confetti'
+  | 'halftone' | 'brush' | 'arcs' | 'triangles' | 'hex' | 'circles' | 'grain' | 'glow' | 'frame' | 'corner';
+type Frame = 'ring' | 'double' | 'square' | 'arch' | 'blob' | 'scallop' | 'hex' | 'tilt' | 'shadow' | 'seal' | 'plate' | 'bare';
+
+interface Recipe {
+  ground: Ground;
+  pattern: Pattern;
+  frame: Frame;
+  head: FontKind;
+  /** Words on a panel of their own, on a band across the picture, or straight on the ground. */
+  box?: 'plain' | 'card' | 'band';
+  /** The photo above the words (else below), on a feed, square or story post. */
+  photoFirst?: boolean;
+}
+
+function groundOf(P: Palette, g: Ground): { fill: string; ink: string } {
+  if (g === 'alt') return { fill: P.alt, ink: P.altInk };
+  if (g === 'dark') return { fill: mix(isDark(P.bg) ? P.bg : P.alt, '#000000', 0.8), ink: '#FFFFFF' };
+  if (g === 'light') return { fill: mix(isDark(P.bg) ? P.alt : P.bg, '#FFFFFF', 0.82), ink: '#1C1408' };
+  return { fill: P.bg, ink: P.ink };
+}
+
+function hexPath(ctx: Ctx, cx: number, cy: number, r: number): void {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 3) * i - Math.PI / 6;
+    if (i === 0) ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    else ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+  }
+  ctx.closePath();
+}
+
+function drawPattern(s: Stage, kind: Pattern, fill: string, c: string): void {
+  const { ctx, W, H, u, P } = s;
+  const r = rng(kind.length * 31 + 7);
+  switch (kind) {
+    case 'dots': dots(ctx, W, H, 5.5 * u, 0.55 * u, alpha(c, 0.22)); break;
+    case 'stripes': stripes(ctx, W, H, 9 * u, 2.4 * u, alpha(c, 0.1)); break;
+    case 'grid':
+      ctx.strokeStyle = alpha(c, 0.12);
+      ctx.lineWidth = 0.2 * u;
+      for (let x = 0; x <= W; x += 8 * u) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+      for (let y = 0; y <= H; y += 8 * u) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+      break;
+    case 'rays': rays(ctx, W / 2, H * 0.4, Math.max(W, H), 22, alpha(c, 0.1)); break;
+    case 'gingham': {
+      const b = 7 * u;
+      ctx.fillStyle = alpha(c, 0.12);
+      for (let x = 0; x < W; x += b * 2) ctx.fillRect(x, 0, b, H);
+      for (let y = 0; y < H; y += b * 2) ctx.fillRect(0, y, W, b);
+      break;
+    }
+    case 'split':
+      ctx.fillStyle = mix(fill, c, 0.16);
+      if (s.wide) ctx.fillRect(W * 0.55, 0, W * 0.45, H); else ctx.fillRect(0, 0, W, H * 0.5);
+      break;
+    case 'blobs':
+      ctx.fillStyle = alpha(c, 0.18);
+      blobPath(ctx, W * 0.05, H * 0.08, Math.max(W, H) * 0.24, 3); ctx.fill();
+      blobPath(ctx, W * 0.98, H * 0.9, Math.max(W, H) * 0.3, 9); ctx.fill();
+      break;
+    case 'waves':
+      ctx.fillStyle = alpha(c, 0.14);
+      wavePath(ctx, W, H, H * 0.78, 2.5 * u, W / 2.2, 0); ctx.fill();
+      ctx.fillStyle = alpha(c, 0.12);
+      wavePath(ctx, W, H, H * 0.86, 2 * u, W / 3, 1.4); ctx.fill();
+      break;
+    case 'confetti': {
+      const colours = [P.alt, P.pop, c];
+      for (let i = 0; i < 70; i++) {
+        ctx.save();
+        ctx.translate(r() * W, r() * H);
+        ctx.rotate(r() * Math.PI);
+        ctx.fillStyle = alpha(colours[i % 3], 0.45);
+        ctx.fillRect(-0.9 * u, -0.35 * u, 1.8 * u, 0.7 * u);
+        ctx.restore();
+      }
+      break;
+    }
+    case 'halftone': {
+      const step = 3.2 * u;
+      const R = Math.hypot(W, H) * 0.5;
+      ctx.fillStyle = alpha(c, 0.55);
+      for (let y = 0; y < H + step; y += step) {
+        for (let x = (Math.round(y / step) % 2) * step / 2; x < W + step; x += step) {
+          const k = Math.max(1 - Math.hypot(x, y) / R, 1 - Math.hypot(W - x, H - y) / R, 0);
+          if (k <= 0.02) continue;
+          ctx.beginPath();
+          ctx.arc(x, y, step * 0.5 * k, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      break;
+    }
+    case 'brush':
+      brush(ctx, W * 0.92, H * 0.04, W * 0.6, (s.wide ? 0.3 : 0.12) * H, -0.4, alpha(c, 0.5), 5);
+      brush(ctx, W * 0.96, H * 0.97, W * 0.5, (s.wide ? 0.24 : 0.1) * H, -0.4, alpha(c, 0.4), 13);
+      break;
+    case 'arcs':
+      ctx.strokeStyle = alpha(c, 0.16);
+      ctx.lineWidth = 0.6 * u;
+      for (let i = 1; i <= 7; i++) { ctx.beginPath(); ctx.arc(0, H, i * 9 * u, -Math.PI / 2, 0); ctx.stroke(); ctx.beginPath(); ctx.arc(W, 0, i * 9 * u, Math.PI / 2, Math.PI); ctx.stroke(); }
+      break;
+    case 'triangles':
+      for (let i = 0; i < 26; i++) {
+        const x = r() * W;
+        const y = r() * H;
+        const k = (1.5 + r() * 2.5) * u;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(r() * Math.PI);
+        ctx.fillStyle = alpha(i % 2 ? c : P.pop, 0.16);
+        ctx.beginPath(); ctx.moveTo(0, -k); ctx.lineTo(k, k); ctx.lineTo(-k, k); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+      break;
+    case 'hex': {
+      const k = 6 * u;
+      ctx.strokeStyle = alpha(c, 0.13);
+      ctx.lineWidth = 0.3 * u;
+      for (let row = 0, y = 0; y < H + k; row++, y += k * 1.5) {
+        for (let x = (row % 2) * k * 0.866; x < W + k; x += k * 1.732) { hexPath(ctx, x, y, k); ctx.stroke(); }
+      }
+      break;
+    }
+    case 'circles':
+      ctx.fillStyle = alpha(c, 0.12);
+      for (const [x, y, rr2] of [[0.1, 0.12, 0.28], [0.95, 0.3, 0.2], [0.2, 0.92, 0.22], [0.85, 0.85, 0.3]]) {
+        ctx.beginPath(); ctx.arc(W * x, H * y, Math.max(W, H) * rr2, 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+    case 'grain': {
+      ctx.fillStyle = alpha(c, 0.05);
+      for (let i = 0; i < 300; i++) ctx.fillRect(r() * W, r() * H, (0.3 + r()) * u, (0.3 + r()) * u);
+      const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
+      v.addColorStop(0, 'rgba(0,0,0,0)');
+      v.addColorStop(1, 'rgba(0,0,0,0.18)');
+      ctx.fillStyle = v;
+      ctx.fillRect(0, 0, W, H);
+      break;
+    }
+    case 'glow': {
+      const g = ctx.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, Math.max(W, H) * 0.7);
+      g.addColorStop(0, alpha(c, 0.35));
+      g.addColorStop(1, alpha(c, 0));
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      break;
+    }
+    case 'frame': {
+      const m = 3 * u;
+      ctx.strokeStyle = alpha(c, 0.8);
+      ctx.lineWidth = 0.5 * u;
+      ctx.strokeRect(m, m, W - 2 * m, H - 2 * m);
+      ctx.lineWidth = 0.2 * u;
+      ctx.strokeRect(m + 1.3 * u, m + 1.3 * u, W - 2 * m - 2.6 * u, H - 2 * m - 2.6 * u);
+      break;
+    }
+    case 'corner':
+      ctx.fillStyle = alpha(c, 0.22);
+      ctx.beginPath(); ctx.arc(0, 0, Math.min(W, H) * 0.42, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(W, H, Math.min(W, H) * 0.5, 0, Math.PI * 2); ctx.fill();
+      break;
+    default: break;
+  }
+}
+
+/** What a frame draws outside the photo's circle, so `twoUp` keeps room for it. */
+const FRAME_ROOM: Record<Frame, number> = { ring: 1, double: 2.5, square: 1, arch: 3, blob: 3.5, scallop: 3.5, hex: 3.5, tilt: 3.5, shadow: 2, seal: 4, plate: 2.5, bare: 0 };
+
+function drawFrame(s: Stage, kind: Frame, Pb: Rect, d: number, fill: string, c: string): void {
+  const { ctx, u, P, spec, A } = s;
+  const cx = Pb.x + d / 2;
+  const cy = Pb.y + d / 2;
+  const back = (path: () => void, colour: string) => { path(); ctx.fillStyle = colour; ctx.fill(); };
+  const discSoft = alpha(c, 0.14);
+  // The highlight, unless it is the ground itself (a yellow seal on yellow vanishes).
+  const popFill = P.pop.toLowerCase() === fill.toLowerCase() ? c : P.pop;
+  switch (kind) {
+    case 'ring': photo(ctx, Pb, spec, A, { shape: 'circle', disc: discSoft, ring: c, ringW: 1.1 * u }, u); return;
+    case 'double':
+      ctx.beginPath(); ctx.arc(cx, cy, d / 2 + 2.2 * u, 0, Math.PI * 2); ctx.strokeStyle = popFill; ctx.lineWidth = 0.5 * u; ctx.stroke();
+      photo(ctx, Pb, spec, A, { shape: 'circle', disc: discSoft, ring: c, ringW: 0.8 * u }, u); return;
+    case 'square': photo(ctx, Pb, spec, A, { shape: 'rounded', radius: 4 * u, disc: mix(fill, c, 0.18) }, u); return;
+    case 'arch': {
+      const w = d * 1.08;
+      const h = d * 1.16;
+      const x = cx - w / 2;
+      const y = cy - h * 0.56;
+      back(() => { ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x, y + w / 2); ctx.arc(cx, y + w / 2, w / 2, Math.PI, 0); ctx.lineTo(x + w, y + h); ctx.closePath(); }, alpha(c, 0.24));
+      photo(ctx, Pb, spec, A, { shape: 'circle', disc: null }, u); return;
+    }
+    case 'blob': back(() => blobPath(ctx, cx, cy, d * 0.6, 21), alpha(c, 0.85)); photo(ctx, Pb, spec, A, { shape: 'circle', disc: null }, u); return;
+    case 'scallop': back(() => scallopPath(ctx, cx, cy, d * 0.62, 16, 0.08), popFill); photo(ctx, Pb, spec, A, { shape: 'circle', disc: fill, ring: fill, ringW: 0.8 * u }, u); return;
+    case 'hex': back(() => hexPath(ctx, cx, cy, d * 0.62), alpha(c, 0.9)); photo(ctx, Pb, spec, A, { shape: 'circle', disc: null }, u); return;
+    case 'tilt': {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(0.12);
+      rr(ctx, -d * 0.56, -d * 0.56, d * 1.12, d * 1.12, 4 * u);
+      ctx.fillStyle = popFill;
+      ctx.fill();
+      ctx.rotate(-0.22);
+      rr(ctx, -d * 0.53, -d * 0.53, d * 1.06, d * 1.06, 4 * u);
+      ctx.fillStyle = c;
+      ctx.fill();
+      ctx.restore();
+      photo(ctx, Pb, spec, A, { shape: 'circle', disc: null, ring: fill, ringW: 1 * u }, u); return;
+    }
+    case 'shadow':
+      back(() => { ctx.beginPath(); ctx.arc(cx + 2 * u, cy + 2 * u, d / 2, 0, Math.PI * 2); }, alpha(isDark(fill) ? '#000000' : P.ink, 0.85));
+      photo(ctx, Pb, spec, A, { shape: 'circle', disc: mix(fill, c, 0.2), ring: P.ink === fill ? c : P.ink, ringW: 0.6 * u }, u); return;
+    case 'seal': back(() => burstPath(ctx, cx, cy, d * 0.64, 22, 0.88), popFill); photo(ctx, Pb, spec, A, { shape: 'circle', disc: fill }, u); return;
+    case 'plate':
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.25)';
+      ctx.shadowBlur = 4 * u;
+      ctx.shadowOffsetY = 1.5 * u;
+      ctx.beginPath(); ctx.arc(cx, cy, d * 0.56, 0, Math.PI * 2); ctx.fillStyle = '#FFFFFF'; ctx.fill();
+      ctx.restore();
+      ctx.beginPath(); ctx.arc(cx, cy, d * 0.47, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(0,0,0,0.07)'; ctx.lineWidth = 0.4 * u; ctx.stroke();
+      photo(ctx, Pb, spec, A, { shape: 'circle', disc: null }, u); return;
+    default: photo(ctx, Pb, spec, A, { shape: 'circle', disc: null }, u);
+  }
+}
+
+function compose(r: Recipe): Layout {
+  return (s) => {
+    const { ctx, W, H, u, P, wide } = s;
+    const G = groundOf(P, r.ground);
+    ctx.fillStyle = G.fill;
+    ctx.fillRect(0, 0, W, H);
+    const c = accentOn(P, G.fill);
+    drawPattern(s, r.pattern, G.fill, c);
+    const { T, Pb, d } = twoUp(s, r.photoFirst ?? true, s.tall ? 0.56 : 0.52, FRAME_ROOM[r.frame] * u);
+    drawFrame(s, r.frame, Pb, d, G.fill, c);
+    let ground = G.fill;
+    let ink = G.ink;
+    let box = T;
+    if (r.box === 'card') {
+      // A deep ground keeps a dark panel with white words; anything else a near-white one with dark words.
+      const deep = lum(G.fill) < 80;
+      const panel = deep ? mix(G.fill, '#FFFFFF', 0.1) : mix(G.fill, '#FFFFFF', 0.86);
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.15)';
+      ctx.shadowBlur = 4 * u;
+      rr(ctx, T.x, T.y, T.w, T.h, 4 * u);
+      ctx.fillStyle = panel;
+      ctx.fill();
+      ctx.restore();
+      ground = panel;
+      ink = deep ? '#FFFFFF' : '#1C1408';
+      const pad = 3.5 * u;
+      box = { x: T.x + pad, y: T.y + pad, w: T.w - 2 * pad, h: T.h - 2 * pad };
+    } else if (r.box === 'band') {
+      const band = c;
+      ctx.fillStyle = band;
+      if (wide) ctx.fillRect(0, T.y - 2 * u, T.x + T.w + 2 * u, T.h + 4 * u);
+      else ctx.fillRect(0, T.y - 2 * u, W, T.h + 4 * u);
+      ground = band;
+      ink = lum(band) < 140 ? '#FFFFFF' : '#111111';
+    }
+    const [pop, popInk] = popFor(P, ground);
+    const first = accentOn(P, ground);
+    stack(ctx, box, s.spec, { align: wide ? 'left' : 'center', valign: 'middle', head: r.head, ink, ground, pop, popInk, price: 'pill', cta: 'solid', kicker: 'pill', firstWord: first === ink ? undefined : first }, ALL, u);
+    sticker(ctx, Pb.x + d * 0.88, Pb.y + d * 0.12, d * 0.16, badgeOn(s), P.pop, P.popInk, 0.18, r.frame === 'seal' ? 'circle' : 'burst');
+    footer(ctx, s.foot, s.spec, s.A, G.ink, isDark(G.fill), pop, popInk);
+  };
+}
+
+/** The recipes: key, name, group and the parts. */
+export const RECIPES: Array<{ key: string; name: string; group: string; r: Recipe }> = [
+  { key: 'cafe-ring', name: 'Café ring', group: 'classic', r: { ground: 'bg', pattern: 'plain', frame: 'ring', head: 'script' } },
+  { key: 'plate', name: 'On the plate', group: 'classic', r: { ground: 'light', pattern: 'grain', frame: 'plate', head: 'serif' } },
+  { key: 'framed', name: 'Framed', group: 'classic', r: { ground: 'bg', pattern: 'frame', frame: 'double', head: 'serif' } },
+  { key: 'arch-window', name: 'Arch window', group: 'classic', r: { ground: 'bg', pattern: 'plain', frame: 'arch', head: 'serif', box: 'card' } },
+  { key: 'menu-board', name: 'Menu board', group: 'classic', r: { ground: 'dark', pattern: 'grain', frame: 'ring', head: 'serif' } },
+  { key: 'heritage', name: 'Heritage', group: 'classic', r: { ground: 'bg', pattern: 'arcs', frame: 'double', head: 'serif' } },
+  { key: 'homestyle', name: 'Homestyle', group: 'classic', r: { ground: 'light', pattern: 'gingham', frame: 'plate', head: 'script' } },
+  { key: 'linen', name: 'Linen', group: 'classic', r: { ground: 'light', pattern: 'stripes', frame: 'square', head: 'serif' } },
+  { key: 'seal-burst', name: 'Big seal', group: 'bold', r: { ground: 'alt', pattern: 'rays', frame: 'seal', head: 'caps' } },
+  { key: 'split-pop', name: 'Split pop', group: 'bold', r: { ground: 'bg', pattern: 'split', frame: 'shadow', head: 'caps', box: 'band' } },
+  { key: 'loud-band', name: 'Loud band', group: 'bold', r: { ground: 'bg', pattern: 'stripes', frame: 'ring', head: 'caps', box: 'band' } },
+  { key: 'big-blob', name: 'Big blob', group: 'bold', r: { ground: 'bg', pattern: 'plain', frame: 'blob', head: 'caps' } },
+  { key: 'corner-pop', name: 'Corner pop', group: 'bold', r: { ground: 'alt', pattern: 'corner', frame: 'ring', head: 'caps' } },
+  { key: 'shout', name: 'Shout', group: 'bold', r: { ground: 'alt', pattern: 'halftone', frame: 'shadow', head: 'caps' } },
+  { key: 'triangle-pop', name: 'Sharp shapes', group: 'bold', r: { ground: 'bg', pattern: 'triangles', frame: 'hex', head: 'caps' } },
+  { key: 'brush-bold', name: 'Brush bold', group: 'bold', r: { ground: 'bg', pattern: 'brush', frame: 'bare', head: 'caps' } },
+  { key: 'photo-square', name: 'Square photo', group: 'photo', r: { ground: 'bg', pattern: 'plain', frame: 'square', head: 'sans' } },
+  { key: 'photo-card', name: 'Photo card', group: 'photo', r: { ground: 'light', pattern: 'dots', frame: 'square', head: 'sans', box: 'card' } },
+  { key: 'photo-tilt', name: 'Tilted photo', group: 'photo', r: { ground: 'bg', pattern: 'grid', frame: 'tilt', head: 'sans' } },
+  { key: 'photo-arch', name: 'Photo arch', group: 'photo', r: { ground: 'alt', pattern: 'plain', frame: 'arch', head: 'serif' } },
+  { key: 'photo-glow', name: 'Glowing photo', group: 'photo', r: { ground: 'dark', pattern: 'glow', frame: 'bare', head: 'sans' } },
+  { key: 'photo-shadow', name: 'Shadow photo', group: 'photo', r: { ground: 'bg', pattern: 'plain', frame: 'shadow', head: 'sans' } },
+  { key: 'photo-plate', name: 'Big plate', group: 'photo', r: { ground: 'alt', pattern: 'circles', frame: 'plate', head: 'caps' } },
+  { key: 'photo-frame', name: 'Gallery frame', group: 'photo', r: { ground: 'light', pattern: 'frame', frame: 'square', head: 'serif' } },
+  { key: 'confetti-seal', name: 'Party seal', group: 'fun', r: { ground: 'bg', pattern: 'confetti', frame: 'seal', head: 'script' } },
+  { key: 'bubbles', name: 'Bubbles', group: 'fun', r: { ground: 'bg', pattern: 'circles', frame: 'blob', head: 'script' } },
+  { key: 'sweet-scallop', name: 'Sweet scallop', group: 'fun', r: { ground: 'light', pattern: 'dots', frame: 'scallop', head: 'script' } },
+  { key: 'gingham-fun', name: 'Gingham', group: 'fun', r: { ground: 'bg', pattern: 'gingham', frame: 'ring', head: 'script', box: 'card' } },
+  { key: 'wavy-fun', name: 'Wavy', group: 'fun', r: { ground: 'alt', pattern: 'waves', frame: 'ring', head: 'script' } },
+  { key: 'blob-party', name: 'Blob party', group: 'fun', r: { ground: 'alt', pattern: 'blobs', frame: 'blob', head: 'caps' } },
+  { key: 'sprinkles', name: 'Sprinkles', group: 'fun', r: { ground: 'light', pattern: 'confetti', frame: 'plate', head: 'caps' } },
+  { key: 'happy-tilt', name: 'Happy tilt', group: 'fun', r: { ground: 'bg', pattern: 'dots', frame: 'tilt', head: 'script' } },
+  { key: 'night-ring', name: 'Night ring', group: 'night', r: { ground: 'dark', pattern: 'plain', frame: 'double', head: 'caps' } },
+  { key: 'night-glow', name: 'Night glow', group: 'night', r: { ground: 'dark', pattern: 'glow', frame: 'ring', head: 'script' } },
+  { key: 'midnight-grid', name: 'Midnight grid', group: 'night', r: { ground: 'dark', pattern: 'grid', frame: 'square', head: 'sans' } },
+  { key: 'starry', name: 'Night stars', group: 'night', r: { ground: 'dark', pattern: 'triangles', frame: 'seal', head: 'caps' } },
+  { key: 'night-arch', name: 'Night arch', group: 'night', r: { ground: 'dark', pattern: 'arcs', frame: 'arch', head: 'serif' } },
+  { key: 'ember-glow', name: 'Ember', group: 'night', r: { ground: 'dark', pattern: 'rays', frame: 'plate', head: 'script' } },
+  { key: 'night-blob', name: 'Lava', group: 'night', r: { ground: 'dark', pattern: 'blobs', frame: 'blob', head: 'caps' } },
+  { key: 'velvet', name: 'Velvet', group: 'night', r: { ground: 'dark', pattern: 'grain', frame: 'double', head: 'serif', box: 'card' } },
+  { key: 'clean-split', name: 'Clean split', group: 'modern', r: { ground: 'bg', pattern: 'split', frame: 'square', head: 'sans' } },
+  { key: 'mono-grid', name: 'Mono grid', group: 'modern', r: { ground: 'light', pattern: 'grid', frame: 'ring', head: 'sans' } },
+  { key: 'soft-blob', name: 'Soft shapes', group: 'modern', r: { ground: 'light', pattern: 'blobs', frame: 'bare', head: 'sans', box: 'card' } },
+  { key: 'hex-modern', name: 'Hexagon', group: 'modern', r: { ground: 'bg', pattern: 'hex', frame: 'hex', head: 'sans' } },
+  { key: 'arcs-modern', name: 'Arcs', group: 'modern', r: { ground: 'bg', pattern: 'arcs', frame: 'ring', head: 'sans' } },
+  { key: 'minimal', name: 'Minimal', group: 'modern', r: { ground: 'bg', pattern: 'plain', frame: 'bare', head: 'sans' } },
+  { key: 'gradient-glow', name: 'Soft glow', group: 'modern', r: { ground: 'bg', pattern: 'glow', frame: 'ring', head: 'sans' } },
+  { key: 'card-stack', name: 'Card stack', group: 'modern', r: { ground: 'alt', pattern: 'plain', frame: 'tilt', head: 'sans', box: 'card' } },
+  { key: 'polka', name: 'Polka dots', group: 'pattern', r: { ground: 'alt', pattern: 'dots', frame: 'ring', head: 'caps' } },
+  { key: 'pinstripe', name: 'Pinstripe', group: 'pattern', r: { ground: 'bg', pattern: 'stripes', frame: 'double', head: 'serif' } },
+  { key: 'checkered', name: 'Checks', group: 'pattern', r: { ground: 'alt', pattern: 'gingham', frame: 'plate', head: 'caps' } },
+  { key: 'honeycomb', name: 'Honeycomb', group: 'pattern', r: { ground: 'light', pattern: 'hex', frame: 'hex', head: 'caps' } },
+  { key: 'ripple', name: 'Ripple', group: 'pattern', r: { ground: 'bg', pattern: 'arcs', frame: 'scallop', head: 'script' } },
+  { key: 'terrazzo', name: 'Terrazzo', group: 'pattern', r: { ground: 'light', pattern: 'triangles', frame: 'ring', head: 'sans' } },
+  { key: 'sunburst', name: 'Sunburst', group: 'pattern', r: { ground: 'alt', pattern: 'rays', frame: 'plate', head: 'script' } },
+  { key: 'brushwork', name: 'Brushwork', group: 'pattern', r: { ground: 'light', pattern: 'brush', frame: 'ring', head: 'script' } },
+];
+
 export const LAYOUT_DRAW: Record<string, Layout> = {
   splash, spotlight, diagonal, photo: fullPhoto, frame, bigtype: bigType, band, sticker: stickers, arch, side,
   block, bigcircle: bigCircle, ticket, glow, bands, tilt, corners, editorial, starburst, ribbon,
   stamp, picnic, chalk, neon, target, zigzag, confetti, sunrise, capsule, popart, waves, scallop,
   aurora, glass, echo, swiss, polaroid, orbit, bunting, halftone, stage, bistro, steam, marquee,
+  ...Object.fromEntries(RECIPES.map((x) => [x.key, compose(x.r)])),
 };
 
 /** A moment of an animated post: which motion, how far in (seconds) and how long the whole clip is. */

@@ -14,7 +14,8 @@ import { pictureOf } from './picture';
 import { canRecord, recordPost } from './record';
 import { SaveSheet } from './SaveSheet';
 import {
-  BADGE_PRESETS, BUTTON_STYLES, CTA2_PRESETS, CTA_PRESETS, LAYOUTS, MOTIONS, MOTION_SECONDS, PALETTES, PART_NAMES, PART_ORDER, SIZES, TEMPLATES,
+  BADGE_PRESETS, BUTTON_STYLES, COLOUR_GROUPS, CTA2_PRESETS, CTA_PRESETS, DESIGN_GROUPS, LAYOUTS, MOTION_GROUPS, MOTIONS, MOTION_SECONDS, PALETTES,
+  PART_NAMES, PART_ORDER, SIZES, TEMPLATE_GROUPS, TEMPLATES,
   blankSpec, captionOf, fullSpec, paletteOf, sizeOf, withTemplate, type PartKey, type PostSize, type PostSpec, type PostTemplate,
 } from './types';
 
@@ -26,6 +27,32 @@ import {
  * and a colour; the same words are drawn in every platform's shape. Nothing
  * is typed twice and nothing is posted until it is sent to the composer.
  */
+
+/**
+ * A row of group chips over a long list (owner, 2026-11-17: "Make it 100 each. And group for easy use"): each group
+ * with how many it holds, and All. A hundred of anything is found a group at a time.
+ */
+function GroupChips({ label, groups, items, value, onChange }: {
+  label: string;
+  groups: Array<{ key: string; name: string }>;
+  items: Array<{ group?: string }>;
+  value: string;
+  onChange: (key: string) => void;
+}) {
+  const count = (key: string) => items.filter((i) => i.group === key).length;
+  return (
+    <TabScrollRow fit role="group" aria-label={label} style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+      {groups.map((g) => (
+        <Btn key={g.key} small variant={value === g.key ? 'primary' : 'secondary'} aria-pressed={value === g.key} onClick={() => onChange(g.key)}>
+          {g.name} · {count(g.key)}
+        </Btn>
+      ))}
+      <Btn small variant={value === 'all' ? 'primary' : 'secondary'} aria-pressed={value === 'all'} onClick={() => onChange('all')}>All · {items.length}</Btn>
+    </TabScrollRow>
+  );
+}
+
+const inGroup = (group: string) => (x: { group?: string }) => group === 'all' || x.group === group;
 
 /** One post drawn on a canvas `px` wide in the shape of `size`. */
 export function PostCanvas({ spec, layout, palette, size, assets, px, version = 0, label, play }: {
@@ -99,6 +126,11 @@ export function SocialPosterMaker({ canCompose, onSend }: {
   const [layout, setLayout] = useState(LAYOUTS[0].key);
   const [palette, setPalette] = useState(PALETTES[0].key);
   const [sizeKey, setSizeKey] = useState(SIZES[0].key);
+  // Which group of each list is open; the picked design, colour and motion keep their own group in view.
+  const [designGroup, setDesignGroup] = useState(LAYOUTS[0].group ?? 'all');
+  const [colourGroup, setColourGroup] = useState(PALETTES[0].group ?? 'all');
+  const [templateGroup, setTemplateGroup] = useState(TEMPLATE_GROUPS[0].key);
+  const [motionGroup, setMotionGroup] = useState(MOTION_GROUPS[0].key);
   const [name, setName] = useState('');
   const [savedId, setSavedId] = useState<number | null>(null);
   const [item, setItem] = useState<MenuItemSelection | null>(null);
@@ -140,6 +172,19 @@ export function SocialPosterMaker({ canCompose, onSend }: {
     }
   }, []);
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    const g = LAYOUTS.find((l) => l.key === layout)?.group;
+    if (g) setDesignGroup((cur) => (cur === 'all' ? cur : g));
+  }, [layout]);
+  useEffect(() => {
+    const g = PALETTES.find((p) => p.key === palette)?.group;
+    if (g) setColourGroup((cur) => (cur === 'all' ? cur : g));
+  }, [palette]);
+  useEffect(() => {
+    const g = MOTIONS.find((m) => m.key === spec.motion)?.group;
+    if (g) setMotionGroup((cur) => (cur === 'all' ? cur : g));
+  }, [spec.motion]);
 
   // A video is of the post as it was: any change to the words, the design or the colour forgets it.
   useEffect(() => { setVideo(null); }, [spec, layout, palette, sizeKey, seconds]);
@@ -354,13 +399,15 @@ export function SocialPosterMaker({ canCompose, onSend }: {
           <Card>
             <h3 className="sp-h">2. Pick a design</h3>
             <h4 className="sp-h4" style={{ marginTop: 0 }}>Ready-made posts</h4>
+            <GroupChips label="Groups of ready-made posts" groups={TEMPLATE_GROUPS} items={TEMPLATES} value={templateGroup} onChange={setTemplateGroup} />
             <div className="sp-presets">
-              {TEMPLATES.map((t) => <Btn key={t.key} small variant="secondary" onClick={() => useTemplate(t)}>{t.name}</Btn>)}
+              {TEMPLATES.filter(inGroup(templateGroup)).map((t) => <Btn key={t.key} small variant="secondary" onClick={() => useTemplate(t)}>{t.name}</Btn>)}
             </div>
             <p className="sp-hint">One tap sets the design, the colour, the parts and the usual words. Your headline, price and photo stay.</p>
             <h4 className="sp-h4">Designs</h4>
+            <GroupChips label="Groups of designs" groups={DESIGN_GROUPS} items={LAYOUTS} value={designGroup} onChange={setDesignGroup} />
             <div className="sp-thumbs">
-              {LAYOUTS.map((l) => (
+              {LAYOUTS.filter(inGroup(designGroup)).map((l) => (
                 <button key={l.key} type="button" className={`sp-thumb${l.key === layout ? ' is-on' : ''}`} aria-pressed={l.key === layout} onClick={() => setLayout(l.key)} title={l.name}>
                   <PostCanvas spec={empty ? { ...spec, headline: 'Your dish', price: spec.price || '45' } : spec} layout={l.key} palette={palette} size={SIZES[1]} assets={assets} px={200} version={qrVersion + (ready ? 1000 : 0)} />
                   <span>{l.name}</span>
@@ -368,8 +415,9 @@ export function SocialPosterMaker({ canCompose, onSend }: {
               ))}
             </div>
             <h4 className="sp-h4">Colours</h4>
+            <GroupChips label="Groups of colours" groups={COLOUR_GROUPS} items={PALETTES} value={colourGroup} onChange={setColourGroup} />
             <div className="sp-swatches">
-              {PALETTES.map((p) => (
+              {PALETTES.filter(inGroup(colourGroup)).map((p) => (
                 <button key={p.key} type="button" className={`sp-swatch${p.key === palette ? ' is-on' : ''}`} aria-pressed={p.key === palette} onClick={() => setPalette(p.key)} title={p.name}>
                   <span className="sp-swatch-chip" aria-hidden style={{ background: `linear-gradient(135deg, ${p.bg} 0 50%, ${p.alt} 50% 78%, ${p.pop} 78%)` }} />
                   <span>{p.name}</span>
@@ -436,9 +484,10 @@ export function SocialPosterMaker({ canCompose, onSend }: {
           <Card>
             <h3 className="sp-h">4. Make it move</h3>
             <p className="sp-hint" style={{ marginTop: 0 }}>Pick a motion and the post plays on the picture. Still picture leaves it as it is.</p>
+            <GroupChips label="Groups of motions" groups={MOTION_GROUPS} items={MOTIONS} value={motionGroup} onChange={setMotionGroup} />
             <div className="sp-presets" role="group" aria-label="Motion">
               <Btn small variant={spec.motion === '' ? 'primary' : 'secondary'} aria-pressed={spec.motion === ''} onClick={() => pickMotion('')}>Still picture</Btn>
-              {MOTIONS.map((m) => (
+              {MOTIONS.filter(inGroup(motionGroup)).map((m) => (
                 <Btn key={m.key} small variant={spec.motion === m.key ? 'primary' : 'secondary'} aria-pressed={spec.motion === m.key} onClick={() => pickMotion(m.key)}>{m.name}</Btn>
               ))}
             </div>
