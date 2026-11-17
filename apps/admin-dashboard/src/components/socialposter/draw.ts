@@ -162,6 +162,26 @@ function moved(ctx: Ctx, role: Role, index: number, cx: number, cy: number, box:
           ctx.globalAlpha *= e;
         }
         break;
+      // The advanced set (owner, 2026-11-17).
+      case 'glide': ctx.globalAlpha *= e; ctx.translate(-(1 - e) * W * 0.3, (1 - e) * H * 0.18); break;
+      case 'slam': {
+        ctx.globalAlpha *= clamp01(p * 4);
+        about(p < 0.6 ? 2.4 - 1.5 * (p / 0.6) : 0.9 + 0.1 * easeOut((p - 0.6) / 0.4));
+        break;
+      }
+      case 'unfold': ctx.globalAlpha *= clamp01(p * 3); ctx.translate(cx, cy); ctx.scale(1, Math.max(0.02, easeBack(p))); ctx.translate(-cx, -cy); break;
+      case 'tilt': ctx.globalAlpha *= e; ctx.translate(0, (1 - e) * 6 * u); about(1, (1 - e) * 0.35); break;
+      case 'elastic': ctx.globalAlpha *= clamp01(p * 4); about(Math.max(0.01, 1 - Math.cos(p * Math.PI * 4.5) * Math.exp(-p * 6))); break;
+      case 'wipeup':
+        if (box) {
+          const hh = (box.h + 6 * u) * e;
+          ctx.beginPath();
+          ctx.rect(box.x - 2 * u, box.y + box.h + 3 * u - hh, box.w + 4 * u, hh);
+          ctx.clip();
+        } else {
+          ctx.globalAlpha *= e;
+        }
+        break;
       default: break;
     }
   } else {
@@ -173,6 +193,8 @@ function moved(ctx: Ctx, role: Role, index: number, cx: number, cy: number, box:
       else if (a.m.idle === 'breathe') about(1 + 0.03 * Math.sin(since * 1.5) * k);
       else if (a.m.idle === 'sway') about(1, Math.sin(since * 1.4) * 0.035 * k);
       else if (a.m.idle === 'grow') about(1 + 0.07 * clamp01(since / Math.max(1, a.dur - start)));
+      else if (a.m.idle === 'orbit') ctx.translate(Math.cos(since * 1.3) * 0.9 * u * k, Math.sin(since * 1.3) * 0.9 * u * k);
+      else if (a.m.idle === 'bob') { ctx.translate(0, Math.sin(since * 2.2) * 0.8 * u * k); about(1, Math.sin(since * 1.1) * 0.025 * k); }
     } else if (role === 'sticker') {
       if (a.m.accent === 'wiggle' || a.m.accent === 'both') about(1, Math.sin(since * 6) * 0.07 * k);
     } else if (role === 'price' || pulse) {
@@ -1871,10 +1893,525 @@ const scallop: Layout = (s) => {
   footer(ctx, s.foot, s.spec, s.A, P.altInk, isDark(P.alt), P.bg, P.ink);
 };
 
+// ── The advanced set (owner, 2026-11-17: "more advanced design for layouts") ──
+
+/** The colour that stands out on `ground` for a word or a line: the second colour, else the highlight, else the ink. */
+function accentOn(P: Palette, ground: string): string {
+  if (isDark(P.alt) !== isDark(ground)) return P.alt;
+  if (isDark(P.pop) !== isDark(ground)) return P.pop;
+  return isDark(ground) ? '#FFFFFF' : '#111111';
+}
+
+/** The ink and ground for words on a frosted panel over `under`. */
+function frosted(under: string): { fill: string; edge: string; ink: string; ground: string } {
+  return isDark(under)
+    ? { fill: 'rgba(255,255,255,0.10)', edge: 'rgba(255,255,255,0.28)', ink: '#FFFFFF', ground: '#1A1A1A' }
+    : { fill: 'rgba(255,255,255,0.62)', edge: 'rgba(255,255,255,0.9)', ink: '#1C1408', ground: '#FFFFFF' };
+}
+
+/** Soft glowing blobs of colour drifting behind a frosted card. */
+const aurora: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(0, 0, W, H);
+  const blob = (x: number, y: number, r: number, c: string) => {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, alpha(c, 0.85));
+    g.addColorStop(1, alpha(c, 0));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  };
+  const R = Math.max(W, H);
+  blob(W * 0.12, H * 0.1, R * 0.55, P.alt);
+  blob(W * 0.95, H * 0.35, R * 0.5, P.pop);
+  blob(W * 0.3, H * 0.95, R * 0.55, mix(P.alt, P.pop, 0.5));
+  const { T, Pb, d } = twoUp(s, true, s.tall ? 0.5 : 0.46, 2 * u);
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: 'rgba(255,255,255,0.18)', ring: 'rgba(255,255,255,0.75)', ringW: 0.8 * u }, u);
+  const f = frosted(mix(P.bg, P.alt, 0.35));
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.16)';
+  ctx.shadowBlur = 6 * u;
+  rr(ctx, T.x, T.y, T.w, T.h, 5 * u);
+  ctx.fillStyle = f.fill;
+  ctx.fill();
+  ctx.restore();
+  rr(ctx, T.x, T.y, T.w, T.h, 5 * u);
+  ctx.strokeStyle = f.edge;
+  ctx.lineWidth = 0.4 * u;
+  ctx.stroke();
+  const pad = 4 * u;
+  const [pop, popInk] = popOn(P, f.ground);
+  stack(ctx, { x: T.x + pad, y: T.y + pad, w: T.w - 2 * pad, h: T.h - 2 * pad }, s.spec, { align: wide ? 'left' : 'center', valign: 'middle', head: 'sans', ink: f.ink, ground: f.ground, pop, popInk, price: 'pill', cta: 'solid', kicker: 'pill', firstWord: isDark(f.ground) ? P.pop : P.alt }, ALL, u);
+  sticker(ctx, Pb.x + d * 0.88, Pb.y + d * 0.14, d * 0.16, badgeOn(s), P.pop, P.popInk, 0.18, 'circle');
+  footer(ctx, s.foot, s.spec, s.A, P.ink, isDark(P.bg), pop, popInk);
+};
+
+/** The photo fills the picture and the words sit on a pane of frosted glass. */
+const glass: Layout = (s) => {
+  const { ctx, W, H, u, P, body, wide } = s;
+  const full = s.A.photo !== null && !s.spec.cutout;
+  if (full && s.A.photo) {
+    cover(ctx, s.A.photo, { x: 0, y: 0, w: W, h: H });
+  } else {
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, mix(P.alt, '#FFFFFF', 0.15));
+    g.addColorStop(1, mix(P.alt, '#000000', 0.35));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    rays(ctx, W / 2, H * 0.3, Math.max(W, H), 18, 'rgba(255,255,255,0.05)');
+  }
+  const pane: Rect = wide
+    ? { x: body.x, y: body.y, w: body.w * 0.5, h: body.h }
+    : { x: body.x, y: body.y + body.h * 0.52, w: body.w, h: body.h * 0.48 };
+  if (!full) {
+    const Pb: Rect = wide ? { x: body.x + body.w * 0.54, y: body.y, w: body.w * 0.46, h: body.h } : { x: body.x, y: body.y, w: body.w, h: body.h * 0.49 };
+    photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: null }, u);
+  }
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = 8 * u;
+  rr(ctx, pane.x, pane.y, pane.w, pane.h, 5 * u);
+  ctx.fillStyle = 'rgba(14,10,6,0.55)';
+  ctx.fill();
+  ctx.restore();
+  const sheen = ctx.createLinearGradient(pane.x, pane.y, pane.x, pane.y + pane.h);
+  sheen.addColorStop(0, 'rgba(255,255,255,0.16)');
+  sheen.addColorStop(0.4, 'rgba(255,255,255,0.03)');
+  sheen.addColorStop(1, 'rgba(255,255,255,0)');
+  rr(ctx, pane.x, pane.y, pane.w, pane.h, 5 * u);
+  ctx.fillStyle = sheen;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 0.4 * u;
+  ctx.stroke();
+  const pad = 4 * u;
+  const pop = isDark(P.pop) ? mix(P.alt, '#FFFFFF', 0.2) : P.pop;
+  const popInk = isDark(pop) ? '#FFFFFF' : '#111111';
+  stack(ctx, { x: pane.x + pad, y: pane.y + pad, w: pane.w - 2 * pad, h: pane.h - 2 * pad }, s.spec, { align: 'left', valign: 'middle', head: 'sans', ink: '#FFFFFF', ground: '#141414', pop, popInk, price: 'pill', cta: 'solid', kicker: 'pill', firstWord: pop }, ALL, u);
+  const r = 9 * u;
+  sticker(ctx, W - body.x - r, body.y + r, r, badgeOn(s), pop, popInk, 0.14, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, '#FFFFFF', true, pop, popInk);
+};
+
+/** The name repeated in huge outlined letters behind the dish. */
+const echo: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(0, 0, W, H);
+  const word = (s.spec.headline.trim().split(/\s+/)[0] || s.spec.brand || 'Bake').toUpperCase();
+  const size = (wide ? 30 : 24) * u;
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+  ctx.rotate(-0.12);
+  ctx.font = font('caps', size);
+  ctx.textAlign = 'center';
+  ctx.lineWidth = 0.35 * u;
+  const rows = Math.ceil((Math.hypot(W, H) / size) * 1.05);
+  for (let i = -rows; i <= rows; i++) {
+    const line = `${word} ${word} ${word} ${word}`;
+    ctx.strokeStyle = alpha(i % 2 === 0 ? accentOn(P, P.bg) : P.ink, i === 0 ? 0.5 : 0.16);
+    ctx.strokeText(line, (i % 2) * size * 0.8, i * size * 0.95);
+  }
+  ctx.restore();
+  const { T, Pb, d } = twoUp(s, true, s.tall ? 0.52 : 0.5, 1 * u);
+  ctx.beginPath();
+  ctx.arc(Pb.x + d / 2, Pb.y + d / 2, d * 0.52, 0, Math.PI * 2);
+  ctx.fillStyle = P.alt;
+  ctx.fill();
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: null, ring: P.bg, ringW: 1.2 * u }, u);
+  const [pop, popInk] = popOn(P, P.bg);
+  stack(ctx, T, s.spec, base(s, { head: 'caps', align: wide ? 'left' : 'center', valign: 'middle', pop, popInk, firstWord: accentOn(P, P.bg) }), ALL, u);
+  sticker(ctx, Pb.x + d * 0.1, Pb.y + d * 0.14, d * 0.16, badgeOn(s), P.pop, P.popInk, -0.2, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, P.ink, isDark(P.bg), P.alt, P.altInk);
+};
+
+/** A clean modern grid: thin lines, a big number and a square photo. */
+const swiss: Layout = (s) => {
+  const { ctx, W, H, u, P, body, wide } = s;
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = alpha(P.ink, 0.08);
+  ctx.lineWidth = 0.2 * u;
+  for (let x = body.x; x <= body.x + body.w + 1; x += body.w / 6) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = body.y; y <= H; y += body.w / 6) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  const Pb: Rect = wide
+    ? { x: body.x + body.w * 0.5, y: body.y, w: body.w * 0.5, h: body.h }
+    : { x: body.x, y: body.y, w: body.w, h: body.h * 0.52 };
+  ctx.fillStyle = P.alt;
+  ctx.fillRect(Pb.x + 2 * u, Pb.y + 2 * u, Pb.w, Pb.h);
+  photo(ctx, Pb, s.spec, s.A, { shape: 'cover', disc: mix(P.alt, P.bg, 0.7) }, u);
+  ctx.save();
+  ctx.font = font('caps', (wide ? 16 : 13) * u);
+  ctx.fillStyle = alpha(accentOn(P, P.bg), 0.9);
+  ctx.textAlign = 'right';
+  ctx.fillText('01', Pb.x + Pb.w - 2 * u, Pb.y + Pb.h + (wide ? -2 : 13) * u);
+  ctx.restore();
+  const T: Rect = wide
+    ? { x: body.x, y: body.y, w: body.w * 0.46, h: body.h }
+    : { x: body.x, y: Pb.y + Pb.h + 5 * u, w: body.w * 0.82, h: body.y + body.h - (Pb.y + Pb.h + 5 * u) };
+  ctx.fillStyle = P.ink;
+  ctx.fillRect(T.x, T.y, 12 * u, 1.1 * u);
+  stack(ctx, { x: T.x, y: T.y + 3 * u, w: T.w, h: T.h - 3 * u }, s.spec, base(s, { head: 'sans', valign: wide ? 'middle' : 'top', kicker: 'plain', firstWord: accentOn(P, P.bg) }), ALL, u);
+  sticker(ctx, Pb.x + 9 * u, Pb.y + 9 * u, 8 * u, badgeOn(s), P.pop, P.popInk, -0.12, 'circle');
+  footer(ctx, s.foot, s.spec, s.A, P.ink, isDark(P.bg), P.alt, P.altInk);
+};
+
+/** A pile of photo prints, the dish on the top one. */
+const polaroid: Layout = (s) => {
+  const { ctx, W, H, u, P, body, wide } = s;
+  ctx.fillStyle = P.alt;
+  ctx.fillRect(0, 0, W, H);
+  dots(ctx, W, H, 5 * u, 0.35 * u, alpha(P.altInk, 0.12));
+  // The print keeps room under it for the words: at most 56% of the height on a feed or square post.
+  const cw = wide ? Math.min(body.w * 0.4, (body.h * 0.92) / 1.16) : Math.min(body.w * 0.74, (body.h * (s.tall ? 0.6 : 0.56)) / 1.16);
+  const ch = cw * 1.16;
+  const cx = wide ? body.x + body.w - cw / 2 - 4 * u : W / 2;
+  const cy = wide ? H / 2 : body.y + ch / 2 + 2 * u;
+  const print = (angle: number, dx: number, fill: string) => {
+    ctx.save();
+    ctx.translate(cx + dx, cy);
+    ctx.rotate(angle);
+    ctx.shadowColor = 'rgba(0,0,0,0.28)';
+    ctx.shadowBlur = 5 * u;
+    ctx.shadowOffsetY = 1.5 * u;
+    ctx.fillStyle = fill;
+    ctx.fillRect(-cw / 2, -ch / 2, cw, ch);
+    ctx.restore();
+  };
+  print(0.14, 3 * u, mix(P.pop, '#FFFFFF', 0.3));
+  print(-0.1, -3 * u, mix(P.bg, '#FFFFFF', 0.4));
+  print(0.02, 0, '#FFFDF8');
+  const pad = cw * 0.07;
+  const pw = cw - 2 * pad;
+  const Pb: Rect = { x: cx - pw / 2, y: cy - ch / 2 + pad, w: pw, h: pw };
+  photo(ctx, Pb, s.spec, s.A, { shape: 'cover', disc: mix(P.alt, '#FFFFFF', 0.75) }, u);
+  // The name handwritten on the print's white strip.
+  const strip = ch - pw - pad * 2;
+  const name = s.spec.headline.trim();
+  if (name) {
+    const fit = fitLines(ctx, name, 'script', pw, 1, strip * 0.62, strip * 0.25);
+    ctx.font = font('script', fit.size);
+    ctx.fillStyle = '#2B2117';
+    ctx.textAlign = 'center';
+    ctx.fillText(fit.lines[0] ?? '', cx, Pb.y + pw + pad * 0.5 + strip * 0.62);
+  }
+  const T: Rect = wide
+    ? { x: body.x, y: body.y, w: body.w - cw - 12 * u, h: body.h }
+    : { x: body.x, y: cy + ch / 2 + 6 * u, w: body.w, h: body.y + body.h - (cy + ch / 2 + 6 * u) };
+  const [pop, popInk] = popOn(P, P.alt);
+  stack(ctx, T, s.spec, { align: wide ? 'left' : 'center', valign: 'middle', head: 'serif', ink: P.altInk, ground: P.alt, pop, popInk, price: 'pill', cta: 'solid', kicker: 'plain' }, wide ? ALL : ['kicker', 'tagline', 'price', 'cta'], u);
+  sticker(ctx, cx + cw * 0.44, cy - ch * 0.44, 8.5 * u, badgeOn(s), P.pop, P.popInk, 0.2, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, P.altInk, isDark(P.alt), pop, popInk);
+};
+
+/** The dish as a planet with rings and little moons going round it. */
+const orbit: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  const ground = mix(isDark(P.bg) ? P.bg : P.alt, '#000000', 0.7);
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, 0, W, H);
+  const r0 = rng(17);
+  for (let i = 0; i < 90; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${0.15 + r0() * 0.5})`;
+    ctx.beginPath();
+    ctx.arc(r0() * W, r0() * H, (0.1 + r0() * 0.3) * u, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const { T, Pb, d } = twoUp(s, true, s.tall ? 0.56 : 0.52, 6.5 * u);
+  const cx = Pb.x + d / 2;
+  const cy = Pb.y + d / 2;
+  const lit = (c: string) => (isDark(c) ? mix(c, '#FFFFFF', 0.5) : c);
+  const moonA = lit(P.pop);
+  const moonB = lit(P.alt);
+  const ring = (rad: number, a0: number, c: string, moonR: number) => {
+    ctx.save();
+    ctx.setLineDash([0.6 * u, 1.4 * u]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 0.25 * u;
+    ctx.beginPath();
+    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    const spin = ANIM ? ANIM.t * 0.5 : 0;
+    ctx.save();
+    ctx.shadowColor = c;
+    ctx.shadowBlur = 3 * u;
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(a0 + spin) * rad, cy + Math.sin(a0 + spin) * rad, moonR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  };
+  const glowG = ctx.createRadialGradient(cx, cy, d * 0.3, cx, cy, d * 0.85);
+  glowG.addColorStop(0, alpha(moonB, 0.35));
+  glowG.addColorStop(1, alpha(moonB, 0));
+  ctx.fillStyle = glowG;
+  ctx.fillRect(0, 0, W, H);
+  ring(d / 2 + 3 * u, -0.6, moonA, 1.2 * u);
+  ring(d / 2 + 6 * u, 2.3, moonB, 0.85 * u);
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: alpha(moonB, 0.2) }, u);
+  stack(ctx, T, s.spec, { align: wide ? 'left' : 'center', valign: 'middle', head: 'caps', ink: '#FFFFFF', ground, pop: moonA, popInk: isDark(moonA) ? '#FFFFFF' : '#111111', price: 'pill', cta: 'solid', kicker: 'plain', firstWord: moonA }, ALL, u);
+  sticker(ctx, cx + d * 0.42, cy - d * 0.42, d * 0.15, badgeOn(s), moonA, isDark(moonA) ? '#FFFFFF' : '#111111', 0.18, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, '#FFFFFF', true, moonA, isDark(moonA) ? '#FFFFFF' : '#111111');
+};
+
+/** Strings of party flags across the top, for an occasion. */
+const bunting: Layout = (s) => {
+  const { ctx, W, H, u, P, body, wide } = s;
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(0, 0, W, H);
+  const flags = (y0: number, sag: number, n: number, seed: number) => {
+    const at = (x: number) => y0 + Math.sin((x / W) * Math.PI) * sag;
+    ctx.strokeStyle = alpha(P.ink, 0.5);
+    ctx.lineWidth = 0.25 * u;
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += W / 40) { if (x === 0) ctx.moveTo(x, at(x)); else ctx.lineTo(x, at(x)); }
+    ctx.stroke();
+    const colours = [P.alt, P.pop, mix(P.alt, P.bg, 0.45), P.ink];
+    const fw = W / n;
+    for (let i = 0; i < n; i++) {
+      const x1 = i * fw + fw * 0.12;
+      const x2 = (i + 1) * fw - fw * 0.12;
+      const tipX = (x1 + x2) / 2;
+      ctx.beginPath();
+      ctx.moveTo(x1, at(x1));
+      ctx.lineTo(x2, at(x2));
+      ctx.lineTo(tipX, at(tipX) + fw * 0.9);
+      ctx.closePath();
+      ctx.fillStyle = colours[(i + seed) % colours.length];
+      ctx.fill();
+    }
+  };
+  flags(-1 * u, (wide ? 6 : 9) * u, wide ? 12 : 9, 0);
+  flags(5 * u, (wide ? 9 : 13) * u, wide ? 10 : 7, 2);
+  const top = (wide ? 24 : 22) * u;
+  const inner: Stage = { ...s, body: { x: body.x, y: Math.max(body.y, top), w: body.w, h: body.y + body.h - Math.max(body.y, top) } };
+  const { T, Pb, d } = twoUp(inner, true, s.tall ? 0.5 : 0.46, 2 * u);
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: mix(P.alt, P.bg, 0.8), ring: P.alt, ringW: 1.4 * u }, u);
+  const [pop, popInk] = popOn(P, P.bg);
+  stack(ctx, T, s.spec, base(s, { head: 'script', align: wide ? 'left' : 'center', valign: 'middle', firstWord: accentOn(P, P.bg), pop, popInk }), ALL, u);
+  sticker(ctx, Pb.x + d * 0.88, Pb.y + d * 0.84, d * 0.16, badgeOn(s), P.pop, P.popInk, 0.18, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, P.ink, isDark(P.bg), P.alt, P.altInk);
+};
+
+/** Print-style halftone dots fading in from the corners, a bold circle behind the dish. */
+const halftone: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(0, 0, W, H);
+  const step = 3.2 * u;
+  const R = Math.hypot(W, H) * 0.55;
+  ctx.fillStyle = alpha(accentOn(P, P.bg), 0.85);
+  for (let y = 0; y < H + step; y += step) {
+    for (let x = (Math.round(y / step) % 2) * step / 2; x < W + step; x += step) {
+      const k = Math.max(1 - Math.hypot(x, y) / R, 1 - Math.hypot(W - x, H - y) / R, 0);
+      if (k <= 0.02) continue;
+      ctx.beginPath();
+      ctx.arc(x, y, step * 0.5 * k, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  const { T, Pb, d } = twoUp(s, true, s.tall ? 0.52 : 0.48, 3 * u);
+  ctx.beginPath();
+  ctx.arc(Pb.x + d / 2 + 2 * u, Pb.y + d / 2 + 2 * u, d / 2 + 2 * u, 0, Math.PI * 2);
+  ctx.fillStyle = P.ink;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(Pb.x + d / 2, Pb.y + d / 2, d / 2 + 2 * u, 0, Math.PI * 2);
+  ctx.fillStyle = P.pop;
+  ctx.fill();
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: null, ring: P.ink, ringW: 0.8 * u }, u);
+  const card: Rect = { x: T.x, y: T.y + 1 * u, w: T.w, h: T.h - 2 * u };
+  ctx.fillStyle = P.ink;
+  ctx.fillRect(card.x + 1.4 * u, card.y + 1.4 * u, card.w, card.h);
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(card.x, card.y, card.w, card.h);
+  ctx.strokeStyle = P.ink;
+  ctx.lineWidth = 0.6 * u;
+  ctx.strokeRect(card.x, card.y, card.w, card.h);
+  const pad = 3 * u;
+  const [pop, popInk] = popOn(P, P.bg);
+  stack(ctx, { x: card.x + pad, y: card.y + pad, w: card.w - 2 * pad, h: card.h - 2 * pad }, s.spec, base(s, { head: 'caps', align: wide ? 'left' : 'center', valign: 'middle', pop, popInk, firstWord: accentOn(P, P.bg) }), ALL, u);
+  sticker(ctx, Pb.x + d * 0.1, Pb.y + d * 0.12, d * 0.16, badgeOn(s), P.alt, P.altInk, -0.2, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, P.ink, isDark(P.bg), P.alt, P.altInk);
+};
+
+/** Two spotlights from above meet on the dish, as on a stage. */
+const stage: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  const ground = mix(isDark(P.bg) ? P.bg : P.alt, '#000000', 0.84);
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, 0, W, H);
+  const { T, Pb, d } = twoUp(s, !wide, s.tall ? 0.5 : 0.46, 3 * u);
+  const cx = Pb.x + d / 2;
+  const cy = Pb.y + d / 2;
+  const light = isDark(P.pop) ? mix(P.alt, '#FFFFFF', 0.6) : P.pop;
+  const cone = (fromX: number) => {
+    const g = ctx.createLinearGradient(fromX, 0, cx, cy + d / 2);
+    g.addColorStop(0, alpha(light, 0.5));
+    g.addColorStop(1, alpha(light, 0.04));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(fromX - 2 * u, 0);
+    ctx.lineTo(fromX + 2 * u, 0);
+    ctx.lineTo(cx + d * 0.62, cy + d / 2);
+    ctx.lineTo(cx - d * 0.62, cy + d / 2);
+    ctx.closePath();
+    ctx.fill();
+  };
+  cone(W * 0.18);
+  cone(W * 0.82);
+  // The pool of light the dish stands in.
+  ctx.save();
+  ctx.translate(cx, cy + d * 0.48);
+  ctx.scale(1, 0.22);
+  const pool = ctx.createRadialGradient(0, 0, 0, 0, 0, d * 0.7);
+  pool.addColorStop(0, alpha(light, 0.55));
+  pool.addColorStop(1, alpha(light, 0));
+  ctx.fillStyle = pool;
+  ctx.beginPath();
+  ctx.arc(0, 0, d * 0.7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: alpha(light, 0.12) }, u);
+  stack(ctx, T, s.spec, { align: wide ? 'left' : 'center', valign: 'middle', head: 'caps', ink: '#FFFFFF', ground, pop: light, popInk: isDark(light) ? '#FFFFFF' : '#111111', price: 'pill', cta: 'outline', kicker: 'plain', firstWord: light }, ALL, u);
+  sticker(ctx, cx + d * 0.42, cy - d * 0.36, d * 0.15, badgeOn(s), light, isDark(light) ? '#FFFFFF' : '#111111', 0.16, 'circle');
+  footer(ctx, s.foot, s.spec, s.A, '#FFFFFF', true, light, isDark(light) ? '#FFFFFF' : '#111111');
+};
+
+/** An elegant menu card: a double border, small ornaments and a serif name. */
+const bistro: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(0, 0, W, H);
+  const m = 3.2 * u;
+  ctx.strokeStyle = P.alt;
+  ctx.lineWidth = 0.6 * u;
+  ctx.strokeRect(m, m, W - 2 * m, H - 2 * m);
+  ctx.lineWidth = 0.2 * u;
+  ctx.strokeRect(m + 1.4 * u, m + 1.4 * u, W - 2 * m - 2.8 * u, H - 2 * m - 2.8 * u);
+  // A small diamond at each corner.
+  ctx.fillStyle = P.alt;
+  for (const [x, y] of [[m, m], [W - m, m], [m, H - m], [W - m, H - m]]) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillRect(-1.2 * u, -1.2 * u, 2.4 * u, 2.4 * u);
+    ctx.restore();
+  }
+  const { T, Pb, d } = twoUp(s, true, s.tall ? 0.48 : 0.44, 3 * u);
+  ctx.beginPath();
+  ctx.arc(Pb.x + d / 2, Pb.y + d / 2, d / 2 + 1.6 * u, 0, Math.PI * 2);
+  ctx.strokeStyle = alpha(P.alt, 0.7);
+  ctx.lineWidth = 0.25 * u;
+  ctx.stroke();
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: mix(P.alt, P.bg, 0.86), ring: P.alt, ringW: 0.5 * u }, u);
+  // An ornament line between the dish and the words.
+  const oy = T.y + 1 * u;
+  const ox = wide ? T.x + 14 * u : W / 2;
+  ctx.strokeStyle = P.alt;
+  ctx.lineWidth = 0.25 * u;
+  ctx.beginPath();
+  ctx.moveTo(ox - 12 * u, oy);
+  ctx.lineTo(ox - 2 * u, oy);
+  ctx.moveTo(ox + 2 * u, oy);
+  ctx.lineTo(ox + 12 * u, oy);
+  ctx.stroke();
+  ctx.save();
+  ctx.translate(ox, oy);
+  ctx.rotate(Math.PI / 4);
+  ctx.fillRect(-0.9 * u, -0.9 * u, 1.8 * u, 1.8 * u);
+  ctx.restore();
+  stack(ctx, { x: T.x, y: T.y + 3 * u, w: T.w, h: T.h - 3 * u }, s.spec, base(s, { head: 'serif', align: wide ? 'left' : 'center', valign: 'middle', kicker: 'plain', price: 'plain', cta: 'outline' }), ALL, u);
+  sticker(ctx, Pb.x + d * 0.88, Pb.y + d * 0.12, d * 0.14, badgeOn(s), P.alt, P.altInk, 0.16, 'circle');
+  footer(ctx, s.foot, s.spec, s.A, P.ink, isDark(P.bg), P.alt, P.altInk);
+};
+
+/** Steam curling up from a hot dish on a warm dark ground. */
+const steam: Layout = (s) => {
+  const { ctx, W, H, u, P, wide } = s;
+  const ground = mix(isDark(P.bg) ? P.bg : P.alt, '#000000', 0.72);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, mix(ground, '#000000', 0.3));
+  g.addColorStop(1, ground);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  const { T, Pb, d } = twoUp(s, false, s.tall ? 0.5 : 0.46, 2 * u);
+  const cx = Pb.x + d / 2;
+  const warm = isDark(P.pop) ? mix(P.alt, '#FFFFFF', 0.4) : P.pop;
+  const glowG = ctx.createRadialGradient(cx, Pb.y + d * 0.6, 0, cx, Pb.y + d * 0.6, d * 0.9);
+  glowG.addColorStop(0, alpha(warm, 0.35));
+  glowG.addColorStop(1, alpha(warm, 0));
+  ctx.fillStyle = glowG;
+  ctx.fillRect(0, 0, W, H);
+  // Wisps rise from the top of the dish; in a video they drift.
+  const drift = ANIM ? ANIM.t * 0.9 : 0;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 3; i++) {
+    const x0 = cx + (i - 1) * d * 0.18;
+    // Up to the words above the dish, never into them.
+    const yTop = wide ? Pb.y - d * 0.05 : Math.max(T.y + T.h + 1 * u, Pb.y - d * 0.3);
+    ctx.strokeStyle = `rgba(255,255,255,${0.22 - i * 0.04})`;
+    ctx.lineWidth = (1.2 - i * 0.25) * u;
+    ctx.beginPath();
+    for (let k = 0; k <= 30; k++) {
+      const t = k / 30;
+      const y = Pb.y + d * 0.2 - t * (Pb.y + d * 0.2 - yTop);
+      const x = x0 + Math.sin(t * 6 + i * 2 + drift) * d * 0.05 * (0.4 + t);
+      if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: alpha(warm, 0.12) }, u);
+  stack(ctx, T, s.spec, { align: wide ? 'left' : 'center', valign: wide ? 'middle' : 'top', head: 'script', ink: '#FFF8EC', ground, pop: warm, popInk: isDark(warm) ? '#FFFFFF' : '#1C1408', price: 'pill', cta: 'solid', kicker: 'plain', firstWord: warm }, ALL, u);
+  sticker(ctx, cx + d * 0.42, Pb.y + d * 0.82, d * 0.16, badgeOn(s), warm, isDark(warm) ? '#FFFFFF' : '#1C1408', 0.16, 'burst');
+  footer(ctx, s.foot, s.spec, s.A, '#FFF8EC', true, warm, isDark(warm) ? '#FFFFFF' : '#1C1408');
+};
+
+/** A theatre sign: light bulbs round a panel that holds the dish and the name. */
+const marquee: Layout = (s) => {
+  const { ctx, W, H, u, P } = s;
+  ctx.fillStyle = P.alt;
+  ctx.fillRect(0, 0, W, H);
+  stripes(ctx, W, H, 6 * u, 3 * u, alpha(P.altInk, 0.06));
+  const m = 3.5 * u;
+  const panel: Rect = { x: m, y: m, w: W - 2 * m, h: H - 2 * m };
+  rr(ctx, panel.x, panel.y, panel.w, panel.h, 4 * u);
+  ctx.fillStyle = P.bg;
+  ctx.fill();
+  const bulb = isDark(P.pop) ? '#FFE9A8' : P.pop;
+  const gap = 5 * u;
+  const blink = ANIM ? Math.floor(ANIM.t * 3) % 2 : 0;
+  const lamp = (x: number, y: number, i: number) => {
+    ctx.save();
+    const on = (i + blink) % 2 === 0;
+    ctx.shadowColor = bulb;
+    ctx.shadowBlur = on ? 2.5 * u : 0;
+    ctx.fillStyle = on ? bulb : mix(bulb, P.alt, 0.5);
+    ctx.beginPath();
+    ctx.arc(x, y, 0.85 * u, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  };
+  let i = 0;
+  const inset = m + 2.2 * u;
+  for (let x = inset; x <= W - inset + 0.1; x += (W - 2 * inset) / Math.max(1, Math.round((W - 2 * inset) / gap))) { lamp(x, inset, i++); lamp(x, H - inset, i++); }
+  for (let y = inset + gap; y <= H - inset - gap + 0.1; y += (H - 2 * inset) / Math.max(1, Math.round((H - 2 * inset) / gap))) { lamp(inset, y, i++); lamp(W - inset, y, i++); }
+  const inner: Stage = { ...s, body: { x: s.body.x + 2 * u, y: s.body.y + 2 * u, w: s.body.w - 4 * u, h: s.body.h - 4 * u } };
+  const { T, Pb, d } = twoUp(inner, true, s.tall ? 0.5 : 0.46, 2 * u);
+  photo(ctx, Pb, s.spec, s.A, { shape: 'circle', disc: mix(P.alt, P.bg, 0.8), ring: P.alt, ringW: 1.2 * u }, u);
+  const [pop, popInk] = popOn(P, P.bg);
+  stack(ctx, T, s.spec, base(s, { head: 'caps', align: s.wide ? 'left' : 'center', valign: 'middle', pop, popInk, firstWord: accentOn(P, P.bg) }), ALL, u);
+  sticker(ctx, Pb.x + d * 0.88, Pb.y + d * 0.14, d * 0.16, badgeOn(s), P.alt, P.altInk, 0.18, 'burst');
+  footer(ctx, { ...s.foot, x: s.foot.x + 2 * u, y: s.foot.y - 2 * u, w: s.foot.w - 4 * u }, s.spec, s.A, P.ink, isDark(P.bg), P.alt, P.altInk);
+};
+
 export const LAYOUT_DRAW: Record<string, Layout> = {
   splash, spotlight, diagonal, photo: fullPhoto, frame, bigtype: bigType, band, sticker: stickers, arch, side,
   block, bigcircle: bigCircle, ticket, glow, bands, tilt, corners, editorial, starburst, ribbon,
   stamp, picnic, chalk, neon, target, zigzag, confetti, sunrise, capsule, popart, waves, scallop,
+  aurora, glass, echo, swiss, polaroid, orbit, bunting, halftone, stage, bistro, steam, marquee,
 };
 
 /** A moment of an animated post: which motion, how far in (seconds) and how long the whole clip is. */

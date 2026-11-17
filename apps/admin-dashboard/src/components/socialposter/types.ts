@@ -85,6 +85,19 @@ export const PALETTES: Palette[] = [
   { key: 'mono', name: 'Black and white', bg: '#FFFFFF', ink: '#111111', alt: '#111111', altInk: '#FFFFFF', pop: '#E63946', popInk: '#FFFFFF' },
   { key: 'gold', name: 'Black and gold', bg: '#0F0F0F', ink: '#F5E6C4', alt: '#C9A227', altInk: '#0F0F0F', pop: '#F5E6C4', popInk: '#0F0F0F' },
   { key: 'tangerine', name: 'Tangerine', bg: '#FF8C1A', ink: '#1C1408', alt: '#FFF3E0', altInk: '#1C1408', pop: '#1C1408', popInk: '#FFF3E0' },
+  // The advanced set (owner, 2026-11-17).
+  { key: 'terracotta', name: 'Terracotta', bg: '#F6E7DA', ink: '#3A1F12', alt: '#C0582E', altInk: '#FFF6EE', pop: '#2F4B3A', popInk: '#F6E7DA' },
+  { key: 'saffron', name: 'Saffron', bg: '#FFF4D6', ink: '#3B2600', alt: '#E8900C', altInk: '#FFFFFF', pop: '#8C1C13', popInk: '#FFF4D6' },
+  { key: 'matcha', name: 'Matcha', bg: '#EEF2E2', ink: '#24321C', alt: '#7A9A3A', altInk: '#FFFFFF', pop: '#3B2A1A', popInk: '#EEF2E2' },
+  { key: 'espresso', name: 'Espresso', bg: '#241812', ink: '#F7E9D7', alt: '#8A5A3C', altInk: '#FFF4E6', pop: '#E9C46A', popInk: '#241812' },
+  { key: 'berry', name: 'Berry', bg: '#3A0D2E', ink: '#FFEAF4', alt: '#D7266B', altInk: '#FFFFFF', pop: '#FFB4A2', popInk: '#3A0D2E' },
+  { key: 'lagoon', name: 'Lagoon', bg: '#E6F7F7', ink: '#0B3B3C', alt: '#0E8C8F', altInk: '#FFFFFF', pop: '#FF8A5B', popInk: '#FFFFFF' },
+  { key: 'sunset', name: 'Sunset', bg: '#2A1640', ink: '#FFF0E6', alt: '#FF6B3D', altInk: '#FFFFFF', pop: '#FFC94A', popInk: '#2A1640' },
+  { key: 'charcoal', name: 'Charcoal and lime', bg: '#1E2124', ink: '#F2F4F3', alt: '#3A3F44', altInk: '#F2F4F3', pop: '#C6F432', popInk: '#1E2124' },
+  { key: 'cream', name: 'Cream and teal', bg: '#FFF9EF', ink: '#173A3A', alt: '#1F6F6B', altInk: '#FFF9EF', pop: '#F28C28', popInk: '#FFFFFF' },
+  { key: 'wine', name: 'Wine', bg: '#4A0E1A', ink: '#FBEFE8', alt: '#8E1B32', altInk: '#FBEFE8', pop: '#D4AF37', popInk: '#2A0810' },
+  { key: 'peach', name: 'Peach', bg: '#FFE5D4', ink: '#4A2416', alt: '#FF8A65', altInk: '#FFFFFF', pop: '#4A2416', popInk: '#FFE5D4' },
+  { key: 'ocean', name: 'Deep ocean', bg: '#0B1E33', ink: '#EAF6FF', alt: '#1A5E8A', altInk: '#EAF6FF', pop: '#5FE1D9', popInk: '#0B1E33' },
 ];
 
 export interface LayoutInfo { key: string; name: string }
@@ -123,6 +136,19 @@ export const LAYOUTS: LayoutInfo[] = [
   { key: 'popart', name: 'Pop art' },
   { key: 'waves', name: 'Waves' },
   { key: 'scallop', name: 'Doily' },
+  // The advanced set (owner, 2026-11-17: "more advanced design").
+  { key: 'aurora', name: 'Aurora glass' },
+  { key: 'glass', name: 'Frosted photo' },
+  { key: 'echo', name: 'Echo letters' },
+  { key: 'swiss', name: 'Modern grid' },
+  { key: 'polaroid', name: 'Photo prints' },
+  { key: 'orbit', name: 'Orbit' },
+  { key: 'bunting', name: 'Party flags' },
+  { key: 'halftone', name: 'Halftone' },
+  { key: 'stage', name: 'Stage lights' },
+  { key: 'bistro', name: 'Bistro menu' },
+  { key: 'steam', name: 'Hot and steamy' },
+  { key: 'marquee', name: 'Marquee lights' },
 ];
 
 export interface PostSize { key: string; name: string; hint: string; w: number; h: number }
@@ -172,6 +198,18 @@ export const TEMPLATES: PostTemplate[] = [
   { key: 'breakfast', name: 'Breakfast', layout: 'sunrise', palette: 'rust', show: { kicker: true, badge: false }, words: { kicker: 'Good morning', cta: 'Order breakfast' } },
   { key: 'big-deal', name: 'Big deal', layout: 'popart', palette: 'sunny', show: { badge: true, was: true }, words: { badge: 'Deal', cta: 'Order now' } },
   { key: 'bakery', name: 'From the bakery', layout: 'scallop', palette: 'blush', show: { kicker: true, badge: false }, words: { kicker: 'Fresh from the oven', cta: 'Order now' } },
+  { key: 'iftar', name: 'Iftar special', layout: 'stage', palette: 'gold', show: { kicker: true, badge: false, cta2: true }, words: { kicker: 'Iftar special', cta: 'Order now', cta2: 'Pick up today' } },
+  { key: 'family-meal', name: 'Family meal', layout: 'bunting', palette: 'saffron', show: { kicker: true, tagline: true, badge: false }, words: { kicker: 'For the whole family', tagline: 'Enough for everyone', cta: 'Order now' } },
+  { key: 'combo-deal', name: 'Combo deal', layout: 'halftone', palette: 'sunny', show: { badge: true, was: true }, words: { badge: 'Combo', cta: 'Order now' } },
+  { key: 'chefs-pick', name: "Chef's pick", layout: 'bistro', palette: 'cream', show: { kicker: true, tagline: true, badge: false }, words: { kicker: "Chef's pick", tagline: 'Made fresh every day', cta: 'Order now' } },
+  { key: 'hot-fresh', name: 'Hot and fresh', layout: 'steam', palette: 'espresso', show: { kicker: true, badge: false }, words: { kicker: 'Hot and fresh', cta: 'Order now' } },
+  { key: 'happy-hour', name: 'Happy hour', layout: 'marquee', palette: 'wine', show: { badge: true, kicker: true, was: true }, words: { kicker: 'Happy hour', badge: 'Limited time', cta: 'Order now' } },
+  { key: 'new-flavour', name: 'New flavour', layout: 'aurora', palette: 'berry', show: { kicker: true, badge: true }, words: { kicker: 'New flavour', badge: 'New', cta: 'Try it today' } },
+  { key: 'photo-story', name: 'Photo story', layout: 'glass', palette: 'ember', show: { tagline: true, badge: false, kicker: false }, words: { tagline: 'Made with love in our kitchen', cta: 'Order now' } },
+  { key: 'launch', name: 'Big launch', layout: 'orbit', palette: 'ocean', show: { kicker: true, badge: true }, words: { kicker: 'Just landed', badge: 'New', cta: 'Order now' } },
+  { key: 'modern', name: 'Modern and minimal', layout: 'swiss', palette: 'charcoal', show: { kicker: true, badge: false, cta2: false }, words: { kicker: 'On the menu', cta: 'Order now' } },
+  { key: 'trending', name: 'Everyone loves it', layout: 'echo', palette: 'sunset', show: { badge: true, kicker: false }, words: { badge: 'Trending', cta: 'Order now' } },
+  { key: 'favourite', name: 'Customer favourite', layout: 'polaroid', palette: 'terracotta', show: { kicker: true, tagline: true, badge: false }, words: { kicker: 'Customer favourite', tagline: 'Ordered again and again', cta: 'Order now' } },
 ];
 
 /** The post with a template laid over it: its design, its parts and its usual words. */
@@ -180,7 +218,8 @@ export function withTemplate(spec: PostSpec, t: PostTemplate): PostSpec {
 }
 
 /** How one part arrives. */
-export type Fx = 'none' | 'fade' | 'up' | 'down' | 'left' | 'right' | 'zoom' | 'shrink' | 'pop' | 'spin' | 'drop' | 'swing' | 'flip' | 'wipe';
+export type Fx = 'none' | 'fade' | 'up' | 'down' | 'left' | 'right' | 'zoom' | 'shrink' | 'pop' | 'spin' | 'drop' | 'swing' | 'flip' | 'wipe'
+  | 'glide' | 'slam' | 'unfold' | 'tilt' | 'elastic' | 'wipeup';
 
 /**
  * A motion template: how each part of the post arrives, what it does once it
@@ -200,7 +239,7 @@ export interface Motion {
   /** 1 is the usual speed of arrival; under 1 is snappier, over 1 slower. */
   pace: number;
   /** What the photo does once it has arrived. */
-  idle: 'none' | 'float' | 'breathe' | 'sway' | 'grow';
+  idle: 'none' | 'float' | 'breathe' | 'sway' | 'grow' | 'orbit' | 'bob';
   /** What draws the eye afterwards: the sticker wiggles, the price and button pulse, or both. */
   accent: 'none' | 'wiggle' | 'pulse' | 'both';
   camera: 'none' | 'in' | 'out';
@@ -231,6 +270,19 @@ export const MOTIONS: Motion[] = [
   { key: 'tumble', name: 'Tumble', photo: 'swing', text: 'left', price: 'spin', sticker: 'drop', footer: 'fade', stagger: 0.14, pace: 1.1, idle: 'sway', accent: 'pulse', camera: 'none' },
   { key: 'curtain', name: 'Curtain', photo: 'down', text: 'up', price: 'up', sticker: 'pop', footer: 'up', stagger: 0.12, pace: 1.1, idle: 'breathe', accent: 'pulse', camera: 'in' },
   { key: 'burst', name: 'Burst', photo: 'pop', text: 'zoom', price: 'pop', sticker: 'spin', footer: 'zoom', stagger: 0.08, pace: 0.7, idle: 'breathe', accent: 'both', camera: 'out' },
+  // The advanced set (owner, 2026-11-17).
+  { key: 'glide', name: 'Glide', photo: 'glide', text: 'glide', price: 'glide', sticker: 'pop', footer: 'fade', stagger: 0.12, pace: 1, idle: 'orbit', accent: 'pulse', camera: 'in' },
+  { key: 'slam', name: 'Slam', photo: 'slam', text: 'slam', price: 'slam', sticker: 'slam', footer: 'fade', stagger: 0.14, pace: 0.9, idle: 'none', accent: 'both', camera: 'none' },
+  { key: 'unfold', name: 'Unfold', photo: 'unfold', text: 'unfold', price: 'unfold', sticker: 'pop', footer: 'unfold', stagger: 0.12, pace: 1, idle: 'breathe', accent: 'pulse', camera: 'none' },
+  { key: 'tilt', name: 'Tilt in', photo: 'tilt', text: 'tilt', price: 'tilt', sticker: 'swing', footer: 'up', stagger: 0.12, pace: 1.1, idle: 'bob', accent: 'wiggle', camera: 'none' },
+  { key: 'jelly', name: 'Jelly', photo: 'elastic', text: 'elastic', price: 'elastic', sticker: 'elastic', footer: 'fade', stagger: 0.12, pace: 1.2, idle: 'breathe', accent: 'both', camera: 'none' },
+  { key: 'rise-up', name: 'Rise up', photo: 'wipeup', text: 'wipeup', price: 'wipeup', sticker: 'pop', footer: 'wipeup', stagger: 0.18, pace: 1.1, idle: 'float', accent: 'none', camera: 'in' },
+  { key: 'showtime', name: 'Showtime', photo: 'slam', text: 'unfold', price: 'elastic', sticker: 'spin', footer: 'up', stagger: 0.14, pace: 1, idle: 'bob', accent: 'both', camera: 'out' },
+  { key: 'gentle', name: 'Gentle drift', photo: 'glide', text: 'wipeup', price: 'fade', sticker: 'fade', footer: 'fade', stagger: 0.24, pace: 1.4, idle: 'orbit', accent: 'none', camera: 'in' },
+  { key: 'magazine', name: 'Magazine', photo: 'unfold', text: 'wipeup', price: 'wipe', sticker: 'tilt', footer: 'fade', stagger: 0.26, pace: 1.3, idle: 'grow', accent: 'none', camera: 'out' },
+  { key: 'rocket', name: 'Rocket', photo: 'up', text: 'glide', price: 'slam', sticker: 'elastic', footer: 'up', stagger: 0.08, pace: 0.7, idle: 'float', accent: 'pulse', camera: 'out' },
+  { key: 'grand', name: 'Grand reveal', photo: 'zoom', text: 'unfold', price: 'slam', sticker: 'spin', footer: 'wipeup', stagger: 0.2, pace: 1.2, idle: 'grow', accent: 'pulse', camera: 'in' },
+  { key: 'playful', name: 'Playful', photo: 'elastic', text: 'tilt', price: 'drop', sticker: 'swing', footer: 'glide', stagger: 0.12, pace: 1, idle: 'bob', accent: 'wiggle', camera: 'none' },
 ];
 
 export const MOTION_SECONDS = [4, 6, 8];

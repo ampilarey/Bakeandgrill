@@ -1117,7 +1117,7 @@ export const GUIDES: Guide[] = [
       'Keep the page open while it records. Save or share then opens with the video playing: tap Share or save the video.',
     ],
     notes: [
-      'There are 24 motions and each one works with every design and colour.',
+      'There are 36 motions and each one works with every design and colour, among them Slam, Unfold, Jelly, Showtime, Grand reveal and Rocket.',
       'The video is an MP4 with no sound. Instagram and TikTok let you add music when you post it.',
       'On an iPhone, Save Video keeps it in Photos; Instagram, WhatsApp and TikTok are in the same list.',
       'Still picture turns the motion off. Change anything on the post and the video has to be made again.',
@@ -1154,7 +1154,7 @@ export const GUIDES: Guide[] = [
       'Under What is it for?, search the menu and pick the dish. Its name, price and photo fill in. Or type a Headline and a Price yourself.',
       'Under Pick a design, tap a ready-made post such as New dish, Today\'s offer or Free delivery. It sets the design, the colour, the parts and the usual words in one tap.',
       'Or tap any design, then any colour. The words stay the same. Surprise me picks one for you.',
-      'There are 32 designs, among them Chalkboard, Neon, Picnic, Stamp, Pop art, Waves and Doily, and ready-made posts for a special board, late night, a celebration, breakfast, a big deal and the bakery.',
+      'There are 44 designs in 32 colours, among them Aurora glass, Frosted photo, Echo letters, Modern grid, Photo prints, Orbit, Party flags, Halftone, Stage lights, Bistro menu, Hot and steamy and Marquee lights, and 30 ready-made posts such as Iftar special, Family meal, Combo deal, Chef\'s pick and Happy hour.',
       'Under Add or remove parts, switch on what you want: Price, Old price, Sticker, Order button, Second button, Phone number, Website, Logo, QR code.',
       'Tap Feed post, Square, Story or Wide to see each shape.',
       'Tap Save or share. All four sizes appear, each with its own button, and one button for all four.',

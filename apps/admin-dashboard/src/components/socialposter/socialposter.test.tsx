@@ -23,8 +23,8 @@ const BRAND = { name: 'Bake & Grill', tagline: 'Fresh Baked, Fire Grilled', phon
 
 describe('the social post designs', () => {
   it('offers many looks: every layout is drawn, in every colour', () => {
-    expect(LAYOUTS.length).toBeGreaterThanOrEqual(20);
-    expect(PALETTES.length).toBeGreaterThanOrEqual(20);
+    expect(LAYOUTS.length).toBeGreaterThanOrEqual(44);
+    expect(PALETTES.length).toBeGreaterThanOrEqual(32);
     for (const l of LAYOUTS) expect(LAYOUT_DRAW[l.key], l.key).toBeTypeOf('function');
     expect(new Set(LAYOUTS.map((l) => l.key)).size).toBe(LAYOUTS.length);
     expect(new Set(PALETTES.map((p) => p.key)).size).toBe(PALETTES.length);
@@ -47,7 +47,7 @@ describe('the social post designs', () => {
     expect(MOTIONS.length).toBeGreaterThanOrEqual(20);
     expect(new Set(MOTIONS.map((m) => m.key)).size).toBe(MOTIONS.length);
     expect(new Set(MOTIONS.map((m) => m.name)).size).toBe(MOTIONS.length);
-    const fx = ['none', 'fade', 'up', 'down', 'left', 'right', 'zoom', 'shrink', 'pop', 'spin', 'drop', 'swing', 'flip', 'wipe'];
+    const fx = ['none', 'fade', 'up', 'down', 'left', 'right', 'zoom', 'shrink', 'pop', 'spin', 'drop', 'swing', 'flip', 'wipe', 'glide', 'slam', 'unfold', 'tilt', 'elastic', 'wipeup'];
     for (const m of MOTIONS) {
       for (const part of [m.photo, m.text, m.price, m.sticker, m.footer]) expect(fx, m.key).toContain(part);
       expect(m.pace, m.key).toBeGreaterThan(0);
