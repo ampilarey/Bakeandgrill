@@ -94,6 +94,20 @@ describe('PrintLabelModal', () => {
     expect(lastBody().preview).toBeUndefined();
   });
 
+  it('Print the dates, in plain view, switched off prints the date boxes blank to write by hand (owner, 2026-11-23)', async () => {
+    show();
+    await previewed();
+    const sw = screen.getByRole('switch', { name: 'Print the dates' });
+    expect(sw.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(sw);
+    expect(screen.queryByTestId('print-mfg')).toBeNull();
+    await waitFor(() => expect(lastBody().fill).toBe(false), { timeout: 3000 });
+    fireEvent.click(screen.getByTestId('print-go'));
+    await waitFor(() => expect(openLabelSheet).toHaveBeenCalled());
+    expect(lastBody().fill).toBe(false);
+    expect(lastBody().mfg ?? null).toBeNull();
+  });
+
   it('opens at the size this label printed at last time, not the size of whatever printed last', async () => {
     localStorage.setItem('labels.lastSize', JSON.stringify({ shape: 'rect', preset: 'r105x148', on: 'sheet', w: 105, h: 148 }));
     localStorage.setItem('labels.sizeFor', JSON.stringify({ c9: { shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60, roll: null } }));

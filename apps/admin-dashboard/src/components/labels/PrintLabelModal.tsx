@@ -6,7 +6,7 @@ import {
   type LabelLimits, type LabelPreset, type LabelRoll, type LabelSizeKept, type SheetLinks, type StickerLang, type StickerSummary,
 } from '../../api';
 import { Button } from '../ui';
-import { Modal, ModalActions, TabScrollRow } from '../SharedUI';
+import { Modal, ModalActions, Switch, TabScrollRow } from '../SharedUI';
 import { today as localToday } from '../../utils/dateHelpers';
 import { DATE_BOX, ExpiryChips, expiryForNewMfg } from './ExpiryChips';
 import { LabelSizePicker } from './LabelSizePicker';
@@ -256,6 +256,11 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
             )}
           </div>
 
+          {/* In plain view (owner, 2026-11-23: "keep the date part blank so it can be hand written sometimes"); it sat under More. */}
+          <label className="flex items-center gap-3 text-sm text-[var(--color-text)] min-h-[44px]">
+            <Switch checked={fill} onChange={setFill} aria-label="Print the dates" data-testid="print-fill" />
+            <span>Print the dates<span className="block text-xs text-[var(--color-text-muted)]">{fill ? 'Off leaves the date boxes blank, to write in by hand.' : 'The date boxes print blank, to write in by hand.'}</span></span>
+          </label>
           {fill && (
             <div>
               <label className={labelClass} htmlFor="print-mfg">Made on</label>
@@ -341,10 +346,6 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
                   </select>
                 </div>
               )}
-              <label className="flex items-center gap-2 text-sm text-[var(--color-text)] min-h-[44px]">
-                <input type="checkbox" checked={fill} onChange={(e) => setFill(e.target.checked)} data-testid="print-fill" />
-                <span>Fill in the dates<span className="block text-xs text-[var(--color-text-muted)]">Off: blank boxes to write in by hand.</span></span>
-              </label>
               <div>
                 <label className={labelClass} htmlFor="print-qty">Quantity per pack</label>
                 <input id="print-qty" type="number" inputMode="numeric" min={1} value={qty} onChange={(e) => setQty(e.target.value)} placeholder={target.ownQty ? `${target.ownQty}, the label's own` : 'Blank: the label\'s own'} className={fieldClass} />

@@ -636,7 +636,7 @@ export const GUIDES: Guide[] = [
     notes: [
       'Paper shows the size and sheet it will print on. Tap Change to pick another size or one of your rolls. The label opens at the same size next time.',
       'Type a Batch number to tell this lot from the next. It prints on every label and is kept in the print log.',
-      'More holds Packed for, Quantity per pack and Fill in the dates.',
+      'To write the dates by hand, switch off Print the dates above Made on: the date boxes print blank. More holds Packed for and Quantity per pack.',
       'For a promotion flash, pack numbers, cut marks or several products on one sheet, tap open every option under More.',
       'Print stays off while the use-by date has passed or the wording lock refuses the label.',
       'For a sharp print on a colour printer: print at Actual size (100%), not Fit to page, choose the best quality, and set the paper type to Labels or Thick. A computer usually prints sharper than a phone.',
