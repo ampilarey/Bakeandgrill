@@ -153,4 +153,38 @@ final class LabelImage
 
         return [max(0, $minX - $step), max(0, $minY - $step), min($w - 1, $maxX + $step), min($h - 1, $maxY + $step)];
     }
+
+    /** A picture this size or larger is worth drawing once and pointing at (bytes of its data URI). */
+    public const SHARE_FROM = 8192;
+
+    /**
+     * A big picture as a file the PDF renderer reads by path (owner, 2026-11-24:
+     * 60 lid labels answered a 500). A sheet of 60 carried its photo 60 times, a
+     * 69 MB page that took over 500 MB to lay out; by path it is read once.
+     * Kept under storage (inside dompdf's chroot) by its hash, a day at most.
+     * Null when the picture is small, not a plain bitmap, or cannot be kept.
+     */
+    public static function fileFor(string $src): ?string
+    {
+        if (strlen($src) < self::SHARE_FROM || !preg_match('#^data:image/(png|jpeg|jpg|gif|webp);base64,#', $src, $m)) {
+            return null;
+        }
+        $dir = storage_path('app/label-pictures');
+        $file = $dir . '/' . sha1($src) . '.' . ($m[1] === 'jpeg' ? 'jpg' : $m[1]);
+        if (is_file($file)) {
+            return $file;
+        }
+        $bytes = base64_decode(substr($src, strlen($m[0])), true);
+        if ($bytes === false || (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir))) {
+            return null;
+        }
+        // Yesterday's pictures go as today's arrive, so the folder stays small.
+        foreach (glob($dir . '/*') ?: [] as $old) {
+            if (@filemtime($old) < time() - 86400) {
+                @unlink($old);
+            }
+        }
+
+        return @file_put_contents($file, $bytes, LOCK_EX) !== false ? $file : null;
+    }
 }

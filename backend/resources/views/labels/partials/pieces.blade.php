@@ -8,6 +8,8 @@
      * @var list<array<string, mixed>> $pieces
      * @var float $ox  @var float $oy  @var float $s  @var bool $forPdf
      */
+    // A round label's cap and foot: one picture each, not two hundred boxes.
+    $pieces = \App\Domains\Labels\StickerDesign::bandsAsPictures($pieces);
     $mm = fn (float $v): string => rtrim(rtrim(number_format($v, 3, '.', ''), '0'), '.') . 'mm';
     $PT = \App\Domains\Labels\LabelText::PT;
     $textHtml = function (string $text, string $font, array $boldWords = []) use ($forPdf): string {
@@ -49,7 +51,30 @@
             <div class="pc" style="left:{{ $mm($ox + $p['x'] * $s) }};top:{{ $mm($oy + $p['y'] * $s) }};width:{{ $mm($p['w'] * $s) }};height:0;border-top:{{ $mm(($p['sw'] ?? 0.2) * $s) }} solid {{ $p['color'] }};"></div>
             @break
         @case('img')
-            <img class="pc" src="{{ $p['src'] }}" alt="" style="left:{{ $mm($ox + $p['x'] * $s) }};top:{{ $mm($oy + $p['y'] * $s) }};width:{{ $mm($p['w'] * $s) }};height:{{ $mm($p['h'] * $s) }};">
+            @php
+                // A big picture goes into the page once (a sheet of 60 lids carried its photo 60 times and
+                // answered a 500): the PDF reads it from a file, the web sheet from one CSS rule.
+                $box = 'left:' . $mm($ox + $p['x'] * $s) . ';top:' . $mm($oy + $p['y'] * $s) . ';width:' . $mm($p['w'] * $s) . ';height:' . $mm($p['h'] * $s) . ';';
+                $src = (string) $p['src'];
+                $shared = null;
+                if (strlen($src) >= \App\Domains\Labels\LabelImage::SHARE_FROM && !str_starts_with($src, 'data:image/svg')) {
+                    if ($forPdf) {
+                        $src = \App\Domains\Labels\LabelImage::fileFor($src) ?? $src;
+                    } elseif (($imgSeen ?? null) instanceof \ArrayObject) {
+                        $shared = 'im' . substr(sha1($src), 0, 12);
+                        $firstUse = !isset($imgSeen[$shared]);
+                        $imgSeen[$shared] = true;
+                    }
+                }
+            @endphp
+            @if ($shared !== null)
+                @if ($firstUse)
+                    <style>.{{ $shared }} { background: url("{!! $src !!}") 0 0 / 100% 100% no-repeat; }</style>
+                @endif
+                <div class="pc {{ $shared }}" data-img="1" style="{{ $box }}"></div>
+            @else
+                <img class="pc{{ isset($p['band']) ? ' band' : '' }}" src="{{ $src }}" alt="" style="{{ $box }}">
+            @endif
             @break
         @case('text')
             @php

@@ -1375,9 +1375,13 @@ final class StickerDesign
         $r = $D / 2;
         $half = fn (float $y): float => sqrt(max(0.0, $r * $r - ($y - $r) * ($y - $r)));
         $out = [];
+        // One name for the whole band, so a page can draw its strips as one picture (bandsAsPictures).
+        $band = 'b' . substr(md5($D . '|' . $y0 . '|' . $y1 . '|' . $fill . '|' . $inset), 0, 10);
         // Thin where the edge runs flat and thinner still where it turns, so each strip is
         // at most $tol wider a side than the last: smooth to the eye in print and on screen.
-        $tol = max(0.06, $D / 700);
+        // Coarser than the eye needs on screen would be wasteful: 60 lids at a finer step were 27,000 boxes and
+        // more memory than the host gives a PDF (owner, 2026-11-24). The stepped edge is the cut line anyway.
+        $tol = max(0.15, $D / 300);
         $y = $y0;
         while ($y < $y1 - 0.001) {
             $h = max(0.05, $half($y));
@@ -1386,10 +1390,75 @@ final class StickerDesign
             // The narrower end of the strip, so no corner pokes past the circle.
             $w = 2 * (min($half($y), $half($b)) - $inset);
             if ($w > 0.8) {
-                // A hair of overlap, so no light shows between two strips.
-                $out[] = ['t' => 'rect', 'x' => round(($D - $w) / 2, 3), 'y' => round($y, 3), 'w' => round($w, 3), 'h' => round($b - $y + 0.06, 3), 'fill' => $fill];
+                // Each strip runs on under its wider neighbours, towards the circle's middle, as far as the band
+                // goes: a hair of overlap left white lines between strips where a screen draws the label small
+                // (owner, 2026-11-24: "Preview shows lines"). It is the narrower one, so it never leaves the circle.
+                $top = $b <= $r ? $y : max($y0, min($y, $r));
+                $bottom = $b <= $r ? min($y1, $r) : $b;
+                $out[] = ['t' => 'rect', 'x' => round(($D - $w) / 2, 3), 'y' => round($top, 3), 'w' => round($w, 3), 'h' => round(max($b - $y, $bottom - $top), 3), 'fill' => $fill, 'band' => $band, 'span' => [round($y, 3), round($b, 3)]];
             }
             $y = $b;
+        }
+
+        return $out;
+    }
+
+    /**
+     * A band's strips as one picture, for the page and the PDF (owner,
+     * 2026-11-24: 60 lid labels answered a 500, and the preview showed lines).
+     * A round label's cap and foot are some 200 strips; drawn as boxes a sheet
+     * of 60 is 12,000 of them, more than the host's memory gives a PDF, and a
+     * screen that draws the label small shows a seam at each. One SVG outline
+     * of the same strips has neither fault. The label printer's bitmap still
+     * reads the strips (LabelRaster), so cap() keeps making them.
+     *
+     * @param list<array<string, mixed>> $pieces
+     * @return list<array<string, mixed>>
+     */
+    public static function bandsAsPictures(array $pieces): array
+    {
+        $out = [];
+        $n = count($pieces);
+        for ($i = 0; $i < $n; $i++) {
+            $p = $pieces[$i];
+            if (($p['t'] ?? '') !== 'rect' || !isset($p['band'], $p['span'])) {
+                $out[] = $p;
+
+                continue;
+            }
+            $run = [$p];
+            while ($i + 1 < $n && ($pieces[$i + 1]['band'] ?? null) === $p['band'] && ($pieces[$i + 1]['fill'] ?? null) === $p['fill']) {
+                $run[] = $pieces[++$i];
+            }
+            $x0 = min(array_map(fn ($r) => (float) $r['x'], $run));
+            $x1 = max(array_map(fn ($r) => (float) $r['x'] + (float) $r['w'], $run));
+            $y0 = (float) $run[0]['span'][0];
+            $y1 = (float) $run[count($run) - 1]['span'][1];
+            if (count($run) < 3 || $x1 - $x0 <= 0 || $y1 - $y0 <= 0) {
+                array_push($out, ...$run);
+
+                continue;
+            }
+            // In hundredths of a millimetre, the picture's own units: dompdf's SVG library ignores a viewBox.
+            $u = fn (float $mm): int => (int) round($mm * 100);
+            $left = $right = [];
+            foreach ($run as $r) {
+                foreach ($r['span'] as $y) {
+                    $left[] = $u((float) $r['x'] - $x0) . ',' . $u((float) $y - $y0);
+                    $right[] = $u((float) $r['x'] + (float) $r['w'] - $x0) . ',' . $u((float) $y - $y0);
+                }
+            }
+            [$w, $h] = [$u($x1 - $x0), $u($y1 - $y0)];
+            $svg = sprintf(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" preserveAspectRatio="none"><polygon points="%s" fill="%s"/></svg>',
+                $w,
+                $h,
+                $w,
+                $h,
+                implode(' ', array_merge($left, array_reverse($right))),
+                $p['fill'],
+            );
+            $out[] = ['t' => 'img', 'x' => $x0, 'y' => $y0, 'w' => $x1 - $x0, 'h' => $y1 - $y0, 'src' => 'data:image/svg+xml;base64,' . base64_encode($svg), 'band' => $p['band']];
         }
 
         return $out;

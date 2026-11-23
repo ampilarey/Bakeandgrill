@@ -1,4 +1,6 @@
 @php
+    // One CSS rule per big picture on the web sheet (pieces.blade.php), whatever the number of labels.
+    $imgSeen = $imgSeen ?? new \ArrayObject();
     /*
      * Print labels (owner, 2026-10-04: "I want to print labels like this").
      * The same view prints from the browser and renders as the PDF; every

@@ -575,7 +575,7 @@ and `label_show_qr` off leaves the complaints one out. The set form has the cust
 the features… add missing components"): Label type, Unit after the pieces, Nutrition, Badges (kept on the side label
 only), the Dhivehi heading, note and how to use, the Storage line, the Bottom strip (`FooterPicker`) and Complaints QR;
 a new box on the custom label editor that suits a tub goes into `TubSet::FIELDS`, `storeTubSet()`'s rules and the form.
-`TubSetTest`, `TubSetModal.test.tsx`, `PrintLabelModal.test.tsx`. How to
+`TubSetTest`, `TubSetModal.test.tsx`, `PrintLabelModal.test.tsx`. **A big sheet stays light** (owner, 2026-11-24: 60 lid labels answered a 500 and the preview showed lines across the cap and foot): the page carried its photo 60 times and 27,000 strip boxes, 69 MB and over 500 MB to make the PDF. `pieces.blade.php` now draws a band's strips as one SVG outline (`StickerDesign::bandsAsPictures()`, from the `band` and `span` that `cap()` puts on each strip; the label printer's bitmap still reads the strips) and a bitmap of 8 KB or more once: the PDF from a file under `storage/app/label-pictures` (`LabelImage::fileFor()`), the web sheet from one CSS rule (`$imgSeen`). A new repeated picture or many-box shape on a label goes the same way, never once per copy. How to
 use it and where everything lives: `docs/LABELS.md`; design and decisions:
 `docs/LABEL_HUB_PLAN.md` and `docs/LABEL_HUB_V2_PLAN.md`.
 

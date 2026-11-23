@@ -63,6 +63,27 @@ class StickerSheetTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_a_sheet_of_sixty_round_labels_carries_its_bands_and_photo_once_each(): void
+    {
+        // Owner, 2026-11-24: 60 lid labels answered a 500 (the photo 60 times, 27,000 boxes) and the preview showed lines.
+        $cap = \App\Domains\Labels\StickerDesign::cap(80.0, 0.0, 12.0, '#B74B0C');
+        $this->assertGreaterThan(20, count($cap));
+        $this->assertLessThan(140, count($cap), 'no finer than print needs');
+        $one = \App\Domains\Labels\StickerDesign::bandsAsPictures([...$cap, ['t' => 'text', 'x' => 1, 'y' => 1, 'w' => 5, 'text' => 'x']]);
+        $this->assertCount(2, $one, 'the whole band is one picture');
+        $this->assertSame('img', $one[0]['t']);
+        $this->assertStringContainsString('<polygon', (string) base64_decode(substr($one[0]['src'], 26)));
+        $this->assertEqualsWithDelta(12.0, $one[0]['h'], 0.2);
+
+        // A big bitmap is kept as a file for the PDF, the same file each time.
+        $png = 'data:image/png;base64,' . base64_encode(str_repeat('x', 9000));
+        $file = \App\Domains\Labels\LabelImage::fileFor($png);
+        $this->assertNotNull($file);
+        $this->assertSame($file, \App\Domains\Labels\LabelImage::fileFor($png));
+        $this->assertNull(\App\Domains\Labels\LabelImage::fileFor('data:image/png;base64,AAAA'), 'a small one stays in the page');
+        @unlink((string) $file);
+    }
+
     public function test_hand_dated_labels_can_print_a_use_by_rule(): void
     {
         // Owner, 2026-11-23: "expiry option 3 months or x month from the manufacturing date. Or option to keep both hand written".
@@ -312,7 +333,10 @@ class StickerSheetTest extends TestCase
         $this->assertStringContainsString('FROZEN HEDHIKA', $html);
         // The dates are two boxes, a coloured tab over each date (2026-11-16).
         $this->assertStringContainsString('>EXP DATE<', $html);
-        $this->assertStringNotContainsString('data:image/svg+xml', $html, 'no QR on a 50 mm circle');
+        // The cap and the foot are one drawn picture each (2026-11-24); no other SVG, so no QR on a 50 mm circle.
+        $bands = substr_count($html, 'class="pc band"');
+        $this->assertGreaterThan(0, $bands);
+        $this->assertSame($bands, substr_count($html, 'data:image/svg+xml'), 'no QR on a 50 mm circle');
         $pdf = $this->get($res->json('pdf_url'))->assertOk();
         $this->assertSame(1, preg_match_all('#/Type\\s*/Page[^s]#', (string) $pdf->getContent()));
         $this->dump('round-50', $html, (string) $pdf->getContent());
