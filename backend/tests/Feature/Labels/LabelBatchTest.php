@@ -99,6 +99,19 @@ class LabelBatchTest extends TestCase
         $this->get('/b/ZZZZ9999')->assertNotFound()->assertSee('We could not find this pack')->assertSee('ZZZZ9999');
     }
 
+    public function test_a_hand_dated_pack_says_the_dates_are_on_the_pack_and_the_rule_it_printed(): void
+    {
+        $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => 'a4-4', 'fill' => false, 'exp_rule' => '3'])->assertOk();
+        $this->get('/b/' . $res->json('summary.products.0.code'))->assertOk()
+            ->assertSee('Written on the pack')
+            ->assertSee('3 months after the date made')
+            ->assertSee('written by hand')
+            ->assertDontSee('Good for');
+
+        $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => 'a4-4', 'fill' => false])->assertOk();
+        $this->get('/b/' . $res->json('summary.products.0.code'))->assertOk()->assertSee('written by hand')->assertDontSee('after the date made');
+    }
+
     public function test_the_page_says_when_the_pack_is_past_its_date_or_due_today(): void
     {
         $print = LabelPrint::create(['code' => 'EXPD2345', 'kind' => 'sticker_en', 'layout' => 'a4-4', 'item_id' => $this->bajiya->id, 'copies' => 2, 'mfg_date' => '2026-07-01', 'exp_date' => '2026-10-09', 'output' => 'print']);

@@ -62,6 +62,9 @@ class LabelBatchPageController extends Controller
             'exp' => LabelSettings::formatDate($exp),
             'days_left' => $left,
             'status' => Reprint::status($left),
+            // Dates left blank to write by hand (owner, 2026-11-23): the page says so, with the rule the label printed.
+            'by_hand' => $print->mfg_date === null && $exp === null && ($print->request['fill'] ?? null) === false,
+            'exp_rule' => $this->ruleWords($print, $product),
             'batch' => (string) ($print->batch_code ?? ''),
             // The count typed for this print, else the label's own pack quantity, as the sticker prints it.
             'qty' => $print->pack_qty ?? ($product?->label_pack_qty ?: null),
@@ -151,5 +154,21 @@ class LabelBatchPageController extends Controller
             'total' => array_sum(array_column($lines, 'qty')),
             'printed' => LabelSettings::formatDate($print->created_at?->toDateString()),
         ];
+    }
+
+    /** "3 months after the date made", from the rule a hand-dated label printed; null when it printed none. */
+    private function ruleWords(LabelPrint $print, mixed $product): ?string
+    {
+        $rule = StickerSheet::expRuleOf($print->request['exp_rule'] ?? null);
+        if ($rule === null || ($print->request['fill'] ?? null) !== false) {
+            return null;
+        }
+        if ($rule === 'shelf') {
+            $days = $product !== null ? (int) ($this->types->forItem($product)['shelf_life_days'] ?? 0) : 0;
+
+            return $days > 0 ? $days . ($days === 1 ? ' day' : ' days') . ' after the date made' : null;
+        }
+
+        return $rule . ((int) $rule === 1 ? ' month' : ' months') . ' after the date made';
     }
 }

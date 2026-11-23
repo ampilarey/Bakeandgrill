@@ -90,9 +90,12 @@
 <div class="lp-wrap">
     <div class="lp-card">
         <div class="bp-dates">
-            <div class="bp-date"><span>Made on</span><strong>{{ $pack['mfg'] ?? '—' }}</strong></div>
-            <div class="bp-date exp"><span>Use by</span><strong>{{ $pack['exp'] ?? '—' }}</strong></div>
+            <div class="bp-date"><span>Made on</span><strong>{{ $pack['mfg'] ?? (($pack['by_hand'] ?? false) ? 'Written on the pack' : '—') }}</strong></div>
+            <div class="bp-date exp"><span>Use by</span><strong>{{ $pack['exp'] ?? ($pack['exp_rule'] ?? ((($pack['by_hand'] ?? false)) ? 'Written on the pack' : '—')) }}</strong></div>
         </div>
+        @if ($pack['by_hand'] ?? false)
+            <p class="lp-sub" style="margin: 0.5rem 0 0;" data-testid="batch-by-hand">The dates on this pack were written by hand. Please read them on the pack.</p>
+        @endif
         <ul class="lp-rows" style="margin-top: 0.75rem;">
             <li><span>Batch</span><b>{{ $pack['batch'] !== '' ? $pack['batch'] : 'Not marked' }}</b></li>
             <li><span>Pack code</span><b class="lp-code">{{ $code }}</b></li>
