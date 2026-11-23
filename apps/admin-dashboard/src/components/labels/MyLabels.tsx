@@ -1,6 +1,7 @@
+import { LabelThumb } from './LabelThumb';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Layers, ListChecks, Pencil, Plus, Printer, Search, Tag } from 'lucide-react';
+import { ChevronDown, Layers, ListChecks, Pencil, Plus, Printer, Search } from 'lucide-react';
 import { fetchLabelProducts, type LabelProduct } from '../../api';
 import { Button, Card } from '../ui';
 import { Modal } from '../SharedUI';
@@ -65,7 +66,7 @@ function MenuItemLabels({ canManage }: { canManage: boolean }) {
         {shown.map((p) => (
           <li key={p.id} className="px-4 py-3 flex flex-wrap items-center gap-3">
             <div className="w-12 h-12 shrink-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] flex items-center justify-center overflow-hidden">
-              {p.label_photo_url ? <img src={p.label_photo_url} alt="" className="max-w-full max-h-full object-contain" /> : <Tag size={18} className="text-[var(--color-text-muted)]" />}
+              <LabelThumb srcs={[p.label_photo_url]} />
             </div>
             <div className="flex-1 min-w-[160px]">
               <div className="text-sm font-semibold text-[var(--color-text)]">{p.name}{p.name_dv ? <span className="ml-2 font-normal text-[var(--color-text-muted)]" dir="rtl">{p.name_dv}</span> : null}</div>

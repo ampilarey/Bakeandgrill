@@ -31,6 +31,7 @@ import { PhonePreviewBar } from './PhonePreviewBar';
 import { LabelSizePicker } from './LabelSizePicker';
 import { BrandModal, NewTypeButton } from './TypesAndBrands';
 import { useIsBelowDesktop } from '../../hooks/useIsMobile';
+import { LabelThumb } from './LabelThumb';
 import { PrintLabelModal, type PrintTarget } from './PrintLabelModal';
 import { ViewLabelModal } from './ViewLabelModal';
 
@@ -687,7 +688,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
           {shown.map((c) => (
             <li key={c.id} className="px-4 py-3 flex flex-wrap items-center gap-3">
               <button type="button" onClick={() => setView(c)} aria-label={`View ${c.name}`} className="w-12 h-12 shrink-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] flex items-center justify-center overflow-hidden">
-                {c.label_photo_url || c.brand_logo_url ? <img src={c.label_photo_url ?? c.brand_logo_url ?? ''} alt="" className="max-w-full max-h-full object-contain" /> : <Tag size={18} className="text-[var(--color-text-muted)]" />}
+                <LabelThumb srcs={[c.label_photo_url, c.brand_logo_url]} />
               </button>
               <div className="flex-1 min-w-[160px]">
                 <div className="text-sm font-semibold text-[var(--color-text)]">{c.name}{c.name_dv ? <span className="ml-2 font-normal text-[var(--color-text-muted)]" dir="rtl">{c.name_dv}</span> : null}</div>

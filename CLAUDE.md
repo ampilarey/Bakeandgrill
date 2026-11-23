@@ -715,7 +715,7 @@ with Back to Staff), not a pop-up. Settings tabs keep scrolling short: long form
 tabs (Business), wordings fold to one line until Edit (Notifications → Messages). A
 `position: fixed` bar inside a page now sits on the screen, not the page
 (`.animate-fade-in` no longer leaves a transform behind); words on a rust fill are
-`--color-on-primary`. Details: same file, § Stage 3g.
+`--color-on-primary`. Details: same file, § Stage 3g. An iPhone leaves the phone's tab bar where the keyboard's top was after the keyboard closes (owner, 2026-11-23: the bar across the middle of Labels): `settleFixedBar()` in `MobileTabBar.tsx` redraws it on focus-out and when the visual viewport changes; a new bar fixed to the bottom of the phone calls it too. A label row's picture is `LabelThumb`, which steps to the brand's logo, then an icon, when a picture fails to load.
 
 ## TEST and production share one Redis
 
