@@ -24,6 +24,13 @@ export function expiryForNewMfg(oldMfg: string, newMfg: string, exp: string): st
 /** A date box that keeps to its column on an iPhone, where a date input brings a width of its own. */
 export const DATE_BOX = 'block min-w-0 max-w-full appearance-none';
 
+/** A quick-pick chip's look, shared with the hand-dated use-by picks in the Print pop-up. */
+export const expiryChip = (on: boolean) => [
+  'h-8 px-3 rounded-full border text-xs font-semibold whitespace-nowrap',
+  on ? 'border-[var(--color-primary)] bg-[var(--color-tone-rust-bg)] text-[var(--color-tone-rust-text)]' : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)]',
+].join(' ');
+const chip = expiryChip;
+
 export function ExpiryChips({ mfg, value, onChange, idPrefix = 'exp' }: {
   /** The made-on date the months count from. */
   mfg: string;
@@ -32,10 +39,6 @@ export function ExpiryChips({ mfg, value, onChange, idPrefix = 'exp' }: {
   onChange: (exp: string) => void;
   idPrefix?: string;
 }) {
-  const chip = (on: boolean) => [
-    'h-8 px-3 rounded-full border text-xs font-semibold whitespace-nowrap',
-    on ? 'border-[var(--color-primary)] bg-[var(--color-tone-rust-bg)] text-[var(--color-tone-rust-text)]' : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)]',
-  ].join(' ');
   return (
     <div className="flex flex-wrap gap-2 mt-2" role="group" aria-label="Quick expiry" data-testid={`${idPrefix}-chips`}>
       <button type="button" className={chip(value === '')} aria-pressed={value === ''} onClick={() => onChange('')}>Shelf life</button>

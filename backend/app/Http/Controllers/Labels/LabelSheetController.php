@@ -120,7 +120,7 @@ class LabelSheetController extends Controller
     /** @return array<string, mixed> */
     private function query(Request $request): array
     {
-        return $request->only(['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'batch', 'qty', 'pi', 'type', 'footer', 'rounded', 'b', 'for', 'for2', 'promo', 'promo_was', 'promo_now', 'promo_text', 'number', 'marks', 'bleed', 'runs', 'part', 'pair_w', 'pair_h']);
+        return $request->only(['items', 'lang', 'layout', 'w', 'h', 'fill', 'mfg', 'exp', 'exp_rule', 'batch', 'qty', 'pi', 'type', 'footer', 'rounded', 'b', 'for', 'for2', 'promo', 'promo_was', 'promo_now', 'promo_text', 'number', 'marks', 'bleed', 'runs', 'part', 'pair_w', 'pair_h']);
     }
 
     // ---- Straight to a label printer (round C, 2026-10-12) ----

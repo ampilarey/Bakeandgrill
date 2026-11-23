@@ -376,6 +376,8 @@ export type StickerRequest = {
   fill?: boolean;
   mfg?: string | null;
   exp?: string | null;
+  /** With the dates written by hand: what the use-by line says, months from the made-on date or the label's shelf life. */
+  exp_rule?: string | null;
   batch?: string | null;
   qty?: number | null;
   pi?: number | null;

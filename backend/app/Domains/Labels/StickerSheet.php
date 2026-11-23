@@ -121,6 +121,9 @@ final class StickerSheet
             $mfg = null;
             $exp = null;
         }
+        // Dates written by hand (owner, 2026-11-23: "expiry option 3 months or x month from the manufacturing
+        // date. Or option to keep both hand written"): the use-by line may print a rule instead of a blank.
+        $expRule = $fill ? null : self::expRuleOf($in['exp_rule'] ?? null);
 
         $batch = mb_substr(trim((string) ($in['batch'] ?? '')), 0, 30);
         $qty = trim((string) ($in['qty'] ?? ''));
@@ -154,6 +157,7 @@ final class StickerSheet
             'fill' => $fill,
             'mfg' => $mfg,
             'exp' => $exp,
+            'exp_rule' => $expRule,
             'batch' => $batch,
             'qty' => $qty,
             'pi' => isset($in['pi']) && $in['pi'] !== '' ? (int) $in['pi'] : null,
@@ -743,6 +747,40 @@ final class StickerSheet
         return $summary;
     }
 
+    /** A use-by rule for hand-dated labels: "1" to "24" months, or "shelf" for the label's own shelf life. */
+    public static function expRuleOf(mixed $raw): ?string
+    {
+        $v = trim((string) ($raw ?? ''));
+        if ($v === 'shelf') {
+            return 'shelf';
+        }
+
+        return ctype_digit($v) && (int) $v >= 1 && (int) $v <= 24 ? (string) (int) $v : null;
+    }
+
+    /**
+     * What the use-by line says on a hand-dated label with a rule: "Mfg + 3 months", or "Mfg + 30 days"
+     * from the label's shelf life; nothing (a line to write on) without a rule, or with "shelf" and no shelf life.
+     *
+     * @param array<string, mixed> $req
+     */
+    public function expRuleText(Item|CustomLabel $item, array $req): string
+    {
+        $rule = $req['exp_rule'] ?? null;
+        if (($req['fill'] ?? false) || $rule === null) {
+            return '';
+        }
+        if ($rule === 'shelf') {
+            $days = (int) ($this->types->forItem($item, $this->asType($req))['shelf_life_days'] ?? 0);
+
+            return $days > 0 ? 'Mfg + ' . $days . ($days === 1 ? ' day' : ' days') : '';
+        }
+        $n = (int) $rule;
+
+        // As long as a printed date, so it sits on the date's line on every design (a pouch's strip included).
+        return 'Mfg + ' . $n . ($n === 1 ? ' month' : ' months');
+    }
+
     /**
      * Made-on and expiry for one product: the expiry asked for, else the
      * production batch's own, else made-on plus the product's shelf life.
@@ -889,7 +927,7 @@ final class StickerSheet
             'ingredients_en' => $lines['en'],
             'ingredients_dv' => $lines['dv'],
             'mfg' => LabelSettings::formatDate($mfg),
-            'exp' => LabelSettings::formatDate($exp),
+            'exp' => LabelSettings::formatDate($exp) ?: $this->expRuleText($item, $req),
             'mfg_iso' => $mfg,
             'exp_iso' => $exp,
             'batch' => $batch,

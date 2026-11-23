@@ -8,7 +8,7 @@ import {
 import { Button } from '../ui';
 import { Modal, ModalActions, Switch, TabScrollRow } from '../SharedUI';
 import { today as localToday } from '../../utils/dateHelpers';
-import { DATE_BOX, ExpiryChips, expiryForNewMfg } from './ExpiryChips';
+import { DATE_BOX, ExpiryChips, expiryChip, expiryForNewMfg } from './ExpiryChips';
 import { LabelSizePicker } from './LabelSizePicker';
 import { DroppedNote, LinkLifeNote, UseByLine, WordingLockNotice, wordingRefused } from './PrintChecks';
 import { POUCH_FALLBACK, pouchFits } from './PouchPicker';
@@ -95,6 +95,8 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
   const [sideId, setSideId] = useState('r100x50');
   const [copies, setCopies] = useState(1);
   const [fill, setFill] = useState(true);
+  // With the dates written by hand: '' leaves Use by blank too, a number prints "Mfg + 3 months", 'shelf' the shelf life.
+  const [expRule, setExpRule] = useState('');
   const [mfg, setMfg] = useState(() => localToday());
   const [exp, setExp] = useState('');
   const [sizeId, setSizeId] = useState<number | null>(null);
@@ -164,7 +166,7 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
     items: [{ id: target.id, copies: copiesWanted, kind: target.kind, ...(target.kind === 'item' && sizeId ? { size: sizeId } : {}) }],
     lang, layout: sized.layout, w: sized.w, h: sized.h,
     rounded: choice.shape === 'rect' && rounded,
-    fill, mfg: fill ? mfg : null, exp: fill && exp ? exp : null,
+    fill, mfg: fill ? mfg : null, exp: fill && exp ? exp : null, exp_rule: !fill && expRule ? expRule : null,
     qty: qty !== '' ? Number(qty) : null,
     batch: batch.trim() || null,
     for: packedFor.trim() || null,
@@ -175,7 +177,7 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
     preview: forPreview || undefined,
   });
 
-  const previewKey = useMemo(() => JSON.stringify([ready ? request(1, true) : null, redraw]), [ready, redraw, lang, sized.layout, sized.w, sized.h, choice.shape, rounded, fill, mfg, exp, qty, batch, packedFor, packedFor2, sizeId, picked.roll?.id, part, sideId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const previewKey = useMemo(() => JSON.stringify([ready ? request(1, true) : null, redraw]), [ready, redraw, lang, sized.layout, sized.w, sized.h, choice.shape, rounded, fill, mfg, exp, expRule, qty, batch, packedFor, packedFor2, sizeId, picked.roll?.id, part, sideId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!ready || presets.length === 0) return;
     if (sizeIssue) { ++seq.current; setPreview(null); setChecked(null); setPreviewError(sizeIssue); setPreviewBusy(false); return; }
@@ -271,7 +273,23 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
               {expPast && <p role="alert" className="text-xs text-[var(--color-danger-strong)] mt-1">That use-by date has already passed.</p>}
             </div>
           )}
-          {checked && <UseByLine exp={checked.products[0]?.exp} shelf={checked.products[0]?.shelf_life_days} fill={fill} />}
+          {!fill && (() => {
+            const shelf = checked?.products[0]?.shelf_life_days ?? null;
+            const months = (n: number) => `${n} ${n === 1 ? 'month' : 'months'}`;
+            const say = expRule === '' ? 'both lines blank, to write by hand' : expRule === 'shelf' ? `Exp date prints "Mfg + ${shelf} days"` : `Exp date prints "Mfg + ${months(Number(expRule))}"`;
+            return (
+              <div data-testid="print-exp-rule">
+                <div className={labelClass}>Use by on the label</div>
+                <div className="flex flex-wrap gap-2 mt-1" role="group" aria-label="Use by on the label">
+                  {[['', 'Blank'], ['1', '1 month'], ['2', '2 months'], ['3', '3 months'], ['6', '6 months'], ...(shelf ? [['shelf', `Shelf life (${shelf} days)`]] : [])].map(([k, name]) => (
+                    <button key={k} type="button" aria-pressed={expRule === k} onClick={() => setExpRule(k)} className={expiryChip(expRule === k)}>{name}</button>
+                  ))}
+                </div>
+                <p className="text-sm text-[var(--color-text)] mt-2">Mfg date prints blank; {say}.</p>
+              </div>
+            );
+          })()}
+          {checked && fill && <UseByLine exp={checked.products[0]?.exp} shelf={checked.products[0]?.shelf_life_days} fill={fill} />}
 
           <div>
             <label className={labelClass} htmlFor="print-batch">Batch number (optional)</label>

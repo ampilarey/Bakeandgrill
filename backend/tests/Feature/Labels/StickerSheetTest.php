@@ -63,6 +63,22 @@ class StickerSheetTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_hand_dated_labels_can_print_a_use_by_rule(): void
+    {
+        // Owner, 2026-11-23: "expiry option 3 months or x month from the manufacturing date. Or option to keep both hand written".
+        $html = fn (array $extra) => (string) $this->get($this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => 'a4-4'] + $extra)->assertOk()->json('view_url'))->assertOk()->getContent();
+
+        $months = $html(['fill' => false, 'exp_rule' => '3']);
+        $this->assertStringContainsString('Mfg + 3 months', $months);
+        $this->assertStringContainsString('__ /__ /____', $months, 'the made-on date stays blank to write on');
+
+        $this->assertStringContainsString('Mfg + 90 days', $html(['fill' => false, 'exp_rule' => 'shelf']), 'the label\'s own shelf life');
+        $this->assertStringContainsString('Mfg + 1 month', $html(['fill' => false, 'exp_rule' => '1']));
+        $this->assertStringNotContainsString('Mfg + ', $html(['fill' => false]), 'no rule: both blank');
+        $this->assertStringNotContainsString('Mfg + ', $html(['fill' => true, 'exp_rule' => '3']), 'printed dates win over a rule');
+        $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'layout' => 'a4-4', 'fill' => false, 'exp_rule' => '30'])->assertStatus(422);
+    }
+
     public function test_a_sheet_link_is_signed_logged_and_prints_four_to_an_a4_page(): void
     {
         $res = $this->postJson('/api/labels/stickers/url', [

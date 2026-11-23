@@ -108,6 +108,18 @@ describe('PrintLabelModal', () => {
     expect(lastBody().mfg ?? null).toBeNull();
   });
 
+  it('with the dates by hand, Use by can print a rule: months from the made-on date, or blank (owner, 2026-11-23)', async () => {
+    show();
+    await previewed();
+    fireEvent.click(screen.getByRole('switch', { name: 'Print the dates' }));
+    expect(screen.getByText(/both lines blank/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '3 months' }));
+    expect(screen.getByText(/Mfg \+ 3 months/)).toBeTruthy();
+    await waitFor(() => expect(lastBody().exp_rule).toBe('3'), { timeout: 3000 });
+    fireEvent.click(screen.getByRole('button', { name: 'Blank' }));
+    await waitFor(() => expect(lastBody().exp_rule ?? null).toBeNull(), { timeout: 3000 });
+  });
+
   it('opens at the size this label printed at last time, not the size of whatever printed last', async () => {
     localStorage.setItem('labels.lastSize', JSON.stringify({ shape: 'rect', preset: 'r105x148', on: 'sheet', w: 105, h: 148 }));
     localStorage.setItem('labels.sizeFor', JSON.stringify({ c9: { shape: 'rect', preset: 'r40x60', on: 'sheet', w: 40, h: 60, roll: null } }));
