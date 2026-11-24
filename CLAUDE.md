@@ -2027,6 +2027,13 @@ sort choices and a line on the phone's card whenever the figure came, and the ed
 (`sold_30d`, off by default). Never to the till or a customer, and no profit here: not every dish has a recipe cost.
 `ItemSalesTest`, `ItemSalesStrip.test.tsx`, `MenuItemTable.sort.test.tsx`.
 
+**A dish's sizes are cards** (owner, 2026-11-25: on a phone the sizes table in the item pop-up fell apart into loose boxes, a
+tick with no name and a bare red cross). `VariantsEditor` in `MenuItemEditorModal.tsx` draws one card a size at every width
+(`.mie-vars`, `.mie-var` in `index.css`, no table): the name with the two order arrows (32px), then Price, Cost, SKU and Uses of
+the recipe, each under its own name, In stock and Alert at only while Count stock is on, and a foot with On sale and Count stock
+as `Switch` and Remove as `danger-outline`; a size not on sale is drawn with a dashed edge. A new value on a size is a named
+box in `.mie-var-grid`, never a bare column. `MenuItemEditorModal.variantOrder.test.tsx`.
+
 ## Ticket times
 
 Owner, 2026-11-07 ("Will the site record time for each ticket and can admin view that?" → "Both").

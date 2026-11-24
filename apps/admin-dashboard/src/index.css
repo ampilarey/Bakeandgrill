@@ -7472,3 +7472,39 @@ table.is-table.is-table { display: none; }
 .iss-extras { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 12px; }
 .iss-extras a, .iss-more { color: var(--color-primary); font-weight: 600; text-decoration: none; }
 .iss-more { display: inline-block; margin-top: 8px; font-size: 12px; }
+
+/* A dish's sizes, one card each (owner, 2026-11-25: on a phone the sizes table
+   fell apart into loose boxes). Phone first, and not under a page class: the
+   editor is a pop-up. The boxes fold by themselves as the card widens. */
+.mie-vars { display: flex; flex-direction: column; gap: 10px; }
+.mie-var {
+  padding: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+.mie-var[data-off] { background: var(--color-bg); border-style: dashed; }
+.mie-var-head { display: flex; align-items: flex-end; gap: 8px; }
+.mie-var-name { flex: 1; }
+.mie-var-move { display: flex; gap: 4px; flex-shrink: 0; padding-bottom: 6px; }
+.mie-var-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mie-var-label { font-size: 11px; font-weight: 600; color: var(--color-text-muted); }
+.mie-var-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 120px), 1fr));
+  gap: 8px 10px;
+  margin-top: 10px;
+}
+.mie-var-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border-light);
+}
+.mie-var-switch { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-text-secondary); }
+.mie-var-help { font-size: 12px; color: var(--color-text-muted); line-height: 1.5; }
+.mie-var-help summary { cursor: pointer; color: var(--color-text-secondary); padding: 4px 0; }
+.mie-var-help p { margin: 6px 0 0; }

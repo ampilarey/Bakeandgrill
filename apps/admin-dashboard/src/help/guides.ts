@@ -415,6 +415,24 @@ export const GUIDES: Guide[] = [
     words: 'best seller popular hide water',
   },
   {
+    id: 'menu-sizes',
+    page: '/menu',
+    title: 'Give a dish sizes, each with its own price',
+    steps: [
+      'Open Menu Items and open the dish.',
+      'In Price & sizes, tick "This product has variants".',
+      'Tap "+ Add variant". Type the size\'s name and its price.',
+      'Add the other sizes the same way. The arrows beside a name set the order customers see.',
+      'Save.',
+    ],
+    notes: [
+      'Switch "On sale" off to hide one size without removing it.',
+      'Switch "Count stock" on to keep a count for that size. The In stock and Alert at boxes then appear.',
+      '"Uses of the recipe" is how much of the dish\'s recipe one of this size takes: 1 for a full, 0.5 for a half.',
+    ],
+    words: 'size sizes variant variants small large portion half price',
+  },
+  {
     id: 'menu-item-sales',
     page: '/menu',
     title: 'See how a dish is selling',

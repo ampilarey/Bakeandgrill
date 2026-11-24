@@ -117,4 +117,28 @@ describe('reordering sizes', () => {
     const prices = screen.getAllByDisplayValue(/^(10|15|20)$/).map((el) => (el as HTMLInputElement).value);
     expect(prices).toEqual(['10', '20', '15']);
   });
+  /** Owner, 2026-11-25: on a phone the sizes table fell apart into loose boxes, a tick with no name and a bare cross. */
+  it('draws each size as a card with every box named, and no table', () => {
+    renderEditor();
+    const cards = screen.getAllByTestId('mie-variant');
+    expect(cards).toHaveLength(3);
+    expect(screen.getByTestId('mie-variants').querySelector('table')).toBeNull();
+    for (const card of cards) {
+      const names = Array.from(card.querySelectorAll('.mie-var-label')).map((el) => el.textContent);
+      expect(names).toEqual(['Name *', 'Price *', 'Cost', 'SKU', 'Uses of the recipe']);
+    }
+    // Stock boxes show only for a size whose stock is counted.
+    expect(screen.queryByText('In stock')).toBeNull();
+    fireEvent.click(screen.getByRole('switch', { name: 'Count stock for Small' }));
+    expect(screen.getAllByText('In stock')).toHaveLength(1);
+    expect(screen.getAllByText('Alert at')).toHaveLength(1);
+
+    // On sale is a named switch, and Remove says which size.
+    const onSale = screen.getByRole('switch', { name: 'Medium is on sale' });
+    expect(onSale).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(onSale);
+    expect(screen.getByRole('switch', { name: 'Medium is on sale' })).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Large' }));
+    expect(order()).toEqual(['Small', 'Medium']);
+  });
 });

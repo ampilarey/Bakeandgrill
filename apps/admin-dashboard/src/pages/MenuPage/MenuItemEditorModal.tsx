@@ -2,7 +2,7 @@ import { DhivehiDraft } from '../../components/ai/AiButton';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { fetchModifiers, type MenuCategory, type MenuGroupRow, type Modifier } from '../../api';
 import { useGstBootstrap } from '../../hooks/useGstBootstrap';
-import { Btn, ErrorMsg, Input, Modal, ModalActions } from '../../components/SharedUI';
+import { Btn, ErrorMsg, Input, Modal, ModalActions, Switch } from '../../components/SharedUI';
 import { ItemSearch, type MenuItemSelection } from '../../components/ItemSearch';
 import { ChildSizeSelect, sizeOptionsFromSelection } from './ChildSizeSelect';
 import { Field, FormTextarea } from './menuFormPrimitives';
@@ -445,14 +445,15 @@ function MoveButton({
       style={{
         border: '1px solid var(--color-border)',
         background: 'var(--color-surface)',
-        borderRadius: 4,
         cursor: disabled ? 'default' : 'pointer',
         opacity: disabled ? 0.3 : 1,
         color: 'var(--color-text-secondary)',
-        fontSize: 9,
+        fontSize: 11,
         lineHeight: 1,
-        padding: '2px 4px',
-        width: 24,
+        padding: 0,
+        width: 32,
+        height: 32,
+        borderRadius: 8,
       }}
     >
       {direction === 'up' ? '▲' : '▼'}
@@ -489,157 +490,149 @@ function VariantsEditor({
     onChange(next);
   };
 
-  const headerStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em',
-  };
-  const cellStyle: React.CSSProperties = { padding: '4px 0' };
+  const box = inputFont({ width: '100%', boxSizing: 'border-box', border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, background: 'var(--color-surface)', color: 'var(--color-text)', fontFamily: 'inherit' });
+  const num = { ...box, textAlign: 'right' as const };
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Variants</label>
-        <Btn variant="ghost" onClick={addRow} style={{ fontSize: 12, padding: '3px 10px' }}>+ Add variant</Btn>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+          Sizes{rows.length > 0 ? ` (${rows.length})` : ''}
+        </span>
+        <Btn variant="secondary" small onClick={addRow}>+ Add variant</Btn>
       </div>
       {rows.length === 0 ? (
         <p style={{ fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-          No variants yet. Click "+ Add variant" to start.
+          No variants yet. Tap "+ Add variant" to start.
         </p>
       ) : (
-        <div className="mie-variants-scroll" style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <th style={{ ...headerStyle, textAlign: 'center', paddingBottom: 6, width: 34 }} title="The order sizes appear on the till, the website and the app">Order</th>
-                <th style={{ ...headerStyle, textAlign: 'left', paddingBottom: 6, minWidth: 100 }}>Name *</th>
-                <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 72 }}>Price *</th>
-                <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 72 }}>Cost</th>
-                <th style={{ ...headerStyle, textAlign: 'left', paddingBottom: 6, minWidth: 90 }}>SKU</th>
-                <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 56 }}>Stock</th>
-                <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 56 }}>Alert at</th>
-                <th style={{ ...headerStyle, textAlign: 'center', paddingBottom: 6, minWidth: 50 }}>Track</th>
-                <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 56 }}>Uses</th>
-                <th style={{ ...headerStyle, textAlign: 'center', paddingBottom: 6, minWidth: 50 }}>Active</th>
-                <th style={{ paddingBottom: 6, minWidth: 30 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, index) => (
-                <tr key={row._key} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                  <td style={{ ...cellStyle, textAlign: 'center', verticalAlign: 'middle' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
-                      <MoveButton
-                        direction="up"
-                        disabled={index === 0}
-                        name={row.name}
-                        onClick={() => move(row._key, -1)}
+        <div className="mie-vars" data-testid="mie-variants">
+          {/* One card a size (owner, 2026-11-25: on a phone the table fell apart
+              into loose boxes, a tick with no name and a bare red cross). Phone
+              first: every box has its name over it, at any width. */}
+          {rows.map((row, index) => (
+            <div key={row._key} className="mie-var" data-off={row.is_active ? undefined : 'true'} data-testid="mie-variant">
+              <div className="mie-var-head">
+                <label className="mie-var-field mie-var-name">
+                  <span className="mie-var-label">Name *</span>
+                  <input
+                    value={row.name}
+                    onChange={(e) => update(row._key, 'name', e.target.value)}
+                    placeholder="e.g. Large"
+                    style={{ ...box, fontWeight: 600 }}
+                  />
+                </label>
+                <div className="mie-var-move" title="The order sizes appear on the till, the website and the app">
+                  <MoveButton direction="up" disabled={index === 0} name={row.name} onClick={() => move(row._key, -1)} />
+                  <MoveButton direction="down" disabled={index === rows.length - 1} name={row.name} onClick={() => move(row._key, 1)} />
+                </div>
+              </div>
+
+              <div className="mie-var-grid">
+                <label className="mie-var-field">
+                  <span className="mie-var-label">Price *</span>
+                  <input
+                    type="number" min="0" step="0.01" inputMode="decimal"
+                    value={row.price}
+                    onChange={(e) => update(row._key, 'price', parseFloat(e.target.value) || 0)}
+                    style={num}
+                  />
+                </label>
+                <label className="mie-var-field">
+                  <span className="mie-var-label">Cost</span>
+                  <input
+                    type="number" min="0" step="0.01" inputMode="decimal"
+                    value={row.cost ?? ''}
+                    onChange={(e) => update(row._key, 'cost', e.target.value !== '' ? parseFloat(e.target.value) : null)}
+                    placeholder="—"
+                    style={num}
+                  />
+                </label>
+                <label className="mie-var-field">
+                  <span className="mie-var-label">SKU</span>
+                  <input
+                    value={row.sku ?? ''}
+                    onChange={(e) => update(row._key, 'sku', e.target.value || null)}
+                    placeholder="optional"
+                    style={box}
+                  />
+                </label>
+                <label className="mie-var-field">
+                  <span className="mie-var-label">Uses of the recipe</span>
+                  <input
+                    type="number" min="0" step="0.05" inputMode="decimal"
+                    value={row.consumption_factor ?? 1}
+                    onChange={(e) => update(row._key, 'consumption_factor', e.target.value !== '' ? Math.max(0, parseFloat(e.target.value)) : 1)}
+                    title="How much of the recipe one of this size uses: full 1, half 0.5. Lets sizes share one pool of ingredients."
+                    style={num}
+                  />
+                </label>
+                {row.track_stock && (
+                  <>
+                    <label className="mie-var-field">
+                      <span className="mie-var-label">In stock</span>
+                      <input
+                        type="number" min="0" step="1" inputMode="numeric"
+                        value={row.stock_qty ?? 0}
+                        onChange={(e) => update(row._key, 'stock_qty', parseInt(e.target.value) || 0)}
+                        style={num}
                       />
-                      <MoveButton
-                        direction="down"
-                        disabled={index === rows.length - 1}
-                        name={row.name}
-                        onClick={() => move(row._key, 1)}
+                    </label>
+                    <label className="mie-var-field">
+                      <span className="mie-var-label">Alert at</span>
+                      <input
+                        type="number" min="0" step="1" inputMode="numeric"
+                        value={row.low_stock_threshold ?? 5}
+                        onChange={(e) => update(row._key, 'low_stock_threshold', parseInt(e.target.value) || 0)}
+                        title="Low-stock alert threshold"
+                        style={num}
                       />
-                    </div>
-                  </td>
-                  <td style={cellStyle}>
-                    <input
-                      value={row.name}
-                      onChange={(e) => update(row._key, 'name', e.target.value)}
-                      placeholder="e.g. Large"
-                      style={inputFont({ width: '100%', border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 8px', fontSize: 12 })}
-                    />
-                  </td>
-                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
-                    <input
-                      type="number" min="0" step="0.01"
-                      value={row.price}
-                      onChange={(e) => update(row._key, 'price', parseFloat(e.target.value) || 0)}
-                      style={inputFont({ width: 68, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' })}
-                    />
-                  </td>
-                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
-                    <input
-                      type="number" min="0" step="0.01"
-                      value={row.cost ?? ''}
-                      onChange={(e) => update(row._key, 'cost', e.target.value !== '' ? parseFloat(e.target.value) : null)}
-                      placeholder="—"
-                      style={inputFont({ width: 68, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' })}
-                    />
-                  </td>
-                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
-                    <input
-                      value={row.sku ?? ''}
-                      onChange={(e) => update(row._key, 'sku', e.target.value || null)}
-                      placeholder="optional"
-                      style={inputFont({ width: 86, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12 })}
-                    />
-                  </td>
-                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
-                    <input
-                      type="number" min="0" step="1"
-                      value={row.stock_qty ?? 0}
-                      onChange={(e) => update(row._key, 'stock_qty', parseInt(e.target.value) || 0)}
-                      disabled={!row.track_stock}
-                      style={inputFont({ width: 52, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 })}
-                    />
-                  </td>
-                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
-                    <input
-                      type="number" min="0" step="1"
-                      value={row.low_stock_threshold ?? 5}
-                      onChange={(e) => update(row._key, 'low_stock_threshold', parseInt(e.target.value) || 0)}
-                      disabled={!row.track_stock}
-                      title="Low-stock alert threshold"
-                      style={inputFont({ width: 52, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right', opacity: row.track_stock ? 1 : 0.4 })}
-                    />
-                  </td>
-                  <td style={{ ...cellStyle, textAlign: 'center' }}>
-                    <input
-                      type="checkbox"
-                      checked={!!row.track_stock}
-                      onChange={(e) => update(row._key, 'track_stock', e.target.checked)}
-                      title="Track stock for this variant"
-                    />
-                  </td>
-                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
-                    <input
-                      type="number" min="0" step="0.05"
-                      value={row.consumption_factor ?? 1}
-                      onChange={(e) => update(row._key, 'consumption_factor', e.target.value !== '' ? Math.max(0, parseFloat(e.target.value)) : 1)}
-                      title="How much of the recipe one of this size uses — full 1, half 0.5. Lets sizes share one pool of ingredients."
-                      style={inputFont({ width: 56, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' })}
-                    />
-                  </td>
-                  <td style={{ ...cellStyle, textAlign: 'center' }}>
-                    <input
-                      type="checkbox"
-                      checked={row.is_active}
-                      onChange={(e) => update(row._key, 'is_active', e.target.checked)}
-                      title="Active / visible"
-                    />
-                  </td>
-                  <td style={{ ...cellStyle, textAlign: 'center' }}>
-                    <button
-                      type="button"
-                      onClick={() => remove(row._key)}
-                      style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}
-                      title="Remove variant"
-                    >×</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-            The <strong>▲▼</strong> arrows set the order sizes appear in — on the till&rsquo;s size
-            popup, on the website and in the app. Saved when you save the dish.
-          </p>
-          <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-            <strong>Uses</strong> is how much of the item&rsquo;s recipe one of this size takes —
-            full <code>1</code>, half <code>0.5</code>. Sizes then share one pool of ingredients:
-            50 leaves serve 50 fulls, 100 halves, or any mix. Set the recipe to
-            &ldquo;stop selling when ingredients run out&rdquo; for it to affect the menu.
-          </p>
+                    </label>
+                  </>
+                )}
+              </div>
+
+              <div className="mie-var-foot">
+                <span className="mie-var-switch">
+                  <Switch
+                    checked={row.is_active}
+                    onChange={(v) => update(row._key, 'is_active', v)}
+                    aria-label={`${row.name.trim() || 'This size'} is on sale`}
+                  />
+                  On sale
+                </span>
+                <span className="mie-var-switch">
+                  <Switch
+                    checked={!!row.track_stock}
+                    onChange={(v) => update(row._key, 'track_stock', v)}
+                    aria-label={`Count stock for ${row.name.trim() || 'this size'}`}
+                  />
+                  Count stock
+                </span>
+                <Btn
+                  variant="danger-outline" small
+                  onClick={() => remove(row._key)}
+                  aria-label={`Remove ${row.name.trim() || 'this size'}`}
+                  style={{ marginLeft: 'auto' }}
+                >
+                  Remove
+                </Btn>
+              </div>
+            </div>
+          ))}
+          <details className="mie-var-help">
+            <summary>What the arrows and "Uses of the recipe" do</summary>
+            <p>
+              The <strong>▲▼</strong> arrows set the order sizes appear in, on the till&rsquo;s size
+              popup, on the website and in the app. Saved when you save the dish.
+            </p>
+            <p>
+              <strong>Uses of the recipe</strong> is how much of the item&rsquo;s recipe one of this size
+              takes: full <code>1</code>, half <code>0.5</code>. Sizes then share one pool of ingredients:
+              50 leaves serve 50 fulls, 100 halves, or any mix. Set the recipe to
+              &ldquo;stop selling when ingredients run out&rdquo; for it to affect the menu.
+            </p>
+          </details>
         </div>
       )}
     </div>
