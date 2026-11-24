@@ -1425,6 +1425,28 @@ export const GUIDES: Guide[] = [
     ],
     words: 'assistant suggestions approve automatic dhivehi category order arrange group menu inventory duplicate nutrition glossary claude ai',
   },
+  {
+    id: 'assistant-photos',
+    page: '/integrations',
+    title: 'Let the assistant check, crop and make dish photos',
+    open: { to: '/integrations/suggestions', label: 'Open Suggestions' },
+    steps: [
+      'Open Integrations → Assistant and check Photo suggestions is on. For made photos, switch on Make photos for dishes with none; it needs a Google key under Purchasing → Settings → Reading bills.',
+      'Open Integrations → Suggestions. A better crop for a dish photo shows the picture Now and Proposed: tick and Approve to put the new one on the menu.',
+      'Photos worth retaking and Photos that would cut out cleanly only point things out. Fix the photo on the dish, then Dismiss.',
+      'Descriptions for library pictures: change the words under What it shows if you like, then Approve.',
+      'Made photos for dishes with none: look at each picture, and Approve only if it looks like what you serve.',
+    ],
+    notes: [
+      'Nothing changes on the menu until you press Approve.',
+      'A made photo is not a photo of your own food. The system keeps a record that it was made. A real photo is always better: Dishes with no photo at the bottom lists which to photograph first.',
+      'It makes three photos at a time, for the best sellers first. Press Look now for three more.',
+      'Each photo is looked at once. A new photo on a dish is looked at the next night.',
+      'On Customers → Reviews, a waiting review with a photo shows a line from the assistant on what the photo shows.',
+      'If making a picture says the model is not known, type the current name under Integrations → Assistant → Making pictures.',
+    ],
+    words: 'photo picture image crop generate make ai blurry dark cut out cutout alt text tags library review photo google gemini',
+  },
 
   // ── Team ──────────────────────────────────────────────────────────────────
   {

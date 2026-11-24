@@ -174,6 +174,20 @@ Claude Max includes a monthly API credit. It is not automatic: you claim it.
 The credit does not roll over, and when it runs out the assistant and bill reading stop
 until the next month unless you buy credit or turn on auto-reload in the Console.
 
+## 7g. A Google key if you want made photos (10 minutes)
+
+Claude cannot make pictures, so "Make photos for dishes with none" uses Google.
+
+1. Get a key at aistudio.google.com → Get API key. Making pictures is charged by Google,
+   separately from your Claude credit; check its price there before switching it on.
+2. In Admin: Purchasing → Settings → 7 · Reading bills → Google Gemini → paste the key →
+   Save key. You do not have to press Use this one: Claude can keep reading the bills.
+3. In Admin: System → Integrations → Assistant → switch on Make photos for dishes with none.
+4. System → Integrations → Suggestions → Made photos for dishes with none → Look now.
+
+If it says the model is not known, type the current model name under Assistant → Making
+pictures (Google renames these). Approve a made photo only if it looks like what you serve.
+
 ## 8. Optional
 
 - **Printed cards on the Matica 210** (or any card printer): Promotions → Printed cards. Install the

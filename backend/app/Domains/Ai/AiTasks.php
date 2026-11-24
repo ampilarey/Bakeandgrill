@@ -424,6 +424,95 @@ class AiTasks
         return array_values($pairs);
     }
 
+    // ── Looking at pictures ──────────────────────────────────────────────
+
+    /**
+     * One look at a dish's photo: where the dish is, what is wrong with the photo, and
+     * whether it would cut out cleanly.
+     *
+     * @param array{bytes: string, mime: string} $picture
+     * @return array{box: array{x: float, y: float, w: float, h: float}, issues: list<string>, plain: bool, note: string}
+     */
+    public function dishPhoto(array $picture, string $dish, string $about = ''): array
+    {
+        $issues = ['blurry', 'dark', 'cut_off', 'text_or_logo', 'wrong_dish', 'cluttered'];
+        $schema = self::obj(['x' => 'number', 'y' => 'number', 'w' => 'number', 'h' => 'number', 'plain_background' => 'boolean', 'note' => 'string']);
+        $schema['properties']['issues'] = ['type' => 'array', 'items' => ['type' => 'string', 'enum' => $issues]];
+        $schema['required'][] = 'issues';
+        $rules = <<<'TXT'
+            You are shown the photo a menu uses for one dish, with the dish's name. Answer about this photo only.
+
+            - x, y, w, h: the box round the food and its plate or bowl, as shares of the picture from 0 to 1 (x and y are its top left corner). Take in the whole plate and anything that belongs to the serving, such as a dip. Leave out the empty table round it.
+            - issues: only the ones that are plainly true. "blurry" when the food is out of focus; "dark" when it is hard to see for lack of light; "cut_off" when part of the dish is outside the picture; "text_or_logo" when writing, a watermark or a logo is on the picture; "wrong_dish" only when the food shown is clearly not what the name says (not for a doubt); "cluttered" when other things crowd the dish. A good photo has none.
+            - plain_background: true when the dish stands on one plain, even colour with nothing else in the picture, so it could be cut out cleanly.
+            - note: one short sentence for the person who looks after the menu, only when there is an issue. Else "".
+            TXT;
+        $out = $this->assistant->ask(self::WHO . "\n\n" . $rules, 'The dish: ' . $dish . ($about !== '' ? "\nWhat the menu says: " . $about : ''), $schema, $picture, timeout: 60);
+        $n = fn (string $k, float $d): float => max(0.0, min(1.0, (float) ($out[$k] ?? $d)));
+
+        return [
+            'box' => ['x' => $n('x', 0.0), 'y' => $n('y', 0.0), 'w' => $n('w', 1.0), 'h' => $n('h', 1.0)],
+            'issues' => array_values(array_intersect($issues, array_map('strval', (array) ($out['issues'] ?? [])))),
+            'plain' => (bool) ($out['plain_background'] ?? false),
+            'note' => mb_substr(trim((string) ($out['note'] ?? '')), 0, 200),
+        ];
+    }
+
+    /**
+     * What a library picture shows, for finding it later and for screen readers.
+     *
+     * @param array{bytes: string, mime: string} $picture
+     * @return array{alt: string, tags: list<string>}
+     */
+    public function describePicture(array $picture, string $title = ''): array
+    {
+        $schema = self::obj(['alt' => 'string']);
+        $schema['properties']['tags'] = ['type' => 'array', 'items' => ['type' => 'string']];
+        $schema['required'][] = 'tags';
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nYou are shown a picture from our media library. Give \"alt\": one plain sentence of at most 120 characters saying what it shows, as you would tell someone who cannot see it (no \"image of\", no opinions). Give \"tags\": three to six lower-case words or two-word phrases someone would type to find it (the food, how it is cooked, what it is served in, the setting). Describe only what is in the picture.",
+            $title !== '' ? 'Its title in the library: ' . $title : 'It has no title.',
+            $schema,
+            $picture,
+            timeout: 60,
+        );
+        $tags = [];
+        foreach ((array) ($out['tags'] ?? []) as $t) {
+            $t = mb_strtolower(trim((string) $t));
+            if ($t !== '' && mb_strlen($t) <= 30 && !in_array($t, $tags, true)) {
+                $tags[] = $t;
+            }
+        }
+
+        return ['alt' => mb_substr(trim((string) ($out['alt'] ?? '')), 0, 160), 'tags' => array_slice($tags, 0, 6)];
+    }
+
+    /**
+     * A note on a customer's review photo, for whoever moderates it.
+     *
+     * @param array{bytes: string, mime: string} $picture
+     */
+    public function reviewPhoto(array $picture, string $dish = ''): string
+    {
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nA customer attached this photo to a review" . ($dish !== '' ? ' of the dish named below' : '') . '. A member of staff decides whether the review is shown; help them with one short sentence saying what the photo shows. Set "concern" to true only when it should not be shown publicly as it is: a person\'s face close up, a child, a document or screen with personal details, something indecent or offensive, or nothing to do with food or our shop.',
+            $dish !== '' ? 'The dish: ' . $dish : 'A review of the shop.',
+            self::obj(['shows' => 'string', 'concern' => 'boolean']),
+            $picture,
+            timeout: 60,
+        );
+        $shows = mb_substr(trim((string) ($out['shows'] ?? '')), 0, 200);
+
+        return $shows === '' ? '' : (!empty($out['concern']) ? 'Check before showing: ' : '') . $shows;
+    }
+
+    /** The words the picture service is given for a dish with no photo. */
+    public static function photoPrompt(string $dish, string $about = ''): string
+    {
+        return 'A realistic, appetising photograph of one serving of ' . $dish . ($about !== '' ? ' (' . mb_substr($about, 0, 240) . ')' : '')
+            . ', as a small café in the Maldives would serve it, on a plain plate or in a plain bowl. Shot from a three-quarter angle above, in soft daylight, on a plain light surface, the whole dish in the frame with a little room round it. Landscape, 4:3. Nothing else in the picture: no people, no hands, no text, no logos, no cutlery brands, no garnish the dish would not have.';
+    }
+
     /**
      * A schema for a list of flat rows.
      *

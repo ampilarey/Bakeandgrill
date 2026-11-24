@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, Switch } from '../components/SharedUI';
+import { Btn, Card, Switch } from '../components/SharedUI';
+import { inputFont } from '../utils/cssVars';
 import { fetchAiSettings, saveAiSettings, type AiFeature, type AiSettings } from '../api/ai';
 import { refreshAi } from '../components/ai/useAi';
 
@@ -14,10 +15,12 @@ export default function AssistantPage() {
   const [s, setS] = useState<AiSettings | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  /** The picture model as typed, until saved; null while untouched. */
+  const [model, setModel] = useState<string | null>(null);
 
   useEffect(() => { fetchAiSettings().then(setS).catch((e: Error) => setError(e.message)); }, []);
 
-  const save = async (patch: { enabled?: boolean; features?: Partial<Record<AiFeature, boolean>> }) => {
+  const save = async (patch: { enabled?: boolean; features?: Partial<Record<AiFeature, boolean>>; image_model?: string }) => {
     setBusy(true); setError('');
     try { setS(await saveAiSettings(patch)); refreshAi(); } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   };
@@ -45,6 +48,25 @@ export default function AssistantPage() {
           </span>
         </label>
       </Card>
+
+      {s.images && (
+        <Card data-testid="ai-images">
+          <h3 style={{ margin: '0 0 6px', fontSize: 16 }}>Making pictures</h3>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+            Claude reads pictures but cannot make one, so made photos come from Google. {s.images.ready
+              ? 'A Google key is set.'
+              : <>Add a Google key under <Link to="/purchasing/settings">Purchasing → Settings → Reading bills</Link> to use it; Claude can go on doing the rest.</>}
+          </p>
+          <div className="ai-model">
+            <input
+              type="text" value={model ?? (s.images.model === s.images.default_model ? '' : s.images.model)} onChange={(e) => setModel(e.target.value)}
+              placeholder={s.images.default_model} aria-label="Picture model" spellCheck={false} style={inputFont({})} data-testid="ai-image-model"
+            />
+            <Btn small variant="secondary" disabled={busy || model === null} onClick={() => void save({ image_model: (model ?? '').trim() }).then(() => setModel(null))}>Save model</Btn>
+          </div>
+          <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>Leave empty for the usual one ({s.images.default_model}). Google renames these; type the current name only if making a picture says the model is not known.</p>
+        </Card>
+      )}
 
       <Card>
         <h3 style={{ margin: '0 0 4px', fontSize: 16 }}>Features</h3>

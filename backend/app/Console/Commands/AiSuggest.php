@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Domains\Ai\AiFeatures;
 use App\Domains\Ai\AiSuggestions;
 use App\Domains\Ai\AssistantUnavailable;
+use App\Domains\Ai\ReviewPhotoNotes;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -27,7 +28,8 @@ class AiSuggest extends Command
     {
         $only = $this->option('kind');
         foreach (AiSuggestions::KINDS as $kind => $def) {
-            if (($only && $only !== $kind) || !$features->on($def['feature'])) {
+            // A kind made by another kind's look (the three a dish photo gives) is not looked for twice.
+            if (($only && $only !== $kind) || isset($def['look']) || !$features->on($def['feature'])) {
                 continue;
             }
             try {
@@ -37,6 +39,16 @@ class AiSuggest extends Command
             } catch (Throwable $e) {
                 report($e);
                 $this->warn("{$kind}: failed");
+            }
+        }
+
+        if (!$only && $features->on('review_photos')) {
+            try {
+                $this->line('review photos: ' . app(ReviewPhotoNotes::class)->look() . ' noted');
+            } catch (AssistantUnavailable $e) {
+                $this->warn('review photos: ' . $e->getMessage());
+            } catch (Throwable $e) {
+                report($e);
             }
         }
 

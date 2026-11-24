@@ -1809,6 +1809,25 @@ tags are never proposed: a wrong "vegan" or a missed allergen is not a guess to 
 a row in `KINDS`, a job in `AiTasks`, a case in `look()` and one in `apply()`; never a change made straight from the
 assistant's answer, on the menu or anywhere else. `AiSuggestionsTest`, `SuggestionsPage.test.tsx`.
 
+**Photos** (owner, 2026-11-24: "How about menu and other photos?" → "I need generate food photo too. And build all the
+features"). Claude reads a picture and cannot make or change one, so: **one look at each dish photo** (`AiTasks::dishPhoto`,
+the uploaded master when kept, sent at 1400 px; `items.ai_photo_seen` holds the hash of the photo looked at, so a photo is
+looked at once and a new one the next night; `PHOTOS_A_LOOK` a go) makes up to three suggestions: `photo_crop` (the 4:3
+cut round where the dish is, `PhotoWork::cropFor()`, proposed only when it is plainly another cut than the one from the
+middle and only from a kept master, shown Now beside Proposed from a preview file under `ai-previews/`), `photo_check`
+(blurry, dark, cut off, writing on it, not this dish: pointed out, Dismiss only) and `photo_cutout` (on a plain background
+with no cut-out yet: pointed out). `media_describe` proposes a library picture's `alt_text` and `tags` (`media.manage`,
+`media_assets.ai_described_at`). `photo_generate` (its own switch) makes a picture for the best-selling dishes with no
+photo, three a look, through `ImageMaker` (Google's image model by the `generateContent` call, the Google key of Reading
+bills whichever service reads the bills, the model's name typed on the Assistant card as `ai_image_model` since Google
+renames them); approved, it goes on a dish that still has no photo and sets `items.image_ai_generated`. An approved crop or
+made photo is put on the dish by `PhotoWork::install()`, the same steps an upload takes (`MenuImageProcessor`), and a
+preview is deleted whatever is decided. `ReviewPhotoNotes` (switch `review_photos`, in the same nightly run) writes one
+line on a waiting review's first photo (`reviews.photo_note`, "Check before showing: …" when it needs care), shown to
+staff on Reviews and never to a customer; it decides nothing. Suggestions also lists Dishes with no photo, best sellers
+first (no assistant in that). A made picture is never put on the menu without a yes, and never over a real photo. A new
+thing done with a picture goes through `PhotoWork` and the queue. `AiPhotoSuggestionsTest`.
+
 ## Help: short guides inside the admin
 
 Owner, 2026-11-10 ("there are lots of different features that I don't know how to use"). Team →

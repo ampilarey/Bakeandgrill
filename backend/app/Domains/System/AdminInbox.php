@@ -112,6 +112,10 @@ final class AdminInbox
                 'label' => 'Label suggestions to approve', 'link' => '/integrations/suggestions', 'permission' => 'labels.manage',
                 'count' => fn () => \App\Domains\Ai\AiSuggestions::waiting('labels.manage'),
             ],
+            'ai_library' => [
+                'label' => 'Picture descriptions to approve', 'link' => '/integrations/suggestions', 'permission' => 'media.manage',
+                'count' => fn () => \App\Domains\Ai\AiSuggestions::waiting('media.manage'),
+            ],
             'label_rolls' => [
                 'label' => 'Label rolls running low', 'link' => '/labels/settings', 'permission' => 'labels.manage',
                 'count' => fn () => count(array_filter(LabelRolls::presentAll(), fn (array $r) => !empty($r['low_now']))),

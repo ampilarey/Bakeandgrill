@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { Btn, Card } from '../components/SharedUI';
-import { decideSuggestions, fetchAiSuggestions, lookForSuggestions, type AiSuggestionKind, type AiSuggestionRow } from '../api/ai';
+import { decideSuggestions, fetchAiSuggestions, lookForSuggestions, type AiSuggestionKind, type AiSuggestionRow, type NoPhotoDish } from '../api/ai';
 import { inputFont } from '../utils/cssVars';
 
 /*
@@ -19,28 +19,51 @@ const text = (v: unknown): string => (typeof v === 'string' || typeof v === 'num
 const list = (v: unknown): string[] => (Array.isArray(v) ? v.map((x) => String(x)) : []);
 
 /** The fields of a suggestion a person may reword before approving, by kind. */
-const EDITABLE: Record<string, Array<{ field: string; label: string }>> = {
-  menu_dhivehi: [{ field: 'name_dv', label: 'Name' }, { field: 'short_description_dv', label: 'Short line' }],
-  label_glossary: [{ field: 'dv', label: 'Dhivehi' }],
+const EDITABLE: Record<string, Array<{ field: string; label: string; dv?: boolean }>> = {
+  menu_dhivehi: [{ field: 'name_dv', label: 'Name', dv: true }, { field: 'short_description_dv', label: 'Short line', dv: true }],
+  label_glossary: [{ field: 'dv', label: 'Dhivehi', dv: true }],
+  media_describe: [{ field: 'alt_text', label: 'What it shows' }],
 };
+
+/** A stored picture in the menu's own 4:3, never cut. */
+function Pic({ src, label }: { src: string; label?: string }) {
+  if (!src) return null;
+  return (
+    <figure className="sg-pic">
+      <img src={src} alt="" loading="lazy" />
+      {label && <figcaption className="sg-cap">{label}</figcaption>}
+    </figure>
+  );
+}
 
 const NUTRITION: Array<[string, string]> = [['kcal', 'kcal'], ['fat', 'fat'], ['sat_fat', 'saturates'], ['carbs', 'carbs'], ['sugars', 'sugars'], ['protein', 'protein'], ['salt', 'salt']];
 
 function What({ kind, row, edits, onEdit }: { kind: string; row: AiSuggestionRow; edits: Record<string, string>; onEdit: (field: string, value: string) => void }) {
   const p = row.proposed;
+  if (kind === 'photo_crop') {
+    return <div className="sg-pics"><Pic src={text(row.before?.image)} label="Now" /><Pic src={text(p.preview)} label="Proposed" /></div>;
+  }
+  if (kind === 'photo_generate') {
+    return <div className="sg-pics"><Pic src={text(p.preview)} label="Made by the picture service, not a photo of your food" /></div>;
+  }
+  if (kind === 'photo_check' || kind === 'photo_cutout') {
+    return <div className="sg-pics"><Pic src={text(p.image)} /></div>;
+  }
   if (EDITABLE[kind]) {
     return (
       <div style={{ display: 'grid', gap: 6 }}>
+        {kind === 'media_describe' && <div className="sg-pics"><Pic src={text(p.image)} /></div>}
         {EDITABLE[kind].filter((f) => text(p[f.field]) !== '').map((f) => (
           <label key={f.field} style={{ display: 'grid', gap: 2, fontSize: 12, color: 'var(--color-text-muted)' }}>
             {f.label}
             <input
-              dir="rtl" lang="dv" value={edits[f.field] ?? text(p[f.field])} onChange={(e) => onEdit(f.field, e.target.value)} maxLength={200}
-              aria-label={`${row.subject}: ${f.label} in Dhivehi`} data-testid={`sg-edit-${row.id}-${f.field}`}
+              dir={f.dv ? 'rtl' : undefined} lang={f.dv ? 'dv' : undefined} value={edits[f.field] ?? text(p[f.field])} onChange={(e) => onEdit(f.field, e.target.value)} maxLength={200}
+              aria-label={`${row.subject}: ${f.label}${f.dv ? ' in Dhivehi' : ''}`} data-testid={`sg-edit-${row.id}-${f.field}`}
               style={inputFont({ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '0 10px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 15 })}
             />
           </label>
         ))}
+        {kind === 'media_describe' && list(p.tags).length > 0 && <p className="sg-move" style={{ flexWrap: 'wrap' }}>{list(p.tags).map((t) => <span key={t} className="sg-tag">{t}</span>)}</p>}
       </div>
     );
   }
@@ -155,11 +178,12 @@ function KindCard({ kind, onChanged }: { kind: AiSuggestionKind; onChanged: (not
 
 export default function SuggestionsPage() {
   const [kinds, setKinds] = useState<AiSuggestionKind[] | null>(null);
+  const [noPhoto, setNoPhoto] = useState<NoPhotoDish[]>([]);
   const [ready, setReady] = useState(true);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
 
-  const load = useCallback(() => fetchAiSuggestions().then((r) => { setKinds(r.kinds); setReady(r.ready); }).catch((e: Error) => setError(e.message)), []);
+  const load = useCallback(() => fetchAiSuggestions().then((r) => { setKinds(r.kinds); setReady(r.ready); setNoPhoto(r.no_photo ?? []); }).catch((e: Error) => setError(e.message)), []);
   useEffect(() => { void load(); }, [load]);
 
   if (error && !kinds) return <Card><p role="alert" style={{ color: 'var(--color-danger)', margin: 0 }}>{error}</p></Card>;
@@ -176,6 +200,20 @@ export default function SuggestionsPage() {
       </Card>
       {kinds.length === 0 && <Card><p style={{ margin: 0, color: 'var(--color-text-muted)' }}>Your account has no suggestions to decide.</p></Card>}
       {kinds.map((k) => <KindCard key={k.key} kind={k} onChanged={(n) => { setNote(n); void load(); }} />)}
+      {noPhoto.length > 0 && (
+        <Card data-testid="sg-no-photo">
+          <h3 style={{ margin: 0, fontSize: 16 }}>Dishes with no photo <span className="sg-count">{noPhoto.length}</span></h3>
+          <p style={{ margin: '4px 0 8px', fontSize: 13, color: 'var(--color-text-secondary)' }}>The ones that sell most come first, so you know which to photograph next. A photo of your own food is always better than a made one.</p>
+          <ul className="sg-rows">
+            {noPhoto.map((d) => (
+              <li key={d.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 0', fontSize: 14 }}>
+                <span style={{ minWidth: 0 }}>{d.name}</span>
+                <span style={{ color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>{d.sold > 0 ? `${d.sold} sold in 30 days` : 'none sold lately'}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
     </div>
   );
 }

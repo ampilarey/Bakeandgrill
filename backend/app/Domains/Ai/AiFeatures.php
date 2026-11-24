@@ -29,6 +29,9 @@ class AiFeatures
         'auto_menu' => ['label' => 'Menu suggestions', 'about' => 'Each night: Dhivehi for dishes that have none, dishes that look to be in the wrong section, and a clearer order within a section. Nothing changes on the menu until someone approves it.', 'where' => 'System → Integrations → Suggestions'],
         'auto_inventory' => ['label' => 'Inventory suggestions', 'about' => 'Each night: a category for items that have none, and items that look to be entered twice. Approved before anything changes.', 'where' => 'System → Integrations → Suggestions'],
         'auto_labels' => ['label' => 'Label suggestions', 'about' => 'Each night: Dhivehi for ingredient words the glossary lacks and nutrition values for ingredients with none. Approved before anything prints.', 'where' => 'System → Integrations → Suggestions'],
+        'auto_photos' => ['label' => 'Photo suggestions', 'about' => 'Each night it looks at dish photos it has not seen: a better crop round the dish, photos that are blurry, dark or cut off, photos plain enough to cut out, and a description and tags for library pictures. Approved before anything changes.', 'where' => 'System → Integrations → Suggestions'],
+        'photo_generate' => ['label' => 'Make photos for dishes with none', 'about' => 'Makes a picture for the best-selling dishes that have no photo, for you to approve. Needs a Google key. A made picture is not a photo of your own food: use it only where it looks like what you serve.', 'where' => 'System → Integrations → Suggestions'],
+        'review_photos' => ['label' => 'Notes on review photos', 'about' => 'Each night a line saying what a waiting review\'s photo shows, and whether to check it before showing.', 'where' => 'Customers → Reviews'],
         'telegram_ask' => ['label' => 'Questions on the Telegram bot', 'about' => 'Owners and managers can ask the bot about sales and items in plain words.', 'where' => 'Telegram → More → Ask a question, or /ask'],
     ];
 
@@ -101,7 +104,13 @@ class AiFeatures
             $rows[] = ['key' => $key] + $f + ['on' => $this->switchedOn($key)];
         }
 
-        return ['ready' => $this->assistant->ready(), 'enabled' => $this->master(), 'features' => $rows];
+        $maker = app(ImageMaker::class);
+
+        return [
+            'ready' => $this->assistant->ready(), 'enabled' => $this->master(), 'features' => $rows,
+            // Making pictures is Google's job, whichever service does the rest.
+            'images' => ['ready' => $maker->ready(), 'model' => $maker->model(), 'default_model' => ImageMaker::DEFAULT_MODEL],
+        ];
     }
 
     private static function flag(string $key): bool

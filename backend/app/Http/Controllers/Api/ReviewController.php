@@ -171,7 +171,8 @@ class ReviewController extends Controller
         $paginator = $query->paginate(20);
 
         return response()->json([
-            'data' => collect($paginator->items())->map(fn (Review $r) => $this->format($r)),
+            // Staff also get the assistant's line on the review's photo (2026-11-24); a customer never does.
+            'data' => collect($paginator->items())->map(fn (Review $r) => $this->format($r) + ['photo_note' => $r->photo_note]),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),

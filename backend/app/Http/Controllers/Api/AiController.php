@@ -52,7 +52,12 @@ class AiController extends Controller
             'enabled' => ['sometimes', 'boolean'],
             'features' => ['sometimes', 'array'],
             'features.*' => ['boolean'],
-        ]);
+            // The picture model's name, as Google writes it. Empty puts the usual one back.
+            'image_model' => ['sometimes', 'nullable', 'string', 'max:80', 'regex:/^[A-Za-z0-9._:\\-]*$/'],
+        ], ['image_model.regex' => 'A model name is letters, numbers, dots and dashes only.']);
+        if (array_key_exists('image_model', $data)) {
+            \App\Domains\Ai\ImageMaker::setModel((string) $data['image_model']);
+        }
         $features = array_intersect_key($data['features'] ?? [], AiFeatures::FEATURES);
         $this->features->save(array_key_exists('enabled', $data) ? (bool) $data['enabled'] : null, array_map('boolval', $features));
         app(AuditLogService::class)->log('ai.settings_updated', 'SiteSetting', null, [], ['enabled' => $data['enabled'] ?? null, 'features' => $features], [], $request);
@@ -229,7 +234,15 @@ class AiController extends Controller
             ];
         }
 
-        return response()->json(['kinds' => $kinds, 'ready' => $this->features->status()['ready']]);
+        // No assistant in this one: the dishes with no photo, the ones that sell most first, so the next photo taken is the one that matters.
+        $noPhoto = isset($mine['photo_generate'])
+            ? \App\Models\Item::query()->where('is_active', true)->where(fn ($q) => $q->whereNull('image_url')->orWhere('image_url', ''))
+                ->withCount(['orderItems as sold_lately' => fn ($q) => $q->where('created_at', '>=', now()->subDays(30))])
+                ->orderByDesc('sold_lately')->orderBy('name')->limit(15)->get()
+                ->map(fn ($i) => ['id' => (int) $i->id, 'name' => (string) $i->name, 'sold' => (int) $i->sold_lately])->all()
+            : [];
+
+        return response()->json(['kinds' => $kinds, 'ready' => $this->features->status()['ready'], 'no_photo' => $noPhoto]);
     }
 
     /** Ask the assistant now, for one kind. */

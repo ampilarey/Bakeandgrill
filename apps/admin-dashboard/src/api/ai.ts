@@ -5,7 +5,7 @@ import { req } from './client';
  * Claude drafts and suggestions, each behind a switch on System → Integrations →
  * Assistant. Every call answers with a draft; nothing is saved or sent by it.
  */
-export type AiFeature = 'po_scans' | 'reply_drafts' | 'glossary' | 'dhivehi' | 'nutrition' | 'captions' | 'newsletter' | 'telegram_ask';
+export type AiFeature = 'po_scans' | 'reply_drafts' | 'glossary' | 'dhivehi' | 'nutrition' | 'captions' | 'newsletter' | 'telegram_ask' | 'auto_menu' | 'auto_inventory' | 'auto_labels' | 'auto_photos' | 'photo_generate' | 'review_photos';
 
 export type AiStatus = { ready: boolean; enabled: boolean; features: Record<AiFeature, boolean> };
 
@@ -13,6 +13,8 @@ export type AiSettings = {
   ready: boolean;
   enabled: boolean;
   features: Array<{ key: AiFeature; label: string; about: string; where: string; on: boolean }>;
+  /** Making pictures is Google's job, whichever service does the rest: whether it has a key, and its model. */
+  images?: { ready: boolean; model: string; default_model: string };
 };
 
 /** An answer is written, not looked up: it takes longer than the 20 seconds other calls get. */
@@ -23,7 +25,7 @@ const post = <T,>(path: string, body?: unknown, timeoutMs = AI_TIMEOUT_MS): Prom
 
 export const fetchAiStatus = (): Promise<AiStatus> => req('/admin/ai/status');
 export const fetchAiSettings = (): Promise<AiSettings> => req('/admin/ai/settings');
-export const saveAiSettings = (patch: { enabled?: boolean; features?: Partial<Record<AiFeature, boolean>> }): Promise<AiSettings> =>
+export const saveAiSettings = (patch: { enabled?: boolean; features?: Partial<Record<AiFeature, boolean>>; image_model?: string }): Promise<AiSettings> =>
   req('/admin/ai/settings', { method: 'PUT', body: JSON.stringify(patch) });
 
 export type ReplyKind = 'review' | 'question' | 'complaint' | 'comment';
@@ -57,7 +59,8 @@ export type AiSuggestionRow = {
 };
 export type AiSuggestionKind = { key: string; label: string; about: string; can_approve: boolean; on: boolean; rows: AiSuggestionRow[] };
 
-export const fetchAiSuggestions = (): Promise<{ kinds: AiSuggestionKind[]; ready: boolean }> => req('/admin/ai/suggestions');
+export type NoPhotoDish = { id: number; name: string; sold: number };
+export const fetchAiSuggestions = (): Promise<{ kinds: AiSuggestionKind[]; ready: boolean; no_photo?: NoPhotoDish[] }> => req('/admin/ai/suggestions');
 /** Ask the assistant now, for one kind. Takes up to a couple of minutes. */
 export const lookForSuggestions = (kind: string): Promise<{ made: number }> => post('/suggestions/look', { kind }, 170_000);
 export const decideSuggestions = (body: { approve?: number[]; reject?: number[]; edits?: Record<number, Record<string, string>> }): Promise<{ approved: number; rejected: number; stale: number }> =>

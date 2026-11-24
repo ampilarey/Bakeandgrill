@@ -12,8 +12,10 @@ use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\Item;
 use App\Models\LabelGlossaryEntry;
+use App\Models\Media;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * What the assistant proposes by itself, and what happens when a person says yes (owner,
@@ -30,7 +32,7 @@ use Illuminate\Support\Facades\DB;
  */
 class AiSuggestions
 {
-    /** @var array<string, array{label: string, about: string, feature: string, permission: string, apply: bool}> */
+    /** @var array<string, array{label: string, about: string, feature: string, permission: string, apply: bool, look?: string}> */
     public const KINDS = [
         'menu_dhivehi' => ['label' => 'Dhivehi for dishes', 'about' => 'Dishes with no Dhivehi name or short line. Change the words before approving if they are not right.', 'feature' => 'auto_menu', 'permission' => 'menu.manage', 'apply' => true],
         'menu_category' => ['label' => 'Dishes to move', 'about' => 'Dishes that look to be in the wrong section of the menu.', 'feature' => 'auto_menu', 'permission' => 'menu.manage', 'apply' => true],
@@ -39,10 +41,25 @@ class AiSuggestions
         'inventory_duplicate' => ['label' => 'Inventory items that look alike', 'about' => 'Two items that may be one product entered twice. Nothing is merged for you: open them and decide, then dismiss.', 'feature' => 'auto_inventory', 'permission' => 'inventory.manage', 'apply' => false],
         'label_glossary' => ['label' => 'Dhivehi for label ingredients', 'about' => 'Ingredient words the glossary lacks. An approved word goes into the glossary.', 'feature' => 'auto_labels', 'permission' => 'labels.manage', 'apply' => true],
         'label_nutrition' => ['label' => 'Nutrition per 100 g', 'about' => 'Typical values for ingredients with none. Check each against its packet.', 'feature' => 'auto_labels', 'permission' => 'labels.manage', 'apply' => true],
+        // Photos (owner, 2026-11-24: "I need generate food photo too. And build all the features"). One look at a dish's
+        // photo makes all three of the first kinds, so Look now on any of them is the same look (`look`).
+        'photo_crop' => ['label' => 'A better crop for a dish photo', 'about' => 'The dish whole and in the middle, cut again from the photo you uploaded. Approving replaces the picture customers see.', 'feature' => 'auto_photos', 'permission' => 'menu.manage', 'apply' => true],
+        'photo_check' => ['label' => 'Photos worth retaking', 'about' => 'Dish photos that look blurry, dark, cut off, or not like the dish. Nothing is changed: retake or replace the photo, then dismiss.', 'feature' => 'auto_photos', 'permission' => 'menu.manage', 'apply' => false, 'look' => 'photo_crop'],
+        'photo_cutout' => ['label' => 'Photos that would cut out cleanly', 'about' => 'Dishes photographed on a plain background that have no cut-out yet. Make the cut-out on the dish\'s Photos tab, then dismiss.', 'feature' => 'auto_photos', 'permission' => 'menu.manage', 'apply' => false, 'look' => 'photo_crop'],
+        'media_describe' => ['label' => 'Descriptions for library pictures', 'about' => 'What each picture shows, and words to find it by. You can change the description before approving.', 'feature' => 'auto_photos', 'permission' => 'media.manage', 'apply' => true],
+        'photo_generate' => ['label' => 'Made photos for dishes with none', 'about' => 'A picture made by the image service for your best-selling dishes without a photo. It is not a photo of your own food: approve it only if it looks like what you serve.', 'feature' => 'photo_generate', 'permission' => 'menu.manage', 'apply' => true],
     ];
 
     /** Not proposed again this long after someone turned it down. */
     private const QUIET_DAYS = 60;
+
+    /** Photos looked at in one go: each is a call to the assistant with a picture. */
+    public const PHOTOS_A_LOOK = 20;
+
+    /** Pictures made in one go: each costs far more than a look. */
+    public const MADE_A_LOOK = 3;
+
+    private const ISSUE_WORDS = ['blurry' => 'out of focus', 'dark' => 'too dark', 'cut_off' => 'part of the dish is cut off', 'text_or_logo' => 'writing or a logo on it', 'wrong_dish' => 'does not look like this dish', 'cluttered' => 'other things crowd the dish'];
 
     public function __construct(private readonly AiTasks $tasks, private readonly AiFeatures $features) {}
 
@@ -68,6 +85,9 @@ class AiSuggestions
             'inventory_duplicate' => $this->lookInventoryDuplicates(),
             'label_glossary' => $this->lookGlossary(),
             'label_nutrition' => $this->lookNutrition(),
+            'photo_crop', 'photo_check', 'photo_cutout' => $this->lookPhotos(),
+            'media_describe' => $this->lookLibrary(),
+            'photo_generate' => $this->lookMakePhotos(),
         };
     }
 
@@ -261,6 +281,104 @@ class AiSuggestions
         return $made;
     }
 
+    /** One look at each dish photo not seen yet: a better crop, what is wrong with it, whether it would cut out. */
+    private function lookPhotos(): int
+    {
+        $photos = app(PhotoWork::class);
+        $busy = ['photo_crop' => $this->busy('photo_crop'), 'photo_check' => $this->busy('photo_check'), 'photo_cutout' => $this->busy('photo_cutout')];
+        $made = 0;
+        $looked = 0;
+        foreach (Item::query()->where('is_active', true)->whereNotNull('image_url')->where('image_url', '!=', '')->orderBy('id')->get() as $item) {
+            $seen = sha1((string) $item->image_url);
+            if ($item->ai_photo_seen === $seen) {
+                continue;
+            }
+            if ($looked >= self::PHOTOS_A_LOOK) {
+                break;
+            }
+            // The photo as it was uploaded when it was kept, else the menu's own cut of it.
+            $master = $photos->bytes($item->image_original_url);
+            $source = $master ?? $photos->bytes($item->image_url);
+            $small = $source !== null ? $photos->forLooking($source) : null;
+            if ($small === null) {
+                $item->forceFill(['ai_photo_seen' => $seen])->saveQuietly();
+
+                continue;
+            }
+            $looked++;
+            $saw = $this->tasks->dishPhoto(['bytes' => $small['bytes'], 'mime' => $small['mime']], (string) $item->name, trim(strip_tags((string) ($item->short_description ?: $item->description))));
+            $key = "item:{$item->id}";
+
+            if ($master !== null && !isset($busy['photo_crop'][$key])) {
+                $crop = PhotoWork::cropFor($small['w'], $small['h'], $saw['box']);
+                // Worth proposing only when it is plainly another cut than the one from the middle.
+                if (PhotoWork::apart($crop, PhotoWork::middleCrop($small['w'], $small['h'])) > 0.2 && ($cut = $photos->cut($master, $crop)) !== null) {
+                    $made += $this->keep('photo_crop', 'item', (int) $item->id, (string) $item->name, ['image' => $item->image_url], ['preview' => $photos->keepPreview($cut), 'crop' => $crop], null);
+                }
+            }
+            if ($saw['issues'] !== [] && !isset($busy['photo_check'][$key])) {
+                $words = implode(', ', array_map(fn (string $i) => self::ISSUE_WORDS[$i] ?? $i, $saw['issues']));
+                $made += $this->keep('photo_check', 'item', (int) $item->id, (string) $item->name, null, ['image' => $item->image_url, 'issues' => $saw['issues']], ucfirst($words) . ($saw['note'] !== '' ? '. ' . $saw['note'] : ''));
+            }
+            if ($saw['plain'] && trim((string) $item->cutout_url) === '' && !isset($busy['photo_cutout'][$key])) {
+                $made += $this->keep('photo_cutout', 'item', (int) $item->id, (string) $item->name, null, ['image' => $item->image_url], null);
+            }
+            $item->forceFill(['ai_photo_seen' => $seen])->saveQuietly();
+        }
+
+        return $made;
+    }
+
+    /** A description and tags for library pictures that have neither. */
+    private function lookLibrary(): int
+    {
+        $photos = app(PhotoWork::class);
+        $made = 0;
+        $rows = Media::query()->where('media_type', 'image')->whereNull('ai_described_at')
+            ->where(fn ($q) => $q->whereNull('alt_text')->orWhere('alt_text', ''))->orderByDesc('id')->limit(self::PHOTOS_A_LOOK)->get();
+        foreach ($rows as $m) {
+            $bytes = null;
+            try {
+                $bytes = Storage::disk((string) ($m->disk ?: 'public'))->get((string) $m->path);
+            } catch (\Throwable) {
+                // A row whose file has gone: marked, so it is not asked about again.
+            }
+            $small = is_string($bytes) && $bytes !== '' ? $photos->forLooking($bytes, 1200) : null;
+            if ($small !== null) {
+                $said = $this->tasks->describePicture(['bytes' => $small['bytes'], 'mime' => $small['mime']], (string) $m->title);
+                if ($said['alt'] !== '') {
+                    $made += $this->keep('media_describe', 'media', (int) $m->id, (string) ($m->title ?: basename((string) $m->path)), null, ['alt_text' => $said['alt'], 'tags' => $said['tags'], 'image' => $m->thumb_url ?: $m->url], null);
+                }
+            }
+            $m->forceFill(['ai_described_at' => now()])->saveQuietly();
+        }
+
+        return $made;
+    }
+
+    /** A made picture for the best-selling dishes that have no photo. */
+    private function lookMakePhotos(): int
+    {
+        $maker = app(ImageMaker::class);
+        if (!$maker->ready()) {
+            throw new AssistantUnavailable('Making pictures needs a Google key: add one under Purchasing → Settings → Reading bills.');
+        }
+        $busy = $this->busy('photo_generate');
+        $items = Item::query()->where('is_active', true)->where(fn ($q) => $q->whereNull('image_url')->orWhere('image_url', ''))
+            ->withCount(['orderItems as sold_lately' => fn ($q) => $q->where('created_at', '>=', now()->subDays(30))])
+            ->orderByDesc('sold_lately')->orderBy('name')->limit(60)->get()
+            ->reject(fn (Item $i) => isset($busy["item:{$i->id}"]))->take(self::MADE_A_LOOK);
+        $photos = app(PhotoWork::class);
+        $made = 0;
+        foreach ($items as $item) {
+            $about = trim(strip_tags((string) ($item->short_description ?: $item->description)));
+            $bytes = $maker->make(AiTasks::photoPrompt((string) $item->name, $about));
+            $made += $this->keep('photo_generate', 'item', (int) $item->id, (string) $item->name, null, ['preview' => $photos->keepPreview($bytes)], null);
+        }
+
+        return $made;
+    }
+
     /**
      * Make the change a suggestion names. A suggestion whose subject has changed since goes stale.
      *
@@ -357,6 +475,39 @@ class AiSuggestions
                 $s->proposed = ['dv' => $dv];
 
                 return true;
+            case 'photo_crop':
+                $item = Item::query()->find($s->subject_id);
+                $bytes = app(PhotoWork::class)->bytes($p['preview'] ?? null);
+                // The photo it was cut from is still the dish's photo.
+                if (!$item || $bytes === null || (string) $item->image_url !== (string) ($before['image'] ?? '')) {
+                    return false;
+                }
+                app(PhotoWork::class)->install($item, $bytes, newMaster: false, generated: (bool) $item->image_ai_generated);
+                $item->forceFill(['ai_photo_seen' => sha1((string) $item->image_url)])->saveQuietly();
+
+                return true;
+            case 'photo_generate':
+                $item = Item::query()->find($s->subject_id);
+                $bytes = app(PhotoWork::class)->bytes($p['preview'] ?? null);
+                // Only for a dish that still has no photo: one uploaded since is the real thing.
+                if (!$item || $bytes === null || trim((string) $item->image_url) !== '') {
+                    return false;
+                }
+                app(PhotoWork::class)->install($item, $bytes, newMaster: true, generated: true);
+                $item->forceFill(['ai_photo_seen' => sha1((string) $item->image_url)])->saveQuietly();
+
+                return true;
+            case 'media_describe':
+                $m = Media::query()->find($s->subject_id);
+                $alt = mb_substr(trim((string) ($edits['alt_text'] ?? $p['alt_text'] ?? '')), 0, 160);
+                if (!$m || $alt === '' || trim((string) $m->alt_text) !== '') {
+                    return false;
+                }
+                $tags = is_array($m->tags) && $m->tags !== [] ? $m->tags : array_values(array_map('strval', (array) ($p['tags'] ?? [])));
+                $m->forceFill(['alt_text' => $alt, 'tags' => $tags])->save();
+                $s->proposed = ['alt_text' => $alt, 'tags' => $tags] + $p;
+
+                return true;
             case 'label_nutrition':
                 $inv = InventoryItem::query()->find($s->subject_id);
                 $clean = Nutrition::clean($p);
@@ -373,6 +524,10 @@ class AiSuggestions
 
     private function close(AiSuggestion $s, string $status, User $by): string
     {
+        // A picture kept only to be looked at has done its job, whatever was decided.
+        if (isset(((array) $s->proposed)['preview'])) {
+            app(PhotoWork::class)->dropPreview((string) ((array) $s->proposed)['preview']);
+        }
         $s->status = $status;
         $s->decided_by = $by->id;
         $s->decided_at = now();

@@ -117,6 +117,10 @@ class Item extends Model
      */
     protected $hidden = [
         'wholesale_price_laar',
+        // The assistant's own marks (2026-11-24): which photo it has looked at, and that a photo was made, not taken.
+        // Staff see the second on the Suggestions screen; the public menu carries neither.
+        'ai_photo_seen',
+        'image_ai_generated',
         // The Admin's switch (ItemController lists it for staff); the public
         // menu only sees its effect, so the contract snapshots stay as they are.
         'hide_from_bestsellers',

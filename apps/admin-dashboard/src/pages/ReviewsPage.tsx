@@ -30,12 +30,17 @@ function ReviewPhotos({ review }: { review: Review }) {
     try { setFull(URL.createObjectURL(await fetchReviewPhoto(review.id, n))); } catch { /* the thumbnail stays */ }
   };
   return (
-    <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }} data-testid={`review-photos-${review.id}`}>
+    <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }} data-testid={`review-photos-${review.id}`}>
       {thumbs.map((src, n) => (
         <button key={n} type="button" onClick={() => void open(n)} aria-label={`Photo ${n + 1}`} style={{ padding: 0, border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden', width: 48, height: 48, background: 'var(--color-bg)', cursor: 'zoom-in' }}>
           {src && <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
         </button>
       ))}
+      {review.photo_note && (
+        <span data-testid={`review-photo-note-${review.id}`} style={{ flexBasis: '100%', fontSize: 12, color: review.photo_note.startsWith('Check before showing') ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>
+          Assistant: {review.photo_note}
+        </span>
+      )}
       {full && (
         <Modal title="Review photo" onClose={() => setFull(null)} maxWidth={720}>
           <img src={full} alt="" style={{ width: '100%', borderRadius: 10, display: 'block', background: 'var(--color-backdrop)' }} />

@@ -572,6 +572,8 @@ export interface Review {
   /** From a real order (iruali import plan, feature 6). */
   verified?: boolean;
   photos?: { url: string; thumb_url: string }[];
+  /** The assistant's line on the photo, for staff: what it shows, and "Check before showing" when it needs care. */
+  photo_note?: string | null;
   helpful_count?: number;
   reply?: { text: string; at: string | null } | null;
 }

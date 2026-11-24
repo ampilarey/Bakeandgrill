@@ -7374,3 +7374,9 @@ table.is-table.is-table { display: none; }
 .sg-order ol { margin: 2px 0 0; padding-left: 20px; color: var(--color-text-secondary); }
 .sg-cap { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); }
 .sg-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.sg-pics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 220px)); gap: 10px; }
+.sg-pic { margin: 0; display: grid; gap: 4px; }
+.sg-pic img { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-bg); display: block; }
+.sg-tag { padding: 2px 8px; border-radius: 999px; font-size: 12px; background: var(--color-tone-brown-bg); color: var(--color-tone-brown-text); border: 1px solid var(--color-tone-brown-border); }
+.ai-model { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.ai-model input { flex: 1 1 200px; min-width: 0; min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); }
