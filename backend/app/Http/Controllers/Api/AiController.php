@@ -245,6 +245,52 @@ class AiController extends Controller
         return response()->json(['kinds' => $kinds, 'ready' => $this->features->status()['ready'], 'no_photo' => $noPhoto]);
     }
 
+    /** The owner's own plan for the menu, which Look now on New sections follows. */
+    public function menuPlan(Request $request): JsonResponse
+    {
+        $this->requirePermission($request, 'menu.manage');
+
+        return response()->json(['plan' => AiSuggestions::menuPlan()]);
+    }
+
+    public function saveMenuPlan(Request $request): JsonResponse
+    {
+        $this->requirePermission($request, 'menu.manage');
+        $data = $request->validate(['plan' => ['present', 'nullable', 'string', 'max:8000']]);
+        $before = AiSuggestions::menuPlan();
+        AiSuggestions::setMenuPlan((string) ($data['plan'] ?? ''));
+        app(AuditLogService::class)->log('ai.menu_plan_saved', 'SiteSetting', null, ['plan' => $before], ['plan' => AiSuggestions::menuPlan()], [], $request);
+
+        return response()->json(['plan' => AiSuggestions::menuPlan()]);
+    }
+
+    /**
+     * A file of the plan read into the box: a text file as it is, a photo, scan or PDF by the
+     * assistant. Nothing is saved: the person reads it, changes it and presses Save.
+     */
+    public function readMenuPlan(Request $request): JsonResponse
+    {
+        $this->requirePermission($request, 'menu.manage');
+        $request->validate(['file' => ['required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,webp,txt,csv']]);
+        $file = $request->file('file');
+        $bytes = (string) file_get_contents((string) $file->getRealPath());
+        $mime = strtolower((string) $file->getMimeType());
+        if (str_starts_with($mime, 'text/') || in_array(strtolower((string) $file->getClientOriginalExtension()), ['txt', 'csv'], true)) {
+            $text = mb_check_encoding($bytes, 'UTF-8') ? $bytes : mb_convert_encoding($bytes, 'UTF-8', 'ISO-8859-1');
+
+            return response()->json(['plan' => mb_substr(trim(str_replace(["\r\n", "\r"], "\n", $text)), 0, 8000)]);
+        }
+        $mime = match ($mime) {
+            'application/pdf' => 'application/pdf',
+            'image/png' => 'image/png',
+            'image/webp' => 'image/webp',
+            default => 'image/jpeg',
+        };
+        @set_time_limit(170);
+
+        return $this->run('auto_menu', fn () => ['plan' => $this->tasks->readMenuPlan($bytes, $mime)]);
+    }
+
     /** Ask the assistant now, for one kind. */
     public function look(Request $request, AiSuggestions $suggestions): JsonResponse
     {

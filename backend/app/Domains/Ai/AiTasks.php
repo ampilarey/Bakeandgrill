@@ -339,10 +339,12 @@ class AiTasks
      *                                                                                                 parent is an existing main section's id, or 0 with parent_new '' for a new main section, or 0 with
      *                                                                                                 parent_new the name of a new main section this answer also asks for
      */
-    public function newSections(array $dishes, array $sections): array
+    public function newSections(array $dishes, array $sections, string $plan = ''): array
     {
+        $planned = trim($plan) === '' ? '' : "\n\nThe owner has written how they want the menu arranged. Follow it: make the sections and sub-sections it names that we do not have yet, under the parents it gives, with its own names, and put each dish where the plan puts it, or where it plainly belongs in the plan when the plan does not name the dish. Add a section of your own only for dishes that fit nowhere in the plan. A section of the plan with fewer than two of our dishes is left out. The owner's plan:\n" . mb_substr(trim($plan), 0, 8000);
+
         $out = $this->assistant->ask(
-            self::WHO . "\n\nYou are given every section of our menu (a main section has parent 0, a sub-section its main section's id) and every dish with the section it is in now (0 means it is in no section). Go through all of it, dish by dish, and work out how a customer would best find things. Then give every new section and sub-section the menu should have, each with the ids of all the dishes that belong in it.\n\nA sub-section groups dishes of one kind inside a main section: all the momo, all the fried rice, all the fresh juices, all the short eats of one sort. A new main section is for dishes that fit none of the main sections we have, or for a kind of food now scattered over several. A dish in no section should end up in one. Be thorough: a main section with more than about eight dishes usually reads better in sub-sections, and every clear group of two or more dishes is worth naming.\n\nFor each one give: name, the words a customer would look for, in the style of our section names; parent, the id of the existing main section it goes under, or 0; parent_new, the name of a new main section from this same answer when it goes under that, else an empty string (a new main section has parent 0 and parent_new empty); ids, the dishes to put in it; why, a few words. Do not give a section we already have under the same parent, do not put a dish in two sections, and do not make a section for one dish. Leave a dish out when it is already in the right place.",
+            self::WHO . "\n\nYou are given every section of our menu (a main section has parent 0, a sub-section its main section's id) and every dish with the section it is in now (0 means it is in no section). Go through all of it, dish by dish, and work out how a customer would best find things. Then give every new section and sub-section the menu should have, each with the ids of all the dishes that belong in it.\n\nA sub-section groups dishes of one kind inside a main section: all the momo, all the fried rice, all the fresh juices, all the short eats of one sort. A new main section is for dishes that fit none of the main sections we have, or for a kind of food now scattered over several. A dish in no section should end up in one. Be thorough: a main section with more than about eight dishes usually reads better in sub-sections, and every clear group of two or more dishes is worth naming.\n\nFor each one give: name, the words a customer would look for, in the style of our section names; parent, the id of the existing main section it goes under, or 0; parent_new, the name of a new main section from this same answer when it goes under that, else an empty string (a new main section has parent 0 and parent_new empty); ids, the dishes to put in it; why, a few words. Do not give a section we already have under the same parent, do not put a dish in two sections, and do not make a section for one dish. Leave a dish out when it is already in the right place." . $planned,
             json_encode(['sections' => $sections, 'dishes' => $dishes], JSON_UNESCAPED_UNICODE),
             ['type' => 'object', 'additionalProperties' => false, 'required' => ['rows'], 'properties' => ['rows' => ['type' => 'array', 'items' => [
                 'type' => 'object', 'additionalProperties' => false, 'required' => ['name', 'parent', 'parent_new', 'ids', 'why'],
@@ -498,6 +500,60 @@ class AiTasks
         }
 
         return array_values($pairs);
+    }
+
+    /**
+     * The same dish on the menu twice.
+     *
+     * @param array<int, array{name: string, section: string, price: float}> $dishes by id
+     * @return list<array{a: int, b: int, why: string}> each pair once, lower id first
+     */
+    public function menuDuplicates(array $dishes): array
+    {
+        $list = [];
+        foreach ($dishes as $id => $d) {
+            $list[] = ['id' => (int) $id, 'name' => $d['name'], 'section' => $d['section'], 'price' => $d['price']];
+        }
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nYou are given every dish on our menu with its section and price. Name the pairs that look like one dish entered twice: the same dish under two spellings or word orders, the same dish in two sections, a dish and the same dish with its size in the name (which should be one dish with sizes), or a dish switched off and its newer copy. Two different dishes that share a word are not a pair: chicken momo and beef momo, a fried rice and a fried noodle, a small and a large that are already one dish. Say in a few words why they look the same, and which kind of double it is. An empty list is a good answer.",
+            json_encode($list, JSON_UNESCAPED_UNICODE),
+            self::rows(['a' => 'integer', 'b' => 'integer', 'why' => 'string']),
+            timeout: 120,
+            maxTokens: 8000,
+        );
+        $pairs = [];
+        foreach ((array) ($out['rows'] ?? []) as $r) {
+            $a = (int) ($r['a'] ?? 0);
+            $b = (int) ($r['b'] ?? 0);
+            if ($a !== $b && isset($dishes[$a], $dishes[$b])) {
+                [$lo, $hi] = [min($a, $b), max($a, $b)];
+                $pairs["{$lo}-{$hi}"] = ['a' => $lo, 'b' => $hi, 'why' => mb_substr(trim((string) ($r['why'] ?? '')), 0, 200)];
+            }
+        }
+
+        return array_values($pairs);
+    }
+
+    /**
+     * The owner's own plan for the menu, read from a photo, a scan or a PDF into plain lines
+     * they can then change: a section a line, its sub-sections and dishes indented under it.
+     */
+    public function readMenuPlan(string $bytes, string $mime): string
+    {
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nYou are given a file in which the owner has set out how they want our menu arranged: sections, sub-sections, and perhaps the dishes in each. Copy it out as plain text, one line each: a main section at the start of a line, its sub-sections under it indented with two spaces, and dishes under their section indented two spaces more. Keep the owner's own names and order. Copy what is there and add nothing: no prices, no descriptions, no sections of your own. When the file is not a menu or a plan for one, or cannot be read, answer with an empty text.",
+            'Copy out this plan for the menu.',
+            self::obj(['text' => 'string']),
+            ['bytes' => $bytes, 'mime' => $mime],
+            timeout: 120,
+            maxTokens: 8000,
+        );
+        $text = trim((string) ($out['text'] ?? ''));
+        if ($text === '') {
+            throw new AssistantUnavailable('The assistant could not read a menu plan from this file.');
+        }
+
+        return mb_substr($text, 0, 8000);
     }
 
     // ── Looking at pictures ──────────────────────────────────────────────

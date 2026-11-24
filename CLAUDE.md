@@ -1803,6 +1803,7 @@ keep every idea as an `ai_suggestions` row, changing nothing else: `menu_dhivehi
 line; the words can be changed in the box before approving), `menu_category` (a dish in the wrong section),
 `menu_order` (a section's dishes in a clearer order; an answer that does not name every dish once is dropped),
 `menu_section` (owner, 2026-11-24: "When i click look now, it should look in to all the items listed and all the category and subcategory and suggest new category and subcategory and items belong to them": **one look at the whole menu**, `AiTasks::newSections()`, given every dish, in a section or not, on the menu or switched off, and every section with its parent, and asked to be thorough; each new section or sub-section for two or more dishes is a row, a sub-section either under a main section we have (`parent_id`) or under one the same answer asks for (`parent_is_new`, made with it on approval); never a name we have under that parent, a dish in one proposal only; a look by hand replaces the plan still waiting, the nightly run leaves a waiting plan alone (`look($kind, asked: false)`), and the look's reply carries `note`, what it went through; the name can be changed and dishes unticked, `edits.name` and `edits.skip`; approving makes the category through `sectionNamed()`, which uses one of that name made by hand since, and moves the dishes still where they were found; kept under `section:<parent key>/<name key>` so one turned down is not proposed again),
+`menu_duplicate` (owner, 2026-11-24: "is there any way to check for duplicate items": two dishes that look like one, every dish looked at, switched off or not, `AiTasks::menuDuplicates()`, shown side by side with section and price, pointed out and never merged: Dismiss only),
 `inventory_category` (an item with none, into an existing category only), `inventory_duplicate` (two items that look
 like one, pointed out and never merged: Dismiss only), `label_glossary` and `label_nutrition`. System → Integrations →
 **Suggestions** (`SuggestionsPage`, `GET /api/admin/ai/suggestions`, `POST …/look`, `POST …/decide`) lists them by kind
@@ -1814,6 +1815,15 @@ A subject with a row waiting, or turned down in the last 60 days, is not propose
 tags are never proposed: a wrong "vegan" or a missed allergen is not a guess to put in front of a customer. A new kind is
 a row in `KINDS`, a job in `AiTasks`, a case in `look()` and one in `apply()`; never a change made straight from the
 assistant's answer, on the menu or anywhere else. `AiSuggestionsTest`, `SuggestionsPage.test.tsx`.
+
+**The owner's plan for the menu** (owner, 2026-11-24: "Is there any way to upload recommended menu and category so api can
+rethink about that before suggestions" → "File upload" → "Both"). The New sections card carries Your plan for the menu
+(`MenuPlanBox`, `GET` / `PUT /api/admin/ai/menu-plan`, `menu.manage` asked in the controller): the sections and sub-sections
+the owner wants, typed or pasted, kept as the setting `ai_menu_plan` (`AiSuggestions::menuPlan()`, 8,000 characters) and
+handed to `newSections()` on every look, which then follows it and adds a section of its own only for dishes that fit
+nowhere in it; the look's note says the plan was followed. Upload a file (`POST …/menu-plan/read`) reads a text file as it
+is and a photo, scan or PDF through `AiTasks::readMenuPlan()`, and **only fills the box**: nothing is kept until Save plan.
+Never a second place for the plan, and never a look that saves what it read.
 
 **Photos** (owner, 2026-11-24: "How about menu and other photos?" → "I need generate food photo too. And build all the
 features"). Claude reads a picture and cannot make or change one, so: **one look at each dish photo** (`AiTasks::dishPhoto`,

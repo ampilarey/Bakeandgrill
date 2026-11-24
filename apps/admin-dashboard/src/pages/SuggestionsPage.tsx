@@ -4,6 +4,7 @@ import { ArrowRight, Sparkles } from 'lucide-react';
 import { Btn, Card } from '../components/SharedUI';
 import { decideSuggestions, fetchAiSuggestions, lookForSuggestions, type AiSuggestionKind, type AiSuggestionRow, type NoPhotoDish } from '../api/ai';
 import { inputFont } from '../utils/cssVars';
+import { MenuPlanBox } from '../components/ai/MenuPlanBox';
 
 /*
  * System → Integrations → Suggestions (owner, 2026-11-24: "since menu is public add admin
@@ -111,6 +112,18 @@ function What({ kind, row, edits, onEdit }: { kind: string; row: AiSuggestionRow
   if (kind === 'inventory_category') {
     return <p className="sg-move">No category <ArrowRight size={14} aria-hidden /> <strong>{text(p.category)}</strong></p>;
   }
+  if (kind === 'menu_duplicate') {
+    const side = (d: unknown) => {
+      const o = (d ?? {}) as Record<string, unknown>;
+      return <span><strong>{text(o.name)}</strong><span className="sg-from">{text(o.section)} · MVR {Number(o.price ?? 0).toFixed(2)}</span></span>;
+    };
+    return (
+      <div style={{ display: 'grid', gap: 6 }}>
+        <div className="sg-pair">{side(row.before)}{side(p.other)}</div>
+        <p className="sg-move"><Link to="/menu">Open Menu Items</Link></p>
+      </div>
+    );
+  }
   if (kind === 'inventory_duplicate') {
     return (
       <p className="sg-move" style={{ flexWrap: 'wrap' }}>
@@ -172,6 +185,7 @@ function KindCard({ kind, onChanged }: { kind: AiSuggestionKind; onChanged: (not
           : <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Switched off</span>}
       </div>
       {error && <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 13, margin: '8px 0 0' }}>{error}</p>}
+      {kind.key === 'menu_section' && <MenuPlanBox />}
 
       {kind.rows.length === 0 ? (
         <p style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--color-text-muted)' }}>Nothing waiting.</p>

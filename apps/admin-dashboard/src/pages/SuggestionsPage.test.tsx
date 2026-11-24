@@ -9,6 +9,9 @@ vi.mock('../api/ai', () => ({
   fetchAiSuggestions: (...a: unknown[]) => fetchAiSuggestions(...a),
   lookForSuggestions: (...a: unknown[]) => lookForSuggestions(...a),
   decideSuggestions: (...a: unknown[]) => decideSuggestions(...a),
+  fetchMenuPlan: vi.fn().mockResolvedValue({ plan: '' }),
+  saveMenuPlan: vi.fn(),
+  readMenuPlanFile: vi.fn(),
 }));
 
 import SuggestionsPage from './SuggestionsPage';
@@ -96,5 +99,36 @@ describe('System → Integrations → Suggestions', () => {
     expect(screen.getAllByText('now in no section')).toHaveLength(2);
     fireEvent.click(screen.getByTestId('sg-look-menu_section'));
     expect(await screen.findByTestId('sg-note')).toHaveTextContent('Looked at 133 dishes and 12 sections. 4 new suggestions for new sections.');
+  });
+
+  // Owner, 2026-11-24: "is there any way to check for duplicate items".
+  it('dishes that look alike are shown side by side and can only be dismissed', async () => {
+    fetchAiSuggestions.mockResolvedValue({ ready: true, kinds: [
+      { key: 'menu_duplicate', label: 'Dishes that look alike', about: 'Nothing is merged for you.', can_approve: false, on: true, rows: [
+        { id: 11, subject_id: 5, subject: 'Chicken Momo', before: { name: 'Chicken Momo', section: 'Snacks', price: 45 }, reason: 'Same dish, two spellings', made: '2026-11-24',
+          proposed: { other_id: 9, other: { name: 'Chiken Momos (switched off)', section: 'Frozen', price: 45 } } },
+      ] },
+    ] });
+    decideSuggestions.mockResolvedValue({ approved: 0, rejected: 1, stale: 0 });
+    render(<MemoryRouter><SuggestionsPage /></MemoryRouter>);
+
+    expect(await screen.findByText('Chiken Momos (switched off)')).toBeInTheDocument();
+    expect(screen.getByText('Frozen · MVR 45.00')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Menu Items' })).toHaveAttribute('href', '/menu');
+    expect(screen.queryByTestId('sg-approve-menu_duplicate')).toBeNull();
+    fireEvent.click(screen.getByTestId('sg-tick-11'));
+    fireEvent.click(screen.getByTestId('sg-reject-menu_duplicate'));
+    await waitFor(() => expect(decideSuggestions).toHaveBeenCalledWith({ reject: [11] }));
+  });
+
+  it('the plan box sits on the New sections card only', async () => {
+    fetchAiSuggestions.mockResolvedValue({ ready: true, kinds: [
+      { key: 'menu_section', label: 'New sections', about: 'x', can_approve: true, on: true, rows: [] },
+      { key: 'menu_order', label: 'Order within a section', about: 'y', can_approve: true, on: true, rows: [] },
+    ] });
+    render(<MemoryRouter><SuggestionsPage /></MemoryRouter>);
+    expect(await screen.findByTestId('menu-plan')).toBeInTheDocument();
+    expect(screen.getAllByTestId('menu-plan')).toHaveLength(1);
+    expect(screen.getByTestId('sg-kind-menu_section')).toContainElement(screen.getByTestId('menu-plan'));
   });
 });

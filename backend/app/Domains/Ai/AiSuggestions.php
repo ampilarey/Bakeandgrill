@@ -13,6 +13,7 @@ use App\Models\InventoryItem;
 use App\Models\Item;
 use App\Models\LabelGlossaryEntry;
 use App\Models\Media;
+use App\Models\SiteSetting;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -38,6 +39,8 @@ class AiSuggestions
         'menu_category' => ['label' => 'Dishes to move', 'about' => 'Dishes that look to be in the wrong section of the menu.', 'feature' => 'auto_menu', 'permission' => 'menu.manage', 'apply' => true],
         // Owner, 2026-11-24: "arrange and add new category and subcategory and add related items to that".
         'menu_section' => ['label' => 'New sections', 'about' => 'Look now goes through every dish and every section and sub-section, and lists the new sections and sub-sections the menu should have, with the dishes for each. Approving one makes it and moves its ticked dishes in. Change a name or untick a dish first if it is not right.', 'feature' => 'auto_menu', 'permission' => 'menu.manage', 'apply' => true],
+        // Owner, 2026-11-24: "is there any way to check for duplicate items".
+        'menu_duplicate' => ['label' => 'Dishes that look alike', 'about' => 'Two dishes that may be one dish entered twice: two spellings, two sections, or a size that should be a size of the other. Nothing is merged for you: open both under Menu Items, decide, then dismiss.', 'feature' => 'auto_menu', 'permission' => 'menu.manage', 'apply' => false],
         'menu_order' => ['label' => 'Order within a section', 'about' => 'A clearer order for a section\'s dishes. Approving sets the order customers see.', 'feature' => 'auto_menu', 'permission' => 'menu.manage', 'apply' => true],
         'inventory_category' => ['label' => 'Inventory items with no category', 'about' => 'A category for each item that has none.', 'feature' => 'auto_inventory', 'permission' => 'inventory.manage', 'apply' => true],
         'inventory_duplicate' => ['label' => 'Inventory items that look alike', 'about' => 'Two items that may be one product entered twice. Nothing is merged for you: open them and decide, then dismiss.', 'feature' => 'auto_inventory', 'permission' => 'inventory.manage', 'apply' => false],
@@ -89,6 +92,7 @@ class AiSuggestions
             'menu_category' => $this->lookMenuCategory(),
             'menu_order' => $this->lookMenuOrder(),
             'menu_section' => $this->lookMenuSection(),
+            'menu_duplicate' => $this->lookMenuDuplicates(),
             'inventory_category' => $this->lookInventoryCategory(),
             'inventory_duplicate' => $this->lookInventoryDuplicates(),
             'label_glossary' => $this->lookGlossary(),
@@ -210,7 +214,11 @@ class AiSuggestions
         if (count($dishes) < 2) {
             return 0;
         }
-        $plan = $this->tasks->newSections($dishes, $sections);
+        $own = self::menuPlan();
+        if ($own !== '') {
+            $this->lastNote .= ' Your plan for the menu was followed.';
+        }
+        $plan = $this->tasks->newSections($dishes, $sections, $own);
         AiSuggestion::query()->where('kind', 'menu_section')->where('status', 'pending')->delete();
         $busy = $this->busy('menu_section');
         $now = array_column($dishes, 'in', 'id');
@@ -237,6 +245,47 @@ class AiSuggestions
                 $key,
             );
             $busy[$key] = true;
+        }
+
+        return $made;
+    }
+
+    /** The owner's own plan for the menu, which every look at the whole menu follows. */
+    public static function menuPlan(): string
+    {
+        return trim((string) SiteSetting::get('ai_menu_plan', ''));
+    }
+
+    public static function setMenuPlan(string $plan): void
+    {
+        SiteSetting::set('ai_menu_plan', mb_substr(trim($plan), 0, 8000));
+    }
+
+    /** Every dish, on the menu or switched off: a copy left switched off is the commonest double. */
+    private function lookMenuDuplicates(): int
+    {
+        $sections = Category::query()->pluck('name', 'id');
+        $dishes = [];
+        foreach (Item::query()->orderBy('name')->limit(600)->get(['id', 'name', 'category_id', 'base_price', 'is_active']) as $i) {
+            $dishes[(int) $i->id] = [
+                'name' => (string) $i->name . ($i->is_active ? '' : ' (switched off)'),
+                'section' => (string) ($sections[$i->category_id] ?? 'no section'),
+                'price' => (float) $i->base_price,
+            ];
+        }
+        $this->lastNote = 'Looked at ' . count($dishes) . ' ' . (count($dishes) === 1 ? 'dish' : 'dishes') . '.';
+        if (count($dishes) < 2) {
+            return 0;
+        }
+        $busy = $this->busy('menu_duplicate');
+        $made = 0;
+        $say = fn (array $d): array => ['name' => $d['name'], 'section' => $d['section'], 'price' => $d['price']];
+        foreach ($this->tasks->menuDuplicates($dishes) as $pair) {
+            $key = "pair:{$pair['a']}-{$pair['b']}";
+            if (isset($busy[$key])) {
+                continue;
+            }
+            $made += $this->keep('menu_duplicate', 'item', $pair['a'], $dishes[$pair['a']]['name'], $say($dishes[$pair['a']]), ['other_id' => $pair['b'], 'other' => $say($dishes[$pair['b']])], $pair['why'], $key);
         }
 
         return $made;

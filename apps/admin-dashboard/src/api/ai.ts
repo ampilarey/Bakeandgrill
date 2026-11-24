@@ -65,3 +65,13 @@ export const fetchAiSuggestions = (): Promise<{ kinds: AiSuggestionKind[]; ready
 export const lookForSuggestions = (kind: string): Promise<{ made: number; note?: string | null }> => post('/suggestions/look', { kind }, 170_000);
 export const decideSuggestions = (body: { approve?: number[]; reject?: number[]; edits?: Record<number, Record<string, string>> }): Promise<{ approved: number; rejected: number; stale: number }> =>
   post('/suggestions/decide', body, 60_000);
+
+/** The owner's own plan for the menu, which Look now on New sections follows. */
+export const fetchMenuPlan = (): Promise<{ plan: string }> => req('/admin/ai/menu-plan');
+export const saveMenuPlan = (plan: string): Promise<{ plan: string }> => req('/admin/ai/menu-plan', { method: 'PUT', body: JSON.stringify({ plan }) });
+/** A photo, scan, PDF or text file of the plan, read into words for the box. Nothing is saved. */
+export async function readMenuPlanFile(file: File): Promise<{ plan: string }> {
+  const body = new FormData();
+  body.append('file', file);
+  return req('/admin/ai/menu-plan/read', { method: 'POST', body, timeoutMs: 170_000 });
+}

@@ -327,6 +327,10 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::get('/suggestions', [$ai, 'suggestions'])->middleware('throttle:120,1');
         Route::post('/suggestions/look', [$ai, 'look'])->middleware('throttle:20,1');
         Route::post('/suggestions/decide', [$ai, 'decide'])->middleware('throttle:60,1');
+        // The owner's own plan for the menu (menu.manage, asked in the controller as the suggestions are).
+        Route::get('/menu-plan', [$ai, 'menuPlan'])->middleware('throttle:60,1');
+        Route::put('/menu-plan', [$ai, 'saveMenuPlan'])->middleware('throttle:30,1');
+        Route::post('/menu-plan/read', [$ai, 'readMenuPlan'])->middleware('throttle:10,1');
         Route::middleware('permission:settings.update')->group(function () use ($ai) {
             Route::get('/settings', [$ai, 'settings']);
             Route::put('/settings', [$ai, 'updateSettings']);
