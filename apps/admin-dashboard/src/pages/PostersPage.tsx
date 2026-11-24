@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../components/ai/AiButton';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Copy, Download, Monitor, Pencil, Pin, Send, Share2, Trash2 } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -454,6 +455,9 @@ function MakeTab({ manage, start, startKey }: { manage: boolean; start: Start; s
                 {(Array.from(new Set([...Object.keys(purpose?.slots ?? {}), 'headline', 'headline_dv', 'price', 'old_price', 'subhead', 'body', 'badge']))).map((key) => (
                   <label key={key} style={labelStyle}>{key.replace('_', ' ')}
                     <input style={inputFont(inputStyle)} value={slotText(draft.slots, key)} onChange={(e) => setDraft({ ...draft, slots: { ...draft.slots, [key]: e.target.value } })} />
+                    {key.endsWith('_dv') && (
+                      <DhivehiDraft from={slotText(draft.slots, key.slice(0, -3))} current={slotText(draft.slots, key)} onDraft={(v) => setDraft({ ...draft, slots: { ...draft.slots, [key]: v } })} />
+                    )}
                   </label>
                 ))}
                 <PosterPhotoField draft={draft} source={photoSource} onChange={(path) => setDraft({ ...draft, slots: { ...draft.slots, photo_path: path } })} />

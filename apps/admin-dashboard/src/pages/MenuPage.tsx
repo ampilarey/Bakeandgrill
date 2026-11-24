@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../components/ai/AiButton';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { MenuCategory } from '../api';
@@ -129,6 +130,7 @@ function CategoryFormModal({
           </Field>
           <Field label="Name (Dhivehi) — optional">
             <Input value={form.name_dv} onChange={(v) => set('name_dv', v)} placeholder="ދިވެހި" />
+            <DhivehiDraft from={form.name} current={form.name_dv} kind="name" onDraft={(v) => set('name_dv', v)} />
           </Field>
         </div>
         <Field label="Parent Category — optional">

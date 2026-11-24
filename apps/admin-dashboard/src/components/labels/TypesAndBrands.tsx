@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../ai/AiButton';
 import { useEffect, useRef, useState } from 'react';
 import { Plus, Pencil, Trash2, Upload, Tag, BadgeCheck } from 'lucide-react';
 import {
@@ -103,7 +104,7 @@ function TypeModal({ type, brands, footers, onFootersChange, canManage, defaults
             </select>
           </Field>
           <Field id="lt-heading" label="Heading on the sticker"><input id="lt-heading" value={d.heading} maxLength={40} onChange={(e) => set('heading', e.target.value)} className={fieldClass} placeholder="FROZEN HEDHIKA" /></Field>
-          <Field id="lt-heading-dv" label="Heading (Dhivehi)"><input id="lt-heading-dv" dir="rtl" value={d.heading_dv} maxLength={40} onChange={(e) => set('heading_dv', e.target.value)} className={fieldClass} /></Field>
+          <Field id="lt-heading-dv" label="Heading (Dhivehi)"><input id="lt-heading-dv" dir="rtl" value={d.heading_dv} maxLength={40} onChange={(e) => set('heading_dv', e.target.value)} className={fieldClass} /><div className="mt-1"><DhivehiDraft from={d.heading} current={d.heading_dv} kind="label" onDraft={(v) => set('heading_dv', v.slice(0, 40))} /></div></Field>
         </div>
 
         <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3">
@@ -117,7 +118,7 @@ function TypeModal({ type, brands, footers, onFootersChange, canManage, defaults
             </Field>
             <Field id="lt-life" label="Shelf life (days)" hint="Expiry = made-on date + this, unless the item has its own."><input id="lt-life" type="number" inputMode="numeric" min={1} max={730} value={d.shelf_life_days} onChange={(e) => set('shelf_life_days', e.target.value)} className={fieldClass} placeholder="Blank: write by hand" /></Field>
             <Field id="lt-line" label="Storage line (the coloured line above the bottom strip)"><input id="lt-line" value={d.storage_line} maxLength={160} onChange={(e) => set('storage_line', e.target.value)} className={fieldClass} placeholder={defaults?.storage_line ?? 'Usual line for this storage'} /></Field>
-            <Field id="lt-line-dv" label="Storage line (Dhivehi)"><input id="lt-line-dv" dir="rtl" value={d.storage_line_dv} maxLength={160} onChange={(e) => set('storage_line_dv', e.target.value)} className={fieldClass} placeholder={defaults?.storage_line_dv ?? ''} /></Field>
+            <Field id="lt-line-dv" label="Storage line (Dhivehi)"><input id="lt-line-dv" dir="rtl" value={d.storage_line_dv} maxLength={160} onChange={(e) => set('storage_line_dv', e.target.value)} className={fieldClass} placeholder={defaults?.storage_line_dv ?? ''} /><div className="mt-1"><DhivehiDraft from={d.storage_line} current={d.storage_line_dv} kind="label" onDraft={(v) => set('storage_line_dv', v.slice(0, 160))} /></div></Field>
           </div>
         </fieldset>
 
@@ -128,7 +129,7 @@ function TypeModal({ type, brands, footers, onFootersChange, canManage, defaults
             <Field id="lt-mfg" label="Made-on box says" hint="Pick one or type your own."><ChoiceInput id="lt-mfg" value={d.mfg_label} choices={MFG_CHOICES} onChange={(v) => set('mfg_label', v)} /></Field>
             <Field id="lt-exp" label="Expiry box says"><ChoiceInput id="lt-exp" value={d.exp_label} choices={EXP_CHOICES} onChange={(v) => set('exp_label', v)} /></Field>
             <Field id="lt-within" label="Use-within line (under the dates)"><input id="lt-within" value={d.use_within} maxLength={80} onChange={(e) => set('use_within', e.target.value)} className={fieldClass} placeholder="Use within 2 days of opening" /></Field>
-            <Field id="lt-within-dv" label="Use-within line (Dhivehi)"><input id="lt-within-dv" dir="rtl" value={d.use_within_dv} maxLength={80} onChange={(e) => set('use_within_dv', e.target.value)} className={fieldClass} /></Field>
+            <Field id="lt-within-dv" label="Use-within line (Dhivehi)"><input id="lt-within-dv" dir="rtl" value={d.use_within_dv} maxLength={80} onChange={(e) => set('use_within_dv', e.target.value)} className={fieldClass} /><div className="mt-1"><DhivehiDraft from={d.use_within} current={d.use_within_dv} kind="label" onDraft={(v) => set('use_within_dv', v.slice(0, 80))} /></div></Field>
           </div>
         </fieldset>
 
@@ -137,9 +138,9 @@ function TypeModal({ type, brands, footers, onFootersChange, canManage, defaults
           <FoldHelp>Printed under the ingredients when the label has room for them. An item can type its own instead.</FoldHelp>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field id="lt-use" label="How to use" hint="An item can have its own instead."><textarea id="lt-use" rows={2} value={d.how_to_use} maxLength={200} onChange={(e) => set('how_to_use', e.target.value)} className={areaClass} placeholder="Thaw 10 min. Deep fry 4–5 min on medium heat until golden." /></Field>
-            <Field id="lt-use-dv" label="How to use (Dhivehi)"><textarea id="lt-use-dv" dir="rtl" rows={2} value={d.how_to_use_dv} maxLength={200} onChange={(e) => set('how_to_use_dv', e.target.value)} className={areaClass} /></Field>
+            <Field id="lt-use-dv" label="How to use (Dhivehi)"><textarea id="lt-use-dv" dir="rtl" rows={2} value={d.how_to_use_dv} maxLength={200} onChange={(e) => set('how_to_use_dv', e.target.value)} className={areaClass} /><div className="mt-1"><DhivehiDraft from={d.how_to_use} current={d.how_to_use_dv} kind="label" onDraft={(v) => set('how_to_use_dv', v.slice(0, 200))} /></div></Field>
             <Field id="lt-note" label="Note under the ingredients"><input id="lt-note" value={d.note} maxLength={120} onChange={(e) => set('note', e.target.value)} className={fieldClass} placeholder="Contains fish and gluten" /></Field>
-            <Field id="lt-note-dv" label="Note (Dhivehi)"><input id="lt-note-dv" dir="rtl" value={d.note_dv} maxLength={120} onChange={(e) => set('note_dv', e.target.value)} className={fieldClass} /></Field>
+            <Field id="lt-note-dv" label="Note (Dhivehi)"><input id="lt-note-dv" dir="rtl" value={d.note_dv} maxLength={120} onChange={(e) => set('note_dv', e.target.value)} className={fieldClass} /><div className="mt-1"><DhivehiDraft from={d.note} current={d.note_dv} kind="label" onDraft={(v) => set('note_dv', v.slice(0, 120))} /></div></Field>
           </div>
         </fieldset>
 
@@ -224,7 +225,7 @@ export function BrandModal({ brand, onClose, onSaved }: { brand: LabelBrand | nu
           : <p className="text-xs text-[var(--color-text-muted)]">A food brand: its logo and name go on the sticker's header. The bottom strip is always Bake &amp; Grill's branding (Wording and logos → Bottom strips).</p>}
         <div className="grid gap-3 sm:grid-cols-2">
           <Field id="lb-name" label="Brand name"><input id="lb-name" value={name} maxLength={60} disabled={brand?.is_default} onChange={(e) => setName(e.target.value)} className={fieldClass} placeholder="Amma" /></Field>
-          <Field id="lb-name-dv" label="Brand name (Dhivehi)"><input id="lb-name-dv" dir="rtl" value={nameDv} maxLength={60} onChange={(e) => setNameDv(e.target.value)} className={fieldClass} /></Field>
+          <Field id="lb-name-dv" label="Brand name (Dhivehi)"><input id="lb-name-dv" dir="rtl" value={nameDv} maxLength={60} onChange={(e) => setNameDv(e.target.value)} className={fieldClass} /><div className="mt-1"><DhivehiDraft from={name} current={nameDv} kind="name" onDraft={(v) => setNameDv(v.slice(0, 60))} /></div></Field>
         </div>
         {!brand?.is_default && (
           <div>

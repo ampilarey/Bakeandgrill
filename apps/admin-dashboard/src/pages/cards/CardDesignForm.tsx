@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../../components/ai/AiButton';
 import { useState } from 'react';
 import { ImagePlus, X } from 'lucide-react';
 import { Btn, Input, Select, Switch } from '../../components/SharedUI';
@@ -102,11 +103,11 @@ export function CardDesignForm({ value: v, onChange }: Props) {
         <summary style={sum}>Words on the front</summary>
         <div style={grid}>
           <Input label="Title (small, top)" value={v.title} maxLength={40} onChange={(x) => set('title', x)} />
-          {dv && <Input label="Title in Dhivehi" dir="rtl" value={v.title_dv} maxLength={40} onChange={(x) => set('title_dv', x)} />}
+          {dv && <div style={{ display: 'grid', gap: 6, alignContent: 'start' }}><Input label="Title in Dhivehi" dir="rtl" value={v.title_dv} maxLength={40} onChange={(x) => set('title_dv', x)} /><DhivehiDraft from={v.title} current={v.title_dv} kind="label" onDraft={(v) => set('title_dv', v.slice(0, 40))} /></div>}
           <Input label="Big line (blank: the card's value, e.g. 20% OFF)" value={v.headline} maxLength={30} onChange={(x) => set('headline', x)} />
-          {dv && <Input label="Big line in Dhivehi" dir="rtl" value={v.headline_dv} maxLength={30} onChange={(x) => set('headline_dv', x)} />}
+          {dv && <div style={{ display: 'grid', gap: 6, alignContent: 'start' }}><Input label="Big line in Dhivehi" dir="rtl" value={v.headline_dv} maxLength={30} onChange={(x) => set('headline_dv', x)} /><DhivehiDraft from={v.headline} current={v.headline_dv} kind="label" onDraft={(v) => set('headline_dv', v.slice(0, 30))} /></div>}
           <Input label="Small note" value={v.note} maxLength={90} onChange={(x) => set('note', x)} />
-          {dv && <Input label="Small note in Dhivehi" dir="rtl" value={v.note_dv} maxLength={90} onChange={(x) => set('note_dv', x)} />}
+          {dv && <div style={{ display: 'grid', gap: 6, alignContent: 'start' }}><Input label="Small note in Dhivehi" dir="rtl" value={v.note_dv} maxLength={90} onChange={(x) => set('note_dv', x)} /><DhivehiDraft from={v.note} current={v.note_dv} kind="label" onDraft={(v) => set('note_dv', v.slice(0, 90))} /></div>}
         </div>
       </details>
 
@@ -116,17 +117,17 @@ export function CardDesignForm({ value: v, onChange }: Props) {
         {v.back && (
           <div style={grid}>
             <Input label="Heading" value={v.back_title} maxLength={50} onChange={(x) => set('back_title', x)} />
-            {dv && <Input label="Heading in Dhivehi" dir="rtl" value={v.back_title_dv} maxLength={50} onChange={(x) => set('back_title_dv', x)} />}
+            {dv && <div style={{ display: 'grid', gap: 6, alignContent: 'start' }}><Input label="Heading in Dhivehi" dir="rtl" value={v.back_title_dv} maxLength={50} onChange={(x) => set('back_title_dv', x)} /><DhivehiDraft from={v.back_title} current={v.back_title_dv} kind="label" onDraft={(v) => set('back_title_dv', v.slice(0, 50))} /></div>}
             {v.template === 'stamp' ? (
               <>
                 <Input label="Stamps (4 to 12)" type="number" inputMode="numeric" value={String(v.stamps)} onChange={(x) => set('stamps', Math.max(4, Math.min(12, Number(x) || 10)))} />
                 <Input label="Under the stamps" value={v.stamp_reward} maxLength={50} onChange={(x) => set('stamp_reward', x)} />
-                {dv && <Input label="Under the stamps in Dhivehi" dir="rtl" value={v.stamp_reward_dv} maxLength={50} onChange={(x) => set('stamp_reward_dv', x)} />}
+                {dv && <div style={{ display: 'grid', gap: 6, alignContent: 'start' }}><Input label="Under the stamps in Dhivehi" dir="rtl" value={v.stamp_reward_dv} maxLength={50} onChange={(x) => set('stamp_reward_dv', x)} /><DhivehiDraft from={v.stamp_reward} current={v.stamp_reward_dv} kind="label" onDraft={(v) => set('stamp_reward_dv', v.slice(0, 50))} /></div>}
               </>
             ) : (
               <>
                 <TextArea label="Terms (up to 4 lines)" value={v.back_text} onChange={(x) => set('back_text', x)} />
-                {dv && <TextArea label="Terms in Dhivehi" dir="rtl" value={v.back_text_dv} onChange={(x) => set('back_text_dv', x)} />}
+                {dv && <div style={{ display: 'grid', gap: 6, alignContent: 'start' }}><TextArea label="Terms in Dhivehi" dir="rtl" value={v.back_text_dv} onChange={(x) => set('back_text_dv', x)} /><DhivehiDraft from={v.back_text} current={v.back_text_dv} kind="text" onDraft={(v) => set('back_text_dv', v)} /></div>}
               </>
             )}
           </div>

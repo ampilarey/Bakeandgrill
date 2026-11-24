@@ -1,4 +1,4 @@
-import { AiButton, AiHint } from '../components/ai/AiButton';
+import { AiButton, AiHint, DhivehiDraft } from '../components/ai/AiButton';
 import { draftNewsletter } from '../api/ai';
 import { useEffect, useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -116,12 +116,14 @@ function Editor({ id, onBack }: { id: number | null; onBack: () => void }) {
           )}
           <Input label="Subject (English)" value={draft.subject_en} maxLength={150} disabled={!draftOnly} onChange={(v) => set('subject_en', v)} />
           <Input label="Subject (Dhivehi)" value={draft.subject_dv ?? ''} maxLength={150} dir="rtl" disabled={!draftOnly} onChange={(v) => set('subject_dv', v)} />
+          {draftOnly && <DhivehiDraft from={draft.subject_en} current={draft.subject_dv ?? ''} kind="text" onDraft={(v) => set('subject_dv', v.slice(0, 150))} />}
           <label style={{ fontSize: 13, fontWeight: 600 }}>Message (English)
             <textarea style={inputFont({ ...textarea, marginTop: 4 })} rows={4} value={draft.body_en ?? ''} disabled={!draftOnly} onChange={(e) => set('body_en', e.target.value)} />
           </label>
           <label style={{ fontSize: 13, fontWeight: 600 }}>Message (Dhivehi)
             <textarea style={inputFont({ ...textarea, marginTop: 4 })} dir="rtl" rows={4} value={draft.body_dv ?? ''} disabled={!draftOnly} onChange={(e) => set('body_dv', e.target.value)} />
           </label>
+          {draftOnly && <DhivehiDraft from={draft.body_en ?? ''} current={draft.body_dv ?? ''} kind="text" onDraft={(v) => set('body_dv', v)} />}
           <Input label="Header picture (link to an image)" value={draft.header_image_url ?? ''} disabled={!draftOnly} onChange={(v) => set('header_image_url', v)} placeholder="https://…" />
           <fieldset disabled={!draftOnly} style={{ border: '1px solid var(--color-border-light)', borderRadius: 10, padding: 12, display: 'grid', gap: 8 }}>
             <legend style={{ fontSize: 13, fontWeight: 700 }}>What it shows</legend>

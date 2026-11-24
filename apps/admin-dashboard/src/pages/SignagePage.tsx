@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../components/ai/AiButton';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { Copy, ExternalLink, Pencil, Save, Trash2 } from 'lucide-react';
@@ -1371,11 +1372,14 @@ export function SignagePage() {
                           value={entry.title}
                           onChange={(val) => patchEmergencyEntry(entry.id, { title: val })}
                         />
+                        <div style={{ display: 'grid', gap: 6, alignContent: 'start' }}>
                         <Input
                           label="Title (Dhivehi)"
                           value={entry.title_dv ?? ''}
                           onChange={(val) => patchEmergencyEntry(entry.id, { title_dv: val })}
                         />
+                          <DhivehiDraft from={entry.title} current={entry.title_dv ?? ''} kind="text" onDraft={(v) => patchEmergencyEntry(entry.id, { title_dv: v })} />
+                        </div>
                       </div>
                       <div className="form-grid-2" style={{ display: 'grid', '--cols': 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                         <Input
@@ -1383,11 +1387,14 @@ export function SignagePage() {
                           value={entry.body}
                           onChange={(val) => patchEmergencyEntry(entry.id, { body: val })}
                         />
+                        <div style={{ display: 'grid', gap: 6, alignContent: 'start' }}>
                         <Input
                           label="Body (Dhivehi)"
                           value={entry.body_dv ?? ''}
                           onChange={(val) => patchEmergencyEntry(entry.id, { body_dv: val })}
                         />
+                          <DhivehiDraft from={entry.body} current={entry.body_dv ?? ''} kind="text" onDraft={(v) => patchEmergencyEntry(entry.id, { body_dv: v })} />
+                        </div>
                       </div>
                       {entry.mode === 'reopening_soon' && (
                         <Input

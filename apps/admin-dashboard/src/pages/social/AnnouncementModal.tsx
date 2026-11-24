@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../../components/ai/AiButton';
 import { useEffect, useState } from 'react';
 import {
   createAnnouncement, fetchAnnouncementTemplates, fetchSocialChannelOptions,
@@ -180,6 +181,7 @@ export function AnnouncementModal({ onClose, onSaved, canCompose, canSchedule, c
                 border: '1.5px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', resize: 'vertical',
               })}
             />
+            <div style={{ marginTop: 6 }}><DhivehiDraft from={text} current={textDv} kind="text" onDraft={(v) => setTextDv(v)} /></div>
           </div>
 
           <div>

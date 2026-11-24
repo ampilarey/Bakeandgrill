@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../ai/AiButton';
 import { ImagePlus, X } from 'lucide-react';
 import type { LabelWrap, NutritionPer, WrapCatalogue, WrapPartKey, WrapPicture, WrapStrips } from '../../api';
 import { Button } from '../ui';
@@ -144,7 +145,7 @@ export function WrapParts({ value, onChange, catalogue, pictures, onAddPicture, 
             </div>
             <div>
               <label className={labelClass} htmlFor={`${idPrefix}-band-dv`}>Band words in Dhivehi</label>
-              <input id={`${idPrefix}-band-dv`} dir="rtl" maxLength={60} value={value.band_text_dv} onChange={(e) => set('band_text_dv', e.target.value)} className={fieldClass} placeholder="ދިވެހި ނަން" />
+              <input id={`${idPrefix}-band-dv`} dir="rtl" maxLength={60} value={value.band_text_dv} onChange={(e) => set('band_text_dv', e.target.value)} className={fieldClass} placeholder="ދިވެހި ނަން" /><div className="mt-1"><DhivehiDraft from={value.band_text} current={value.band_text_dv} kind="label" onDraft={(v) => set('band_text_dv', v.slice(0, 60))} /></div>
             </div>
           </div>
         )}
@@ -182,9 +183,9 @@ export function WrapParts({ value, onChange, catalogue, pictures, onAddPicture, 
 
       <div className="grid gap-2 sm:grid-cols-2">
         <div><label className={labelClass} htmlFor={`${idPrefix}-th`}>Free text heading</label><input id={`${idPrefix}-th`} maxLength={40} value={value.text_heading} onChange={(e) => set('text_heading', e.target.value)} className={fieldClass} placeholder="Fruit content 29%" /></div>
-        <div><label className={labelClass} htmlFor={`${idPrefix}-th-dv`}>Heading in Dhivehi</label><input id={`${idPrefix}-th-dv`} dir="rtl" maxLength={40} value={value.text_heading_dv} onChange={(e) => set('text_heading_dv', e.target.value)} className={fieldClass} /></div>
+        <div><label className={labelClass} htmlFor={`${idPrefix}-th-dv`}>Heading in Dhivehi</label><input id={`${idPrefix}-th-dv`} dir="rtl" maxLength={40} value={value.text_heading_dv} onChange={(e) => set('text_heading_dv', e.target.value)} className={fieldClass} /><div className="mt-1"><DhivehiDraft from={value.text_heading} current={value.text_heading_dv} kind="label" onDraft={(v) => set('text_heading_dv', v.slice(0, 40))} /></div></div>
         <div><label className={labelClass} htmlFor={`${idPrefix}-tx`}>Free text</label><textarea id={`${idPrefix}-tx`} rows={2} maxLength={400} value={value.text} onChange={(e) => set('text', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] text-sm" placeholder="Shake well before serving. Once opened, keep refrigerated and drink within 3 days." /></div>
-        <div><label className={labelClass} htmlFor={`${idPrefix}-tx-dv`}>Free text in Dhivehi</label><textarea id={`${idPrefix}-tx-dv`} dir="rtl" rows={2} maxLength={400} value={value.text_dv} onChange={(e) => set('text_dv', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] text-sm" /></div>
+        <div><label className={labelClass} htmlFor={`${idPrefix}-tx-dv`}>Free text in Dhivehi</label><textarea id={`${idPrefix}-tx-dv`} dir="rtl" rows={2} maxLength={400} value={value.text_dv} onChange={(e) => set('text_dv', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] text-sm" /><div className="mt-1"><DhivehiDraft from={value.text} current={value.text_dv} kind="label" onDraft={(v) => set('text_dv', v.slice(0, 400))} /></div></div>
       </div>
       <p className="text-xs text-[var(--color-text-muted)] -mt-2">Prints in the free-text part, when that part is in the list.</p>
 

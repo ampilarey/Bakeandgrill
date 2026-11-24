@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../ai/AiButton';
 import { Link } from 'react-router-dom';
 import type { LabelBadge, LabelBrand, LabelFooter, LabelSpotKey, LabelType } from '../../api';
 import { Btn, Modal, ModalActions } from '../SharedUI';
@@ -333,6 +334,11 @@ export function QuickEditSheet({ spec, values, onChange, onAction, onDone, onAll
               ) : (
                 <input id={id} type={input.kind === 'number' ? 'number' : input.kind === 'date' ? 'date' : 'text'} dir={input.dir} maxLength={input.maxLength} min={input.min} max={input.max} step={input.step} inputMode={input.inputMode} value={str(value)} placeholder={input.placeholder}
                   onChange={(e) => onChange(input.key, input.upper ? e.target.value.toUpperCase() : e.target.value)} className={fieldClass} />
+              )}
+              {input.dir === 'rtl' && input.key.endsWith('_dv') && (
+                <div className="mt-1">
+                  <DhivehiDraft from={str(values[input.key.slice(0, -3)])} current={str(value)} kind={input.key === 'name_dv' ? 'name' : 'label'} onDraft={(v) => onChange(input.key, input.maxLength ? v.slice(0, input.maxLength) : v)} />
+                </div>
               )}
               {input.hint && <p className="text-xs text-[var(--color-text-muted)] mt-1">{input.hint}</p>}
             </div>

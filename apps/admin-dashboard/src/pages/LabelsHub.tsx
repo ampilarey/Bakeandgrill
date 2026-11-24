@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../components/ai/AiButton';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SeeAlso } from '../components/SeeAlso';
@@ -501,6 +502,9 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
                   <div key={w.key}>
                     <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1" htmlFor={w.key}>{w.label}</label>
                     <textarea id={w.key} rows={w.key.includes('badge') ? 1 : 2} dir={w.dv ? 'rtl' : undefined} value={settings[w.key] ?? ''} disabled={!canManage} onChange={(e) => setSettings((s) => ({ ...s, [w.key]: e.target.value }))} className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-[var(--color-border)] bg-white text-sm resize-y" />
+                    {w.dv && canManage && w.key.endsWith('_dv') && (
+                      <div className="mt-1"><DhivehiDraft from={settings[w.key.slice(0, -3)] ?? ''} current={settings[w.key] ?? ''} kind="label" onDraft={(v) => setSettings((st) => ({ ...st, [w.key]: v }))} /></div>
+                    )}
                   </div>
                 ))}
               </div>

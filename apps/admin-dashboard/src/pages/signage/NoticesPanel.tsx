@@ -5,6 +5,7 @@
  * posted in three taps, gone by itself. A notice can run as a line on the
  * ticker, as a full slide in the loop, or both.
  */
+import { DhivehiDraft } from '../../components/ai/AiButton';
 import { useState, type CSSProperties } from 'react';
 import { Trash2 } from 'lucide-react';
 import {
@@ -143,6 +144,7 @@ export function NoticesPanel({ notices, settings, onNotices, onSettings }: Props
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={label} htmlFor="signage-notice-text-dv">Dhivehi (optional)</label>
             <input id="signage-notice-text-dv" data-testid="signage-notice-text-dv" style={inputFont({ ...field, textAlign: 'right' })} lang="dv" dir="rtl" maxLength={160} value={textDv} onChange={(e) => setTextDv(e.target.value)} />
+            <div style={{ marginTop: 6 }}><DhivehiDraft from={text} current={textDv} kind="text" onDraft={(v) => setTextDv(v.slice(0, 160))} /></div>
           </div>
           <div>
             <label style={label}>Look</label>

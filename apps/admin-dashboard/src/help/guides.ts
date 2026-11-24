@@ -1392,7 +1392,7 @@ export const GUIDES: Guide[] = [
     steps: [
       'First add a key under Purchasing → Settings → Reading bills. It is the one key for everything.',
       'Open Integrations → Assistant. Use the assistant is the main switch; under it is a switch for each feature.',
-      'With a feature on, its button appears on its screen: Draft reply on Reviews, Complaints, Dish questions and Social Hub → Comments; Draft Dhivehi beside Dhivehi boxes; Suggest Dhivehi and Suggest values under Labels → Setup; Write a caption in Social Hub → Make a post; Draft the words in a newsletter.',
+      'With a feature on, its button appears on its screen: Draft reply on Reviews, Complaints, Dish questions and Social Hub → Comments; Draft Dhivehi under every Dhivehi box (menu items and categories, modifiers, labels, printed cards, signage, social posts, the newsletter, message wordings); Suggest Dhivehi and Suggest values under Labels → Setup; Write a caption in Social Hub → Make a post; Draft the words in a newsletter.',
       'Press the button, read what it wrote, change it, then press the screen\'s own Save or Send.',
     ],
     notes: [

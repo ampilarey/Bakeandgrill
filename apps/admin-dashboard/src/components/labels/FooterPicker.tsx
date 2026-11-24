@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../ai/AiButton';
 import { useState, type ReactNode } from 'react';
 import { Pencil, Plus } from 'lucide-react';
 import {
@@ -205,6 +206,11 @@ export function FooterModal({ footer, footers, onClose, onSaved, onRemoved }: {
   const input = (k: keyof Draft, id: string, label: string, max: number, dv = false, hint?: string) => (
     <Field id={id} label={label} hint={hint}>
       <input id={id} dir={dv ? 'rtl' : undefined} value={String(d[k])} maxLength={max} onChange={(e) => set(k, e.target.value as Draft[typeof k])} className={fieldClass} placeholder={ph ? String(ph[(k === 'heading' ? 'name' : k === 'heading_dv' ? 'name_dv' : k) as keyof typeof ph] ?? '') : ''} />
+      {dv && String(k).endsWith('_dv') && (
+        <div className="mt-1">
+          <DhivehiDraft from={String(d[String(k).slice(0, -3) as keyof Draft] ?? '')} current={String(d[k])} kind="label" onDraft={(v) => set(k, v.slice(0, max) as Draft[typeof k])} />
+        </div>
+      )}
     </Field>
   );
 

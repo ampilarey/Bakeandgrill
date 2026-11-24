@@ -7,6 +7,7 @@
  * uses; orders draw it the way a recipe line is drawn. Which items offer an
  * add-on is set on the item itself (Menu Items → edit → Add-ons).
  */
+import { DhivehiDraft } from '../components/ai/AiButton';
 import { useEffect, useState } from 'react';
 import {
   createModifier, deleteModifier, fetchInventoryItems, fetchModifiers, updateModifier,
@@ -215,6 +216,7 @@ export function ModifiersPage() {
           <div style={{ display: 'grid', gap: 12 }}>
             <Input label="Name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="e.g. Extra cheese" />
             <Input label="Name (Dhivehi)" value={form.name_dv} onChange={(v) => setForm({ ...form, name_dv: v })} />
+            <DhivehiDraft from={form.name} current={form.name_dv} kind="name" onDraft={(v) => setForm({ ...form, name_dv: v })} />
             <Input label="Price (MVR, 0 = free)" type="number" value={form.price} onChange={(v) => setForm({ ...form, price: v })} />
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
               <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />

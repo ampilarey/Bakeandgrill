@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../../components/ai/AiButton';
 import { useEffect, useMemo, useState } from 'react';
 import {
   createSocialPost, fetchSocialChannelOptions, fetchSocialItemPreview, publishSocialPostNow, updateSocialPost,
@@ -390,6 +391,7 @@ export function ComposeModal({ post, initial, onClose, onSaved, canCompose, canP
                     color: 'var(--color-text)', resize: 'vertical', boxSizing: 'border-box',
                   })}
                 />
+                <div style={{ marginTop: 6 }}><DhivehiDraft from={caption} current={captionDv} kind="text" onDraft={(v) => setCaptionDv(v)} /></div>
               </div>
             </div>
 

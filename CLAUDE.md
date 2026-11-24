@@ -1773,8 +1773,11 @@ a method of `AiTasks` with its own instructions, and **every answer is a draft o
 assistant writes is saved, sent or printed until a person presses the screen's own button. `AiFeatures::FEATURES` is the
 list: `po_scans` (a scanned customer PO read on the server before the browser's reader is tried, `PoInvoiceModal`),
 `reply_drafts` (Draft reply on Reviews, Complaints, Dish questions and Social Hub → Comments), `glossary` (Suggest Dhivehi
-for the label glossary's missing words, a guess marked "please check"), `dhivehi` (`DhivehiDraft` beside Dhivehi boxes: the
-menu item's names and short description, the custom label editor's six, the notification wordings), `nutrition` (Suggest
+for the label glossary's missing words, a guess marked "please check"), `dhivehi` (`DhivehiDraft` under every Dhivehi box
+(owner, 2026-11-24: "Add draft dhivehi to the rest of the screens"): menu items, categories and modifiers, every label form
+including the tap-to-edit sheet and the settings wording, printed cards, signage notices and closures, social posts and
+announcements, the newsletter, the classic poster and the notification wordings; a new Dhivehi box gets one, from the
+English box beside it), `nutrition` (Suggest
 values per 100 g for ingredients with none, held to what a food can be, unknown ones left blank), `captions` (Write a
 caption in Make a post, kept as `spec.caption`, which `captionOf()` returns before the plain one), `newsletter` (Draft the
 words from what is ticked on the form, saved or not) and `telegram_ask` (🧰 More → Ask a question or `/ask`, `reports.view`:

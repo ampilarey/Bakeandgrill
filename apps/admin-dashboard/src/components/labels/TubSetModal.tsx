@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../ai/AiButton';
 import { useEffect, useState } from 'react';
 import { ImagePlus, Pencil, Printer, Upload } from 'lucide-react';
 import {
@@ -287,7 +288,7 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
             <div className="grid gap-3 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>
               <div>
                 <label className={labelClass} htmlFor="ts-name-dv">Name in Dhivehi</label>
-                <input id="ts-name-dv" dir="rtl" value={nameDv} maxLength={80} onChange={(e) => setNameDv(e.target.value)} className={fieldClass} />
+                <input id="ts-name-dv" dir="rtl" value={nameDv} maxLength={80} onChange={(e) => setNameDv(e.target.value)} className={fieldClass} /><div className="mt-1"><DhivehiDraft from={name} current={nameDv} kind="name" onDraft={(v) => setNameDv(v.slice(0, 80))} /></div>
               </div>
               <div>
                 <label className={labelClass} htmlFor="ts-heading">Heading (the line under the name on the lid)</label>
@@ -312,7 +313,7 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
               </div>
               <div>
                 <label className={labelClass} htmlFor="ts-heading-dv">Heading in Dhivehi</label>
-                <input id="ts-heading-dv" dir="rtl" value={headingDv} maxLength={40} onChange={(e) => setHeadingDv(e.target.value)} className={fieldClass} />
+                <input id="ts-heading-dv" dir="rtl" value={headingDv} maxLength={40} onChange={(e) => setHeadingDv(e.target.value)} className={fieldClass} /><div className="mt-1"><DhivehiDraft from={heading} current={headingDv} kind="label" onDraft={(v) => setHeadingDv(v.slice(0, 40))} /></div>
               </div>
               {types.length > 0 && (
                 <div>
@@ -345,15 +346,15 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
               </div>
               <div>
                 <label className={labelClass} htmlFor="ts-ing-dv">Ingredients in Dhivehi</label>
-                <textarea id="ts-ing-dv" dir="rtl" rows={2} maxLength={500} value={ingredientsDv} onChange={(e) => setIngredientsDv(e.target.value)} className={areaClass} />
+                <textarea id="ts-ing-dv" dir="rtl" rows={2} maxLength={500} value={ingredientsDv} onChange={(e) => setIngredientsDv(e.target.value)} className={areaClass} /><div className="mt-1"><DhivehiDraft from={ingredients} current={ingredientsDv} kind="label" onDraft={(v) => setIngredientsDv(v.slice(0, 500))} /></div>
               </div>
               <div>
                 <label className={labelClass} htmlFor="ts-how-dv">How to use in Dhivehi</label>
-                <textarea id="ts-how-dv" dir="rtl" rows={2} maxLength={200} value={howToDv} onChange={(e) => setHowToDv(e.target.value)} className={areaClass} />
+                <textarea id="ts-how-dv" dir="rtl" rows={2} maxLength={200} value={howToDv} onChange={(e) => setHowToDv(e.target.value)} className={areaClass} /><div className="mt-1"><DhivehiDraft from={howTo} current={howToDv} kind="label" onDraft={(v) => setHowToDv(v.slice(0, 200))} /></div>
               </div>
               <div>
                 <label className={labelClass} htmlFor="ts-note-dv">Note in Dhivehi</label>
-                <input id="ts-note-dv" dir="rtl" value={noteDv} maxLength={120} onChange={(e) => setNoteDv(e.target.value)} className={fieldClass} />
+                <input id="ts-note-dv" dir="rtl" value={noteDv} maxLength={120} onChange={(e) => setNoteDv(e.target.value)} className={fieldClass} /><div className="mt-1"><DhivehiDraft from={note} current={noteDv} kind="label" onDraft={(v) => setNoteDv(v.slice(0, 120))} /></div>
               </div>
               <div>
                 <label className={labelClass} htmlFor="ts-line">Storage line (the coloured line above the bottom strip)</label>
@@ -361,7 +362,7 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
               </div>
               <div>
                 <label className={labelClass} htmlFor="ts-line-dv">Storage line in Dhivehi</label>
-                <input id="ts-line-dv" dir="rtl" value={lineDv} maxLength={160} onChange={(e) => setLineDv(e.target.value)} className={fieldClass} />
+                <input id="ts-line-dv" dir="rtl" value={lineDv} maxLength={160} onChange={(e) => setLineDv(e.target.value)} className={fieldClass} /><div className="mt-1"><DhivehiDraft from={line} current={lineDv} kind="label" onDraft={(v) => setLineDv(v.slice(0, 160))} /></div>
               </div>
               <div>
                 <label className={labelClass} htmlFor="ts-nutrition">Nutrition per 100 g</label>
