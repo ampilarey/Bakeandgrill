@@ -169,7 +169,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices, and the print queue' },
       { to: '/system-health', icon: HeartPulse,  label: 'System Health',  permissions: ['website.manage', 'service_availability.view'], description: 'Queue, webhooks & alerts, and the maintenance switches' },
       // Nav check, 2026-10-17: one entry for both, each tab keeps its permission.
-      { to: '/integrations',  icon: Webhook,     label: 'Integrations',   permissions: ['integrations.webhooks', 'integrations.xero', 'website.manage', 'settings.update'], description: 'Webhooks, Xero, catalogue feeds and the assistant' },
+      { to: '/integrations',  icon: Webhook,     label: 'Integrations',   permissions: ['integrations.webhooks', 'integrations.xero', 'website.manage', 'settings.update', 'menu.manage', 'inventory.manage', 'labels.manage'], description: 'Webhooks, Xero, catalogue feeds, the assistant and its suggestions' },
     ],
   },
   {

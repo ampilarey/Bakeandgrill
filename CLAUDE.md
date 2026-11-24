@@ -1788,6 +1788,24 @@ is a row in `FEATURES`, a method in `AiTasks`, a route under `/admin/ai` with th
 an `AiButton`; never a prompt in a controller, a second key, or a job that saves what it wrote. `AssistantFeaturesTest`,
 `AiButton.test.tsx`, `AssistantPage.test.tsx`.
 
+**What it proposes by itself waits for a yes** (owner, 2026-11-24: "since menu is public add admin approval. And can add
+automatic dhivehi and rest of the possible automatic updates?"). `ai:suggest` (03:35 nightly) and Look now on a card ask
+the assistant for each kind in `AiSuggestions::KINDS` whose switch is on (`auto_menu`, `auto_inventory`, `auto_labels`) and
+keep every idea as an `ai_suggestions` row, changing nothing else: `menu_dhivehi` (a dish with no Dhivehi name or short
+line; the words can be changed in the box before approving), `menu_category` (a dish in the wrong section),
+`menu_order` (a section's dishes in a clearer order; an answer that does not name every dish once is dropped),
+`inventory_category` (an item with none, into an existing category only), `inventory_duplicate` (two items that look
+like one, pointed out and never merged: Dismiss only), `label_glossary` and `label_nutrition`. System → Integrations →
+**Suggestions** (`SuggestionsPage`, `GET /api/admin/ai/suggestions`, `POST …/look`, `POST …/decide`) lists them by kind
+with ticks, Approve and Turn down; a person sees and decides only the kinds whose screen they may change (`menu.manage`,
+`inventory.manage`, `labels.manage`, checked in the controller), and Needs attention carries a row for each
+(`ai_menu`, `ai_inventory`, `ai_labels`). **Only `AiSuggestions::approve()` changes anything**, one change per row, and
+only when what the row found is still there: a dish moved or given Dhivehi by hand since goes `stale` and is left alone.
+A subject with a row waiting, or turned down in the last 60 days, is not proposed again (`busy()`). Dietary and allergen
+tags are never proposed: a wrong "vegan" or a missed allergen is not a guess to put in front of a customer. A new kind is
+a row in `KINDS`, a job in `AiTasks`, a case in `look()` and one in `apply()`; never a change made straight from the
+assistant's answer, on the menu or anywhere else. `AiSuggestionsTest`, `SuggestionsPage.test.tsx`.
+
 ## Help: short guides inside the admin
 
 Owner, 2026-11-10 ("there are lots of different features that I don't know how to use"). Team →

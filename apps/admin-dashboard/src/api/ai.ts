@@ -48,3 +48,17 @@ export async function readPoScan<T>(file: File): Promise<{ draft: T }> {
   body.append('file', file);
   return req('/admin/ai/po-read', { method: 'POST', body, timeoutMs: 150_000 });
 }
+
+/** What the assistant proposed by itself and nobody has decided yet (System → Integrations → Suggestions). */
+export type AiSuggestionRow = {
+  id: number; subject_id: number | null; subject: string;
+  before: Record<string, unknown> | null; proposed: Record<string, unknown>;
+  reason: string | null; made: string | null;
+};
+export type AiSuggestionKind = { key: string; label: string; about: string; can_approve: boolean; on: boolean; rows: AiSuggestionRow[] };
+
+export const fetchAiSuggestions = (): Promise<{ kinds: AiSuggestionKind[]; ready: boolean }> => req('/admin/ai/suggestions');
+/** Ask the assistant now, for one kind. Takes up to a couple of minutes. */
+export const lookForSuggestions = (kind: string): Promise<{ made: number }> => post('/suggestions/look', { kind }, 170_000);
+export const decideSuggestions = (body: { approve?: number[]; reject?: number[]; edits?: Record<number, Record<string, string>> }): Promise<{ approved: number; rejected: number; stale: number }> =>
+  post('/suggestions/decide', body, 60_000);

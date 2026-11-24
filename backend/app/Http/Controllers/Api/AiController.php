@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Ai\AiFeatures;
+use App\Domains\Ai\AiSuggestions;
 use App\Domains\Ai\AiTasks;
 use App\Domains\Ai\AssistantUnavailable;
 use App\Domains\Labels\LabelIngredients;
 use App\Domains\Newsletter\Newsletter;
 use App\Domains\Permissions\Services\PermissionService;
 use App\Http\Controllers\Controller;
+use App\Models\AiSuggestion;
 use App\Models\Complaint;
 use App\Models\InventoryItem;
 use App\Models\ItemQuestion;
@@ -207,6 +209,80 @@ class AiController extends Controller
         $bytes = (string) file_get_contents((string) $file->getRealPath());
 
         return $this->run('po_scans', fn () => ['draft' => $this->tasks->readPo($bytes, $mime)]);
+    }
+
+    // ── Suggestions that wait for approval ───────────────────────────────
+
+    /** What waits, for the kinds this person may decide. */
+    public function suggestions(Request $request): JsonResponse
+    {
+        $mine = $this->myKinds($request);
+        $rows = AiSuggestion::query()->where('status', 'pending')->whereIn('kind', array_keys($mine))->orderBy('kind')->orderBy('subject_label')->limit(500)->get();
+        $kinds = [];
+        foreach ($mine as $key => $def) {
+            $kinds[] = [
+                'key' => $key, 'label' => $def['label'], 'about' => $def['about'], 'can_approve' => $def['apply'], 'on' => $this->features->on($def['feature']),
+                'rows' => $rows->where('kind', $key)->map(fn (AiSuggestion $s) => [
+                    'id' => $s->id, 'subject_id' => $s->subject_id, 'subject' => $s->subject_label, 'before' => $s->before, 'proposed' => $s->proposed,
+                    'reason' => $s->reason, 'made' => $s->created_at?->toDateString(),
+                ])->values()->all(),
+            ];
+        }
+
+        return response()->json(['kinds' => $kinds, 'ready' => $this->features->status()['ready']]);
+    }
+
+    /** Ask the assistant now, for one kind. */
+    public function look(Request $request, AiSuggestions $suggestions): JsonResponse
+    {
+        $data = $request->validate(['kind' => ['required', 'string']]);
+        if (!isset($this->myKinds($request)[$data['kind']])) {
+            abort(403, 'Your account cannot ask for these suggestions.');
+        }
+        @set_time_limit(170);
+        try {
+            return response()->json(['made' => $suggestions->look($data['kind'])]);
+        } catch (AssistantUnavailable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    /** Approve some, turn down others. A suggestion whose subject has changed since is left alone and said so. */
+    public function decide(Request $request, AiSuggestions $suggestions): JsonResponse
+    {
+        $data = $request->validate([
+            'approve' => ['sometimes', 'array', 'max:300'], 'approve.*' => ['integer'],
+            'reject' => ['sometimes', 'array', 'max:300'], 'reject.*' => ['integer'],
+            // The person's own wording for a Dhivehi suggestion, by suggestion id.
+            'edits' => ['sometimes', 'array'], 'edits.*' => ['array'], 'edits.*.*' => ['nullable', 'string', 'max:200'],
+        ]);
+        $mine = $this->myKinds($request);
+        $user = $request->user();
+        $count = ['approved' => 0, 'rejected' => 0, 'stale' => 0];
+        $ids = array_merge($data['approve'] ?? [], $data['reject'] ?? []);
+        foreach (AiSuggestion::query()->whereIn('id', $ids)->where('status', 'pending')->get() as $s) {
+            if (!isset($mine[$s->kind])) {
+                continue;
+            }
+            $result = in_array($s->id, $data['approve'] ?? [], true)
+                ? $suggestions->approve($s, $user, (array) ($data['edits'][$s->id] ?? []))
+                : $suggestions->reject($s, $user);
+            $count[$result] = ($count[$result] ?? 0) + 1;
+            if ($result === 'approved') {
+                app(AuditLogService::class)->log('ai.suggestion_approved', 'AiSuggestion', $s->id, (array) ($s->before ?? []), ['kind' => $s->kind, 'subject' => $s->subject_label, 'proposed' => $s->proposed], [], $request);
+            }
+        }
+
+        return response()->json($count);
+    }
+
+    /** @return array<string, array{label: string, about: string, feature: string, permission: string, apply: bool}> the kinds this person may decide */
+    private function myKinds(Request $request): array
+    {
+        $user = $request->user();
+        $perms = app(PermissionService::class);
+
+        return array_filter(AiSuggestions::KINDS, fn (array $k) => $user instanceof User && $perms->hasPermission($user, $k['permission']));
     }
 
     /** @param Closure(): array<string, mixed> $job */

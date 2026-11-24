@@ -267,6 +267,174 @@ class AiTasks
         return trim((string) ($out['answer'] ?? '')) ?: 'I could not work that one out. Try asking it another way.';
     }
 
+    // ── Suggestions that wait for approval (AiSuggestions) ───────────────
+
+    /**
+     * Dhivehi for dishes that have none.
+     *
+     * @param list<array{id: int, name: string, short: string, want_name: bool, want_short: bool}> $dishes
+     * @return array<int, array{name_dv: string, short_dv: string}> by dish id
+     */
+    public function menuDhivehi(array $dishes): array
+    {
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nYou are given dishes from our menu. For each, give the Dhivehi name when want_name is true and the Dhivehi of the short line when want_short is true; give \"\" for what is not wanted. " . self::DHIVEHI . ' A name is short, as it would be said at the counter. Answer for every id given.',
+            json_encode($dishes, JSON_UNESCAPED_UNICODE),
+            self::rows(['id' => 'integer', 'name_dv' => 'string', 'short_dv' => 'string']),
+            maxTokens: 12000,
+        );
+        $known = array_column($dishes, null, 'id');
+        $found = [];
+        foreach ((array) ($out['rows'] ?? []) as $r) {
+            $id = (int) ($r['id'] ?? 0);
+            if (!isset($known[$id])) {
+                continue;
+            }
+            $found[$id] = [
+                'name_dv' => $known[$id]['want_name'] ? mb_substr(trim((string) ($r['name_dv'] ?? '')), 0, 120) : '',
+                'short_dv' => $known[$id]['want_short'] ? mb_substr(trim((string) ($r['short_dv'] ?? '')), 0, 140) : '',
+            ];
+        }
+
+        return $found;
+    }
+
+    /**
+     * Dishes that sit in the wrong section of the menu.
+     *
+     * @param list<array{id: int, name: string, in: int}> $dishes
+     * @param array<int, string> $sections section id => its full name ("Mains › Momo")
+     * @return list<array{id: int, to: int, why: string}> only the dishes to move
+     */
+    public function misplacedDishes(array $dishes, array $sections): array
+    {
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nYou are given the sections of our menu and every dish with the section it is in now. Name only the dishes that are plainly in the wrong section, with the section they belong in and a few words why. Most dishes are where they should be: a dish that could reasonably sit in either of two sections stays where it is, and you never invent a section. An empty list is a good answer.",
+            json_encode(['sections' => $sections, 'dishes' => $dishes], JSON_UNESCAPED_UNICODE),
+            self::rows(['id' => 'integer', 'to' => 'integer', 'why' => 'string']),
+            maxTokens: 8000,
+        );
+        $now = array_column($dishes, 'in', 'id');
+        $moves = [];
+        foreach ((array) ($out['rows'] ?? []) as $r) {
+            $id = (int) ($r['id'] ?? 0);
+            $to = (int) ($r['to'] ?? 0);
+            if (isset($now[$id], $sections[$to]) && $now[$id] !== $to) {
+                $moves[] = ['id' => $id, 'to' => $to, 'why' => mb_substr(trim((string) ($r['why'] ?? '')), 0, 200)];
+            }
+        }
+
+        return $moves;
+    }
+
+    /**
+     * A better order for the dishes of each section.
+     *
+     * @param list<array{section: int, name: string, dishes: list<array{id: int, name: string, price: float}>}> $sections in today's order
+     * @return array<int, array{ids: list<int>, why: string}> by section id, only where the order should change
+     */
+    public function dishOrder(array $sections): array
+    {
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nYou are given sections of our menu, each with its dishes in the order customers see them now. Where a section would read better, give its dishes in a new order: like with like (the same dish in its flavours together), plain before spicy or special, small before large, and what a meal starts with before what it ends with. Give every dish id of that section exactly once. Leave out a section whose order is already sensible: a different order that is no clearer is not worth a change.",
+            json_encode($sections, JSON_UNESCAPED_UNICODE),
+            ['type' => 'object', 'additionalProperties' => false, 'required' => ['rows'], 'properties' => ['rows' => ['type' => 'array', 'items' => [
+                'type' => 'object', 'additionalProperties' => false, 'required' => ['section', 'ids', 'why'],
+                'properties' => ['section' => ['type' => 'integer'], 'ids' => ['type' => 'array', 'items' => ['type' => 'integer']], 'why' => ['type' => 'string']],
+            ]]]],
+            maxTokens: 12000,
+        );
+        $have = [];
+        foreach ($sections as $sec) {
+            $have[$sec['section']] = array_column($sec['dishes'], 'id');
+        }
+        $orders = [];
+        foreach ((array) ($out['rows'] ?? []) as $r) {
+            $sec = (int) ($r['section'] ?? 0);
+            $ids = array_values(array_unique(array_map('intval', (array) ($r['ids'] ?? []))));
+            // Every dish of the section, each once, and not the order it already has.
+            if (!isset($have[$sec]) || $ids === $have[$sec] || count($ids) !== count($have[$sec]) || array_diff($have[$sec], $ids) !== []) {
+                continue;
+            }
+            $orders[$sec] = ['ids' => $ids, 'why' => mb_substr(trim((string) ($r['why'] ?? '')), 0, 200)];
+        }
+
+        return $orders;
+    }
+
+    /**
+     * A category for inventory items that have none.
+     *
+     * @param array<int, string> $items inventory item id => name
+     * @param array<int, string> $categories category id => name
+     * @return array<int, int> item id => category id, only where one of the categories fits
+     */
+    public function inventoryCategories(array $items, array $categories): array
+    {
+        $list = [];
+        foreach ($items as $id => $name) {
+            $list[] = ['id' => (int) $id, 'name' => (string) $name];
+        }
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nYou are given our stockroom's categories and items that have no category. Put each item in the category it belongs to. Use only the categories given; give 0 for an item none of them fits or whose name is unclear.",
+            json_encode(['categories' => $categories, 'items' => $list], JSON_UNESCAPED_UNICODE),
+            self::rows(['id' => 'integer', 'category' => 'integer']),
+            maxTokens: 8000,
+        );
+        $found = [];
+        foreach ((array) ($out['rows'] ?? []) as $r) {
+            $id = (int) ($r['id'] ?? 0);
+            $cat = (int) ($r['category'] ?? 0);
+            if (isset($items[$id], $categories[$cat])) {
+                $found[$id] = $cat;
+            }
+        }
+
+        return $found;
+    }
+
+    /**
+     * Inventory items that look like the same product entered twice.
+     *
+     * @param array<int, string> $items inventory item id => "name (unit)"
+     * @return list<array{a: int, b: int, why: string}>
+     */
+    public function inventoryDuplicates(array $items): array
+    {
+        $list = [];
+        foreach ($items as $id => $name) {
+            $list[] = ['id' => (int) $id, 'name' => (string) $name];
+        }
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nYou are given every item in our stockroom. Name the pairs that are the same product entered twice: the same thing under two spellings, an abbreviation and its full name, or the same thing with and without its brand or pack size. Two different products that share a word (chicken breast and chicken thigh, white sugar and brown sugar) are not a pair. An empty list is a good answer.",
+            json_encode($list, JSON_UNESCAPED_UNICODE),
+            self::rows(['a' => 'integer', 'b' => 'integer', 'why' => 'string']),
+            maxTokens: 8000,
+        );
+        $pairs = [];
+        foreach ((array) ($out['rows'] ?? []) as $r) {
+            $a = (int) ($r['a'] ?? 0);
+            $b = (int) ($r['b'] ?? 0);
+            if ($a !== $b && isset($items[$a], $items[$b])) {
+                [$lo, $hi] = [min($a, $b), max($a, $b)];
+                $pairs["{$lo}-{$hi}"] = ['a' => $lo, 'b' => $hi, 'why' => mb_substr(trim((string) ($r['why'] ?? '')), 0, 200)];
+            }
+        }
+
+        return array_values($pairs);
+    }
+
+    /**
+     * A schema for a list of flat rows.
+     *
+     * @param array<string, string> $fields
+     * @return array<string, mixed>
+     */
+    private static function rows(array $fields): array
+    {
+        return ['type' => 'object', 'additionalProperties' => false, 'required' => ['rows'], 'properties' => ['rows' => ['type' => 'array', 'items' => self::obj($fields)]]];
+    }
+
     /**
      * A flat object schema, every field required.
      *

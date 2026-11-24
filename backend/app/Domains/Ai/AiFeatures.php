@@ -25,6 +25,10 @@ class AiFeatures
         'nutrition' => ['label' => 'Nutrition values for ingredients', 'about' => 'Suggests typical values per 100 g for ingredients that have none. You check and save.', 'where' => 'Labels → Setup → Nutrition'],
         'captions' => ['label' => 'Social post captions', 'about' => 'Writes the caption for a post in English and Dhivehi.', 'where' => 'Social Hub → Make a post'],
         'newsletter' => ['label' => 'Newsletter first draft', 'about' => 'Drafts the subject and opening words of an issue from what you ticked.', 'where' => 'Customers & Marketing → Newsletter'],
+        // Suggestions made by themselves each night, kept on Integrations → Suggestions until someone approves them.
+        'auto_menu' => ['label' => 'Menu suggestions', 'about' => 'Each night: Dhivehi for dishes that have none, dishes that look to be in the wrong section, and a clearer order within a section. Nothing changes on the menu until someone approves it.', 'where' => 'System → Integrations → Suggestions'],
+        'auto_inventory' => ['label' => 'Inventory suggestions', 'about' => 'Each night: a category for items that have none, and items that look to be entered twice. Approved before anything changes.', 'where' => 'System → Integrations → Suggestions'],
+        'auto_labels' => ['label' => 'Label suggestions', 'about' => 'Each night: Dhivehi for ingredient words the glossary lacks and nutrition values for ingredients with none. Approved before anything prints.', 'where' => 'System → Integrations → Suggestions'],
         'telegram_ask' => ['label' => 'Questions on the Telegram bot', 'about' => 'Owners and managers can ask the bot about sales and items in plain words.', 'where' => 'Telegram → More → Ask a question, or /ask'],
     ];
 

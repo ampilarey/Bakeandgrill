@@ -99,6 +99,19 @@ final class AdminInbox
                 'label' => 'Supplier bills to check', 'link' => '/purchasing/orders?bills=1', 'permission' => 'suppliers.purchases',
                 'count' => fn () => \App\Models\PurchaseBill::query()->whereIn('status', [\App\Models\PurchaseBill::READY, \App\Models\PurchaseBill::FAILED])->count(),
             ],
+            // What the assistant proposed and nobody has approved yet (owner, 2026-11-24), a row per screen's permission.
+            'ai_menu' => [
+                'label' => 'Menu suggestions to approve', 'link' => '/integrations/suggestions', 'permission' => 'menu.manage',
+                'count' => fn () => \App\Domains\Ai\AiSuggestions::waiting('menu.manage'),
+            ],
+            'ai_inventory' => [
+                'label' => 'Inventory suggestions to approve', 'link' => '/integrations/suggestions', 'permission' => 'inventory.manage',
+                'count' => fn () => \App\Domains\Ai\AiSuggestions::waiting('inventory.manage'),
+            ],
+            'ai_labels' => [
+                'label' => 'Label suggestions to approve', 'link' => '/integrations/suggestions', 'permission' => 'labels.manage',
+                'count' => fn () => \App\Domains\Ai\AiSuggestions::waiting('labels.manage'),
+            ],
             'label_rolls' => [
                 'label' => 'Label rolls running low', 'link' => '/labels/settings', 'permission' => 'labels.manage',
                 'count' => fn () => count(array_filter(LabelRolls::presentAll(), fn (array $r) => !empty($r['low_now']))),

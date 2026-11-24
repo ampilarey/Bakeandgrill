@@ -1404,6 +1404,27 @@ export const GUIDES: Guide[] = [
     ],
     words: 'claude ai assistant draft reply dhivehi translate caption newsletter nutrition glossary ask question telegram scan po key switch',
   },
+  {
+    id: 'assistant-suggestions',
+    page: '/integrations',
+    title: 'Approve what the assistant suggests for the menu, inventory and labels',
+    open: { to: '/integrations/suggestions', label: 'Open Suggestions' },
+    steps: [
+      'Open Integrations → Suggestions. Each card is one kind: Dhivehi for dishes, Dishes to move, Order within a section, Inventory items with no category, Inventory items that look alike, Dhivehi for label ingredients, Nutrition per 100 g.',
+      'Read each row. For Dhivehi you can change the words in the box first.',
+      'Tick the rows you agree with and press Approve. Tick the ones you do not want and press Turn down.',
+      'To get new ones without waiting for the night, press Look now on a card.',
+    ],
+    notes: [
+      'Nothing on the menu, in the inventory or on a label changes until you press Approve.',
+      'The assistant looks by itself every night at 3:35 AM, for the kinds switched on under Integrations → Assistant.',
+      'Something you turn down is not suggested again for two months.',
+      'If a dish or item was changed by hand after the suggestion was made, approving leaves it alone and says so.',
+      'Items that look alike are only pointed out. Nothing is merged for you: open both, decide, then Dismiss.',
+      'You see only the kinds you may change: the menu, the inventory or the labels. They also show under Needs attention.',
+    ],
+    words: 'assistant suggestions approve automatic dhivehi category order arrange group menu inventory duplicate nutrition glossary claude ai',
+  },
 
   // ── Team ──────────────────────────────────────────────────────────────────
   {

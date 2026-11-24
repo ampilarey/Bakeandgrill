@@ -90,6 +90,15 @@ Schedule::command('items:alerts')
     ->onFailure($alertOnFailure('items:alerts'))
     ->after($trackSuccess('items:alerts'));
 
+// The assistant's nightly look: proposals that wait for approval on Integrations → Suggestions (owner, 2026-11-24).
+// Several calls to the assistant, a minute or two each at most.
+Schedule::command('ai:suggest')
+    ->dailyAt('03:35')
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->onFailure($alertOnFailure('ai:suggest'))
+    ->after($trackSuccess('ai:suggest'));
+
 // A month before points expire, the customer hears once per batch (iruali import plan, feature 13)
 Schedule::command('loyalty:warn-expiring')
     ->dailyAt('09:10')

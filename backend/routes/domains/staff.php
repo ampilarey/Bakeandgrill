@@ -322,6 +322,11 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         // Which buttons to show, and Dhivehi for a box on whatever screen the person may already open.
         Route::get('/status', [$ai, 'status'])->middleware('throttle:120,1');
         Route::post('/dhivehi', [$ai, 'dhivehi'])->middleware('throttle:40,1');
+        // Suggestions that wait for approval: each kind asks the permission of the screen its change belongs to
+        // (menu.manage, inventory.manage, labels.manage), in the controller, since one list serves all three.
+        Route::get('/suggestions', [$ai, 'suggestions'])->middleware('throttle:120,1');
+        Route::post('/suggestions/look', [$ai, 'look'])->middleware('throttle:20,1');
+        Route::post('/suggestions/decide', [$ai, 'decide'])->middleware('throttle:60,1');
         Route::middleware('permission:settings.update')->group(function () use ($ai) {
             Route::get('/settings', [$ai, 'settings']);
             Route::put('/settings', [$ai, 'updateSettings']);

@@ -13,6 +13,7 @@ const WebhooksPage = lazy(() => import('./WebhooksPage').then((m) => ({ default:
 const XeroPage = lazy(() => import('./XeroPage'));
 const CatalogFeedsPage = lazy(() => import('./CatalogFeedsPage'));
 const AssistantPage = lazy(() => import('./AssistantPage'));
+const SuggestionsPage = lazy(() => import('./SuggestionsPage'));
 
 export const INTEGRATIONS_TABS: HubTab[] = [
   { id: 'webhooks', label: 'Webhooks', permissions: ['integrations.webhooks'], desc: 'Outbound webhooks to other systems', render: () => <WebhooksPage /> },
@@ -20,6 +21,8 @@ export const INTEGRATIONS_TABS: HubTab[] = [
   // iruali import plan, feature 11: the menu for Facebook / Instagram shops and Google.
   { id: 'feeds', label: 'Catalogue feeds', permissions: ['website.manage'], desc: 'The menu for Facebook, Instagram and Google', render: () => <CatalogFeedsPage /> },
   // Owner, 2026-11-24: Claude's drafts and suggestions, a switch for each.
+  // What the assistant proposed by itself, waiting for a yes: seen by whoever may change the menu, the inventory or the labels.
+  { id: 'suggestions', label: 'Suggestions', permissions: ['menu.manage', 'inventory.manage', 'labels.manage'], desc: 'Changes the assistant proposes, for you to approve', render: () => <SuggestionsPage /> },
   { id: 'assistant', label: 'Assistant', permissions: ['settings.update'], desc: 'Switch Claude\'s drafts and suggestions on or off', render: () => <AssistantPage /> },
 ];
 
