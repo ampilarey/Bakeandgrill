@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../ai/AiButton';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, RefreshCw, Search, Tag, Upload, X } from 'lucide-react';
 import {
@@ -428,7 +429,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
             {stacked && sizeSection}
             <div className="grid gap-3 sm:grid-cols-2">
               <Field id="cl-name" label="Product name"><input id="cl-name" value={d.name} maxLength={80} onChange={(e) => set('name', e.target.value)} className={fieldClass} placeholder="Garlic sauce" /></Field>
-              <Field id="cl-name-dv" label="Product name (Dhivehi)"><input id="cl-name-dv" dir="rtl" value={d.name_dv} maxLength={80} onChange={(e) => set('name_dv', e.target.value)} className={fieldClass} /></Field>
+              <Field id="cl-name-dv" label="Product name (Dhivehi)"><input id="cl-name-dv" dir="rtl" value={d.name_dv} maxLength={80} onChange={(e) => set('name_dv', e.target.value)} className={fieldClass} /><div className="mt-1"><DhivehiDraft from={d.name} current={d.name_dv} kind="name" onDraft={(v) => set('name_dv', v.slice(0, 80))} /></div></Field>
               <Field id="cl-brand" label="Brand and logo" hint={d.brand_id ? undefined : `Empty follows the label type: ${typeBrand}.`}>
                 <div className="flex gap-2">
                   <select id="cl-brand" value={d.brand_id ?? ''} onChange={(e) => set('brand_id', e.target.value ? Number(e.target.value) : null)} className={fieldClass}>
@@ -455,7 +456,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
               <FoldHelp>What is in it and how it keeps. The shelf life sets the expiry date when the dates are filled in at print time.</FoldHelp>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field id="cl-ing" label="Ingredients"><textarea id="cl-ing" rows={2} maxLength={500} value={d.label_ingredients} onChange={(e) => set('label_ingredients', e.target.value)} className={areaClass} placeholder="Garlic, oil, lemon, salt" /></Field>
-                <Field id="cl-ing-dv" label="Ingredients (Dhivehi)"><textarea id="cl-ing-dv" dir="rtl" rows={2} maxLength={500} value={d.label_ingredients_dv} onChange={(e) => set('label_ingredients_dv', e.target.value)} className={areaClass} /></Field>
+                <Field id="cl-ing-dv" label="Ingredients (Dhivehi)"><textarea id="cl-ing-dv" dir="rtl" rows={2} maxLength={500} value={d.label_ingredients_dv} onChange={(e) => set('label_ingredients_dv', e.target.value)} className={areaClass} /><div className="mt-1"><DhivehiDraft from={d.label_ingredients} current={d.label_ingredients_dv} kind="label" onDraft={(v) => set('label_ingredients_dv', v.slice(0, 500))} /></div></Field>
                 <Field id="cl-storage" label="Storage">
                   <select id="cl-storage" value={d.label_storage} onChange={(e) => set('label_storage', e.target.value as LabelStorage | '')} className={fieldClass}>
                     <option value="">{type ? `As the type (${STORAGE_NAMES[type.storage]})` : 'Frozen (usual)'}</option>
@@ -495,13 +496,13 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
             <Section title="Wording on the sticker" summary={wordingSet > 0 ? `${wordingSet} of ${WORDING_KEYS.length} set` : 'As the type'} open={wordingSet > 0} testId="custom-label-wording" help="The heading, the storage line, the note and how to use. Leave a box empty to print what is shown in grey, the label type's wording.">
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field id="cl-heading" label={d.label_pouch ? 'Heading (not the product name)' : 'Heading (top of the sticker)'} hint={d.label_pouch ? (d.label_pouch.tagline.trim() ? `A pouch label prints "${d.label_pouch.tagline.trim()}" under the name instead. Clear Line under the name, in Pouch label, to print this heading there. The big name is Product name, at the top of this form.` : 'On a pouch label this prints under the name. The big name is Product name, at the top of this form.') : undefined}><input id="cl-heading" maxLength={40} value={d.label_heading} onChange={(e) => set('label_heading', e.target.value.toUpperCase())} className={fieldClass} placeholder={ph.heading} /></Field>
-                <Field id="cl-heading-dv" label="Heading (Dhivehi)"><input id="cl-heading-dv" dir="rtl" maxLength={40} value={d.label_heading_dv} onChange={(e) => set('label_heading_dv', e.target.value)} className={fieldClass} placeholder={ph.heading_dv} /></Field>
+                <Field id="cl-heading-dv" label="Heading (Dhivehi)"><input id="cl-heading-dv" dir="rtl" maxLength={40} value={d.label_heading_dv} onChange={(e) => set('label_heading_dv', e.target.value)} className={fieldClass} placeholder={ph.heading_dv} /><div className="mt-1"><DhivehiDraft from={d.label_heading} current={d.label_heading_dv} kind="label" onDraft={(v) => set('label_heading_dv', v.slice(0, 40))} /></div></Field>
                 <Field id="cl-line" label="Storage line (the coloured line above the bottom strip)"><input id="cl-line" maxLength={160} value={d.label_storage_line} onChange={(e) => set('label_storage_line', e.target.value)} className={fieldClass} placeholder={ph.storage_line} /></Field>
-                <Field id="cl-line-dv" label="Storage line (Dhivehi)"><input id="cl-line-dv" dir="rtl" maxLength={160} value={d.label_storage_line_dv} onChange={(e) => set('label_storage_line_dv', e.target.value)} className={fieldClass} placeholder={ph.storage_line_dv} /></Field>
+                <Field id="cl-line-dv" label="Storage line (Dhivehi)"><input id="cl-line-dv" dir="rtl" maxLength={160} value={d.label_storage_line_dv} onChange={(e) => set('label_storage_line_dv', e.target.value)} className={fieldClass} placeholder={ph.storage_line_dv} /><div className="mt-1"><DhivehiDraft from={d.label_storage_line} current={d.label_storage_line_dv} kind="label" onDraft={(v) => set('label_storage_line_dv', v.slice(0, 160))} /></div></Field>
                 <Field id="cl-note" label="Note under the ingredients"><input id="cl-note" maxLength={120} value={d.label_note} onChange={(e) => set('label_note', e.target.value)} className={fieldClass} placeholder={ph.note} /></Field>
-                <Field id="cl-note-dv" label="Note (Dhivehi)"><input id="cl-note-dv" dir="rtl" maxLength={120} value={d.label_note_dv} onChange={(e) => set('label_note_dv', e.target.value)} className={fieldClass} /></Field>
+                <Field id="cl-note-dv" label="Note (Dhivehi)"><input id="cl-note-dv" dir="rtl" maxLength={120} value={d.label_note_dv} onChange={(e) => set('label_note_dv', e.target.value)} className={fieldClass} /><div className="mt-1"><DhivehiDraft from={d.label_note} current={d.label_note_dv} kind="label" onDraft={(v) => set('label_note_dv', v.slice(0, 120))} /></div></Field>
                 <Field id="cl-use" label="How to use"><textarea id="cl-use" rows={2} maxLength={200} value={d.label_how_to_use} onChange={(e) => set('label_how_to_use', e.target.value)} className={areaClass} placeholder={ph.how_to_use} /></Field>
-                <Field id="cl-use-dv" label="How to use (Dhivehi)"><textarea id="cl-use-dv" dir="rtl" rows={2} maxLength={200} value={d.label_how_to_use_dv} onChange={(e) => set('label_how_to_use_dv', e.target.value)} className={areaClass} /></Field>
+                <Field id="cl-use-dv" label="How to use (Dhivehi)"><textarea id="cl-use-dv" dir="rtl" rows={2} maxLength={200} value={d.label_how_to_use_dv} onChange={(e) => set('label_how_to_use_dv', e.target.value)} className={areaClass} /><div className="mt-1"><DhivehiDraft from={d.label_how_to_use} current={d.label_how_to_use_dv} kind="label" onDraft={(v) => set('label_how_to_use_dv', v.slice(0, 200))} /></div></Field>
               </div>
             </Section>
 

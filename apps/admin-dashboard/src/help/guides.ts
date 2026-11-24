@@ -1384,6 +1384,26 @@ export const GUIDES: Guide[] = [
     ],
     words: 'facebook instagram google catalogue feed shop xero webhook',
   },
+  {
+    id: 'assistant',
+    page: '/integrations',
+    title: 'Let Claude write drafts for me, and switch it on or off',
+    open: { to: '/integrations/assistant', label: 'Open Assistant' },
+    steps: [
+      'First add a key under Purchasing → Settings → Reading bills. It is the one key for everything.',
+      'Open Integrations → Assistant. Use the assistant is the main switch; under it is a switch for each feature.',
+      'With a feature on, its button appears on its screen: Draft reply on Reviews, Complaints, Dish questions and Social Hub → Comments; Draft Dhivehi beside Dhivehi boxes; Suggest Dhivehi and Suggest values under Labels → Setup; Write a caption in Social Hub → Make a post; Draft the words in a newsletter.',
+      'Press the button, read what it wrote, change it, then press the screen\'s own Save or Send.',
+    ],
+    notes: [
+      'Nothing it writes is saved or sent by itself. You always check it first.',
+      'A scanned customer PO is read by the assistant when Read scanned purchase orders is on.',
+      'On the Telegram bot, owners and managers can press More → Ask a question, or type /ask how many momo sold last week.',
+      'Have a Dhivehi speaker read any Dhivehi draft before customers see it.',
+      'Each use is charged to your Claude account. Switch off what you do not use.',
+    ],
+    words: 'claude ai assistant draft reply dhivehi translate caption newsletter nutrition glossary ask question telegram scan po key switch',
+  },
 
   // ── Team ──────────────────────────────────────────────────────────────────
   {

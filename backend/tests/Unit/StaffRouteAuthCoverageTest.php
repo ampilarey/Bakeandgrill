@@ -24,6 +24,8 @@ class StaffRouteAuthCoverageTest extends TestCase
         'POST api/auth/logout' => 'api/auth/logout — any signed-in staff; StaffAuthController::logout',
         'POST api/auth/logout-everywhere' => 'api/auth/logout-everywhere — any signed-in staff; revokes only their OWN tokens',
         'GET api/auth/me' => 'api/auth/me — any signed-in staff; returns own identity + permissions',
+        'GET api/admin/ai/status' => 'api/admin/ai/status — any signed-in staff; says only which assistant buttons to show (owner, 2026-11-24)',
+        'POST api/admin/ai/dhivehi' => 'api/admin/ai/dhivehi — any signed-in staff; turns typed English into a Dhivehi draft for a box on a screen they already have open, reads and stores nothing',
         'GET api/admin/inbox' => 'api/admin/inbox — any signed-in staff; AdminInbox checks the permission of each row\'s page and returns only those (feature 14)',
         'GET api/auth/me/permissions' => 'api/auth/me/permissions — any signed-in staff; own permissions by name and group only',
         'PATCH api/auth/me/preferences' => 'api/auth/me/preferences — any signed-in staff; updates own prefs only',

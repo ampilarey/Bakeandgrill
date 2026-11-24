@@ -1,3 +1,5 @@
+import { AiButton } from '../components/ai/AiButton';
+import { draftReply } from '../api/ai';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -308,6 +310,7 @@ export default function ComplaintsPage() {
                   <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '4px 0 6px' }}>
                     The customer will see this on their receipt and in the resolution SMS.
                   </span>
+                  <span style={{ display: 'block', marginBottom: 6 }}><AiButton feature="reply_drafts" testId="ai-draft-complaint" run={async () => { const r = await draftReply('complaint', detail.id); if (r.text) setCustomerReply(r.text); }}>Draft reply</AiButton></span>
                   <textarea
                     value={customerReply}
                     onChange={(e) => setCustomerReply(e.target.value)}

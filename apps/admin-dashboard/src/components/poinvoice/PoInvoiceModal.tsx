@@ -1,3 +1,5 @@
+import { useAi } from '../ai/useAi';
+import { readPoScan } from '../../api/ai';
 import { useEffect, useRef, useState } from 'react';
 import { FileUp, Plus, Trash2 } from 'lucide-react';
 import {
@@ -102,6 +104,7 @@ export function PoInvoiceModal({ onClose, onCreated }: { onClose: () => void; on
   const [made, setMade] = useState<Invoice | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const pick = useRef<HTMLInputElement>(null);
+  const aiScans = useAi('po_scans');
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -126,7 +129,12 @@ export function PoInvoiceModal({ onClose, onCreated }: { onClose: () => void; on
         const draft = await pdfLines(picked).then(readPo).catch(() => null);
         if (draft && found(draft)) { fill(draft); return; }
       }
-      // A scan or a photo is a picture: its words are worked out from the picture.
+      // A scan or a photo is a picture. With the assistant switched on (System → Integrations → Assistant)
+      // it is read on the server, which reads a poor scan far better; if that fails, the browser reads it as before.
+      if (aiScans) {
+        const viaAi = await readPoScan<Omit<PoDraft, 'mended' | 'missing'>>(picked).then((r) => ({ ...r.draft, mended: 0, missing: [] }) as PoDraft).catch(() => null);
+        if (viaAi && found(viaAi)) { fill(viaAi); setScanned(true); return; }
+      }
       setScanProgress(0);
       const draft = readPo(await ocrLines(picked, setScanProgress));
       if (found(draft)) { fill(draft); setScanned(true); } else { setUnreadable(true); }

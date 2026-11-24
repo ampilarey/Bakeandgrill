@@ -1,3 +1,5 @@
+import { AiButton } from '../components/ai/AiButton';
+import { draftReply } from '../api/ai';
 import { useEffect, useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { Btn, EmptyState, Pagination, TabScrollRow } from '../components/SharedUI';
@@ -63,6 +65,7 @@ function QuestionCard({ q, onChanged }: { q: ItemQuestion; onChanged: () => void
             placeholder="Your answer, as the customer will read it"
             style={inputFont({ marginTop: 10, width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14, fontFamily: 'inherit' })}
           />
+          <div style={{ marginTop: 6 }}><AiButton feature="reply_drafts" testId="ai-draft-question" run={async () => { const r = await draftReply('question', q.id); if (r.text) setAnswer(r.text); }}>Draft reply</AiButton></div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginTop: 6, cursor: 'pointer' }}>
             <input type="checkbox" checked={addToDetails} onChange={(e) => setAddToDetails(e.target.checked)} />
             Also add the answer to the dish's description on the menu

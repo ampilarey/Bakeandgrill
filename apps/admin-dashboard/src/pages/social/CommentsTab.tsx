@@ -1,3 +1,5 @@
+import { AiButton } from '../../components/ai/AiButton';
+import { draftReply } from '../../api/ai';
 import { useCallback, useEffect, useState } from 'react';
 import {
   fetchSocialComments, markAllSocialCommentsRead, markSocialCommentRead, replySocialComment, syncSocialComments,
@@ -137,14 +139,15 @@ export function CommentsTab({ canReply }: { canReply: boolean }) {
                 )}
               </div>
               {replying === c.id && (
-                <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8, alignItems: 'flex-start' }}>
                   <textarea
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     rows={2}
                     aria-label={`Reply to ${c.author ?? 'comment'}`}
-                    style={inputFont({ flex: 1, padding: 8, borderRadius: 10, fontFamily: 'inherit', fontSize: 13, border: '1.5px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' })}
+                    style={inputFont({ flex: '1 1 220px', minWidth: 0, padding: 8, borderRadius: 10, fontFamily: 'inherit', fontSize: 13, border: '1.5px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' })}
                   />
+                  <AiButton feature="reply_drafts" testId="ai-draft-comment" run={async () => { const r = await draftReply('comment', c.id); if (r.text) setReplyText(r.text); }}>Draft reply</AiButton>
                   <Btn small disabled={busy || replyText.trim() === ''} onClick={() => { void sendReply(c); }}>Send</Btn>
                   <Btn small variant="secondary" disabled={busy} onClick={() => setReplying(null)}>Cancel</Btn>
                 </div>

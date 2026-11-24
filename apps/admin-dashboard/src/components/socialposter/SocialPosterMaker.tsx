@@ -1,3 +1,6 @@
+import { inputFont } from '../../utils/cssVars';
+import { AiButton } from '../ai/AiButton';
+import { draftCaption } from '../../api/ai';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clapperboard, Play, ImagePlus, Save, Send, Share2, Shuffle, Trash2 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -16,7 +19,7 @@ import { SaveSheet } from './SaveSheet';
 import {
   BADGE_PRESETS, BUTTON_STYLES, COLOUR_GROUPS, CTA2_PRESETS, CTA_PRESETS, DESIGN_GROUPS, LAYOUTS, MOTION_GROUPS, MOTIONS, MOTION_SECONDS, PALETTES,
   PART_NAMES, PART_ORDER, SIZES, TEMPLATE_GROUPS, TEMPLATES,
-  blankSpec, captionOf, fullSpec, paletteOf, sizeOf, withTemplate, type PartKey, type PostSize, type PostSpec, type PostTemplate,
+  blankSpec, captionOf, fullSpec, paletteOf, priceWords, sizeOf, withTemplate, type PartKey, type PostSize, type PostSpec, type PostTemplate,
 } from './types';
 
 /**
@@ -478,6 +481,35 @@ export function SocialPosterMaker({ canCompose, onSend }: {
               {spec.show.phone && <Input label="Phone number" value={spec.phone} maxLength={30} inputMode="tel" onChange={(v) => patch({ phone: v })} />}
               {spec.show.website && <Input label="Website" value={spec.website} maxLength={80} onChange={(v) => patch({ website: v })} />}
               {spec.show.qr && <Input label="The QR code opens" value={spec.link} maxLength={500} onChange={(v) => patch({ link: v })} placeholder={brand?.order_url ?? ''} />}
+            </div>
+          </Card>
+
+          {/* The caption: the words under the post when it is shared or sent to the composer. Never on the picture. */}
+          <Card>
+            <h3 style={{ margin: '0 0 4px', fontSize: 15 }}>Caption</h3>
+            <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--color-text-muted)' }}>The words that go under the post. Leave it empty for the plain one shown here.</p>
+            <textarea
+              value={spec.caption ?? ''} onChange={(e) => setSpec((s) => ({ ...s, caption: e.target.value }))} rows={5} maxLength={1500}
+              aria-label="Caption" data-testid="sp-caption" placeholder={captionOf({ ...spec, caption: '', link })}
+              style={inputFont({ width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14, fontFamily: 'inherit' })}
+            />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+              <AiButton
+                feature="captions" testId="sp-caption-draft" disabled={spec.headline.trim() === ''}
+                run={async () => {
+                  const show = spec.show;
+                  const r = await draftCaption({
+                    headline: spec.headline, kicker: show.kicker ? spec.kicker : '', tagline: show.tagline ? spec.tagline : '',
+                    price: show.price && spec.price.trim() ? `MVR ${priceWords(spec.price)}` : '', was: show.was && spec.was.trim() ? `MVR ${priceWords(spec.was)}` : '',
+                    sticker: show.badge ? spec.badge : '', cta: show.cta ? spec.cta : '', phone: show.phone ? spec.phone : '', link,
+                  });
+                  const words = [r.en, r.dv].filter((t) => t.trim() !== '').join('\n\n');
+                  if (words) setSpec((s) => ({ ...s, caption: words }));
+                }}
+              >
+                Write a caption
+              </AiButton>
+              {(spec.caption ?? '').trim() !== '' && <Btn small variant="ghost" onClick={() => setSpec((s) => ({ ...s, caption: '' }))}>Use the plain one</Btn>}
             </div>
           </Card>
 

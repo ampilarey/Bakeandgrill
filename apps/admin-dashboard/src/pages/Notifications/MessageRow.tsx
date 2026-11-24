@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../../components/ai/AiButton';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
@@ -391,6 +392,7 @@ function MessageEditor({
               label="Dhivehi wording"
               saved={row.template.body_dv ?? ''}
               draft={row.template.dv_default}
+              english={row.template.body ?? ''}
               disabled={disabled}
               onSaved={(value) => row.template && onUpdated({ template: { ...row.template, body_dv: value } })}
               onError={onError}
@@ -538,6 +540,7 @@ function ExtraWording({ row, wording, disabled, onSaved, onError }: {
           label={`Dhivehi wording: ${wording.label}`}
           saved={wording.body_dv ?? ''}
           draft={wording.dv_default}
+          english={wording.body ?? ''}
           disabled={disabled}
           onSaved={(value) => onSaved({ ...wording, body_dv: value })}
           onError={onError}
@@ -557,12 +560,14 @@ function ExtraWording({ row, wording, disabled, onSaved, onError }: {
  * customer whose account keeps Dhivehi while Dhivehi is on (Website); left
  * empty, the built-in draft shown in grey goes.
  */
-function DhivehiWording({ row, slug, label, saved, draft, disabled, onSaved, onError }: {
+function DhivehiWording({ row, slug, label, saved, draft, english, disabled, onSaved, onError }: {
   row: SmsControlCenterType;
   slug: string;
   label: string;
   saved: string;
   draft: string;
+  /** The English wording, which Draft Dhivehi works from. */
+  english?: string;
   disabled: boolean;
   onSaved: (value: string | null) => void;
   onError: (msg: string) => void;
@@ -608,6 +613,9 @@ function DhivehiWording({ row, slug, label, saved, draft, disabled, onSaved, onE
           })}
         />
       </label>
+      {!disabled && (english ?? '').trim() !== '' && (
+        <div style={{ marginTop: 6 }}><DhivehiDraft from={english ?? ''} current={body} kind="sms" onDraft={setBody} /></div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
           For customers who keep Dhivehi, while Dhivehi is on. Empty sends the draft in grey.

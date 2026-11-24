@@ -82,6 +82,10 @@ class TelegramOwnerTools
         if ($this->can($user, 'telegram.manage')) {
             $t[] = ['📣 Message staff', 'mo:m'];
         }
+        // Owner, 2026-11-24: questions about sales in plain words, when the assistant's switch is on.
+        if ($this->canAsk($user)) {
+            $t[] = ['❓ Ask a question', 'mo:q'];
+        }
 
         return $t;
     }
@@ -100,7 +104,7 @@ class TelegramOwnerTools
         }
         $names = implode(', ', array_map(fn (array $x) => $x[0], $this->tools($user)));
 
-        return ['<b>' . self::BTN_MORE . '</b>: ' . T::e($names) . '. Also <code>/attention</code>, <code>/working</code>, <code>/lowstock</code>, <code>/order 1042</code>, <code>/tell kitchen Gas comes at 3</code>.'];
+        return ['<b>' . self::BTN_MORE . '</b>: ' . T::e($names) . '. Also <code>/attention</code>, <code>/working</code>, <code>/lowstock</code>, <code>/order 1042</code>, <code>/tell kitchen Gas comes at 3</code>' . ($this->canAsk($user) ? ', <code>/ask how many momo sold last week</code>' : '') . '.'];
     }
 
     public function handleText(TelegramLink $link, User $user, string $raw, ?string $command): bool
@@ -133,6 +137,11 @@ class TelegramOwnerTools
         }
         if ($command === 'tell') {
             $this->tellCommand($link, $user, $arg);
+
+            return true;
+        }
+        if ($command === 'ask') {
+            $arg === '' ? $this->askQuestion($link, $user) : $this->answerQuestion($link, $user, $arg);
 
             return true;
         }
@@ -299,6 +308,52 @@ class TelegramOwnerTools
         }
 
         return null;
+    }
+
+    // ── Ask a question (the assistant) ───────────────────────────────────
+
+    private function canAsk(User $user): bool
+    {
+        return $this->can($user, 'reports.view') && app(\App\Domains\Ai\AiFeatures::class)->on('telegram_ask');
+    }
+
+    public function askQuestion(TelegramLink $link, User $user): void
+    {
+        if (!$this->canAsk($user)) {
+            $this->c()->refuse($link);
+
+            return;
+        }
+        $this->c()->awaitReply($link, ['action' => 'ask']);
+        $this->c()->send($link, '❓ Ask about sales, orders or items sold, e.g. <i>How many momo did we sell last week?</i>');
+    }
+
+    public function answerQuestion(TelegramLink $link, User $user, string $question): void
+    {
+        if (!$this->canAsk($user)) {
+            $this->c()->refuse($link);
+
+            return;
+        }
+        $question = mb_substr(trim($question), 0, 500);
+        if ($question === '') {
+            $this->askQuestion($link, $user);
+
+            return;
+        }
+        $this->c()->send($link, 'Looking that up…');
+        // The answer takes two calls to the assistant: after the webhook has answered, or Telegram sends the update again.
+        \App\Support\DeferAfterResponse::run(function () use ($link, $question): void {
+            try {
+                $answer = app(\App\Domains\Ai\AiTasks::class)->answer($question, \Carbon\CarbonImmutable::today());
+            } catch (\App\Domains\Ai\AssistantUnavailable $e) {
+                $answer = $e->getMessage();
+            } catch (Throwable $e) {
+                report($e);
+                $answer = 'That question could not be answered just now. Try again in a minute.';
+            }
+            $this->c()->send($link, '❓ ' . T::e($answer));
+        }, 'telegram-ask', true);
     }
 
     // ── Find an order ────────────────────────────────────────────────────
@@ -494,6 +549,7 @@ class TelegramOwnerTools
                     'w' => $this->working($link, $user),
                     'l' => $this->lowStock($link, $user),
                     'f' => $this->askOrder($link, $user),
+                    'q' => $this->askQuestion($link, $user),
                     'm' => $this->can($user, 'telegram.manage') ? $this->askWho($link) : $this->c()->refuse($link),
                     default => null,
                 };
@@ -536,6 +592,11 @@ class TelegramOwnerTools
     {
         if (($await['action'] ?? '') === 'find_order') {
             $this->findOrder($link, $user, $text);
+
+            return true;
+        }
+        if (($await['action'] ?? '') === 'ask') {
+            $this->answerQuestion($link, $user, $text);
 
             return true;
         }

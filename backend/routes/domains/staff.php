@@ -315,6 +315,35 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
     Route::middleware(['auth:sanctum', 'staff.token', 'throttle:120,1'])
         ->get('/admin/inbox', [App\Http\Controllers\Api\AdminInboxController::class, 'index']);
 
+    // The assistant (owner, 2026-11-24): Claude drafts and suggestions, each behind a switch on
+    // System → Integrations → Assistant. Nothing here saves or sends: every answer is a draft.
+    Route::middleware(['auth:sanctum', 'staff.token'])->prefix('admin/ai')->group(function () {
+        $ai = App\Http\Controllers\Api\AiController::class;
+        // Which buttons to show, and Dhivehi for a box on whatever screen the person may already open.
+        Route::get('/status', [$ai, 'status'])->middleware('throttle:120,1');
+        Route::post('/dhivehi', [$ai, 'dhivehi'])->middleware('throttle:40,1');
+        Route::middleware('permission:settings.update')->group(function () use ($ai) {
+            Route::get('/settings', [$ai, 'settings']);
+            Route::put('/settings', [$ai, 'updateSettings']);
+        });
+        Route::middleware(['permission:customers.manage', 'throttle:30,1'])->group(function () use ($ai) {
+            Route::post('/draft-reply/review/{id}', [$ai, 'draftReview'])->whereNumber('id');
+            Route::post('/draft-reply/question/{id}', [$ai, 'draftQuestion'])->whereNumber('id');
+        });
+        Route::post('/draft-reply/complaint/{id}', [$ai, 'draftComplaint'])->whereNumber('id')->middleware(['permission:complaints.manage', 'throttle:30,1']);
+        // The comment reply checks social.publish and the caption social.compose in the controller, as their own routes do.
+        Route::middleware(['permission:social.view', 'throttle:30,1'])->group(function () use ($ai) {
+            Route::post('/draft-reply/comment/{id}', [$ai, 'draftComment'])->whereNumber('id');
+            Route::post('/caption', [$ai, 'caption']);
+        });
+        Route::middleware(['permission:labels.manage', 'throttle:20,1'])->group(function () use ($ai) {
+            Route::post('/glossary', [$ai, 'glossary']);
+            Route::post('/nutrition', [$ai, 'nutrition']);
+        });
+        Route::post('/newsletter', [$ai, 'newsletter'])->middleware(['permission:newsletter.manage', 'throttle:20,1']);
+        Route::post('/po-read', [$ai, 'readPo'])->middleware(['permission:finance.invoices', 'throttle:20,1']);
+    });
+
     // Customers & Marketing → Newsletter (iruali import plan, feature 4).
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:newsletter.manage'])->prefix('admin/newsletter')->group(function () {
         Route::get('/issues', [App\Http\Controllers\Api\AdminNewsletterController::class, 'index']);

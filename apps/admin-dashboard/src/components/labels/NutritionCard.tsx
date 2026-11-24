@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Check, ChevronDown, ChevronUp, CircleAlert } from 'lucide-react';
 import { fetchLabelNutrition, saveIngredientNutrition, NUTRITION_KEYS, type NutritionIngredient, type NutritionKey, type NutritionProduct } from '../../api';
 import { Button, Card, useToast } from '../ui';
+import { AiButton } from '../ai/AiButton';
+import { suggestNutrition } from '../../api/ai';
 
 /*
  * Nutrition per 100 g (round C, 2026-10-12). Each ingredient the
@@ -56,6 +58,23 @@ export function NutritionCard({ canManage }: { canManage: boolean }) {
   const shown = showAll ? rows : missing;
   const set = (id: number, key: NutritionKey, value: string) => setDrafts((d) => ({ ...d, [id]: { ...(d[id] ?? blank()), [key]: value } }));
 
+  // Typical values from the assistant, into the boxes of ingredients that have none. Nothing is saved:
+  // each row still has its own Save, so every figure is looked at before it can print.
+  const [suggested, setSuggested] = useState<number[]>([]);
+  const suggest = async () => {
+    const ids = missing.slice(0, 40).map((r) => r.id);
+    const { items } = await suggestNutrition(ids);
+    setDrafts((ds) => {
+      const next = { ...ds };
+      items.forEach((i) => { next[i.id] = Object.fromEntries(NUTRITION_KEYS.map((k) => [k, i.nutrition[k] != null ? String(i.nutrition[k]) : ''])) as Draft; });
+      return next;
+    });
+    setSuggested(items.map((i) => i.id));
+    toast(items.length ? 'success' : 'info', items.length
+      ? `Suggested values for ${items.length} of ${ids.length}. Check each against its packet, then press Save.`
+      : 'The assistant could not place these ingredients. Type their values from the packet.');
+  };
+
   const save = async (row: NutritionIngredient) => {
     const d = drafts[row.id] ?? blank();
     setSaving(row.id);
@@ -108,6 +127,10 @@ export function NutritionCard({ canManage }: { canManage: boolean }) {
         </div>
       )}
 
+      {canManage && missing.length > 0 && (
+        <div className="mt-3"><AiButton feature="nutrition" testId="nutrition-suggest" run={suggest}>Suggest values for the {missing.length} without</AiButton></div>
+      )}
+
       {shown.length > 0 && (
         <ul className="mt-3 space-y-3" data-testid="nutrition-ingredients">
           {shown.map((row) => {
@@ -120,7 +143,7 @@ export function NutritionCard({ canManage }: { canManage: boolean }) {
                     <span className="text-sm font-bold text-[var(--color-text)]">{row.name}</span>
                     <span className="text-xs text-[var(--color-text-muted)] ml-2">used by {row.used_by.join(', ')}</span>
                   </div>
-                  {row.nutrition === null && <span className="text-xs font-semibold text-[var(--color-warning)]">No values yet</span>}
+                  {row.nutrition === null && <span className="text-xs font-semibold text-[var(--color-warning)]" data-testid={`nutrition-state-${row.id}`}>{suggested.includes(row.id) ? 'Suggested: check, then Save' : 'No values yet'}</span>}
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
                   {NUTRITION_KEYS.map((k) => (

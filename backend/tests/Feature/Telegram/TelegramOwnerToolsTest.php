@@ -162,6 +162,41 @@ class TelegramOwnerToolsTest extends TestCase
         $this->assertStringContainsString('No order numbered', $this->lastText('5550001'));
     }
 
+    public function test_the_owner_asks_a_question_and_a_switched_off_assistant_offers_none(): void
+    {
+        // Owner, 2026-11-24: questions about sales in plain words, behind the assistant's switch.
+        $this->app->instance(\App\Domains\Ai\Assistant::class, new class extends \App\Domains\Ai\Assistant
+        {
+            public function __construct() {}
+
+            public function ready(): bool
+            {
+                return true;
+            }
+
+            public function ask(string $instructions, string $prompt, array $schema, ?array $file = null, int $timeout = 60, int $maxTokens = 4000): array
+            {
+                return isset($schema['properties']['about']) ? ['about' => true, 'from' => now()->toDateString(), 'to' => now()->toDateString()] : ['answer' => 'Today you sold 3 momo.'];
+            }
+        });
+
+        $this->say('5550001', '/more');
+        $this->assertStringContainsString('Ask a question', json_encode($this->last('5550001'), JSON_UNESCAPED_UNICODE));
+        $this->press('5550001', 'mo:q');
+        $this->say('5550001', 'How many momo today?');
+        $this->assertStringContainsString('Today you sold 3 momo.', $this->lastText('5550001'));
+        $this->say('5550001', '/ask How many momo today?');
+        $this->assertStringContainsString('Today you sold 3 momo.', $this->lastText('5550001'));
+
+        // A cashier has no reports, so no question.
+        $this->say('5550002', '/ask How many momo today?');
+        $this->assertStringNotContainsString('momo', $this->lastText('5550002'));
+
+        SiteSetting::set('ai_feature_telegram_ask', '0');
+        $this->say('5550001', '/more');
+        $this->assertStringNotContainsString('Ask a question', json_encode($this->last('5550001'), JSON_UNESCAPED_UNICODE));
+    }
+
     public function test_message_staff(): void
     {
         $cook = $this->staff('kitchen_staff', '+9607003003', 'Hassan');

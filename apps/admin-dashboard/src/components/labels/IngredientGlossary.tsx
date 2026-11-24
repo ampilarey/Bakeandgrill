@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BookA, Check, Plus, Search, Trash2 } from 'lucide-react';
 import { Button, Card, useToast } from '../ui';
+import { AiButton } from '../ai/AiButton';
+import { suggestGlossary } from '../../api/ai';
 import { deleteGlossaryWord, fetchLabelGlossary, saveGlossaryWord, updateGlossaryWord, type GlossaryMissing, type GlossaryWord } from '../../api';
 
 /*
@@ -23,6 +25,15 @@ export function IngredientGlossary({ canManage }: { canManage: boolean }) {
   const [newDv, setNewDv] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  // Words whose suggested Dhivehi the assistant was unsure of: marked, so they are read twice.
+  const [unsure, setUnsure] = useState<string[]>([]);
+  const suggest = async () => {
+    const { words: found } = await suggestGlossary();
+    // Only into empty boxes: a word someone has started typing is theirs.
+    setDraft((d) => { const next = { ...d }; found.forEach((f) => { if (!(next[f.word] ?? '').trim()) next[f.word] = f.dv; }); return next; });
+    setUnsure(found.filter((f) => !f.sure).map((f) => f.word));
+    if (found.length === 0) toast('info', 'The assistant had no Dhivehi to suggest for these words.');
+  };
 
   const load = () => fetchLabelGlossary().then((r) => { setWords(r.data); setMissing(r.missing); }).catch(() => undefined);
   useEffect(() => { void load(); }, []);
@@ -63,10 +74,11 @@ export function IngredientGlossary({ canManage }: { canManage: boolean }) {
         <div className="px-4 py-3 border-b border-[var(--color-border-light)]" style={{ background: 'color-mix(in srgb, var(--color-warning) 10%, transparent)' }} data-testid="glossary-missing">
           <p className="text-sm font-semibold text-[var(--color-text)]">Needs Dhivehi ({missing.length})</p>
           <p className="text-xs text-[var(--color-text-muted)] mb-2">Words on labels the glossary does not know. Type the Dhivehi and press the tick; the product's Dhivehi line prints once every word is in.</p>
+          {canManage && <div className="mb-2"><AiButton feature="glossary" testId="glossary-suggest" run={suggest}>Suggest Dhivehi</AiButton></div>}
           <ul className="space-y-2">
             {missing.map((m) => (
               <li key={m.word} className="flex flex-wrap items-center gap-2">
-                <span className="min-w-[140px] text-sm font-semibold text-[var(--color-text)] capitalize">{m.word}<span className="block text-[11px] font-normal text-[var(--color-text-muted)]">{m.products.join(', ')}</span></span>
+                <span className="min-w-[140px] text-sm font-semibold text-[var(--color-text)] capitalize">{m.word}<span className="block text-[11px] font-normal text-[var(--color-text-muted)]">{m.products.join(', ')}</span>{unsure.includes(m.word) && <span className="block text-[11px] font-semibold" style={{ color: 'var(--color-warning)' }} data-testid={`glossary-unsure-${m.word}`}>A guess: please check</span>}</span>
                 <input dir="rtl" value={draft[m.word] ?? ''} onChange={(e) => setDraft((d) => ({ ...d, [m.word]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') void add(m.word, draft[m.word] ?? '', m.word); }} disabled={!canManage} placeholder="ދިވެހި" aria-label={`Dhivehi for ${m.word}`} className={`${input} !w-auto flex-1 min-w-[160px]`} />
                 <Button size="sm" icon={<Check size={14} />} loading={busy === m.word} disabled={!canManage || !(draft[m.word] ?? '').trim()} onClick={() => add(m.word, draft[m.word] ?? '', m.word)} aria-label={`Save Dhivehi for ${m.word}`}>Save</Button>
               </li>

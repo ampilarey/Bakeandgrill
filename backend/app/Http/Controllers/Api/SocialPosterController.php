@@ -28,7 +28,7 @@ use Illuminate\Support\Str;
 class SocialPosterController extends Controller
 {
     /** The words a post may carry, and the longest each may be. */
-    private const TEXT = ['headline' => 80, 'kicker' => 40, 'tagline' => 120, 'price' => 12, 'was' => 12, 'badge' => 40, 'cta' => 30, 'cta2' => 30, 'phone' => 30, 'website' => 80, 'motion' => 40, 'link' => 500, 'photo' => 500, 'brand' => 60];
+    private const TEXT = ['headline' => 80, 'kicker' => 40, 'tagline' => 120, 'price' => 12, 'was' => 12, 'badge' => 40, 'cta' => 30, 'cta2' => 30, 'phone' => 30, 'website' => 80, 'motion' => 40, 'link' => 500, 'photo' => 500, 'brand' => 60, 'caption' => 1500];
 
     /** The parts that can be shown or hidden. */
     private const PARTS = ['kicker', 'tagline', 'price', 'was', 'badge', 'cta', 'cta2', 'phone', 'website', 'logo', 'qr'];

@@ -1,3 +1,5 @@
+import { AiButton, AiHint } from '../components/ai/AiButton';
+import { draftNewsletter } from '../api/ai';
 import { useEffect, useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { Btn, Card, ConfirmDialog, EmptyState, Input, Pagination, TabScrollRow, useConfirmDialog } from '../components/SharedUI';
@@ -60,6 +62,8 @@ function Editor({ id, onBack }: { id: number | null; onBack: () => void }) {
   const [draft, setDraft] = useState<NewsletterDraft>(EMPTY);
   const [promos, setPromos] = useState<Promotion[]>([]);
   const [testTo, setTestTo] = useState('');
+  // What the owner wants this issue to say, for the assistant's draft only; never saved or sent.
+  const [hint, setHint] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -94,6 +98,22 @@ function Editor({ id, onBack }: { id: number | null; onBack: () => void }) {
       <div><Btn small variant="secondary" onClick={onBack}>Back to newsletters</Btn></div>
       <Card>
         <div style={{ display: 'grid', gap: 10 }}>
+          {draftOnly && (
+            <div style={{ display: 'grid', gap: 6 }}>
+              <AiButton
+                feature="newsletter" testId="newsletter-draft"
+                run={async () => {
+                  const has = [draft.subject_en, draft.subject_dv, draft.body_en, draft.body_dv].some((t) => (t ?? '').trim() !== '');
+                  if (has && !window.confirm('Replace the subject and message with a new draft?')) return;
+                  const r = await draftNewsletter({ sections: draft.sections, removed_item_ids: draft.removed_item_ids }, hint);
+                  setDraft((d) => ({ ...d, ...r }));
+                }}
+              >
+                Draft the words
+              </AiButton>
+              <AiHint value={hint} onChange={setHint} />
+            </div>
+          )}
           <Input label="Subject (English)" value={draft.subject_en} maxLength={150} disabled={!draftOnly} onChange={(v) => set('subject_en', v)} />
           <Input label="Subject (Dhivehi)" value={draft.subject_dv ?? ''} maxLength={150} dir="rtl" disabled={!draftOnly} onChange={(v) => set('subject_dv', v)} />
           <label style={{ fontSize: 13, fontWeight: 600 }}>Message (English)

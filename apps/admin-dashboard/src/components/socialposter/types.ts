@@ -19,6 +19,8 @@ export const BUTTON_STYLES: Array<{ key: ButtonStyle; name: string }> = [
 
 export interface PostSpec {
   headline: string;
+  /** The words that go under the post when it is shared, when someone wrote their own (or the assistant drafted them); '' is the plain one made from the picture's words. Never drawn on the picture. */
+  caption?: string;
   /** The small line above the headline ("New", "Today only"). */
   kicker: string;
   /** The line under the headline. */
@@ -618,7 +620,7 @@ export const PART_ORDER: PartKey[] = ['price', 'was', 'badge', 'cta', 'cta2', 'p
 
 export function blankSpec(brand?: { name?: string; phone?: string; website?: string; order_url?: string }): PostSpec {
   return {
-    headline: '', kicker: '', tagline: '', price: '', was: '', badge: '', cta: 'Order now', cta2: '', ctaStyle: 'auto', motion: '',
+    headline: '', kicker: '', tagline: '', price: '', was: '', badge: '', cta: 'Order now', cta2: '', ctaStyle: 'auto', motion: '', caption: '',
     phone: brand?.phone ?? '', website: brand?.website ?? '', link: brand?.order_url ?? '',
     photo: '', cutout: false, brand: brand?.name ?? 'Bake & Grill', itemId: null,
     show: { kicker: false, tagline: false, price: true, was: false, badge: false, cta: true, cta2: false, phone: true, website: false, logo: true, qr: false },
@@ -642,6 +644,7 @@ export function priceWords(raw: string): string {
 
 /** A caption for the composer, from the same words the picture carries. */
 export function captionOf(spec: PostSpec): string {
+  if ((spec.caption ?? '').trim()) return (spec.caption ?? '').trim();
   const lines: string[] = [];
   const price = spec.show.price && spec.price.trim() ? ` · MVR ${priceWords(spec.price)}` : '';
   if (spec.headline.trim()) lines.push(`${spec.headline.trim()}${price}`);

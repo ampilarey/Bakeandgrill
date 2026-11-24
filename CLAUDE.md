@@ -1763,6 +1763,31 @@ too, so a worker and the command never render one clip twice), and a clip left a
 killed run is marked failed so the screen offers Generate again. A new background render of any kind is picked up by a
 scheduled command like this one, never by a worker that only a deploy starts. `SocialVideoTest`. The Videos tab (`VideoStudio` in `SocialHubPage.tsx`) opens on Videos you have made (owner, 2026-11-15: "when I click video, it doesn't show created videos"; `GET /admin/social/videos`, every clip with its dish's name, newest first), each with Play (a pop-up `<video>`; "there is no video preview option"), Download and Open; a dish's own rows have Play too, the states read in plain words (`VIDEO_STATUS`), and the tab looks again every ten seconds while a clip is waiting or rendering.
 
+## The assistant: Claude's drafts, each behind a switch
+
+Owner, 2026-11-24 ("Is there any place where I can use Claude API", then "Build all. But add admin settings to on/off").
+Beside the bill reader, eight jobs ask Claude through one class, `App\Domains\Ai\Assistant::ask()` (instructions, the thing
+to work on, the JSON shape of the answer; Claude through the SDK or Google Gemini, whichever is picked), with the service,
+key and model of Purchasing → Settings → Reading bills (`BillReaderSettings`): **one key, typed in one place**. Each job is
+a method of `AiTasks` with its own instructions, and **every answer is a draft or a suggestion put in a box**: nothing the
+assistant writes is saved, sent or printed until a person presses the screen's own button. `AiFeatures::FEATURES` is the
+list: `po_scans` (a scanned customer PO read on the server before the browser's reader is tried, `PoInvoiceModal`),
+`reply_drafts` (Draft reply on Reviews, Complaints, Dish questions and Social Hub → Comments), `glossary` (Suggest Dhivehi
+for the label glossary's missing words, a guess marked "please check"), `dhivehi` (`DhivehiDraft` beside Dhivehi boxes: the
+menu item's names and short description, the custom label editor's six, the notification wordings), `nutrition` (Suggest
+values per 100 g for ingredients with none, held to what a food can be, unknown ones left blank), `captions` (Write a
+caption in Make a post, kept as `spec.caption`, which `captionOf()` returns before the plain one), `newsletter` (Draft the
+words from what is ticked on the form, saved or not) and `telegram_ask` (🧰 More → Ask a question or `/ask`, `reports.view`:
+the assistant names the dates, `SalesTrend` and `ItemsSold` are run here, and it words the answer from those figures alone,
+after the webhook has answered). System → Integrations → **Assistant** (`AssistantPage`, `settings.update`, `GET` / `PUT
+/api/admin/ai/settings`) has the master switch (`ai_enabled`) and one per feature (`ai_feature_<key>`), all on until
+switched off; a feature runs only when `AiFeatures::on()` says so (master, its switch, a key), and a call to one that is
+off answers 422 with the reason. A button is `AiButton` (or `DhivehiDraft`), which shows only while `useAi(feature)` is true
+(`GET /api/admin/ai/status`, any staff, asked once and shared) and says what went wrong under itself. A new assistant job
+is a row in `FEATURES`, a method in `AiTasks`, a route under `/admin/ai` with the permission of the screen it serves, and
+an `AiButton`; never a prompt in a controller, a second key, or a job that saves what it wrote. `AssistantFeaturesTest`,
+`AiButton.test.tsx`, `AssistantPage.test.tsx`.
+
 ## Help: short guides inside the admin
 
 Owner, 2026-11-10 ("there are lots of different features that I don't know how to use"). Team →

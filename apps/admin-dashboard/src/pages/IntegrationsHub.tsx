@@ -12,12 +12,15 @@ import { HubPage, hubPermissions, type HubTab } from '../components/HubPage';
 const WebhooksPage = lazy(() => import('./WebhooksPage').then((m) => ({ default: m.WebhooksPage })));
 const XeroPage = lazy(() => import('./XeroPage'));
 const CatalogFeedsPage = lazy(() => import('./CatalogFeedsPage'));
+const AssistantPage = lazy(() => import('./AssistantPage'));
 
 export const INTEGRATIONS_TABS: HubTab[] = [
   { id: 'webhooks', label: 'Webhooks', permissions: ['integrations.webhooks'], desc: 'Outbound webhooks to other systems', render: () => <WebhooksPage /> },
   { id: 'xero', label: 'Xero', permissions: ['integrations.xero'], desc: 'Accounting sync with Xero', render: () => <XeroPage /> },
   // iruali import plan, feature 11: the menu for Facebook / Instagram shops and Google.
   { id: 'feeds', label: 'Catalogue feeds', permissions: ['website.manage'], desc: 'The menu for Facebook, Instagram and Google', render: () => <CatalogFeedsPage /> },
+  // Owner, 2026-11-24: Claude's drafts and suggestions, a switch for each.
+  { id: 'assistant', label: 'Assistant', permissions: ['settings.update'], desc: 'Switch Claude\'s drafts and suggestions on or off', render: () => <AssistantPage /> },
 ];
 
 export const INTEGRATIONS_HUB_PERMISSIONS = hubPermissions(INTEGRATIONS_TABS);

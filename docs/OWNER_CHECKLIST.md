@@ -160,6 +160,20 @@ You can keep a key for both and switch at any time. A bill costs a few cents to 
 Without a key everything else works; the Read bills button says it is not set up.
 Bill pictures are sent to the service you picked, and nowhere else. Nothing to do on the server.
 
+## 7f. Use your Claude Max credit for the assistant (10 minutes)
+
+Claude Max includes a monthly API credit. It is not automatic: you claim it.
+
+1. Sign in to the Claude Console and link a Console organization to your Max plan, as the
+   Claude page "API credits for Max, Ultra, and Team plans" describes.
+2. In the Console, make an API key.
+3. In Admin: Purchasing → Settings → 7 · Reading bills. Pick Claude, paste the key, press
+   Save key, then Test. Never send the key to anyone in a chat.
+4. In Admin: System → Integrations → Assistant. Switch off any feature you do not want.
+
+The credit does not roll over, and when it runs out the assistant and bill reading stop
+until the next month unless you buy credit or turn on auto-reload in the Console.
+
 ## 8. Optional
 
 - **Printed cards on the Matica 210** (or any card printer): Promotions → Printed cards. Install the

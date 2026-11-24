@@ -1,3 +1,5 @@
+import { AiButton } from '../components/ai/AiButton';
+import { draftReply } from '../api/ai';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -66,6 +68,7 @@ function ReplyModal({ review, onClose, onSaved }: { review: Review; onClose: () 
         aria-label="Reply"
         style={inputFont({ width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14, fontFamily: 'inherit' })}
       />
+      <div style={{ marginTop: 6 }}><AiButton feature="reply_drafts" testId="ai-draft-review" run={async () => { const r = await draftReply('review', review.id); if (r.text) setText(r.text); }}>Draft reply</AiButton></div>
       <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
         Everyone who reads the review sees it. {review.reply ? 'The customer was told about your first reply.' : 'The customer is told by SMS.'}
       </p>

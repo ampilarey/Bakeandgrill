@@ -1,3 +1,4 @@
+import { DhivehiDraft } from '../../components/ai/AiButton';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { fetchModifiers, type MenuCategory, type MenuGroupRow, type Modifier } from '../../api';
 import { useGstBootstrap } from '../../hooks/useGstBootstrap';
@@ -899,6 +900,7 @@ export function MenuItemEditorModal({
               </Field>
               <Field label="Name (Dhivehi) — optional">
                 <Input value={form.name_dv} onChange={(v) => set('name_dv', v)} placeholder="ދިވެހި" />
+                <DhivehiDraft from={form.name} current={form.name_dv} kind="name" onDraft={(v) => set('name_dv', v)} testId="dv-draft-name" />
               </Field>
             </div>
             <div className="form-grid-2" style={{ display: 'grid', '--cols': '1fr 1fr', gap: 12 }}>
@@ -1054,6 +1056,7 @@ export function MenuItemEditorModal({
                       onChange={(v) => set('card_name_dv', v.slice(0, 120))}
                       placeholder={form.name_dv || 'Falls back to name (DV)'}
                     />
+                    <DhivehiDraft from={form.card_name || form.name} current={form.card_name_dv} kind="name" onDraft={(v) => set('card_name_dv', v.slice(0, 120))} />
                   </Field>
                 </div>
                 <Field label="Short description (English)">
@@ -1074,6 +1077,7 @@ export function MenuItemEditorModal({
                     placeholder="Optional Dhivehi detail line"
                     rows={2}
                   />
+                  <DhivehiDraft from={form.short_description} current={form.short_description_dv} onDraft={(v) => set('short_description_dv', v.slice(0, 140))} />
                 </Field>
                 <p className="mie-count">
                   {form.short_description_dv.length}/140

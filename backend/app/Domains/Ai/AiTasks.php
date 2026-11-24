@@ -1,0 +1,283 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Ai;
+
+use App\Domains\Labels\Nutrition;
+use App\Domains\Reporting\Services\ItemsSold;
+use App\Domains\Reporting\Services\SalesTrend;
+use Carbon\CarbonImmutable;
+
+/**
+ * Every job the assistant does, with its instructions and the shape of its answer
+ * (owner, 2026-11-24). Each is a draft or a suggestion a person checks: nothing here saves,
+ * sends or prints. The caller asks AiFeatures::mustBeOn() first. A new job is a method
+ * here, never a prompt written in a controller.
+ */
+class AiTasks
+{
+    private const WHO = 'You help the staff of Bake & Grill, a café and bakery in Malé, Maldives. Prices are in Maldivian rufiyaa, written "MVR 45.00". Write plainly and warmly, as a small local business would, with no emoji unless asked and no long dashes.';
+
+    private const DHIVEHI = 'Dhivehi is written in Thaana script, in the everyday register used in Malé. Keep "Bake & Grill", numbers, prices, phone numbers, links, codes and anything inside {{double braces}} or {single braces} exactly as they are. A dish with no Dhivehi name of its own is written by its sound in Thaana.';
+
+    public function __construct(private readonly Assistant $assistant) {}
+
+    /**
+     * A reply to a customer, for staff to edit and send.
+     *
+     * @param array<string, mixed> $about what the customer wrote and what is known about it
+     */
+    public function draftReply(string $kind, array $about): string
+    {
+        $what = match ($kind) {
+            'review' => 'a public reply shown under the customer\'s review as "Reply from Bake & Grill"',
+            'complaint' => 'a reply to a customer who made a complaint, sent to them by text message',
+            'question' => 'a public answer to a customer\'s question about a dish, shown on the dish\'s page',
+            default => 'a public reply to a comment on one of our social media posts',
+        };
+        $rules = <<<TXT
+            Write {$what}. A member of staff will read and change it before it goes out.
+
+            - Two to four short sentences. Answer in the language the customer wrote in (English, or Dhivehi in Thaana).
+            - Use only what you are given. Never state a fact about the order, the dish, its ingredients, opening hours or a price that is not in what you are given; when the answer needs something you do not have, say the team will check and get back, or leave a short gap in [square brackets] for staff to fill.
+            - Never promise a refund, a replacement, a discount, free food or a compensation, and never say who was at fault. Staff decide those.
+            - For a complaint or a poor review: thank them, say sorry that it was not right, and say it has been passed to the team. For a good review: thank them simply.
+            - A question that touches allergies or what a dish contains ends with: Please tell staff about any allergy when you order.
+            - No greeting line with a made-up name, no signature, no hashtags.
+            TXT;
+        $out = $this->assistant->ask(self::WHO . "\n\n" . $rules, json_encode($about, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), self::obj(['reply' => 'string']));
+
+        return trim((string) ($out['reply'] ?? ''));
+    }
+
+    /** English into Dhivehi, for a Dhivehi speaker to check. */
+    public function dhivehi(string $text, string $kind = 'text'): string
+    {
+        $note = match ($kind) {
+            'name' => 'This is the name of a dish or product: answer with the name only, short.',
+            'sms' => 'This is a text message to a customer: keep it as short as the English, on one line.',
+            'label' => 'This is wording printed on a food label: short and exact.',
+            default => 'Keep the same meaning, tone and line breaks.',
+        };
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nTranslate the English you are given into Dhivehi. " . self::DHIVEHI . ' ' . $note . ' Answer with the translation only.',
+            $text,
+            self::obj(['dv' => 'string']),
+        );
+
+        return trim((string) ($out['dv'] ?? ''));
+    }
+
+    /**
+     * Dhivehi for ingredient words on food labels.
+     *
+     * @param list<string> $words
+     * @return array<string, array{dv: string, sure: bool}> by the English word
+     */
+    public function glossary(array $words): array
+    {
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nYou are given English ingredient words printed on food labels. Give the Dhivehi word for each, as a Maldivian shopper would read it on a pack. " . self::DHIVEHI . ' An ingredient with no Dhivehi word in common use (many spices and additives) is written by its sound in Thaana. Set "sure" to false when you are guessing or when two words are in use; give "" when you do not know. Answer for every word, in the order given, with the English exactly as given.',
+            json_encode(array_values($words), JSON_UNESCAPED_UNICODE),
+            ['type' => 'object', 'additionalProperties' => false, 'required' => ['words'], 'properties' => ['words' => ['type' => 'array', 'items' => self::obj(['en' => 'string', 'dv' => 'string', 'sure' => 'boolean'])]]],
+        );
+        $found = [];
+        foreach ((array) ($out['words'] ?? []) as $row) {
+            $en = trim((string) ($row['en'] ?? ''));
+            $dv = trim((string) ($row['dv'] ?? ''));
+            if ($en !== '' && $dv !== '' && in_array($en, $words, true)) {
+                $found[$en] = ['dv' => $dv, 'sure' => (bool) ($row['sure'] ?? false)];
+            }
+        }
+
+        return $found;
+    }
+
+    /**
+     * Typical nutrition per 100 g for raw ingredients.
+     *
+     * @param array<int, string> $names inventory item id => name
+     * @return array<int, array<string, float>> by id, only the ones the assistant knows
+     */
+    public function nutrition(array $names): array
+    {
+        $fields = ['id' => 'integer', 'known' => 'boolean'] + array_fill_keys(array_keys(Nutrition::FIELDS), 'number');
+        $list = [];
+        foreach ($names as $id => $name) {
+            $list[] = ['id' => (int) $id, 'name' => (string) $name];
+        }
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nYou are given kitchen ingredients by name. For each, give typical nutrition values per 100 g of the ingredient as bought (raw, uncooked, as sold), from standard food composition tables: energy in kcal, and fat, saturates, carbohydrate, sugars, protein and salt in grams. Salt is sodium times 2.5. Set \"known\" to false, with zeros, for anything that is not a food, is a mix you cannot place (a house sauce, \"masala\"), or whose name is unclear: a wrong figure printed on a label is worse than a blank. Answer for every id given.",
+            json_encode($list, JSON_UNESCAPED_UNICODE),
+            ['type' => 'object', 'additionalProperties' => false, 'required' => ['items'], 'properties' => ['items' => ['type' => 'array', 'items' => self::obj($fields)]]],
+            maxTokens: 8000,
+        );
+        $found = [];
+        foreach ((array) ($out['items'] ?? []) as $row) {
+            $id = (int) ($row['id'] ?? 0);
+            if (!isset($names[$id]) || empty($row['known'])) {
+                continue;
+            }
+            $values = [];
+            foreach (array_keys(Nutrition::FIELDS) as $k) {
+                $v = (float) ($row[$k] ?? 0);
+                $values[$k] = round(max(0.0, min($k === 'kcal' ? 900.0 : 100.0, $v)), $k === 'kcal' ? 0 : 1);
+            }
+            $found[$id] = $values;
+        }
+
+        return $found;
+    }
+
+    /**
+     * The caption for a social post.
+     *
+     * @param array<string, mixed> $post the words on the picture
+     * @return array{en: string, dv: string}
+     */
+    public function caption(array $post): array
+    {
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nWrite the caption that goes under a social media post (Facebook, Instagram), from the words on its picture. Two or three short lines: what it is and why someone would want it today, then how to order, with the link when one is given. Use only the facts given: never invent a price, an offer, a date or an ingredient. At most three hashtags, on the last line. Give it in English, and the same in Dhivehi. " . self::DHIVEHI,
+            json_encode($post, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
+            self::obj(['en' => 'string', 'dv' => 'string']),
+        );
+
+        return ['en' => trim((string) ($out['en'] ?? '')), 'dv' => trim((string) ($out['dv'] ?? ''))];
+    }
+
+    /**
+     * The subject and opening words of a newsletter issue.
+     *
+     * @param array<string, mixed> $picks what the issue will show (new dishes, specials, an offer, coming soon)
+     * @return array{subject_en: string, subject_dv: string, body_en: string, body_dv: string}
+     */
+    public function newsletter(array $picks, string $hint = ''): array
+    {
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nWrite the subject line and the opening words of our email newsletter. Under your words the email lists the dishes and the offer you are given, with their names, prices and pictures, so do not list them again: say what is new in two short paragraphs and invite the reader to order. The subject is under 60 characters and says the main news. Use only the facts given; never invent a dish, a price, a date or an offer. Give both in English, and the same in Dhivehi. " . self::DHIVEHI,
+            json_encode(['what_the_issue_shows' => $picks, 'what_the_owner_wants_to_say' => $hint], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
+            self::obj(['subject_en' => 'string', 'subject_dv' => 'string', 'body_en' => 'string', 'body_dv' => 'string']),
+        );
+
+        return array_map(fn ($v) => trim((string) $v), array_intersect_key($out, array_flip(['subject_en', 'subject_dv', 'body_en', 'body_dv'])) + ['subject_en' => '', 'subject_dv' => '', 'body_en' => '', 'body_dv' => '']);
+    }
+
+    /**
+     * A customer's purchase order (a scan, a photo or a PDF) as the invoice form's draft.
+     *
+     * @return array<string, mixed> the admin's PoDraft, less `missing` and `mended`
+     */
+    public function readPo(string $bytes, string $mime): array
+    {
+        $line = self::obj(['description' => 'string', 'quantity' => 'number', 'unit' => 'string', 'unit_price' => 'number', 'amount' => 'number']);
+        $schema = self::obj([
+            'is_po' => 'boolean', 'po_number' => 'string', 'order_date' => 'string', 'delivery_date' => 'string', 'bill_to' => 'string', 'bill_address' => 'string',
+            'bill_tin' => 'string', 'bill_email' => 'string', 'deliver_to' => 'string', 'payment_term' => 'string', 'currency' => 'string',
+            'subtotal' => 'number', 'tax' => 'number', 'total' => 'number',
+        ]);
+        $schema['properties']['lines'] = ['type' => 'array', 'items' => $line];
+        $schema['required'][] = 'lines';
+
+        $rules = <<<'TXT'
+            You are given a purchase order that a customer (a resort, a company, a school) sent to us, the supplier. Read it into the fields so that staff can make our invoice from it. A person checks every field against the paper.
+
+            - Read what is there and never fill a gap with a likely value: text you cannot read is "", a figure you cannot read is 0.
+            - bill_to, bill_address, bill_tin and bill_email are the customer's: the block the order says to issue the invoice to, else whoever issued the order. Never our own name, address or TIN (we are the supplier or vendor named on it).
+            - deliver_to is where the goods are to go, when the order says.
+            - Dates as YYYY-MM-DD, or "" when not given. currency as the three letters on the order, "MVR" when it only says rufiyaa or nothing.
+            - One line per row of goods, in the order's own order, with the quantity, the unit as written, the price of one and the row's amount, all before tax unless the order prices include it. Leave out subtotal, tax and total rows.
+            - subtotal, tax and total as printed, 0 when not printed.
+            - is_po is false when the file is not an order for goods, or cannot be read at all.
+            TXT;
+        $out = $this->assistant->ask(self::WHO . "\n\n" . $rules, 'Read this purchase order.', $schema, ['bytes' => $bytes, 'mime' => $mime], timeout: 120, maxTokens: 8000);
+        if (empty($out['is_po'])) {
+            throw new AssistantUnavailable('The assistant could not read this file as a purchase order.');
+        }
+        $lines = [];
+        foreach ((array) ($out['lines'] ?? []) as $l) {
+            $desc = trim((string) ($l['description'] ?? ''));
+            if ($desc === '') {
+                continue;
+            }
+            $lines[] = ['description' => mb_substr($desc, 0, 255), 'quantity' => (float) ($l['quantity'] ?? 0), 'unit' => mb_substr(trim((string) ($l['unit'] ?? '')), 0, 30), 'unit_price' => (float) ($l['unit_price'] ?? 0), 'amount' => (float) ($l['amount'] ?? 0)];
+        }
+        $text = fn (string $k, int $max = 255): string => mb_substr(trim((string) ($out[$k] ?? '')), 0, $max);
+        $date = fn (string $k): string => preg_match('/^\d{4}-\d{2}-\d{2}$/', $text($k)) ? $text($k) : '';
+        $money = fn (string $k): ?float => ((float) ($out[$k] ?? 0)) > 0 ? round((float) $out[$k], 2) : null;
+
+        return [
+            'po_number' => $text('po_number', 60), 'order_date' => $date('order_date'), 'delivery_date' => $date('delivery_date'),
+            'bill_to' => $text('bill_to'), 'bill_address' => $text('bill_address', 500), 'bill_tin' => $text('bill_tin', 60), 'bill_email' => $text('bill_email', 160),
+            'deliver_to' => $text('deliver_to', 500), 'payment_term' => $text('payment_term', 120), 'currency' => $text('currency', 3) ?: 'MVR',
+            'lines' => $lines, 'subtotal' => $money('subtotal'), 'tax' => $money('tax'), 'total' => $money('total'),
+        ];
+    }
+
+    /**
+     * A plain answer to a question about sales, from our own reports (the Telegram bot).
+     * Two steps: the assistant says which period the question is about, the reports are
+     * run here, and the assistant words the answer from their figures alone.
+     */
+    public function answer(string $question, CarbonImmutable $today): string
+    {
+        $pick = $this->assistant->ask(
+            self::WHO . "\n\nA manager asks a question about the business. Say which dates it is about, so the sales reports can be run. Today is " . $today->toDateString() . ' (' . $today->format('l') . '); weeks start on Sunday. "from" and "to" as YYYY-MM-DD, both today when no period is named, never after today. "about" is false when the question is not about sales, orders, items sold, payment methods, order types or staff sales (for those we have figures); then the dates do not matter.',
+            $question,
+            self::obj(['about' => 'boolean', 'from' => 'string', 'to' => 'string']),
+        );
+        if (empty($pick['about'])) {
+            return 'I can answer questions about sales, orders, items sold, payment methods, order types and staff sales. For anything else, please look in Admin.';
+        }
+        try {
+            $from = CarbonImmutable::parse((string) $pick['from'])->startOfDay();
+            $to = CarbonImmutable::parse((string) $pick['to'])->startOfDay();
+        } catch (\Throwable) {
+            $from = $to = $today;
+        }
+        $to = $to->greaterThan($today) ? $today : $to;
+        $from = $from->greaterThan($to) ? $to : $from;
+        // A year at most: the reports read every order in the range.
+        $from = $from->lessThan($to->subDays(366)) ? $to->subDays(366) : $from;
+
+        $days = (int) $from->diffInDays($to) + 1;
+        $sales = app(SalesTrend::class)->report($from, $to, $days > 62 ? 'month' : 'day');
+        $items = app(ItemsSold::class)->report($from, $to);
+        $figures = [
+            'period' => ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'days' => $days],
+            'totals' => $sales['totals'] ?? [],
+            'the_period_just_before' => ['dates' => $sales['previous'] ?? [], 'totals' => $sales['previous_totals'] ?? []],
+            'over_time' => $sales['series'] ?? [],
+            'by_order_type' => $sales['by_type'] ?? [],
+            'by_payment_method' => $sales['by_payment'] ?? [],
+            'by_staff' => $sales['by_staff'] ?? [],
+            'items_sold' => array_map(
+                fn (array $i) => ['name' => $i['name'], 'category' => $i['category'], 'qty' => $i['qty'], 'sales' => $i['sales'], 'orders' => $i['orders']],
+                array_slice((array) ($items['items'] ?? []), 0, 150),
+            ),
+        ];
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nAnswer the manager's question from the figures you are given, which come from our own sales reports for the dates shown. Lead with the answer in one sentence, then at most four short lines of detail. Use only these figures: when they do not hold the answer, say what is missing. Always say which dates the answer covers. Plain text, no tables, no markdown.",
+            json_encode(['question' => $question, 'figures' => $figures], JSON_UNESCAPED_UNICODE),
+            self::obj(['answer' => 'string']),
+            timeout: 60,
+        );
+
+        return trim((string) ($out['answer'] ?? '')) ?: 'I could not work that one out. Try asking it another way.';
+    }
+
+    /**
+     * A flat object schema, every field required.
+     *
+     * @param array<string, string> $fields name => JSON type
+     * @return array<string, mixed>
+     */
+    private static function obj(array $fields): array
+    {
+        return [
+            'type' => 'object', 'additionalProperties' => false, 'required' => array_keys($fields),
+            'properties' => array_map(fn (string $t) => ['type' => $t], $fields),
+        ];
+    }
+}

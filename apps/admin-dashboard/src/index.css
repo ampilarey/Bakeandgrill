@@ -7348,3 +7348,13 @@ table.is-table.is-table { display: none; }
   .po-item__name { grid-column: auto; }
   .po-item__amount { grid-column: auto; text-align: right; }
 }
+
+/* The assistant (2026-11-24): its buttons and the switches on System → Integrations → Assistant. */
+.ai-btn { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 100%; }
+.ai-btn > button { display: inline-flex; align-items: center; gap: 6px; }
+.ai-btn__error { font-size: 12px; color: var(--color-danger); }
+.ai-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--color-border-light); cursor: pointer; }
+.ai-row--master { border-top: 0; padding-bottom: 0; }
+.ai-row > span { display: grid; gap: 2px; min-width: 0; font-size: 14px; }
+.ai-row__about { font-size: 13px; color: var(--color-text-secondary); }
+.ai-row__where { font-size: 12px; color: var(--color-text-muted); }
