@@ -59,7 +59,7 @@ export function MenuPlanBox() {
         placeholder={'Snacks\n  Momo\n  Rolls\n  Short eats\nDrinks\n  Fresh juices\n  Hot drinks\nDesserts'}
         style={inputFont({ width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 14, lineHeight: 1.45, fontFamily: 'inherit', resize: 'vertical' })}
       />
-      <input ref={pick} type="file" hidden accept="image/*,application/pdf,.txt,.csv" onChange={(e) => void read(e.target.files?.[0])} data-testid="menu-plan-file" />
+      <input ref={pick} type="file" hidden accept="image/*,application/pdf,.txt,.csv,.xlsx,.xls,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" onChange={(e) => void read(e.target.files?.[0])} data-testid="menu-plan-file" />
       <div className="sg-actions">
         <Btn small disabled={busy !== '' || !changed} onClick={() => void save(text)} data-testid="menu-plan-save">{busy === 'save' ? 'Saving…' : 'Save plan'}</Btn>
         <Btn small variant="secondary" disabled={busy !== ''} onClick={() => pick.current?.click()} data-testid="menu-plan-upload">
@@ -67,7 +67,7 @@ export function MenuPlanBox() {
         </Btn>
         {saved !== '' && <Btn small variant="danger-outline" disabled={busy !== ''} onClick={() => void save('')}>Remove plan</Btn>}
       </div>
-      <p className="sg-plan__help">A file can be a photo, a scan, a PDF or a text file. Reading a photo or PDF can take a minute.</p>
+      <p className="sg-plan__help">A file can be an Excel sheet, a PDF, a photo, a scan or a text file. In Excel, put sections in the first column, sub-sections in the next and dishes in the one after. Reading a photo or PDF can take a minute.</p>
       {note && <p role="status" className="sg-plan__note" data-testid="menu-plan-note">{note}</p>}
       {error && <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 13, margin: '6px 0 0' }}>{error}</p>}
     </details>

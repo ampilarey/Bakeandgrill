@@ -271,10 +271,28 @@ class AiController extends Controller
     public function readMenuPlan(Request $request): JsonResponse
     {
         $this->requirePermission($request, 'menu.manage');
-        $request->validate(['file' => ['required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,webp,txt,csv']]);
+        $request->validate(['file' => ['required', 'file', 'max:10240']]);
         $file = $request->file('file');
-        $bytes = (string) file_get_contents((string) $file->getRealPath());
+        $ext = strtolower((string) $file->getClientOriginalExtension());
         $mime = strtolower((string) $file->getMimeType());
+        // By what the file is, not only by what it is called: a phone names an Excel file's type in several ways.
+        $sheet = in_array($ext, ['xlsx', 'xls', 'ods'], true) || str_contains($mime, 'spreadsheet') || str_contains($mime, 'ms-excel');
+        $known = $sheet || in_array($ext, ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'txt', 'csv'], true) || str_starts_with($mime, 'image/') || str_starts_with($mime, 'text/') || $mime === 'application/pdf';
+        if (!$known) {
+            return response()->json(['message' => 'This kind of file cannot be read. Use an Excel file, a PDF, a photo or a text file.'], 422);
+        }
+        if ($sheet) {
+            try {
+                $plan = self::sheetAsPlan((string) $file->getRealPath());
+            } catch (\Throwable) {
+                $plan = '';
+            }
+
+            return $plan === ''
+                ? response()->json(['message' => 'Nothing could be read from this Excel file. Check it has the sections typed in its cells, or save it as PDF and upload that.'], 422)
+                : response()->json(['plan' => $plan]);
+        }
+        $bytes = (string) file_get_contents((string) $file->getRealPath());
         if (str_starts_with($mime, 'text/') || in_array(strtolower((string) $file->getClientOriginalExtension()), ['txt', 'csv'], true)) {
             $text = mb_check_encoding($bytes, 'UTF-8') ? $bytes : mb_convert_encoding($bytes, 'UTF-8', 'ISO-8859-1');
 
@@ -289,6 +307,53 @@ class AiController extends Controller
         @set_time_limit(170);
 
         return $this->run('auto_menu', fn () => ['plan' => $this->tasks->readMenuPlan($bytes, $mime)]);
+    }
+
+    /**
+     * An Excel sheet as the plan's lines, read here with no assistant: a row a line, and a row
+     * that starts in a later column is indented under the one before it, which is how a plan
+     * with sections in column A, sub-sections in B and dishes in C is laid out. A row with
+     * several cells filled reads across, joined by commas. Each sheet after the first starts
+     * with its own name.
+     */
+    private static function sheetAsPlan(string $path): string
+    {
+        $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($path);
+        $reader->setReadDataOnly(true);
+        $book = $reader->load($path);
+        $lines = [];
+        $many = $book->getSheetCount() > 1;
+        foreach ($book->getAllSheets() as $sheet) {
+            $rows = [];
+            foreach ($sheet->toArray(null, true, false, false) as $row) {
+                $first = null;
+                $cells = [];
+                foreach ($row as $col => $value) {
+                    $text = trim(preg_replace('/\s+/u', ' ', (string) ($value ?? '')) ?? '');
+                    if ($text !== '') {
+                        $first ??= (int) $col;
+                        $cells[] = $text;
+                    }
+                }
+                if ($cells !== []) {
+                    $rows[] = [$first, implode(', ', $cells)];
+                }
+            }
+            if ($rows === []) {
+                continue;
+            }
+            // The left-most column anything starts in is the margin, wherever on the sheet the plan was typed.
+            $margin = min(array_column($rows, 0));
+            if ($many) {
+                $lines[] = trim((string) $sheet->getTitle()) . ':';
+            }
+            foreach ($rows as [$col, $text]) {
+                $lines[] = str_repeat('  ', min(4, $col - $margin) + ($many ? 1 : 0)) . $text;
+            }
+        }
+        $book->disconnectWorksheets();
+
+        return rtrim(mb_substr(implode("\n", $lines), 0, 8000));
     }
 
     /** Ask the assistant now, for one kind. */

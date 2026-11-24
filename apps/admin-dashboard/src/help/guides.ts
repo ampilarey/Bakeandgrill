@@ -1440,7 +1440,8 @@ export const GUIDES: Guide[] = [
     steps: [
       'Open Integrations → Suggestions and find the New sections card.',
       'Tap Your plan for the menu. Type or paste the sections you want, one a line, with sub-sections and dishes indented under them.',
-      'Or tap Upload a file and pick a photo, a scan, a PDF or a text file of your plan. It is read into the box. Check it and correct it.',
+      'Or tap Upload a file and pick an Excel sheet, a PDF, a photo, a scan or a text file of your plan. It is read into the box. Check it and correct it.',
+      'In Excel, put sections in the first column, sub-sections in the next column and dishes in the one after. Each column further right is read as sitting under the row above.',
       'Tap Save plan, then Look now. The suggestions follow your plan.',
       'For doubles, go to the Dishes that look alike card and tap Look now. Each row shows the two dishes with their section and price.',
       'Open Menu Items, fix or remove the double yourself, then tick the row and tap Dismiss.',
@@ -1452,7 +1453,7 @@ export const GUIDES: Guide[] = [
       'Nothing is merged or removed for you. A dish that is switched off is looked at too, since an old copy left switched off is the usual double.',
       'A pair you dismiss is not pointed out again for two months.',
     ],
-    words: 'upload recommended menu plan category subcategory sections file photo pdf duplicate double same dish twice look alike merge assistant claude ai',
+    words: 'upload recommended menu plan category subcategory sections file excel xlsx spreadsheet photo pdf duplicate double same dish twice look alike merge assistant claude ai',
   },
   {
     id: 'assistant-photos',

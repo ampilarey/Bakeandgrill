@@ -1822,7 +1822,7 @@ rethink about that before suggestions" → "File upload" → "Both"). The New se
 the owner wants, typed or pasted, kept as the setting `ai_menu_plan` (`AiSuggestions::menuPlan()`, 8,000 characters) and
 handed to `newSections()` on every look, which then follows it and adds a section of its own only for dishes that fit
 nowhere in it; the look's note says the plan was followed. Upload a file (`POST …/menu-plan/read`) reads a text file as it
-is and a photo, scan or PDF through `AiTasks::readMenuPlan()`, and **only fills the box**: nothing is kept until Save plan.
+is, an Excel sheet with PhpSpreadsheet and no assistant (owner, 2026-11-24: "Couldn't upload the excel file"; `AiController::sheetAsPlan()`: a row a line, a row that starts in a later column indented under the one before, so sections in column A, sub-sections in B and dishes in C read as the plan), and a photo, scan or PDF through `AiTasks::readMenuPlan()`, and **only fills the box**: nothing is kept until Save plan. A file of a kind nothing reads is refused in words, by what it is and not only its name.
 Never a second place for the plan, and never a look that saves what it read.
 
 **Photos** (owner, 2026-11-24: "How about menu and other photos?" → "I need generate food photo too. And build all the

@@ -278,6 +278,25 @@ class AiSuggestionsTest extends TestCase
             ->assertStatus(422)->assertJsonPath('message', 'The assistant could not read a menu plan from this file.');
         $this->getJson('/api/admin/ai/menu-plan')->assertJsonPath('plan', "Snacks\n  Dumplings\n  Rolls");
 
+        // Owner, 2026-11-24: "Couldn't upload the excel file". A sheet is read here, with no assistant: a column further right sits under the row above.
+        $book = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
+        $book->getActiveSheet()->fromArray([['Snacks'], [null, 'Momo'], [null, null, 'Chicken Momo', 45], [null, 'Rolls'], [], ['Drinks'], [null, 'Fresh  juices']], null, 'B2');
+        $path = tempnam(sys_get_temp_dir(), 'plan') . '.xlsx';
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($book))->save($path);
+        $asks = self::$asks;
+        $this->post('/api/admin/ai/menu-plan/read', ['file' => new \Illuminate\Http\UploadedFile($path, 'My menu.xlsx', null, null, true)], ['Accept' => 'application/json'])
+            ->assertOk()->assertJsonPath('plan', "Snacks\n  Momo\n    Chicken Momo, 45\n  Rolls\nDrinks\n  Fresh juices");
+        $this->assertSame($asks, self::$asks);
+        @unlink($path);
+        // An empty sheet and a kind of file nothing reads both say so in words.
+        $empty = tempnam(sys_get_temp_dir(), 'plan') . '.xlsx';
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx(new \PhpOffice\PhpSpreadsheet\Spreadsheet))->save($empty);
+        $this->post('/api/admin/ai/menu-plan/read', ['file' => new \Illuminate\Http\UploadedFile($empty, 'empty.xlsx', null, null, true)], ['Accept' => 'application/json'])
+            ->assertStatus(422)->assertJsonPath('message', 'Nothing could be read from this Excel file. Check it has the sections typed in its cells, or save it as PDF and upload that.');
+        @unlink($empty);
+        $this->post('/api/admin/ai/menu-plan/read', ['file' => \Illuminate\Http\UploadedFile::fake()->create('plan.zip', 4, 'application/zip')], ['Accept' => 'application/json'])
+            ->assertStatus(422)->assertJsonPath('message', 'This kind of file cannot be read. Use an Excel file, a PDF, a photo or a text file.');
+
         // Emptied, the look decides by itself again. Someone who may not change the menu has no plan to read or write.
         $this->putJson('/api/admin/ai/menu-plan', ['plan' => ''])->assertOk()->assertJsonPath('plan', '');
         Sanctum::actingAs(User::factory()->create(['role_id' => Role::query()->firstOrCreate(['slug' => 'staff'], ['name' => 'Staff'])->id]), ['staff']);
