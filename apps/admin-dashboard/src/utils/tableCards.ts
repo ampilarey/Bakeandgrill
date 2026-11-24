@@ -14,6 +14,7 @@
  * - `data-cards` on the <table> while it is shown as cards.
  * - `data-label` on each body cell, from its column heading. A label a page
  *   set itself is kept; ours carry `data-label-auto`.
+ *   A heading cell may name its column itself with `data-card-label`.
  * - `data-cell` on cells that are not a plain value: `title` (the row's first
  *   words, across the top of the card), `media` (a picture with no words),
  *   `select` (a lone tick box, top right), `actions` (only buttons, along the
@@ -58,6 +59,10 @@ const ARROWS = /[\u2191-\u2195\u21C5\u25B2\u25B4\u25BC\u25BE]/g;
 
 /** What a heading cell calls its column: its words, else its accessible name. */
 function headingLabel(cell: HTMLTableCellElement): string {
+  // A heading that opens a menu inside itself says its own name: the menu's
+  // words are not the column's (the menu grid's GST became "GSTFilter GST…").
+  const own = cell.getAttribute('data-card-label');
+  if (own !== null) return own.trim();
   const t = text(cell).replace(ARROWS, '').trim();
   if (t) return t;
   const named = cell.getAttribute('aria-label')

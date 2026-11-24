@@ -833,6 +833,7 @@ function SortableHeader({
       className={column.key === 'name' ? 'qe-col-name' : undefined}
       style={{ ...head, ...sizing }}
       title={column.help}
+      data-card-label={column.label}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <button

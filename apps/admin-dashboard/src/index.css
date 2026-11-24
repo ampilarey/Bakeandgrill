@@ -6309,6 +6309,47 @@ table[data-cards][data-cards-head] > thead th:has(> input[type="checkbox"])::aft
 .qe-table thead .qe-col-name {
   z-index: 4;
 }
+/* As cards (a phone, or any width the columns do not fit; owner, 2026-11-24: Select all
+   lay over NAME, the headings wrapped as loose words and each row's tick box was cut off
+   at the left). The pinned first two columns are a table's idea: in a card nothing is
+   pinned, the headings are chips to sort and filter by, and the tick box sits top right. */
+table.qe-table[data-cards][data-cards-head] > thead > tr > th {
+  position: static !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: 32px;
+  padding: 0 10px !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 999px;
+  background: var(--color-surface) !important;
+  box-shadow: none;
+}
+.qe-table[data-cards] thead th.qe-col-select { gap: 2px; }
+.qe-table[data-cards] .qe-row > td { background: none; }
+.qe-table[data-cards] .qe-row.is-selected,
+.qe-table[data-cards] .qe-row--size { background: var(--color-bg); }
+.qe-table[data-cards] .qe-row--new { background: var(--color-warning-bg); }
+.qe-table[data-cards] .qe-row--size { padding-left: 26px; }
+.qe-table[data-cards] .qe-col-select { left: auto; }
+.qe-table[data-cards] .qe-col-name { box-shadow: none; }
+.qe-table[data-cards] tbody .qe-col-name { grid-column: 1 / -1; }
+.qe-table[data-cards] tr:has(> .qe-col-select input) > .qe-col-name { padding-right: 36px !important; }
+/* Two values side by side, so a dish is a short card and not seven rows of one box. */
+.qe-table[data-cards] tbody > tr.qe-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 700px) {
+  .qe-table[data-cards] tbody > tr.qe-row { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+/* A column's filter menu drops under the whole row of chips, from the left edge, so it
+   is never cut off at the side of a phone. */
+.qe-table[data-cards] > thead { position: relative; }
+.qe-table[data-cards] tbody > tr.qe-row > td:not(.qe-col-select) input[type="checkbox"] { margin: 2px 0 0 !important; }
+.qe-table[data-cards] tbody > tr.qe-row > td[data-cell-wide]:not(.qe-col-name) { grid-column: auto; }
+.qe-table[data-cards] tbody > tr.qe-row > td :is(input:not([type="checkbox"]), select) { max-width: 100%; }
+/* A lone tick box that is a value (Selling today, On menu) is not the row's own tick:
+   it stays in its place under its column's name, never stacked in the corner. */
+table.qe-table[data-cards] tbody > tr > td[data-cell="select"]:not(.qe-col-select) { position: static !important; }
+table.qe-table[data-cards] tbody > tr > td[data-cell="select"]:not(.qe-col-select)::before { display: block !important; }
 .qe-add-row {
   display: flex;
   flex-wrap: wrap;

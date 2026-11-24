@@ -118,6 +118,19 @@ describe('tables that do not fit become cards', () => {
     expect(table.tBodies[0].rows[0].cells[1]).toHaveAttribute('data-label', 'Price');
   });
 
+  // Owner, 2026-11-24: the menu's edit-in-table grid on a phone. A heading with its
+  // filter menu open named its column "GSTFilter GSTGST 8%3Only theseClearDone".
+  it('takes a heading\'s own name over the words of a menu open inside it', () => {
+    const { scroller, table } = mount(`
+      <table>
+        <thead><tr><th>Name</th><th data-card-label="GST"><button>GST ⇅</button><div>Filter GST<label>GST 8%</label><button>Done</button></div></th></tr></thead>
+        <tbody><tr><td>Bajiya</td><td>GST 8%</td></tr></tbody>
+      </table>`);
+    widths.set(scroller, { client: 300, scroll: 500 });
+    fitTable(table);
+    expect(table.tBodies[0].rows[0].cells[1]).toHaveAttribute('data-label', 'GST');
+  });
+
   it('keeps a label a page set itself, and leaves a table marked keep alone', () => {
     const { scroller, table } = mount(`
       <table>

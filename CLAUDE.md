@@ -116,6 +116,11 @@ time or an amount is `TD_NOWRAP`; a `display: grid` column that holds a table ne
 `minmax(0, 1fr)`. Details: § Stage 3f and § Stage 3h. `e2e/tests/phone-width.spec.ts`
 (the e2e job's phone step) loads every website page, every order app route in `main.tsx` and
 every admin page in `navConfig.ts` at 390 px and names each one that scrolls sideways.
+The menu's edit-in-table grid as cards (owner, 2026-11-24: on a phone Select all lay over NAME, the headings were loose
+words and each row's tick box was cut off): `.qe-table[data-cards]` in `index.css` drops the two pinned columns, draws
+every heading as a chip, puts two values side by side (more from 700px), keeps a value's tick box (Selling today, On
+menu) under its name and drops a column's filter menu under the row of chips. A heading that opens a menu inside itself
+names its column with `data-card-label`, which `tableCards.ts` reads before the cell's words.
 
 ## Mobile first
 
