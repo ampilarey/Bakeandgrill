@@ -361,7 +361,7 @@ class AiSuggestions
     {
         $maker = app(ImageMaker::class);
         if (!$maker->ready()) {
-            throw new AssistantUnavailable('Making pictures needs a Google key: add one under Purchasing → Settings → Reading bills.');
+            throw new AssistantUnavailable('Making pictures needs a Google key: add one under System → Integrations → API keys.');
         }
         $busy = $this->busy('photo_generate');
         $items = Item::query()->where('is_active', true)->where(fn ($q) => $q->whereNull('image_url')->orWhere('image_url', ''))

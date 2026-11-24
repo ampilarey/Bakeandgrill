@@ -12,7 +12,7 @@ use Throwable;
  * Which service reads supplier bills, and its key (owner, 2026-11-15: "add api key
  * entry to admin so I can switch between Claude, Google etc. if I want").
  *
- * Set on Purchasing → Settings → Reading bills. A key typed there is kept encrypted
+ * Set on System → Integrations → API keys. A key typed there is kept encrypted
  * under the scope `secret`, which the site settings list never returns, and is never
  * sent back to a screen: only its last four characters. A key in .env still works
  * and is used when none is typed. A new service is a row in PROVIDERS and a reader

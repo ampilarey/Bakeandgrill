@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Check, KeyRound } from 'lucide-react';
 import { getBillReader, saveBillReader, testBillReader, type BillReaderProvider, type BillReaderSettings } from '../../api/purchasing';
 import { Btn } from '../SharedUI';
 import { inputFont } from '../../utils/cssVars';
 
 /**
- * Purchasing → Settings → Reading bills (owner, 2026-11-15: "add api key entry to admin
- * so I can switch between Claude, Google etc. if I want").
+ * The services the site asks (Claude, Google) and their keys (owner, 2026-11-15: "add api
+ * key entry to admin so I can switch between Claude, Google etc. if I want").
+ *
+ * Owner, 2026-11-24 ("Before I added Claude and Google API to bill. How about make all
+ * API related in admin separately"): the keys are for more than bills now, so they live
+ * on System → Integrations → API keys (`part="keys"`). Purchasing → Settings keeps only
+ * what is about bills, the names they are made out to, and points there (`part="names"`).
+ * One place to type a key, never two.
  *
  * One block per service: its key (typed in, kept encrypted on the server and never shown
  * again, only its last four), its model, and Test, which sends a made-up bill. Use this
@@ -43,7 +50,7 @@ function ProviderBlock({ p, inUse, busy, onSave, onUse }: {
       <div className="br-block__head">
         <strong>{p.label}</strong>
         {inUse
-          ? <span className="br-chip"><Check size={13} aria-hidden />Reads the bills</span>
+          ? <span className="br-chip"><Check size={13} aria-hidden />In use</span>
           : <Btn small variant="secondary" disabled={busy || !p.has_key} onClick={onUse} data-testid={`bill-reader-use-${p.key}`}>Use this one</Btn>}
       </div>
       <p className="br-line" data-testid={`bill-reader-state-${p.key}`}>{keyLine(p)}</p>
@@ -80,7 +87,7 @@ function ProviderBlock({ p, inUse, busy, onSave, onUse }: {
         <Btn small variant="secondary" disabled={!p.has_key || testing || busy} onClick={() => void test()} data-testid={`bill-reader-test-${p.key}`}>
           {testing ? 'Testing…' : 'Test'}
         </Btn>
-        <span className="br-help">Sends a made-up bill to check the key. It can take up to a minute. Costs about one bill.</span>
+        <span className="br-help">Sends a made-up bill to check the key. It can take up to a minute. Costs about one bill read.</span>
       </div>
       {result && (
         <p className={`po-note${result.ok ? '' : ' po-note--warn'}`} role="status" data-testid={`bill-reader-result-${p.key}`}>{result.message}</p>
@@ -89,7 +96,9 @@ function ProviderBlock({ p, inUse, busy, onSave, onUse }: {
   );
 }
 
-export function BillReaderCard() {
+export const API_KEYS_PATH = '/integrations/keys';
+
+export function BillReaderCard({ part }: { part: 'keys' | 'names' }) {
   const [settings, setSettings] = useState<BillReaderSettings | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -109,16 +118,48 @@ export function BillReaderCard() {
   };
   const active = settings.providers.find((p) => p.key === settings.provider);
 
+  if (part === 'names') {
+    return (
+      <section className="br-card" data-testid="bill-reader-card">
+        <h3 className="br-title">7 · Reading bills</h3>
+        <p className="br-lead" data-testid="bill-reader-where">
+          {active?.has_key
+            ? <>Bills are read by {active.label}. </>
+            : <>Reading bills is off: there is no key yet. </>}
+          The services and their keys are in one place now:{' '}
+          <Link to={API_KEYS_PATH} className="pb-link">System → Integrations → API keys</Link>.
+        </p>
+        {error && <p className="po-note po-note--warn">{error}</p>}
+        <div className="br-names">
+          <label className="br-label" htmlFor="br-our-names">Bills are made out to</label>
+          <p className="br-help">
+            Your own names, with commas between them: the shop and the company it belongs to. A bill addressed to any of them is read as yours.
+          </p>
+          <div className="br-row">
+            <input
+              id="br-our-names" value={names} onChange={(e) => setNames(e.target.value)} spellCheck={false}
+              className="br-input" style={inputFont({})} data-testid="bill-reader-names"
+            />
+            <Btn small variant="secondary" disabled={busy || names.trim() === (settings.our_names ?? '')}
+              onClick={() => void save({ our_names: names.trim() }).then(() => undefined).catch(() => { /* shown above */ })}>
+              Save names
+            </Btn>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="br-card" data-testid="bill-reader-card">
-      <h3 className="br-title">7 · Reading bills</h3>
+    <section className="br-card" data-testid="api-keys-card">
+      <h3 className="br-title">Services and keys</h3>
       <p className="br-lead">
-        Purchase orders → Read bills sends each bill's picture to an outside service that reads it. Pick the service and give it a key.
-        A key is kept encrypted and is never shown again. The bill's picture goes to that service and nowhere else.
+        Reading supplier bills and the assistant&apos;s drafts and suggestions ask an outside service. Give each service you want its key, then pick the one to use.
+        A key is kept encrypted and is never shown again. Making pictures always uses Google.
       </p>
       {error && <p className="po-note po-note--warn">{error}</p>}
       {active && !active.has_key && (
-        <p className="po-note po-note--warn" data-testid="bill-reader-off">Reading bills is off: {active.label} has no key yet.</p>
+        <p className="po-note po-note--warn" data-testid="bill-reader-off">Nothing works yet: {active.label} has no key.</p>
       )}
       <div className="br-grid">
         {settings.providers.map((p) => (
@@ -128,23 +169,6 @@ export function BillReaderCard() {
             onUse={() => void save({ provider: p.key }).catch(() => { /* shown above */ })}
           />
         ))}
-      </div>
-
-      <div className="br-names">
-        <label className="br-label" htmlFor="br-our-names">Bills are made out to</label>
-        <p className="br-help">
-          Your own names, with commas between them: the shop and the company it belongs to. A bill addressed to any of them is read as yours.
-        </p>
-        <div className="br-row">
-          <input
-            id="br-our-names" value={names} onChange={(e) => setNames(e.target.value)} spellCheck={false}
-            className="br-input" style={inputFont({})} data-testid="bill-reader-names"
-          />
-          <Btn small variant="secondary" disabled={busy || names.trim() === (settings.our_names ?? '')}
-            onClick={() => void save({ our_names: names.trim() }).then(() => undefined).catch(() => { /* shown above */ })}>
-            Save names
-          </Btn>
-        </div>
       </div>
     </section>
   );

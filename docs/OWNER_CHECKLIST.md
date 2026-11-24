@@ -152,8 +152,8 @@ order for you to check. It needs a key from Claude or from Google, typed into th
 
 1. Get a key. Claude: console.anthropic.com → API keys (add a little credit first).
    Google: aistudio.google.com → Get API key.
-2. In the admin open Purchasing → Settings → **7 · Reading bills**, paste the key into that
-   service's box and tap Save key.
+2. In the admin open System → Integrations → **API keys**, paste the key into that
+   service's box and tap Save key. (Until 2026-11-24 this was under Purchasing → Settings.)
 3. Tap Test, then Use this one.
 
 You can keep a key for both and switch at any time. A bill costs a few cents to read.
@@ -167,7 +167,7 @@ Claude Max includes a monthly API credit. It is not automatic: you claim it.
 1. Sign in to the Claude Console and link a Console organization to your Max plan, as the
    Claude page "API credits for Max, Ultra, and Team plans" describes.
 2. In the Console, make an API key.
-3. In Admin: Purchasing → Settings → 7 · Reading bills. Pick Claude, paste the key, press
+3. In Admin: System → Integrations → API keys. Pick Claude, paste the key, press
    Save key, then Test. Never send the key to anyone in a chat.
 4. In Admin: System → Integrations → Assistant. Switch off any feature you do not want.
 
@@ -180,7 +180,7 @@ Claude cannot make pictures, so "Make photos for dishes with none" uses Google.
 
 1. Get a key at aistudio.google.com → Get API key. Making pictures is charged by Google,
    separately from your Claude credit; check its price there before switching it on.
-2. In Admin: Purchasing → Settings → 7 · Reading bills → Google Gemini → paste the key →
+2. In Admin: System → Integrations → API keys → Google Gemini → paste the key →
    Save key. You do not have to press Use this one: Claude can keep reading the bills.
 3. In Admin: System → Integrations → Assistant → switch on Make photos for dishes with none.
 4. System → Integrations → Suggestions → Made photos for dishes with none → Look now.

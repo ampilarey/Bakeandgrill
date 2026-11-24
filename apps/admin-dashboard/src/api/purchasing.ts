@@ -326,7 +326,7 @@ export async function downloadPurchaseBill(id: number): Promise<Blob> {
   return requestBlob(`/purchases/bills/${id}/file`, {});
 }
 
-/** Which service reads supplier bills (Purchasing → Settings → Reading bills). A key is never sent back. */
+/** Which service reads supplier bills (System → Integrations → API keys). A key is never sent back. */
 export type BillReaderProvider = {
   key: string;
   label: string;

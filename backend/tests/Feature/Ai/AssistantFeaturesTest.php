@@ -100,7 +100,7 @@ class AssistantFeaturesTest extends TestCase
         $this->assertFalse($status['ready']);
         $this->assertNotContains(true, $status['features']);
         $this->postJson('/api/admin/ai/dhivehi', ['text' => 'Hello'])->assertStatus(422)
-            ->assertJsonPath('message', 'The assistant is not set up yet: add a key under Purchasing → Settings → Reading bills.');
+            ->assertJsonPath('message', 'The assistant is not set up yet: add a key under System → Integrations → API keys.');
     }
 
     public function test_only_someone_who_may_change_settings_sets_the_switches(): void

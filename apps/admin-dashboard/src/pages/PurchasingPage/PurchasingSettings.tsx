@@ -322,8 +322,8 @@ export function PurchasingSettings({ canEdit }: { canEdit: boolean }) {
         </p>
       </Section>
 
-      {/* Which service reads supplier bills, and its key. Owner-level, like the rest. */}
-      {canEdit && <BillReaderCard />}
+      {/* Whose names bills carry; the services and keys are on Integrations → API keys. */}
+      {canEdit && <BillReaderCard part="names" />}
     </div>
   );
 }

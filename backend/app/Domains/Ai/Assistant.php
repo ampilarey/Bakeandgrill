@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Log;
  * (owner, 2026-11-24: "Build all. But add admin settings to on/off"). Supplier bills keep
  * their own reader (BillVision); everything else comes through ask(): instructions, the
  * thing to work on, and the shape the answer must take. The service, its key and its model
- * are the ones picked under Purchasing → Settings → Reading bills (BillReaderSettings),
+ * are the ones picked under System → Integrations → API keys (BillReaderSettings),
  * so there is one key and one place to type it. Which features may call is AiFeatures.
  * Tests bind a stand-in for this class.
  */
@@ -50,7 +50,7 @@ class Assistant
         $provider = $this->settings->provider();
         $key = $this->settings->key($provider);
         if ($key === '') {
-            throw new AssistantUnavailable('The assistant is not set up yet: add a key under Purchasing → Settings → Reading bills.');
+            throw new AssistantUnavailable('The assistant is not set up yet: add a key under System → Integrations → API keys.');
         }
         $model = $this->settings->model($provider);
 
@@ -92,7 +92,7 @@ class Assistant
         } catch (RateLimitException) {
             throw new AssistantUnavailable('The assistant is busy just now. Try again in a minute.');
         } catch (NotFoundException) {
-            throw new AssistantUnavailable("Claude does not know the model \"{$model}\". Clear the model box under Reading bills to use the usual one.");
+            throw new AssistantUnavailable("Claude does not know the model \"{$model}\". Clear the model box under API keys to use the usual one.");
         } catch (APIStatusException $e) {
             Log::warning('Assistant failed', ['status' => $e->status ?? null, 'error' => $e->getMessage()]);
             throw new AssistantUnavailable('The assistant did not answer. Try again in a minute.');
@@ -157,7 +157,7 @@ class Assistant
             throw new AssistantUnavailable(match (true) {
                 $status === 429 => 'The assistant is busy just now, or the Google account is out of quota. Try again in a minute.',
                 $status === 401, $status === 403 => 'The Google key was refused. Check the key and that the Gemini API is switched on for it.',
-                $status === 404 => "Google does not know the model \"{$model}\". Clear the model box under Reading bills to use the usual one.",
+                $status === 404 => "Google does not know the model \"{$model}\". Clear the model box under API keys to use the usual one.",
                 default => 'The assistant did not answer. Try again in a minute.',
             });
         }

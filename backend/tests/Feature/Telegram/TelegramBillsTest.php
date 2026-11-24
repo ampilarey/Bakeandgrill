@@ -301,6 +301,6 @@ class TelegramBillsTest extends TestCase
         $this->reader($this->answer(), enabled: false);
         $this->photo();
         $this->assertSame(0, PurchaseBill::count());
-        $this->assertStringContainsString('Purchasing → Settings → Reading bills', $this->lastText('5550001'));
+        $this->assertStringContainsString('System → Integrations → API keys', $this->lastText('5550001'));
     }
 }

@@ -42,6 +42,6 @@ describe('System → Integrations → Assistant', () => {
   it('says where the key goes when there is none', async () => {
     fetchAiSettings.mockResolvedValue(settings({ ready: false }));
     render(<MemoryRouter><AssistantPage /></MemoryRouter>);
-    expect(await screen.findByTestId('ai-no-key')).toHaveTextContent('Purchasing → Settings → Reading bills');
+    expect(await screen.findByTestId('ai-no-key')).toHaveTextContent('System → Integrations → API keys');
   });
 });

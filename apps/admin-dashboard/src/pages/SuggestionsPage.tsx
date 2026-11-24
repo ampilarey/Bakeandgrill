@@ -195,7 +195,7 @@ export default function SuggestionsPage() {
         <p style={{ margin: 0, fontSize: 14 }}>
           The assistant looks each night and lists what it would change. <strong>Nothing here has been changed.</strong> Tick what you agree with and press Approve; the rest can wait or be turned down.
         </p>
-        {!ready && <p data-testid="sg-no-key" style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>No key yet, so it cannot look. Add one under <Link to="/purchasing/settings">Purchasing → Settings → Reading bills</Link>.</p>}
+        {!ready && <p data-testid="sg-no-key" style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>No key yet, so it cannot look. Add one under <Link to="/integrations/keys">System → Integrations → API keys</Link>.</p>}
         {note && <p role="status" data-testid="sg-note" style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--color-success)' }}>{note}</p>}
       </Card>
       {kinds.length === 0 && <Card><p style={{ margin: 0, color: 'var(--color-text-muted)' }}>Your account has no suggestions to decide.</p></Card>}

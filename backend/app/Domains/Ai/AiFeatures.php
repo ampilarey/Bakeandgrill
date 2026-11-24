@@ -57,7 +57,7 @@ class AiFeatures
     public function mustBeOn(string $feature): void
     {
         if (!$this->assistant->ready()) {
-            throw new AssistantUnavailable('The assistant is not set up yet: add a key under Purchasing → Settings → Reading bills.');
+            throw new AssistantUnavailable('The assistant is not set up yet: add a key under System → Integrations → API keys.');
         }
         if (!$this->master() || !$this->switchedOn($feature)) {
             throw new AssistantUnavailable('This assistant feature is switched off (System → Integrations → Assistant).');

@@ -301,7 +301,7 @@ class BillReader
 
     /**
      * A made-up bill drawn here and sent to a service, to prove its key and model work
-     * (the Test button on Purchasing → Settings → Reading bills). Costs one small read.
+     * (the Test button on System → Integrations → API keys). Costs one small read.
      *
      * @return array{shop: string, lines: int, total: float}
      *

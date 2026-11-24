@@ -18,8 +18,8 @@ use Illuminate\Support\Facades\Log;
  * data. BillReader decides what to send and checks what comes back, and tests swap this
  * class out.
  *
- * Which service reads it is the owner's pick (BillReaderSettings, Purchasing → Settings →
- * Reading bills): Claude, read here through the official SDK, or Google Gemini
+ * Which service reads it is the owner's pick (BillReaderSettings, System → Integrations →
+ * API keys): Claude, read here through the official SDK, or Google Gemini
  * (GeminiVision). Both get the same instructions and must answer in the same SCHEMA.
  * With no key for the picked service `enabled()` is false and nothing is sent.
  */
@@ -100,7 +100,7 @@ class BillVision
         $provider ??= $this->settings->provider();
         $key = $this->settings->key($provider);
         if ($key === '') {
-            throw new BillUnreadable('Bill reading is not set up yet: add a key under Purchasing → Settings → Reading bills.');
+            throw new BillUnreadable('Bill reading is not set up yet: add a key under System → Integrations → API keys.');
         }
         $model = $this->settings->model($provider);
 

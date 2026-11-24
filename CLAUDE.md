@@ -1768,7 +1768,7 @@ scheduled command like this one, never by a worker that only a deploy starts. `S
 Owner, 2026-11-24 ("Is there any place where I can use Claude API", then "Build all. But add admin settings to on/off").
 Beside the bill reader, eight jobs ask Claude through one class, `App\Domains\Ai\Assistant::ask()` (instructions, the thing
 to work on, the JSON shape of the answer; Claude through the SDK or Google Gemini, whichever is picked), with the service,
-key and model of Purchasing → Settings → Reading bills (`BillReaderSettings`): **one key, typed in one place**. Each job is
+key and model of System → Integrations → API keys (`BillReaderSettings`): **one key, typed in one place**. Each job is
 a method of `AiTasks` with its own instructions, and **every answer is a draft or a suggestion put in a box**: nothing the
 assistant writes is saved, sent or printed until a person presses the screen's own button. `AiFeatures::FEATURES` is the
 list: `po_scans` (a scanned customer PO read on the server before the browser's reader is tried, `PoInvoiceModal`),
@@ -1827,6 +1827,16 @@ line on a waiting review's first photo (`reviews.photo_note`, "Check before show
 staff on Reviews and never to a customer; it decides nothing. Suggestions also lists Dishes with no photo, best sellers
 first (no assistant in that). A made picture is never put on the menu without a yes, and never over a real photo. A new
 thing done with a picture goes through `PhotoWork` and the queue. `AiPhotoSuggestionsTest`.
+
+**The keys have a tab of their own** (owner, 2026-11-24: "Where to setup api. Before i added claude and google api to bill.
+How about make all api related in admin separately"). System → Integrations → **API keys** (`/integrations/keys`,
+`ApiKeysPage`, `settings.update`): each service's key, model, Test and Use this one (`BillReaderCard part="keys"`, the
+same `GET` / `PUT /purchasing/bill-reader` routes; the picked service says In use, since it reads the bills and does
+the assistant's work) and the picture model (`ai_image_model`), which left the Assistant tab; Assistant is the switches
+only. Purchasing → Settings → 7 · Reading bills keeps what is about bills alone, Bills are made out to, and a line that
+links to the tab (`part="names"`). Every "no key yet" message, on screen, from the server and from the bot, says
+System → Integrations → API keys. A new outside service's key goes on that tab; never a key box on a domain page.
+`BillReaderCard.test.tsx`, `ApiKeysPage.test.tsx`.
 
 ## Help: short guides inside the admin
 

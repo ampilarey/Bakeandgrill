@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
  * Makes a picture from words (owner, 2026-11-24: "I need generate food photo too").
  * Claude reads pictures and cannot make one, so this asks Google's image model through
  * the same generateContent call the bill reader uses, with the Google key typed under
- * Purchasing → Settings → Reading bills (whichever service reads the bills). The model's
+ * System → Integrations → API keys (whichever service reads the bills). The model's
  * name can be typed on System → Integrations → Assistant, as Google renames these often.
  * A picture made here is only ever a suggestion: AiSuggestions keeps it for a person to
  * approve before it goes anywhere a customer sees. Tests bind a stand-in.
@@ -51,7 +51,7 @@ class ImageMaker
     {
         $key = $this->settings->key('google');
         if ($key === '') {
-            throw new AssistantUnavailable('Making pictures needs a Google key: add one under Purchasing → Settings → Reading bills.');
+            throw new AssistantUnavailable('Making pictures needs a Google key: add one under System → Integrations → API keys.');
         }
         $model = $this->model();
         $base = rtrim((string) config('services.gemini.base_url', 'https://generativelanguage.googleapis.com'), '/');

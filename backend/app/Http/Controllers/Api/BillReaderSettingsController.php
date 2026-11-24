@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * Purchasing → Settings → Reading bills: which service reads supplier bills (Claude or
+ * System → Integrations → API keys: which service reads supplier bills (Claude or
  * Google Gemini), its key and its model. A key goes in and never comes back out: the
  * screen is told only that there is one and its last four characters.
  */

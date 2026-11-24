@@ -13,6 +13,7 @@ const WebhooksPage = lazy(() => import('./WebhooksPage').then((m) => ({ default:
 const XeroPage = lazy(() => import('./XeroPage'));
 const CatalogFeedsPage = lazy(() => import('./CatalogFeedsPage'));
 const AssistantPage = lazy(() => import('./AssistantPage'));
+const ApiKeysPage = lazy(() => import('./ApiKeysPage'));
 const SuggestionsPage = lazy(() => import('./SuggestionsPage'));
 
 export const INTEGRATIONS_TABS: HubTab[] = [
@@ -24,6 +25,8 @@ export const INTEGRATIONS_TABS: HubTab[] = [
   // What the assistant proposed by itself, waiting for a yes: seen by whoever may change the menu, the inventory or the labels.
   { id: 'suggestions', label: 'Suggestions', permissions: ['menu.manage', 'inventory.manage', 'labels.manage', 'media.manage'], desc: 'Changes the assistant proposes, for you to approve', render: () => <SuggestionsPage /> },
   { id: 'assistant', label: 'Assistant', permissions: ['settings.update'], desc: 'Switch Claude\'s drafts and suggestions on or off', render: () => <AssistantPage /> },
+  // Owner, 2026-11-24: every outside service's key in one place, not under Purchasing.
+  { id: 'keys', label: 'API keys', permissions: ['settings.update'], desc: 'Claude and Google: keys, models and which one is in use', render: () => <ApiKeysPage /> },
 ];
 
 export const INTEGRATIONS_HUB_PERMISSIONS = hubPermissions(INTEGRATIONS_TABS);

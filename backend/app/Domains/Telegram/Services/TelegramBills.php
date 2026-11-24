@@ -61,7 +61,7 @@ class TelegramBills
         }
         $reader = app(BillReader::class);
         if (!$reader->enabled()) {
-            $this->commands->send($link, 'Reading bills is not set up yet. Add a key in Admin: Purchasing → Settings → Reading bills.');
+            $this->commands->send($link, 'Reading bills is not set up yet. Add a key in Admin: System → Integrations → API keys.');
 
             return;
         }
