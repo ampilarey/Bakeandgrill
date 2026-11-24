@@ -82,6 +82,123 @@ final class ItemSales
         ];
     }
 
+    /** The days the brief and the menu list's Sold column look back over. */
+    public const BRIEF_DAYS = 30;
+
+    /**
+     * The few figures the item's own pop-up shows (owner, 2026-11-24: "a brief
+     * summary of the item in admin each item details. Like total sold"): the
+     * last 30 days against the 30 before, all time, when it last sold and each
+     * size apart. The same sale rule as the full report, so the two agree.
+     *
+     * @return array<string, mixed>
+     */
+    public function brief(Item $item): array
+    {
+        $now = CarbonImmutable::now();
+        $to = $now->endOfDay();
+        $from = $now->subDays(self::BRIEF_DAYS - 1)->startOfDay();
+        $prevTo = $from->subDay()->endOfDay();
+        $prevFrom = $from->subDays(self::BRIEF_DAYS)->startOfDay();
+        $start = CarbonImmutable::create(2000, 1, 1);
+
+        $sum = function (CarbonImmutable $a, CarbonImmutable $b) use ($item): array {
+            $r = $this->base($item, $a, $b, [])
+                ->selectRaw('COALESCE(SUM(order_items.quantity), 0) as qty, COALESCE(SUM(order_items.total_price), 0) as sales, COUNT(DISTINCT orders.id) as orders, MIN(orders.created_at) as first_at, MAX(orders.created_at) as last_at')
+                ->first();
+
+            return [
+                'qty' => round((float) ($r->qty ?? 0), 2),
+                'sales' => round((float) ($r->sales ?? 0), 2),
+                'orders' => (int) ($r->orders ?? 0),
+                'first_at' => $r->first_at ?? null,
+                'last_at' => $r->last_at ?? null,
+            ];
+        };
+        $recent = $sum($from, $to);
+        $before = $sum($prevFrom, $prevTo);
+        $ever = $sum($start, $to);
+
+        // Each size is its own product: 30 days beside all time, biggest first.
+        $sizes = [];
+        foreach ($this->split($item, $start, $to, [], 'size') as $r) {
+            $sizes[$r['key']] = ['key' => $r['key'], 'label' => $r['label'], 'qty' => 0.0, 'all_qty' => $r['qty']];
+        }
+        foreach ($this->split($item, $from, $to, [], 'size') as $r) {
+            $sizes[$r['key']] ??= ['key' => $r['key'], 'label' => $r['label'], 'qty' => 0.0, 'all_qty' => 0.0];
+            $sizes[$r['key']]['qty'] = $r['qty'];
+        }
+        $sizes = array_values($sizes);
+        usort($sizes, fn ($a, $b) => [$b['qty'], $b['all_qty']] <=> [$a['qty'], $a['all_qty']]);
+        // One row that is only "No size" says nothing the totals have not.
+        if (count($sizes) === 1 && $sizes[0]['key'] === 'none') {
+            $sizes = [];
+        }
+
+        $day = fn (?string $at) => $at ? CarbonImmutable::parse($at)->toDateString() : null;
+        $reviews = $item->reviews()->where('status', 'approved');
+
+        return [
+            'item_id' => $item->id,
+            'days' => self::BRIEF_DAYS,
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'recent' => ['qty' => $recent['qty'], 'sales' => $recent['sales'], 'orders' => $recent['orders']],
+            'before' => ['qty' => $before['qty'], 'sales' => $before['sales'], 'orders' => $before['orders']],
+            'all_time' => ['qty' => $ever['qty'], 'sales' => $ever['sales'], 'orders' => $ever['orders']],
+            'first_sold' => $day($ever['first_at']),
+            'last_sold' => $day($ever['last_at']),
+            'today' => $now->toDateString(),
+            'sizes' => $sizes,
+            'reviews' => [
+                'count' => (clone $reviews)->count(),
+                'rating' => ($avg = (clone $reviews)->avg('rating')) !== null ? round((float) $avg, 1) : null,
+            ],
+            'questions_waiting' => \App\Models\ItemQuestion::query()->where('item_id', $item->id)->where('status', \App\Models\ItemQuestion::PENDING)->count(),
+            'alerts_waiting' => \App\Domains\Menu\Services\ItemAlerts::waiting((int) $item->id),
+        ];
+    }
+
+    /**
+     * How many of each item sold in the last 30 days, for the menu list's Sold
+     * column. One query for the page; an item that sold none is not in the map.
+     *
+     * @param list<int> $itemIds
+     * @return array<int, float>
+     */
+    public static function soldByItem(array $itemIds): array
+    {
+        if ($itemIds === []) {
+            return [];
+        }
+
+        return self::recentLines()
+            ->whereIn('order_items.item_id', $itemIds)
+            ->groupBy('order_items.item_id')
+            ->selectRaw('order_items.item_id as item_id, SUM(order_items.quantity) as qty')
+            ->pluck('qty', 'item_id')
+            ->map(fn ($q) => round((float) $q, 2))
+            ->all();
+    }
+
+    /** The same count as a sub-query on `items`, to sort the menu list by it. */
+    public static function soldSubquery(): Builder
+    {
+        return self::recentLines()
+            ->whereColumn('order_items.item_id', 'items.id')
+            ->selectRaw('COALESCE(SUM(order_items.quantity), 0)');
+    }
+
+    private static function recentLines(): Builder
+    {
+        return DB::table('order_items')
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->whereNull('order_items.deleted_at')
+            ->where('orders.created_at', '>=', CarbonImmutable::now()->subDays(self::BRIEF_DAYS - 1)->startOfDay())
+            ->where(ReportMoneySql::sale('orders.'))
+            ->where(fn ($w) => $w->whereNull('orders.type')->orWhere('orders.type', '!=', 'gift_card'));
+    }
+
     private function base(Item $item, CarbonImmutable $from, CarbonImmutable $to, array $f): Builder
     {
         $q = DB::table('order_items')

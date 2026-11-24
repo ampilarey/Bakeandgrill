@@ -378,6 +378,12 @@ class ReportsController extends Controller
         ) + ['first_day' => \App\Support\FirstDay::orders()]);
     }
 
+    /** The few figures the item's own pop-up shows (2026-11-24). */
+    public function itemBrief(int $item, \App\Domains\Reporting\Services\ItemSales $report)
+    {
+        return response()->json($report->brief(\App\Models\Item::query()->findOrFail($item)));
+    }
+
     /** Every item sold in a period, optionally between two times of day and in one category (2026-10-27). */
     public function itemsSold(Request $request, \App\Domains\Reporting\Services\ItemsSold $report)
     {

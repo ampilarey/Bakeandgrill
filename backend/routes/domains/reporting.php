@@ -54,6 +54,7 @@ if (routes_domain_section_is_or_unset('reporting', 'reports', 'reports') && !rou
         Route::get('/reports/sales-trend', [ReportsController::class, 'salesTrend']);
         Route::get('/reports/items-sold', [ReportsController::class, 'itemsSold']);
         Route::get('/reports/items-sold/{item}', [ReportsController::class, 'itemSales'])->whereNumber('item');
+        Route::get('/reports/items-sold/{item}/brief', [ReportsController::class, 'itemBrief'])->whereNumber('item');
         Route::get('/reports/ticket-times', [ReportsController::class, 'ticketTimes']);
         Route::get('/reports/first-day', [ReportsController::class, 'firstDay']);
         Route::get('/reports/station-performance', [ReportsController::class, 'stationPerformance']);

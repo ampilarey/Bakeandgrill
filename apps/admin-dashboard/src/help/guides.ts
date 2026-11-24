@@ -415,6 +415,23 @@ export const GUIDES: Guide[] = [
     words: 'best seller popular hide water',
   },
   {
+    id: 'menu-item-sales',
+    page: '/menu',
+    title: 'See how a dish is selling',
+    steps: [
+      'Open Menu Items. The "Sold (30 days)" column shows how many of each dish sold in the last 30 days.',
+      'Tap the column\'s heading to put the best sellers first. Tap again for the slowest. On a phone, pick "Best selling (30 days)" or "Slowest selling (30 days)" in the sort box.',
+      'Open a dish. The box at the top shows what sold in the last 30 days and in all, when it last sold, and each size.',
+      'Tap "See full sales" for the charts by hour, day and month.',
+    ],
+    notes: [
+      'Only someone who may open the reports sees these figures.',
+      'Every paid order counts. Cancelled orders do not.',
+      'In "Edit in table", add the column from the Columns button.',
+    ],
+    words: 'sold total sales summary slow best selling how many item',
+  },
+  {
     id: 'menu-coming-soon',
     page: '/menu',
     title: 'Announce a dish before it goes on sale',

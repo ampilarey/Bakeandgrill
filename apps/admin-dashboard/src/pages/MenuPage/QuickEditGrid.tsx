@@ -945,6 +945,14 @@ function ItemCell({
     );
   }
 
+  if (column.key === 'sold_30d') {
+    return (
+      <td style={{ ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-secondary)' }} data-testid={`sold-${item.id}`}>
+        {item.sold_30d == null ? '—' : item.sold_30d.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+      </td>
+    );
+  }
+
   if (column.key === 'consumption_factor') {
     return <td style={{ ...cell, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 12 }}>—</td>;
   }

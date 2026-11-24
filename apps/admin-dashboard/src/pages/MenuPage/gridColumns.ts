@@ -104,6 +104,9 @@ export const GRID_COLUMNS: GridColumn[] = [
     const cost = numOf(i.effective_cost ?? i.cost);
     return price > 0 && Number.isFinite(cost) ? ((price - cost) / price) * 100 : Number.NEGATIVE_INFINITY;
   } },
+  // Read-only: sold in the last 30 days, every size together (owner, 2026-11-24).
+  // Sent only to someone who may open the reports; a dash otherwise.
+  { key: 'sold_30d', label: 'Sold (30 days)', group: 'Money', kind: 'text', width: 110, defaultOn: false, help: 'How many sold in the last 30 days, every size together', sortValue: (i) => numOf(i.sold_30d ?? 0) },
   { key: 'sku', label: 'SKU', group: 'Basics', kind: 'text', field: 'sku', variantField: 'sku', minWidth: 110, defaultOn: true, sortValue: (i) => str(i.sku) },
   // A size can carry its own barcode — a large bottle scans differently from a
   // small one — so the column reaches sizes as well as dishes.

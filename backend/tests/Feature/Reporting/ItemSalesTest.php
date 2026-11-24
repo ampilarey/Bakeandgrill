@@ -106,4 +106,78 @@ class ItemSalesTest extends TestCase
         $this->actingAs($this->makeKitchenStaff());
         $this->getJson("/api/reports/items-sold/{$this->nescafe->id}")->assertForbidden();
     }
+
+    /** Owner, 2026-11-24: "a brief summary of the item in admin each item details. Like total sold". */
+    public function test_the_brief_for_the_items_own_pop_up(): void
+    {
+        // Sold long ago, a cancelled one, and one paid but still in the kitchen.
+        $this->line('2026-06-01 10:00:00', $this->black, 5);
+        $this->line('2026-09-20 10:00:00', $this->black, 2);
+        $gone = Order::factory()->create(['status' => 'cancelled', 'type' => 'dine_in', 'created_at' => '2026-10-27 11:00:00']);
+        OrderItem::create(['order_id' => $gone->id, 'item_id' => $this->nescafe->id, 'item_name' => 'Nescafé', 'variant_id' => $this->milk->id, 'variant_name' => 'Milk', 'quantity' => 9, 'unit_price' => 15, 'total_price' => 135]);
+        $paid = Order::factory()->create(['status' => 'ready', 'payment_status' => 'paid', 'type' => 'online_pickup', 'created_at' => '2026-10-27 12:00:00']);
+        OrderItem::create(['order_id' => $paid->id, 'item_id' => $this->nescafe->id, 'item_name' => 'Nescafé', 'variant_id' => $this->milk->id, 'variant_name' => 'Milk', 'quantity' => 1, 'unit_price' => 15, 'total_price' => 15]);
+
+        $res = $this->getJson("/api/reports/items-sold/{$this->nescafe->id}/brief")->assertOk();
+
+        $res->assertJsonPath('days', 30)
+            ->assertJsonPath('from', '2026-09-28')
+            ->assertJsonPath('recent.qty', 9)
+            ->assertJsonPath('recent.sales', 130)
+            ->assertJsonPath('recent.orders', 6)
+            ->assertJsonPath('before.qty', 2)
+            ->assertJsonPath('all_time.qty', 16)
+            ->assertJsonPath('first_sold', '2026-06-01')
+            ->assertJsonPath('last_sold', '2026-10-27')
+            ->assertJsonPath('reviews.count', 0)
+            ->assertJsonPath('questions_waiting', 0);
+
+        $sizes = collect($res->json('sizes'))->keyBy('label');
+        $this->assertSame('Milk', $res->json('sizes.0.label'), 'the size that sold most lately comes first');
+        $this->assertSame(8.0, (float) $sizes['Milk']['qty']);
+        $this->assertSame(8.0, (float) $sizes['Milk']['all_qty']);
+        $this->assertSame(1.0, (float) $sizes['Black (PKT)']['qty']);
+        $this->assertSame(8.0, (float) $sizes['Black (PKT)']['all_qty']);
+    }
+
+    public function test_a_dish_never_sold_and_who_may_ask(): void
+    {
+        $tea = Item::create(['name' => 'Tea', 'base_price' => 8, 'is_active' => true, 'is_available' => true]);
+        $this->getJson("/api/reports/items-sold/{$tea->id}/brief")->assertOk()
+            ->assertJsonPath('all_time.qty', 0)
+            ->assertJsonPath('last_sold', null)
+            ->assertJsonPath('sizes', []);
+        $this->getJson('/api/reports/items-sold/999999/brief')->assertNotFound();
+        $this->actingAs($this->makeKitchenStaff());
+        $this->getJson("/api/reports/items-sold/{$this->nescafe->id}/brief")->assertForbidden();
+    }
+
+    public function test_the_menu_list_carries_sold_and_sorts_by_it(): void
+    {
+        $tea = Item::create(['name' => 'Tea', 'base_price' => 8, 'is_active' => true, 'is_available' => true]);
+        $bun = Item::create(['name' => 'Bun', 'base_price' => 5, 'is_active' => true, 'is_available' => true]);
+        $order = Order::factory()->create(['status' => 'completed', 'type' => 'dine_in', 'created_at' => '2026-10-26 10:00:00']);
+        OrderItem::create(['order_id' => $order->id, 'item_id' => $bun->id, 'item_name' => 'Bun', 'quantity' => 2, 'unit_price' => 5, 'total_price' => 10]);
+        // Too long ago to count.
+        $old = Order::factory()->create(['status' => 'completed', 'type' => 'dine_in', 'created_at' => '2026-08-01 10:00:00']);
+        OrderItem::create(['order_id' => $old->id, 'item_id' => $tea->id, 'item_name' => 'Tea', 'quantity' => 50, 'unit_price' => 8, 'total_price' => 400]);
+
+        \Laravel\Sanctum\Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $mine = fn ($res) => collect($res->json('data'))->whereIn('id', [$this->nescafe->id, $tea->id, $bun->id])->values();
+
+        $best = $mine($this->getJson('/api/items?sort=sold_desc&per_page=100')->assertOk());
+        $this->assertSame(['Nescafé', 'Bun', 'Tea'], $best->pluck('name')->all());
+        $this->assertSame([8.0, 2.0, 0.0], $best->pluck('sold_30d')->map(fn ($v) => (float) $v)->all());
+
+        $slow = $mine($this->getJson('/api/items?sort=sold&per_page=100')->assertOk());
+        $this->assertSame(['Tea', 'Bun', 'Nescafé'], $slow->pluck('name')->all());
+
+        // Without the reports, no figure and the menu's own order.
+        \Laravel\Sanctum\Sanctum::actingAs($this->makeKitchenStaff(), ['staff']);
+        $plain = $this->getJson('/api/items?sort=sold_desc&per_page=100')->assertOk();
+        $this->assertArrayNotHasKey('sold_30d', $plain->json('data.0'));
+        // And customers never see it.
+        $this->app['auth']->forgetGuards();
+        $this->assertArrayNotHasKey('sold_30d', $this->getJson('/api/items?view=customer')->assertOk()->json('data.0'));
+    }
 }

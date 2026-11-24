@@ -2207,6 +2207,28 @@ export async function fetchItemSales(itemId: number, q: Omit<ItemsSoldQuery, 'ca
   return req(`/reports/items-sold/${itemId}?${qs.toString()}`);
 }
 
+/** The few figures the item's own pop-up shows (owner, 2026-11-24). */
+export type ItemBrief = {
+  item_id: number;
+  days: number;
+  from: string;
+  to: string;
+  today: string;
+  recent: { qty: number; sales: number; orders: number };
+  before: { qty: number; sales: number; orders: number };
+  all_time: { qty: number; sales: number; orders: number };
+  first_sold: string | null;
+  last_sold: string | null;
+  sizes: Array<{ key: string; label: string; qty: number; all_qty: number }>;
+  reviews: { count: number; rating: number | null };
+  questions_waiting: number;
+  alerts_waiting: number;
+};
+
+export async function fetchItemBrief(itemId: number): Promise<ItemBrief> {
+  return req(`/reports/items-sold/${itemId}/brief`);
+}
+
 // ── Ticket times (owner, 2026-11-07): how long tickets take, stage by stage ──
 export type TicketStageKey = 'to_kitchen' | 'cooking' | 'handover' | 'to_pay' | 'total';
 export type TicketStageStats = { count: number; avg: number | null; median: number | null; p90: number | null; max: number | null };

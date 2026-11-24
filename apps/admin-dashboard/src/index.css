@@ -7435,3 +7435,40 @@ table.is-table.is-table { display: none; }
 .sg-tag { padding: 2px 8px; border-radius: 999px; font-size: 12px; background: var(--color-tone-brown-bg); color: var(--color-tone-brown-text); border: 1px solid var(--color-tone-brown-border); }
 .ai-model { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
 .ai-model input { flex: 1 1 200px; min-width: 0; min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); }
+
+/* A dish's sales on top of its own pop-up (owner, 2026-11-24). Phone first:
+   the three figures share the row and fold when they do not fit. Not under a
+   page class: a pop-up renders outside the page. */
+.iss {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-light);
+  border-radius: 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+.iss--wait { color: var(--color-text-muted); font-size: 12px; }
+.iss-none { margin: 0; color: var(--color-text-muted); }
+.iss-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr)); gap: 8px 14px; }
+.iss-tile { display: flex; flex-direction: column; min-width: 0; }
+.iss-label { font-size: 11px; color: var(--color-text-muted); }
+.iss-value { font-size: 20px; line-height: 1.2; color: var(--color-text); font-variant-numeric: tabular-nums; }
+.iss-value--words { font-size: 15px; line-height: 1.6; }
+.iss-sub { font-size: 12px; }
+.iss-trend { margin: 8px 0 0; font-size: 12px; }
+.iss-trend.is-up { color: var(--color-success); }
+.iss-trend.is-down { color: var(--color-danger); }
+.iss-sizes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.iss-size {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--color-tone-brown-bg);
+  color: var(--color-tone-brown-text);
+  border: 1px solid var(--color-tone-brown-border);
+}
+.iss-size-all { opacity: 0.75; }
+.iss-extras { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 12px; }
+.iss-extras a, .iss-more { color: var(--color-primary); font-weight: 600; text-decoration: none; }
+.iss-more { display: inline-block; margin-top: 8px; font-size: 12px; }

@@ -89,4 +89,45 @@ describe('MenuItemTable sort', () => {
     fireEvent.click(screen.getByTestId('sort-th-category'));
     expect(onSortChange).toHaveBeenLastCalledWith('menu');
   });
+  /** Owner, 2026-11-24: how many of each dish sold, on the list, to find the slow ones. */
+  it('shows Sold (30 days) and sorts by it when the server sends the figure', () => {
+    setViewportWidth(1280);
+    const dish = (id: number, name: string, sold?: number) => ({ id, name, base_price: 10, is_available: true, is_active: true, category_id: 1, category: { id: 1, name: 'Snacks' }, tax_code: 'standard_8', sort_order: 0, ...(sold === undefined ? {} : { sold_30d: sold }) } as never);
+    const base = {
+      categories: [{ id: 1, name: 'Snacks', is_active: true }],
+      loading: false, canManage: true, canSeeCost: false, menuGroups: [], activeMenuGroupIds: [1], kitchenSaving: false,
+      selectedCat: null, search: '', cateringOnly: false, page: 1, lastPage: 1, perPage: 25,
+      onSelectedCatChange: vi.fn(), onSearchChange: vi.fn(), onCateringOnlyChange: vi.fn(), onPerPageChange: vi.fn(),
+      onPageChange: vi.fn(), onToggleKitchenGroup: vi.fn(), onSaveKitchenDuty: vi.fn(), onToggleAvail: vi.fn(),
+      onSnoozeItem: vi.fn(), onEditItem: vi.fn(), onDeleteItem: vi.fn(), onBarcodeLabel: vi.fn(), onViewRecipe: vi.fn(),
+    };
+    const onSortChange = vi.fn();
+
+    // Someone without the reports gets no figure: no column, no sort.
+    const plain = render(<MenuItemTable {...base} items={[dish(1, 'Bajiya')]} sort="menu" onSortChange={onSortChange} />);
+    expect(screen.queryByTestId('sort-th-sold_desc')).toBeNull();
+    expect(screen.queryByText('Best selling (30 days)')).toBeNull();
+    plain.unmount();
+
+    const { rerender, unmount } = render(<MenuItemTable {...base} items={[dish(1, 'Bajiya', 1240.5), dish(2, 'Water', 0)]} sort="menu" onSortChange={onSortChange} />);
+    expect(screen.getByTestId('menu-item-sold-1')).toHaveTextContent('1,240.5');
+    expect(screen.getByTestId('menu-item-sold-2')).toHaveTextContent('0');
+    expect(screen.getByText('Best selling (30 days)')).toBeInTheDocument();
+    expect(screen.getByText('Slowest selling (30 days)')).toBeInTheDocument();
+
+    // The first tap puts the best sellers on top, the second the slow ones.
+    fireEvent.click(screen.getByTestId('sort-th-sold_desc'));
+    expect(onSortChange).toHaveBeenLastCalledWith('sold_desc');
+    rerender(<MenuItemTable {...base} items={[dish(1, 'Bajiya', 1240.5)]} sort="sold_desc" onSortChange={onSortChange} />);
+    expect(screen.getByRole('columnheader', { name: /^Sold/ })).toHaveAttribute('aria-sort', 'descending');
+    fireEvent.click(screen.getByTestId('sort-th-sold_desc'));
+    expect(onSortChange).toHaveBeenLastCalledWith('sold');
+
+    // A phone's card says it in words.
+    unmount();
+    setViewportWidth(390);
+    render(<MenuItemTable {...base} items={[dish(1, 'Bajiya', 12), dish(2, 'Water', 0)]} sort="menu" onSortChange={onSortChange} />);
+    expect(screen.getByTestId('menu-item-sold-1')).toHaveTextContent('Sold 12 in 30 days');
+    expect(screen.getByTestId('menu-item-sold-2')).toHaveTextContent('None sold in 30 days');
+  });
 });

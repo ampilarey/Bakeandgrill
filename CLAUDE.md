@@ -2016,6 +2016,17 @@ week or month (the dashboard's `TrendChart`); by hour of the day and by day of t
 the weekday × hour grid (`HeatGrid`, both in `components/charts/`); and by size, order type and staff;
 every size or one, count or money, its own period chips. `ItemSalesTest`, `ItemSalesView.test.tsx`.
 
+**A dish's sales on its own pop-up and on the menu list** (owner, 2026-11-24: "a brief summary of the item in admin each item
+details. Like total sold" → "Build both"). `ItemSalesStrip` sits on top of `MenuItemEditorModal` for a saved dish: sold and sales
+for the last 30 days and all time, last sold, up or down on the 30 days before, each size apart, then reviews, questions to answer
+and people waiting, and See full sales (the item's page above, `item` in the address). `GET /api/reports/items-sold/{item}/brief`
+(`ItemSales::brief()`, `reports.view`, built on the report's own `base()` so the two agree; asked after the pop-up opens, left out
+when it fails). The admin items list carries `sold_30d` (`ItemSales::soldByItem()`, one query a page) and sorts by `sold_desc` /
+`sold` (`soldSubquery()`), both only for someone with `reports.view`; `MenuItemTable` shows the Sold (30 days) column, its two
+sort choices and a line on the phone's card whenever the figure came, and the edit-in-table grid has it as a read-only column
+(`sold_30d`, off by default). Never to the till or a customer, and no profit here: not every dish has a recipe cost.
+`ItemSalesTest`, `ItemSalesStrip.test.tsx`, `MenuItemTable.sort.test.tsx`.
+
 ## Ticket times
 
 Owner, 2026-11-07 ("Will the site record time for each ticket and can admin view that?" → "Both").

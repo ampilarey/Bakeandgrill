@@ -13,6 +13,7 @@ import {
 import { PhotosTab } from './PhotosTab';
 import { ItemLabelTab } from '../../components/labels/ItemLabelTab';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
+import { ItemSalesStrip } from './ItemSalesStrip';
 import { TagChipField, parseTagsCsv, tagsToCsv } from './TagChipField';
 import { ItemSnoozeControls, type ItemSnoozeControlsHandle } from './ItemSnoozeControls';
 import type { SnoozeUntil } from '../../api';
@@ -871,6 +872,9 @@ export function MenuItemEditorModal({
     // max-width:100vw as a bottom sheet, so this only lets it grow on a screen
     // that has the room.
     <Modal title={title} onClose={onClose} maxWidth={1040} footer={footer}>
+
+      {/* Owner, 2026-11-24: how the dish sells, before anything is changed. */}
+      {itemId != null && can('reports.view') && <ItemSalesStrip itemId={itemId} />}
 
       {/* Owner, 2026-10-01: every picture of the item lives on one tab, each
           labelled with where it shows. A new item gets the tab too, for its

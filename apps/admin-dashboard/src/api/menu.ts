@@ -154,6 +154,8 @@ export type MenuItem = {
   launch_at?: string | null;
   /** Customers waiting to hear it is back or on sale. */
   alerts_waiting?: number;
+  /** How many sold in the last 30 days, every size together; only for someone who may open the reports. */
+  sold_30d?: number;
   combo_discount_pct?: number | null;
   combo_items?: Array<{
     item_id: number;
@@ -376,7 +378,7 @@ export async function deleteCategory(id: number): Promise<void> {
 }
 
 /** Admin list order; the server falls back to the menu order for anything else. */
-export type AdminItemSort = 'menu' | 'name' | 'name_desc' | 'price' | 'price_desc' | 'category' | 'updated' | 'unavailable';
+export type AdminItemSort = 'menu' | 'name' | 'name_desc' | 'price' | 'price_desc' | 'category' | 'updated' | 'unavailable' | 'sold' | 'sold_desc';
 
 export async function fetchAdminItems(params?: {
   category_id?: number;

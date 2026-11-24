@@ -60,6 +60,14 @@ const SORT_OPTIONS: Array<{ value: AdminItemSort; label: string }> = [
   { value: 'unavailable', label: 'Unavailable first' },
 ];
 
+// Offered only to someone the server sends the figure to (reports.view).
+const SOLD_SORTS: Array<{ value: AdminItemSort; label: string }> = [
+  { value: 'sold_desc', label: 'Best selling (30 days)' },
+  { value: 'sold', label: 'Slowest selling (30 days)' },
+];
+
+const soldWords = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+
 function isCateringItem(item: MenuItem): boolean {
   return !!item.is_catering
     || !!item.channel_availabilities?.some((r) => r.channel === 'catering' && r.is_enabled);
@@ -280,18 +288,25 @@ export function MenuItemTable({
   // Owner, 2026-09-03: "when I click Item, it changes from A–Z to Z–A".
   // A header click steps asc → desc → back to the menu order; columns with
   // one direction step asc → menu order.
+  // Sold in the last 30 days (owner, 2026-11-24): there when the server sent it.
+  const showSold = items.some((i) => i.sold_30d != null) || sort === 'sold' || sort === 'sold_desc';
+  const sortOptions = showSold ? [...SORT_OPTIONS, ...SOLD_SORTS] : SORT_OPTIONS;
+
   const sortableTh = (
     label: string,
     asc: AdminItemSort,
     desc: AdminItemSort | null,
     className?: string,
     title?: string,
+    /** The first tap sorts biggest first (Sold): `asc` is then the order that counts down. */
+    downFirst = false,
   ) => {
     const state = sort === asc ? 'ascending' : desc && sort === desc ? 'descending' : 'none';
     const next: AdminItemSort = state === 'none' ? asc : state === 'ascending' && desc ? desc : 'menu';
-    const arrow = state === 'ascending' ? '↑' : state === 'descending' ? '↓' : '↕';
+    const shown = downFirst && state !== 'none' ? (state === 'ascending' ? 'descending' : 'ascending') : state;
+    const arrow = shown === 'ascending' ? '↑' : shown === 'descending' ? '↓' : '↕';
     return (
-      <th scope="col" className={className} aria-sort={state} title={title}>
+      <th scope="col" className={className} aria-sort={shown} title={title}>
         <button
           type="button"
           className={`menu-item-sort-th${state !== 'none' ? ' is-on' : ''}`}
@@ -360,7 +375,7 @@ export function MenuItemTable({
           onChange={(e) => onSortChange(e.target.value as AdminItemSort)}
           aria-label="Sort items"
         >
-          {SORT_OPTIONS.map((o) => (
+          {sortOptions.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
@@ -396,6 +411,11 @@ export function MenuItemTable({
                         {categoryLabel(item, categories)}
                         {item.sku && <span className="menu-item-sku"> · {item.sku}</span>}
                       </div>
+                      {showSold && (
+                        <div className="menu-item-meta" data-testid={`menu-item-sold-${item.id}`}>
+                          {(item.sold_30d ?? 0) > 0 ? `Sold ${soldWords(item.sold_30d ?? 0)} in 30 days` : 'None sold in 30 days'}
+                        </div>
+                      )}
                     </div>
                     <div className="menu-item-price">{price(item)}</div>
                   </div>
@@ -421,6 +441,7 @@ export function MenuItemTable({
                       {sortableTh('Item', 'name', 'name_desc', 'menu-item-col-name')}
                       {sortableTh('Category', 'category', null)}
                       {sortableTh('Price', 'price', 'price_desc', 'menu-item-col-price')}
+                      {showSold && sortableTh('Sold (30 days)', 'sold_desc', 'sold', 'menu-item-col-price', 'How many sold in the last 30 days, every size together', true)}
                       {sortableTh('Selling today', 'unavailable', null, undefined, 'Whether the item can be ordered right now')}
                       <th scope="col" title="Off-menu items are hidden from customers entirely">On menu</th>
                       <th scope="col" className="menu-item-col-actions"><span className="sr-only">Actions</span></th>
@@ -445,6 +466,11 @@ export function MenuItemTable({
                         </td>
                         <td className="menu-item-col-category">{categoryLabel(item, categories)}</td>
                         <td className="menu-item-col-price"><span className="menu-item-price">{price(item)}</span></td>
+                        {showSold && (
+                          <td className="menu-item-col-price" data-testid={`menu-item-sold-${item.id}`} style={{ whiteSpace: 'nowrap', color: (item.sold_30d ?? 0) > 0 ? undefined : 'var(--color-text-muted)' }}>
+                            {soldWords(item.sold_30d ?? 0)}
+                          </td>
+                        )}
                         <td>
                           <div className="menu-item-avail">
                             <AvailabilitySwitch item={item} canManage={canManage} onToggle={() => onToggleAvail(item)} />

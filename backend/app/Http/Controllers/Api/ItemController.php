@@ -83,6 +83,11 @@ class ItemController extends Controller
         $canSeeCost = $request->user('sanctum') instanceof \App\Models\User
                    && app(\App\Domains\Permissions\Services\PermissionService::class)
                        ->hasPermission($request->user('sanctum'), 'recipes.manage');
+        // How many sold lately is a sales figure: shown to, and sortable by,
+        // whoever may open the reports (owner, 2026-11-24).
+        $canSeeSales = $isAdmin
+                   && app(\App\Domains\Permissions\Services\PermissionService::class)
+                       ->hasPermission($request->user('sanctum'), 'reports.view');
         // Public /items route — POS passes view=pos without staff middleware.
         $isPosView = $request->query('view') === 'pos';
 
@@ -217,9 +222,17 @@ class ItemController extends Controller
                 ->orderBy('sort_order')->orderBy('name'),
             'updated' => $query->orderByDesc('updated_at')->orderBy('name'),
             'unavailable' => $query->orderBy('is_available')->orderBy('is_active')->orderBy('sort_order')->orderBy('name'),
+            'sold', 'sold_desc' => $canSeeSales
+                ? $query->orderBy(\App\Domains\Reporting\Services\ItemSales::soldSubquery(), $sort === 'sold' ? 'asc' : 'desc')->orderBy('name')
+                : $query->orderBy('sort_order')->orderBy('name'),
             default => $query->orderBy('sort_order')->orderBy('name'),
         };
         $items = $query->paginate($perPage);
+
+        // Sold in the last 30 days, one query for the page (null: not shown).
+        $soldMap = ($canSeeSales && !$isPosView)
+            ? \App\Domains\Reporting\Services\ItemSales::soldByItem($items->getCollection()->pluck('id')->map(fn ($id) => (int) $id)->all())
+            : null;
 
         // Remaining count for collect-tomorrow (never expose the configured capacity).
         $tomorrowRemainingMap = [];
@@ -254,7 +267,7 @@ class ItemController extends Controller
         $bundlePricing = app(\App\Domains\Menu\Services\BundlePricingService::class);
         $backdrops = app(\App\Domains\Catalog\Support\CutoutBackdrop::class);
 
-        $transformed = $items->through(function ($item) use ($isAdmin, $canSeeCost, $isPosView, $availability, $channel, $specialPricing, $effectivePricing, $tomorrowRemainingMap, $newItemIds, $bundlePricing, $backdrops) {
+        $transformed = $items->through(function ($item) use ($isAdmin, $canSeeCost, $isPosView, $availability, $channel, $specialPricing, $effectivePricing, $tomorrowRemainingMap, $newItemIds, $bundlePricing, $backdrops, $soldMap) {
             $includeAvailability = !$isAdmin || $isPosView;
             $includeAdminExtras = $isAdmin && !$isPosView;
             $includeCost = $canSeeCost && !$isPosView;
@@ -424,6 +437,9 @@ class ItemController extends Controller
                 $data['hide_from_bestsellers'] = (bool) ($item->hide_from_bestsellers ?? false);
                 $data['launch_at'] = $item->launch_at?->toIso8601String();
                 $data['alerts_waiting'] = \App\Domains\Menu\Services\ItemAlerts::waiting((int) $item->id);
+                if ($soldMap !== null) {
+                    $data['sold_30d'] = (float) ($soldMap[(int) $item->id] ?? 0);
+                }
             }
 
             // Coming soon: the day it goes on sale, only while it is still to come (feature 8).

@@ -24,8 +24,8 @@ describe('column set', () => {
     // whatever was typed into it.
     // margin is arithmetic, consumption_factor is size-only, also_in is picked
     // in the item editor and only shown here, stock_link is worked out from
-    // the recipe and the stock flags.
-    const editable = GRID_COLUMNS.filter((c) => !['margin', 'consumption_factor', 'also_in', 'stock_link'].includes(c.key));
+    // the recipe and the stock flags, sold_30d is counted from the orders.
+    const editable = GRID_COLUMNS.filter((c) => !['margin', 'consumption_factor', 'also_in', 'stock_link', 'sold_30d'].includes(c.key));
 
     for (const column of editable) {
       expect(column.field, `${column.key} needs a field`).toBeTruthy();
