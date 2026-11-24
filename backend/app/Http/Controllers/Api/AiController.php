@@ -267,7 +267,7 @@ class AiController extends Controller
             'approve' => ['sometimes', 'array', 'max:300'], 'approve.*' => ['integer'],
             'reject' => ['sometimes', 'array', 'max:300'], 'reject.*' => ['integer'],
             // The person's own wording for a Dhivehi suggestion, by suggestion id.
-            'edits' => ['sometimes', 'array'], 'edits.*' => ['array'], 'edits.*.*' => ['nullable', 'string', 'max:200'],
+            'edits' => ['sometimes', 'array'], 'edits.*' => ['array'], 'edits.*.*' => ['nullable', 'string', 'max:1000'],
         ]);
         $mine = $this->myKinds($request);
         $user = $request->user();

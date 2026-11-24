@@ -11,7 +11,8 @@ import { inputFont } from '../utils/cssVars';
  *
  * What the assistant proposed by itself, each night or on Look now, grouped by kind. Nothing
  * here has happened yet: a tick and Approve makes the change, Turn down forgets it for two
- * months. Dhivehi can be reworded in its box before approving. A person sees only the kinds
+ * months. Dhivehi can be reworded in its box before approving, and a new section renamed
+ * or a dish unticked from it. A person sees only the kinds
  * whose screen they may change (the menu, the inventory, the labels).
  */
 
@@ -64,6 +65,35 @@ function What({ kind, row, edits, onEdit }: { kind: string; row: AiSuggestionRow
           </label>
         ))}
         {kind === 'media_describe' && list(p.tags).length > 0 && <p className="sg-move" style={{ flexWrap: 'wrap' }}>{list(p.tags).map((t) => <span key={t} className="sg-tag">{t}</span>)}</p>}
+      </div>
+    );
+  }
+  if (kind === 'menu_section') {
+    const dishes = Array.isArray(p.items) ? (p.items as Array<{ id: number; name: string; in: string }>) : [];
+    const skip = (edits.skip ?? '').split(',').filter(Boolean).map(Number);
+    const toggle = (id: number, on: boolean) => onEdit('skip', (on ? skip.filter((x) => x !== id) : [...skip, id]).join(','));
+    return (
+      <div style={{ display: 'grid', gap: 8 }}>
+        <p className="sg-move">{text(p.parent) ? <>A new sub-section under <strong>{text(p.parent)}</strong></> : <>A new main section</>}</p>
+        <label style={{ display: 'grid', gap: 2, fontSize: 12, color: 'var(--color-text-muted)' }}>
+          Name
+          <input
+            value={edits.name ?? text(p.name)} onChange={(e) => onEdit('name', e.target.value)} maxLength={60}
+            aria-label={`${row.subject}: section name`} data-testid={`sg-edit-${row.id}-name`}
+            style={inputFont({ width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '0 10px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 15 })}
+          />
+        </label>
+        <span className="sg-cap">Dishes to move in ({dishes.length - skip.filter((id) => dishes.some((d) => d.id === id)).length} of {dishes.length})</span>
+        <ul className="sg-dishes">
+          {dishes.map((d) => (
+            <li key={d.id}>
+              <label>
+                <input type="checkbox" checked={!skip.includes(d.id)} onChange={(e) => toggle(d.id, e.target.checked)} aria-label={`Move ${d.name}`} data-testid={`sg-dish-${row.id}-${d.id}`} />
+                <span><strong>{d.name}</strong> <span className="sg-from">now in {d.in}</span></span>
+              </label>
+            </li>
+          ))}
+        </ul>
       </div>
     );
   }

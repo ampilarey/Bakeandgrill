@@ -7411,6 +7411,10 @@ table.is-table.is-table { display: none; }
 .sg-row > input { margin-top: 3px; width: 18px; height: 18px; }
 .sg-move { display: flex; gap: 6px 10px; align-items: center; margin: 0; font-size: 13px; color: var(--color-text-secondary); }
 .sg-move a { color: var(--color-primary); }
+/* A new section's dishes: one tick each, the dish and where it is now. */
+.sg-dishes { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+.sg-dishes label { display: flex; align-items: flex-start; gap: 8px; min-height: 32px; padding: 4px 0; font-size: 13px; cursor: pointer; }
+.sg-dishes .sg-from { display: block; font-size: 12px; color: var(--color-text-muted); }
 .sg-order { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; font-size: 13px; }
 .sg-order ol { margin: 2px 0 0; padding-left: 20px; color: var(--color-text-secondary); }
 .sg-cap { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); }

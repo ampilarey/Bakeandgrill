@@ -36,6 +36,8 @@ class AiSuggestions
     public const KINDS = [
         'menu_dhivehi' => ['label' => 'Dhivehi for dishes', 'about' => 'Dishes with no Dhivehi name or short line. Change the words before approving if they are not right.', 'feature' => 'auto_menu', 'permission' => 'menu.manage', 'apply' => true],
         'menu_category' => ['label' => 'Dishes to move', 'about' => 'Dishes that look to be in the wrong section of the menu.', 'feature' => 'auto_menu', 'permission' => 'menu.manage', 'apply' => true],
+        // Owner, 2026-11-24: "arrange and add new category and subcategory and add related items to that".
+        'menu_section' => ['label' => 'New sections', 'about' => 'A new section or sub-section for dishes of one kind. Approving makes the section and moves the ticked dishes into it. Change the name or untick a dish first if it is not right.', 'feature' => 'auto_menu', 'permission' => 'menu.manage', 'apply' => true],
         'menu_order' => ['label' => 'Order within a section', 'about' => 'A clearer order for a section\'s dishes. Approving sets the order customers see.', 'feature' => 'auto_menu', 'permission' => 'menu.manage', 'apply' => true],
         'inventory_category' => ['label' => 'Inventory items with no category', 'about' => 'A category for each item that has none.', 'feature' => 'auto_inventory', 'permission' => 'inventory.manage', 'apply' => true],
         'inventory_duplicate' => ['label' => 'Inventory items that look alike', 'about' => 'Two items that may be one product entered twice. Nothing is merged for you: open them and decide, then dismiss.', 'feature' => 'auto_inventory', 'permission' => 'inventory.manage', 'apply' => false],
@@ -81,6 +83,7 @@ class AiSuggestions
             'menu_dhivehi' => $this->lookMenuDhivehi(),
             'menu_category' => $this->lookMenuCategory(),
             'menu_order' => $this->lookMenuOrder(),
+            'menu_section' => $this->lookMenuSection(),
             'inventory_category' => $this->lookInventoryCategory(),
             'inventory_duplicate' => $this->lookInventoryDuplicates(),
             'label_glossary' => $this->lookGlossary(),
@@ -150,6 +153,60 @@ class AiSuggestions
                 ['category_id' => $m['to'], 'category' => $sections[$m['to']]],
                 $m['why'],
             );
+        }
+
+        return $made;
+    }
+
+    /** The key a section's name is known by: what was turned down is not proposed again under the same name. */
+    public static function sectionKey(string $name): string
+    {
+        return preg_replace('/[^a-z0-9]+/', '', mb_strtolower($name)) ?? '';
+    }
+
+    private function lookMenuSection(): int
+    {
+        $all = Category::query()->where('is_active', true)->get(['id', 'parent_id', 'name'])->keyBy('id');
+        $names = $this->sections();
+        $sections = [];
+        foreach ($all as $c) {
+            $sections[] = ['id' => (int) $c->id, 'name' => (string) $c->name, 'parent' => (int) ($c->parent_id ?? 0)];
+        }
+        $dishes = [];
+        $dishName = [];
+        foreach (Item::query()->where('is_active', true)->whereNotNull('category_id')->orderBy('category_id')->orderBy('sort_order')->limit(400)->get(['id', 'name', 'category_id']) as $i) {
+            if (isset($names[(int) $i->category_id])) {
+                $dishes[] = ['id' => (int) $i->id, 'name' => (string) $i->name, 'in' => (int) $i->category_id];
+                $dishName[(int) $i->id] = (string) $i->name;
+            }
+        }
+        if (count($dishes) < 6) {
+            return 0;
+        }
+        $busy = $this->busy('menu_section');
+        $now = array_column($dishes, 'in', 'id');
+        $made = 0;
+        foreach ($this->tasks->newSections($dishes, $sections) as $n) {
+            $key = 'section:' . self::sectionKey($n['name']);
+            if (isset($busy[$key])) {
+                continue;
+            }
+            $parent = $n['parent'] ?: null;
+            $made += $this->keep(
+                'menu_section',
+                'category',
+                null,
+                $n['name'],
+                ['from' => array_intersect_key($now, array_flip($n['ids']))],
+                [
+                    'name' => $n['name'], 'parent_id' => $parent, 'parent' => $parent ? (string) $all->get($parent)?->name : null,
+                    'item_ids' => $n['ids'],
+                    'items' => array_map(fn (int $id) => ['id' => $id, 'name' => $dishName[$id], 'in' => $names[$now[$id]]], $n['ids']),
+                ],
+                $n['why'],
+                $key,
+            );
+            $busy[$key] = true;
         }
 
         return $made;
@@ -438,6 +495,42 @@ class AiSuggestions
                     return false;
                 }
                 $item->update(['category_id' => (int) $p['category_id']]);
+
+                return true;
+            case 'menu_section':
+                $name = mb_substr(trim((string) ($edits['name'] ?? $p['name'] ?? '')), 0, 60);
+                $parentId = isset($p['parent_id']) ? (int) $p['parent_id'] : null;
+                // Under a main section that is still there, or a main section itself: the menu is two deep.
+                if ($name === '' || ($parentId !== null && !Category::query()->whereKey($parentId)->whereNull('parent_id')->exists())) {
+                    return false;
+                }
+                $skip = array_map('intval', array_filter(explode(',', (string) ($edits['skip'] ?? '')), fn ($v) => $v !== ''));
+                $from = (array) ($before['from'] ?? []);
+                // Only the dishes still where they were found: one moved by hand since stays where it was put.
+                $move = [];
+                foreach (array_map('intval', (array) ($p['item_ids'] ?? [])) as $id) {
+                    if (!in_array($id, $skip, true) && isset($from[$id]) && Item::query()->whereKey($id)->where('category_id', (int) $from[$id])->exists()) {
+                        $move[] = $id;
+                    }
+                }
+                if ($move === []) {
+                    return false;
+                }
+                // A section of that name made by hand since is the one to use, never a second one.
+                $section = Category::query()->where('parent_id', $parentId)->get()
+                    ->first(fn (Category $c) => self::sectionKey((string) $c->name) === self::sectionKey($name));
+                if (!$section) {
+                    $section = Category::query()->create([
+                        'name' => $name, 'parent_id' => $parentId, 'is_active' => true,
+                        'sort_order' => (int) Category::query()->where('parent_id', $parentId)->max('sort_order') + 10,
+                    ]);
+                }
+                $pos = (int) Item::query()->where('category_id', $section->id)->max('sort_order');
+                foreach ($move as $id) {
+                    Item::query()->whereKey($id)->update(['category_id' => $section->id, 'sort_order' => $pos += 10]);
+                }
+                $s->subject_id = (int) $section->id;
+                $s->proposed = array_merge($p, ['name' => $name, 'moved' => $move, 'category_id' => (int) $section->id]);
 
                 return true;
             case 'menu_order':

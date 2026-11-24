@@ -60,4 +60,25 @@ describe('System → Integrations → Suggestions', () => {
     await waitFor(() => expect(lookForSuggestions).toHaveBeenCalledWith('menu_dhivehi'));
     await waitFor(() => expect(screen.getByTestId('sg-note')).toHaveTextContent('2 new suggestions for dhivehi for dishes.'));
   });
+
+  // Owner, 2026-11-24: "arrange and add new category and subcategory and add related items to that".
+  it('a new section can be renamed and a dish unticked before it is approved', async () => {
+    fetchAiSuggestions.mockResolvedValue({ ready: true, kinds: [
+      { key: 'menu_section', label: 'New sections', about: 'A new section or sub-section.', can_approve: true, on: true, rows: [
+        { id: 7, subject_id: null, subject: 'Momo', before: { from: { 5: 2, 6: 2, 8: 2 } }, reason: 'Three momo dishes together', made: '2026-11-24',
+          proposed: { name: 'Momo', parent_id: 2, parent: 'Snacks', item_ids: [5, 6, 8], items: [{ id: 5, name: 'Chicken Momo', in: 'Snacks' }, { id: 6, name: 'Beef Momo', in: 'Snacks' }, { id: 8, name: 'Momo Sauce', in: 'Snacks' }] } },
+      ] },
+    ] });
+    decideSuggestions.mockResolvedValue({ approved: 1, rejected: 0, stale: 0 });
+    render(<MemoryRouter><SuggestionsPage /></MemoryRouter>);
+
+    expect(await screen.findByText('Snacks', { selector: 'strong' })).toBeInTheDocument();
+    expect(screen.getByText('Dishes to move in (3 of 3)')).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId('sg-edit-7-name'), { target: { value: 'Momos' } });
+    fireEvent.click(screen.getByTestId('sg-dish-7-8'));
+    expect(screen.getByText('Dishes to move in (2 of 3)')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('sg-tick-7'));
+    fireEvent.click(screen.getByTestId('sg-approve-menu_section'));
+    await waitFor(() => expect(decideSuggestions).toHaveBeenCalledWith({ approve: [7], edits: { 7: { name: 'Momos', skip: '8' } } }));
+  });
 });

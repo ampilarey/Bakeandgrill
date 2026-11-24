@@ -328,6 +328,77 @@ class AiTasks
     }
 
     /**
+     * New sections worth having, each with the dishes that would go in it.
+     *
+     * @param list<array{id: int, name: string, in: int}> $dishes
+     * @param list<array{id: int, name: string, parent: int}> $sections parent 0 for a main section
+     * @return list<array{name: string, parent: int, ids: list<int>, why: string}> parent 0 for a new main section
+     */
+    public function newSections(array $dishes, array $sections): array
+    {
+        $out = $this->assistant->ask(
+            self::WHO . "\n\nYou are given the sections of our menu (a main section has parent 0, a sub-section its main section's id) and every dish with the section it is in now. Propose new sections only where the menu would plainly be easier to read: a sub-section inside a crowded main section for three or more dishes of one kind (all the momo, all the fried rice, all the fresh juices), or a new main section (parent 0) for three or more dishes that belong in none of the sections we have. Give the name a customer would look for, in the style of our section names, the parent, the ids of the dishes to move in, and a few words why. Never propose a section we already have under any wording, never one that would take every dish out of a section, never a section for fewer than three dishes, and put no dish in two proposals. Most menus need few or none: an empty list is a good answer.",
+            json_encode(['sections' => $sections, 'dishes' => $dishes], JSON_UNESCAPED_UNICODE),
+            ['type' => 'object', 'additionalProperties' => false, 'required' => ['rows'], 'properties' => ['rows' => ['type' => 'array', 'items' => [
+                'type' => 'object', 'additionalProperties' => false, 'required' => ['name', 'parent', 'ids', 'why'],
+                'properties' => ['name' => ['type' => 'string'], 'parent' => ['type' => 'integer'], 'ids' => ['type' => 'array', 'items' => ['type' => 'integer']], 'why' => ['type' => 'string']],
+            ]]]],
+            maxTokens: 8000,
+        );
+        $key = fn (string $n): string => preg_replace('/[^a-z0-9]+/', '', mb_strtolower($n)) ?? '';
+        $main = [];
+        $taken = [];
+        $size = [];
+        foreach ($sections as $sec) {
+            if ((int) $sec['parent'] === 0) {
+                $main[(int) $sec['id']] = true;
+            }
+            $taken[$key((string) $sec['name'])] = true;
+        }
+        $in = array_column($dishes, 'in', 'id');
+        foreach ($in as $cat) {
+            $size[$cat] = ($size[$cat] ?? 0) + 1;
+        }
+        $used = [];
+        $found = [];
+        foreach ((array) ($out['rows'] ?? []) as $r) {
+            $name = mb_substr(trim((string) ($r['name'] ?? '')), 0, 60);
+            $parent = (int) ($r['parent'] ?? 0);
+            $k = $key($name);
+            if ($k === '' || isset($taken[$k]) || ($parent !== 0 && !isset($main[$parent]))) {
+                continue;
+            }
+            $ids = [];
+            $leaving = [];
+            foreach ((array) ($r['ids'] ?? []) as $id) {
+                $id = (int) $id;
+                if (isset($in[$id]) && !isset($used[$id]) && !in_array($id, $ids, true)) {
+                    $ids[] = $id;
+                    $leaving[$in[$id]] = ($leaving[$in[$id]] ?? 0) + 1;
+                }
+            }
+            // A proposal that would empty a section is a rename, which is not ours to make.
+            $empties = false;
+            foreach ($leaving as $cat => $n) {
+                $empties = $empties || $n >= ($size[$cat] ?? 0);
+            }
+            if (count($ids) < 3 || $empties) {
+                continue;
+            }
+            foreach ($ids as $id) {
+                $used[$id] = true;
+            }
+            $taken[$k] = true;
+            $found[] = ['name' => $name, 'parent' => $parent, 'ids' => $ids, 'why' => mb_substr(trim((string) ($r['why'] ?? '')), 0, 200)];
+            if (count($found) >= 8) {
+                break;
+            }
+        }
+
+        return $found;
+    }
+
+    /**
      * A better order for the dishes of each section.
      *
      * @param list<array{section: int, name: string, dishes: list<array{id: int, name: string, price: float}>}> $sections in today's order

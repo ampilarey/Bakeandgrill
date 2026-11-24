@@ -132,6 +132,87 @@ class AiSuggestionsTest extends TestCase
         $this->postJson('/api/admin/ai/suggestions/look', ['kind' => 'menu_order'])->assertOk()->assertJsonPath('made', 0);
     }
 
+    /** Owner, 2026-11-24: "arrange and add new category and subcategory and add related items to that". */
+    public function test_a_new_section_is_made_and_filled_only_on_approval(): void
+    {
+        $snacks = Category::factory()->create(['name' => 'Snacks', 'parent_id' => null, 'is_active' => true]);
+        $drinks = Category::factory()->create(['name' => 'Drinks', 'parent_id' => null, 'is_active' => true]);
+        $dish = fn (string $name, Category $c) => Item::factory()->create(['name' => $name, 'category_id' => $c->id, 'is_active' => true]);
+        $momo = [$dish('Chicken Momo', $snacks), $dish('Beef Momo', $snacks), $dish('Veg Momo', $snacks), $dish('Jhol Momo', $snacks)];
+        $bajiya = $dish('Bajiya', $snacks);
+        $gulha = $dish('Gulha', $snacks);
+        $tea = $dish('Black Tea', $drinks);
+        $ids = array_map(fn (Item $i) => $i->id, $momo);
+
+        $this->assistant(fn () => ['rows' => [
+            ['name' => 'Momo', 'parent' => $snacks->id, 'ids' => $ids, 'why' => 'Four momo dishes together'],
+            // Refused before it is kept: a section we have, one that empties its section, one too small, a parent that is not a main section.
+            ['name' => 'drinks', 'parent' => 0, 'ids' => [$bajiya->id, $gulha->id, $tea->id], 'why' => ''],
+            ['name' => 'Teas', 'parent' => 0, 'ids' => [$tea->id, $bajiya->id, $gulha->id], 'why' => ''],
+            ['name' => 'Short eats', 'parent' => $snacks->id, 'ids' => [$bajiya->id, $gulha->id], 'why' => ''],
+            ['name' => 'Elsewhere', 'parent' => 9999, 'ids' => [$bajiya->id, $gulha->id, $tea->id], 'why' => ''],
+        ]]);
+
+        $this->postJson('/api/admin/ai/suggestions/look', ['kind' => 'menu_section'])->assertOk()->assertJsonPath('made', 1);
+        $s = AiSuggestion::query()->where('kind', 'menu_section')->sole();
+        $this->assertSame('Momo', $s->subject_label);
+        $this->assertSame('Snacks', $s->proposed['parent']);
+        $this->assertSame(0, Category::query()->where('name', 'Momo')->count(), 'proposed, not made');
+        $this->assertSame($snacks->id, $momo[0]->fresh()->category_id);
+        // Waiting, so not proposed twice.
+        $this->postJson('/api/admin/ai/suggestions/look', ['kind' => 'menu_section'])->assertOk()->assertJsonPath('made', 0);
+
+        // One dish was moved by hand meanwhile, one is unticked, and the name is the person's own.
+        $momo[3]->update(['category_id' => $drinks->id]);
+        $this->postJson('/api/admin/ai/suggestions/decide', ['approve' => [$s->id], 'edits' => [$s->id => ['name' => 'Momos', 'skip' => (string) $momo[2]->id]]])
+            ->assertOk()->assertJsonPath('approved', 1);
+
+        $made = Category::query()->where('name', 'Momos')->sole();
+        $this->assertSame($snacks->id, $made->parent_id);
+        $this->assertTrue((bool) $made->is_active);
+        $this->assertSame($made->id, $momo[0]->fresh()->category_id);
+        $this->assertSame($made->id, $momo[1]->fresh()->category_id);
+        $this->assertSame($snacks->id, $momo[2]->fresh()->category_id, 'unticked');
+        $this->assertSame($drinks->id, $momo[3]->fresh()->category_id, 'moved by hand since: left where it was put');
+        $this->assertSame($snacks->id, $bajiya->fresh()->category_id);
+    }
+
+    public function test_a_new_section_turned_down_is_not_proposed_again_and_one_made_by_hand_is_used(): void
+    {
+        $snacks = Category::factory()->create(['name' => 'Snacks', 'parent_id' => null, 'is_active' => true]);
+        $items = [];
+        foreach (['Chicken Roll', 'Fish Roll', 'Egg Roll', 'Bajiya', 'Gulha', 'Cutlet', 'Samosa'] as $n) {
+            $items[] = Item::factory()->create(['name' => $n, 'category_id' => $snacks->id, 'is_active' => true]);
+        }
+        $rolls = [$items[0]->id, $items[1]->id, $items[2]->id];
+        $this->assistant(fn () => ['rows' => [['name' => 'Rolls', 'parent' => $snacks->id, 'ids' => $rolls, 'why' => '']]]);
+
+        $this->postJson('/api/admin/ai/suggestions/look', ['kind' => 'menu_section'])->assertJsonPath('made', 1);
+        $first = AiSuggestion::query()->where('kind', 'menu_section')->sole();
+        $this->postJson('/api/admin/ai/suggestions/decide', ['reject' => [$first->id]])->assertJsonPath('rejected', 1);
+        $this->postJson('/api/admin/ai/suggestions/look', ['kind' => 'menu_section'])->assertJsonPath('made', 0);
+        $this->assertSame(0, Category::query()->where('name', 'Rolls')->count());
+
+        // Two months on it is proposed again; meanwhile the owner made "rolls" by hand: that one is filled, no second made.
+        $first->update(['decided_at' => now()->subDays(61)]);
+        $this->postJson('/api/admin/ai/suggestions/look', ['kind' => 'menu_section'])->assertJsonPath('made', 1);
+        $again = AiSuggestion::query()->where('kind', 'menu_section')->where('status', 'pending')->sole();
+        $own = Category::factory()->create(['name' => 'rolls', 'parent_id' => $snacks->id, 'is_active' => true]);
+        $this->postJson('/api/admin/ai/suggestions/decide', ['approve' => [$again->id]])->assertJsonPath('approved', 1);
+        $this->assertSame(1, Category::query()->where('parent_id', $snacks->id)->count());
+        $this->assertSame($own->id, $items[0]->fresh()->category_id);
+
+        // A parent removed since: nothing is made.
+        $this->assistant(fn () => ['rows' => [['name' => 'Fried', 'parent' => $snacks->id, 'ids' => [$items[3]->id, $items[4]->id, $items[5]->id], 'why' => '']]]);
+        $this->postJson('/api/admin/ai/suggestions/look', ['kind' => 'menu_section'])->assertJsonPath('made', 1);
+        $last = AiSuggestion::query()->where('kind', 'menu_section')->where('status', 'pending')->sole();
+        $p = $last->proposed;
+        $p['parent_id'] = 999999;
+        $last->update(['proposed' => $p]);
+        $this->postJson('/api/admin/ai/suggestions/decide', ['approve' => [$last->id]])->assertJsonPath('stale', 1);
+        $this->assertSame(0, Category::query()->where('name', 'Fried')->count());
+    }
+
     public function test_inventory_gets_a_category_and_look_alikes_are_only_pointed_out(): void
     {
         $dairy = InventoryCategory::create(['name' => 'Dairy', 'slug' => 'dairy', 'is_active' => true]);

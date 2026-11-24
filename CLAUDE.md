@@ -1802,6 +1802,7 @@ the assistant for each kind in `AiSuggestions::KINDS` whose switch is on (`auto_
 keep every idea as an `ai_suggestions` row, changing nothing else: `menu_dhivehi` (a dish with no Dhivehi name or short
 line; the words can be changed in the box before approving), `menu_category` (a dish in the wrong section),
 `menu_order` (a section's dishes in a clearer order; an answer that does not name every dish once is dropped),
+`menu_section` (owner, 2026-11-24: "arrange and add new category and subcategory and add related items to that": a new section, or a sub-section under a main one, for three or more dishes of one kind, `AiTasks::newSections()`; never a name we have, never one that empties a section, a dish in one proposal only; the name can be changed and dishes unticked, `edits.name` and `edits.skip`; approving makes the category, or uses one of that name made by hand since, and moves the dishes still where they were found; kept under `section:<name key>` so a name turned down is not proposed again),
 `inventory_category` (an item with none, into an existing category only), `inventory_duplicate` (two items that look
 like one, pointed out and never merged: Dismiss only), `label_glossary` and `label_nutrition`. System → Integrations →
 **Suggestions** (`SuggestionsPage`, `GET /api/admin/ai/suggestions`, `POST …/look`, `POST …/decide`) lists them by kind
