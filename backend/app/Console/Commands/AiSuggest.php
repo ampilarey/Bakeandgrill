@@ -33,7 +33,7 @@ class AiSuggest extends Command
                 continue;
             }
             try {
-                $this->line(sprintf('%s: %d new', $kind, $suggestions->look($kind)));
+                $this->line(sprintf('%s: %d new', $kind, $suggestions->look($kind, asked: false)));
             } catch (AssistantUnavailable $e) {
                 $this->warn("{$kind}: " . $e->getMessage());
             } catch (Throwable $e) {

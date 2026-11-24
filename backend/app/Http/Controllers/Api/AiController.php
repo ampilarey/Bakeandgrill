@@ -254,7 +254,9 @@ class AiController extends Controller
         }
         @set_time_limit(170);
         try {
-            return response()->json(['made' => $suggestions->look($data['kind'])]);
+            $made = $suggestions->look($data['kind']);
+
+            return response()->json(['made' => $made, 'note' => $suggestions->lastNote]);
         } catch (AssistantUnavailable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

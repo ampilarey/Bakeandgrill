@@ -62,6 +62,6 @@ export type AiSuggestionKind = { key: string; label: string; about: string; can_
 export type NoPhotoDish = { id: number; name: string; sold: number };
 export const fetchAiSuggestions = (): Promise<{ kinds: AiSuggestionKind[]; ready: boolean; no_photo?: NoPhotoDish[] }> => req('/admin/ai/suggestions');
 /** Ask the assistant now, for one kind. Takes up to a couple of minutes. */
-export const lookForSuggestions = (kind: string): Promise<{ made: number }> => post('/suggestions/look', { kind }, 170_000);
+export const lookForSuggestions = (kind: string): Promise<{ made: number; note?: string | null }> => post('/suggestions/look', { kind }, 170_000);
 export const decideSuggestions = (body: { approve?: number[]; reject?: number[]; edits?: Record<number, Record<string, string>> }): Promise<{ approved: number; rejected: number; stale: number }> =>
   post('/suggestions/decide', body, 60_000);

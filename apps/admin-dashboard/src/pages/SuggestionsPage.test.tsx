@@ -81,4 +81,20 @@ describe('System → Integrations → Suggestions', () => {
     fireEvent.click(screen.getByTestId('sg-approve-menu_section'));
     await waitFor(() => expect(decideSuggestions).toHaveBeenCalledWith({ approve: [7], edits: { 7: { name: 'Momos', skip: '8' } } }));
   });
+
+  it('Look now on New sections says what it went through, and a sub-section of a new section says so', async () => {
+    fetchAiSuggestions.mockResolvedValue({ ready: true, kinds: [
+      { key: 'menu_section', label: 'New sections', about: 'Look now goes through every dish.', can_approve: true, on: true, rows: [
+        { id: 9, subject_id: null, subject: 'Ice Pops', before: { from: { 5: 0, 6: 0 } }, reason: null, made: '2026-11-24',
+          proposed: { name: 'Ice Pops', parent_id: null, parent: 'Frozen Treats', parent_is_new: true, item_ids: [5, 6], items: [{ id: 5, name: 'Mango Pop', in: 'no section' }, { id: 6, name: 'Lime Pop', in: 'no section' }] } },
+      ] },
+    ] });
+    lookForSuggestions.mockResolvedValue({ made: 4, note: 'Looked at 133 dishes and 12 sections.' });
+    render(<MemoryRouter><SuggestionsPage /></MemoryRouter>);
+
+    expect(await screen.findByText('also new: made with it')).toBeInTheDocument();
+    expect(screen.getAllByText('now in no section')).toHaveLength(2);
+    fireEvent.click(screen.getByTestId('sg-look-menu_section'));
+    expect(await screen.findByTestId('sg-note')).toHaveTextContent('Looked at 133 dishes and 12 sections. 4 new suggestions for new sections.');
+  });
 });

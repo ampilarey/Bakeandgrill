@@ -74,7 +74,7 @@ function What({ kind, row, edits, onEdit }: { kind: string; row: AiSuggestionRow
     const toggle = (id: number, on: boolean) => onEdit('skip', (on ? skip.filter((x) => x !== id) : [...skip, id]).join(','));
     return (
       <div style={{ display: 'grid', gap: 8 }}>
-        <p className="sg-move">{text(p.parent) ? <>A new sub-section under <strong>{text(p.parent)}</strong></> : <>A new main section</>}</p>
+        <p className="sg-move" style={{ flexWrap: 'wrap' }}>{text(p.parent) ? <>A new sub-section under <strong>{text(p.parent)}</strong>{p.parent_is_new ? <span className="sg-tag">also new: made with it</span> : null}</> : <>A new main section</>}</p>
         <label style={{ display: 'grid', gap: 2, fontSize: 12, color: 'var(--color-text-muted)' }}>
           Name
           <input
@@ -140,8 +140,9 @@ function KindCard({ kind, onChanged }: { kind: AiSuggestionKind; onChanged: (not
   const look = async () => {
     setBusy('look'); setError('');
     try {
-      const { made } = await lookForSuggestions(kind.key);
-      onChanged(made > 0 ? `${made} new ${made === 1 ? 'suggestion' : 'suggestions'} for ${kind.label.toLowerCase()}.` : `Nothing new for ${kind.label.toLowerCase()}.`);
+      const { made, note } = await lookForSuggestions(kind.key);
+      const said = made > 0 ? `${made} new ${made === 1 ? 'suggestion' : 'suggestions'} for ${kind.label.toLowerCase()}.` : `Nothing new for ${kind.label.toLowerCase()}.`;
+      onChanged(note ? `${note} ${said}` : said);
     } catch (e) { setError((e as Error).message); } finally { setBusy(''); }
   };
   const decide = async (approve: boolean) => {
@@ -167,7 +168,7 @@ function KindCard({ kind, onChanged }: { kind: AiSuggestionKind; onChanged: (not
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>{kind.about}</p>
         </div>
         {kind.on
-          ? <Btn small variant="secondary" disabled={busy !== ''} onClick={() => void look()} data-testid={`sg-look-${kind.key}`}><Sparkles size={14} aria-hidden />{busy === 'look' ? 'Looking…' : 'Look now'}</Btn>
+          ? <Btn small variant="secondary" disabled={busy !== ''} onClick={() => void look()} data-testid={`sg-look-${kind.key}`}><Sparkles size={14} aria-hidden />{busy === 'look' ? (kind.key === 'menu_section' ? 'Going through the menu…' : 'Looking…') : 'Look now'}</Btn>
           : <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Switched off</span>}
       </div>
       {error && <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 13, margin: '8px 0 0' }}>{error}</p>}

@@ -1413,7 +1413,8 @@ export const GUIDES: Guide[] = [
     steps: [
       'Open Integrations → Suggestions. Each card is one kind: Dhivehi for dishes, New sections, Dishes to move, Order within a section, Inventory items with no category, Inventory items that look alike, Dhivehi for label ingredients, Nutrition per 100 g.',
       'Read each row. For Dhivehi you can change the words in the box first.',
-      'New sections proposes a new section or sub-section with the dishes for it. Change its name and untick any dish that does not belong, then Approve: the section is made and the ticked dishes move into it.',
+      'On New sections, press Look now. It goes through every dish (in a section or not, on the menu or switched off) and every section and sub-section, and lists the new sections and sub-sections the menu should have, each with its dishes.',
+      'Change a name and untick any dish that does not belong, then tick the ones you want and Approve: each section is made and its ticked dishes move into it.',
       'Tick the rows you agree with and press Approve. Tick the ones you do not want and press Turn down.',
       'To get new ones without waiting for the night, press Look now on a card.',
     ],
@@ -1422,6 +1423,8 @@ export const GUIDES: Guide[] = [
       'The assistant looks by itself every night at 3:35 AM, for the kinds switched on under Integrations → Assistant.',
       'Something you turn down is not suggested again for two months.',
       'If a dish or item was changed by hand after the suggestion was made, approving leaves it alone and says so.',
+      'Pressing Look now on New sections again makes a fresh plan: the one still waiting is replaced. The nightly look leaves a waiting plan alone.',
+      'A sub-section under a section that is also new: approving it makes both.',
       'A new section is made without a photo or a Dhivehi name. Add those under Manage → Menu Items → Categories.',
       'Items that look alike are only pointed out. Nothing is merged for you: open both, decide, then Dismiss.',
       'You see only the kinds you may change: the menu, the inventory or the labels. They also show under Needs attention.',
