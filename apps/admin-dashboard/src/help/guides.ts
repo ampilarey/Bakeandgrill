@@ -559,6 +559,23 @@ export const GUIDES: Guide[] = [
     words: 'round circle circular label sticker lid tub jar jhol momo template',
   },
   {
+    id: 'labels-kind',
+    page: '/labels',
+    title: 'Make a label a sticker, a pouch label, a bottle wrap or a tub label',
+    steps: [
+      'Open Labels. On My labels tap Edit on the label, or make a new one on New label.',
+      'Under "What kind of label" tap Sticker, Pouch or bag, Wrap-around, Tub lid or Tub side.',
+      'The label moves to a size that prints that kind, and the preview draws it.',
+      'The settings for that kind open just below: the strips for a wrap-around label, the colour and cooking method for a pouch.',
+      'Change the size under Shape and size if yours is different, then Save.',
+    ],
+    notes: [
+      'A wrap-around label is any wide, short size. Picking a size that is not wide turns it back into a sticker.',
+      'Switching away from Pouch and back keeps the pouch picks you made.',
+    ],
+    words: 'kind type wrap around bottle pouch bag tub lid side sticker preview not showing',
+  },
+  {
     id: 'lid-and-side-labels',
     page: '/labels',
     title: 'Make a lid label and a side label for a tub',
@@ -581,7 +598,7 @@ export const GUIDES: Guide[] = [
       'Badges print on the side label. Nutrition needs a full-size side label.',
       'The name prints without "(Lid)" or "(Side)".',
       'Print the side label from My labels to set its Made on and Use by dates.',
-      'To turn a label you already have into a lid or a side label, tap Edit on it and open Lid or side of a tub.',
+      'To turn a label you already have into a lid or a side label, tap Edit on it and pick Tub lid or Tub side under What kind of label.',
       'A menu item needs nothing made: in My labels tap Print on the item, then under Which label pick Lid: name and photo, print, and again with Side: the details.',
       'To print both on one A4 sheet, tap Print on the menu item (or on the Lid or Side label), pick Lid and side together under Which label, choose the Side label size, type How many pairs and press Print. Each round lid has its side label beside it with the same dates.',
       'On the pair sheet each half prints from its own label: the lid with its barcode and price, the side with its badges and QR codes. To cut, follow the grey dashed lines across the page first, then the one between each lid and its side, then trim each label along its own solid grey outline.',

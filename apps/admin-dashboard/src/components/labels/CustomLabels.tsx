@@ -1,10 +1,10 @@
 import { DhivehiDraft } from '../ai/AiButton';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, Copy, Eye, ImagePlus, Pencil, Plus, Printer, RefreshCw, Search, Tag, Upload, X } from 'lucide-react';
+import { ChevronDown, Circle, Copy, Eye, ImagePlus, Package, Pencil, Plus, Printer, RectangleHorizontal, RefreshCw, Search, ShoppingBag, Tag, Upload, X } from 'lucide-react';
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelSettings, fetchLabelTypes,
   previewCustomDraft, updateCustomLabel, uploadCustomLabelPicture, uploadLabelPicture,
-  type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type ShelfLifeSuggestions, type LabelType, type StickerLang, type PouchCatalogue, type WrapCatalogue, type WrapPartKey, type WrapStrips,
+  type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type ShelfLifeSuggestions, type LabelType, type StickerLang, type LabelPouch, type PouchCatalogue, type WrapCatalogue, type WrapPartKey, type WrapStrips,
 } from '../../api';
 import { FooterPicker } from './FooterPicker';
 import { SaveAsTemplate, StartFromRow } from './StartFrom';
@@ -15,7 +15,7 @@ import { BadgePicker } from './BadgePicker';
 import { WRAP_FALLBACK, WrapParts } from './WrapParts';
 import { PouchSetModal } from './PouchSetModal';
 import { TubSetModal } from './TubSetModal';
-import { POUCH_FALLBACK, PouchPicker, pouchFits, pouchSummary } from './PouchPicker';
+import { POUCH_FALLBACK, PouchPicker, newPouch, pouchFits, pouchSummary } from './PouchPicker';
 import { StripOverlay } from './StripEditor';
 import { SpotOverlay } from './SpotOverlay';
 import { FoldHelp } from './FoldHelp';
@@ -30,6 +30,7 @@ import { MediaPicker } from '../MediaPicker';
 import { SheetPreview } from './SheetPreview';
 import { PhonePreviewBar } from './PhonePreviewBar';
 import { LabelSizePicker } from './LabelSizePicker';
+import { LABEL_KINDS, kindOf, sizeForKind, type LabelKind } from './labelKind';
 import { BrandModal, NewTypeButton } from './TypesAndBrands';
 import { useIsBelowDesktop } from '../../hooks/useIsMobile';
 import { LabelThumb } from './LabelThumb';
@@ -179,6 +180,8 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   // Whether the size is this label's own (a template brought it, or it was picked here) or only the one last printed.
   const sizeIsOwn = useRef(ownSize !== null || (label === null && startFrom !== null && templateSize(startFrom) !== null));
   const pickSize = (c: SizeChoice) => { sizeIsOwn.current = true; setChoice(c); };
+  // A pouch's picks, kept while another kind is tried, so going back to Pouch does not start it again.
+  const pouchKept = useRef<LabelPouch | null>(null);
   const previewSeq = useRef(0);
   const files = { photo: useRef<HTMLInputElement>(null), title: useRef<HTMLInputElement>(null) };
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((s) => ({ ...s, [k]: v }));
@@ -378,6 +381,88 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
       <LabelSizePicker presets={presets} limits={limits} choice={choice} onChange={pickSize} rounded={rounded} onRounded={setRounded} rolls={rolls} designWord={d.label_pouch && pouchFits(POUCH_FALLBACK, choice.shape, sizeOf(choice, presets).w, sizeOf(choice, presets).h) ? 'pouch label' : undefined} />
     </Section>
   );
+  // What kind of label this is (owner, 2026-11-25): picked in one place, at the top, and the size follows,
+  // so the preview draws that kind at once. Only the picked kind's own settings show, right under it.
+  const kind = kindOf(d, choice, presets);
+  const pickKind = (k: LabelKind) => {
+    if (k === kind) return;
+    if (d.label_pouch) pouchKept.current = d.label_pouch;
+    setD((s) => ({
+      ...s,
+      label_part: k === 'lid' || k === 'side' ? k : null,
+      label_pouch: k === 'pouch' ? (s.label_pouch ?? pouchKept.current ?? newPouch(pouchCatalogue ?? POUCH_FALLBACK)) : null,
+    }));
+    const size = sizeForKind(k, choice, presets, pouchCatalogue ?? POUCH_FALLBACK);
+    if (size !== choice) pickSize(size);
+  };
+  const KIND_ICONS: Record<LabelKind, typeof Tag> = { ordinary: Tag, pouch: ShoppingBag, wrap: RectangleHorizontal, lid: Circle, side: Package };
+  const kindPicker = (
+    <div className="rounded-xl border border-[var(--color-border)] p-3 space-y-2" data-testid="custom-label-kind">
+      <span className="block text-sm font-bold text-[var(--color-text)]">What kind of label</span>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="What kind of label">
+        {LABEL_KINDS.map((k) => {
+          const Icon = KIND_ICONS[k.key];
+          const on = k.key === kind;
+          return (
+            <button
+              key={k.key} type="button" aria-pressed={on} onClick={() => pickKind(k.key)} data-testid={`custom-label-kind-${k.key}`}
+              className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-sm font-semibold"
+              style={on
+                ? { background: 'var(--color-tone-rust-bg)', color: 'var(--color-tone-rust-text)', borderColor: 'var(--color-tone-rust-border)' }
+                : { background: 'var(--color-surface)', color: 'var(--color-text-secondary)', borderColor: 'var(--color-border)' }}
+            >
+              <Icon size={14} aria-hidden /> {k.label}
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-xs text-[var(--color-text-muted)]" data-testid="custom-label-kind-about">
+        {LABEL_KINDS.find((k) => k.key === kind)?.about} Picking a kind moves the label to a size that prints it; change the size under Shape and size.
+      </p>
+    </div>
+  );
+  const kindSettings = kind === 'lid' || kind === 'side' ? (
+    <Section title="Lid or side of a tub" summary={d.label_part === 'lid' ? 'The lid: name and photo' : d.label_part === 'side' ? 'The side: the details' : 'An ordinary label'} open testId="custom-label-part" help="A tub can carry two labels: a round one on the lid with only the name and the photo, and a rectangular one on the side with the ingredients, the dates and the rest. Say here which of the two this label is.">
+              <Field id="cl-part" label="This label is for" hint={d.label_part === 'lid' ? (choice.shape === 'circle' ? 'Prints the brand, the photo, the name and what the pack holds. The ingredients and dates go on the side label.' : 'Pick a round size for the lid. On this size it prints as an ordinary label.') : d.label_part === 'side' ? 'An ordinary label with every detail. The name prints without "(Side)".' : undefined}>
+                <select id="cl-part" value={d.label_part ?? ''} onChange={(e) => set('label_part', (e.target.value || null) as 'lid' | 'side' | null)} className={fieldClass}>
+                  <option value="">An ordinary label</option>
+                  <option value="lid">The lid of a tub (name and photo only)</option>
+                  <option value="side">The side of a tub (the details)</option>
+                </select>
+              </Field>
+            </Section>
+  ) : kind === 'pouch' ? (
+    <Section title="Pouch label (zip pouches and bags)" summary={pouchSummary(d.label_pouch, pouchCatalogue)} open testId="custom-label-pouch" help="A front-of-pack label for a pouch or bag: the food photo in a circle, the name in script, how it is cooked, the pieces and price, and the ingredients, storage, dates and complaints QR along the bottom. Pick the pouch colour and the cooking method; everything else is this label's own wording.">
+              <PouchPicker
+                value={d.label_pouch}
+                onChange={(v) => set('label_pouch', v)}
+                catalogue={pouchCatalogue}
+                howToUse={d.label_how_to_use}
+                onUseHow={(text) => set('label_how_to_use', text)}
+                sizeNote={pouchFits(pouchCatalogue ?? POUCH_FALLBACK, choice.shape, dims.w, dims.h) ? null : 'This size prints the ordinary sticker. Pick a wide size, such as 140 × 62 mm, for the pouch label.'}
+                idPrefix="cl-pouch"
+              />
+            </Section>
+  ) : kind === 'wrap' ? (
+    <Section title="Wrap-around label (wide sizes)" summary={`${d.label_wrap.parts.length} parts${d.label_wrap.band ? ' · band' : ''}`} open testId="custom-label-wrap" help="Only for a wide label such as a bottle wrap: which strips print and in what order, the band along the bottom, and the recycling marks.">
+              <WrapParts
+                value={d.label_wrap}
+                onChange={(v) => set('label_wrap', v)}
+                catalogue={catalogue}
+                pictures={d.wrap_pictures}
+                onAddPicture={() => setPicker('mark')}
+                nutritionPer={d.label_nutrition_per}
+                onNutritionPer={(per) => set('label_nutrition_per', per)}
+                productName={d.name}
+                netWeight={d.label_net_weight}
+                idPrefix="cl-wrap"
+                strips={previewWrap}
+                size={previewWrap ? dims : null}
+                openPart={openStrip}
+                onOpenPart={setOpenStrip}
+              />
+            </Section>
+  ) : null;
   const touchable = previewWrap !== null || previewSpots.length > 0;
   // The drag designer (round 8): on a design that places its parts, the zones move and resize them; the layout is kept with the label.
   const movable = previewDesign !== null && isMovable(previewDesign) && previewSpots.length > 0 ? previewDesign : null;
@@ -426,7 +511,9 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
               {!saved && <div className="flex-1 min-w-[220px]"><StartFromRow onPick={applyTemplate} idPrefix="cl-start" /></div>}
               <SaveAsTemplate fields={templateFromCustom(d)} at={choice} source={d.name.trim() || saved?.name || ''} variant="secondary" className={saved ? 'ml-auto' : ''} />
             </div>
+            {kindPicker}
             {stacked && sizeSection}
+            {kindSettings}
             <div className="grid gap-3 sm:grid-cols-2">
               <Field id="cl-name" label="Product name"><input id="cl-name" value={d.name} maxLength={80} onChange={(e) => set('name', e.target.value)} className={fieldClass} placeholder="Garlic sauce" /></Field>
               <Field id="cl-name-dv" label="Product name (Dhivehi)"><input id="cl-name-dv" dir="rtl" value={d.name_dv} maxLength={80} onChange={(e) => set('name_dv', e.target.value)} className={fieldClass} /><div className="mt-1"><DhivehiDraft from={d.name} current={d.name_dv} kind="name" onDraft={(v) => set('name_dv', v.slice(0, 80))} /></div></Field>
@@ -450,6 +537,9 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
                 </div>
               </Field>
             </div>
+
+            {pictureSlot('photo', 'Picture', 'A PNG with a clear background prints over the label; kept exactly as uploaded.')}
+            {pictureSlot('title', 'Hand-lettered name (optional)', 'A PNG of the name drawn by hand. Without one, the name is typed in the brand font.')}
 
             <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3">
               <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Ingredients and keeping</legend>
@@ -525,49 +615,6 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
               </Field>
             </Section>
 
-            <Section title="Lid or side of a tub" summary={d.label_part === 'lid' ? 'The lid: name and photo' : d.label_part === 'side' ? 'The side: the details' : 'An ordinary label'} open={d.label_part !== null} testId="custom-label-part" help="A tub can carry two labels: a round one on the lid with only the name and the photo, and a rectangular one on the side with the ingredients, the dates and the rest. Say here which of the two this label is.">
-              <Field id="cl-part" label="This label is for" hint={d.label_part === 'lid' ? (choice.shape === 'circle' ? 'Prints the brand, the photo, the name and what the pack holds. The ingredients and dates go on the side label.' : 'Pick a round size for the lid. On this size it prints as an ordinary label.') : d.label_part === 'side' ? 'An ordinary label with every detail. The name prints without "(Side)".' : undefined}>
-                <select id="cl-part" value={d.label_part ?? ''} onChange={(e) => set('label_part', (e.target.value || null) as 'lid' | 'side' | null)} className={fieldClass}>
-                  <option value="">An ordinary label</option>
-                  <option value="lid">The lid of a tub (name and photo only)</option>
-                  <option value="side">The side of a tub (the details)</option>
-                </select>
-              </Field>
-            </Section>
-
-            <Section title="Pouch label (zip pouches and bags)" summary={pouchSummary(d.label_pouch, pouchCatalogue)} open={d.label_pouch !== null} testId="custom-label-pouch" help="A front-of-pack label for a pouch or bag: the food photo in a circle, the name in script, how it is cooked, the pieces and price, and the ingredients, storage, dates and complaints QR along the bottom. Pick the pouch colour and the cooking method; everything else is this label's own wording.">
-              <PouchPicker
-                value={d.label_pouch}
-                onChange={(v) => set('label_pouch', v)}
-                catalogue={pouchCatalogue}
-                howToUse={d.label_how_to_use}
-                onUseHow={(text) => set('label_how_to_use', text)}
-                sizeNote={pouchFits(pouchCatalogue ?? POUCH_FALLBACK, choice.shape, dims.w, dims.h) ? null : 'This size prints the ordinary sticker. Pick a wide size, such as 140 × 62 mm, for the pouch label.'}
-                idPrefix="cl-pouch"
-              />
-            </Section>
-
-            <Section title="Wrap-around label (wide sizes)" summary={`${d.label_wrap.parts.length} parts${d.label_wrap.band ? ' · band' : ''}`} open={false} testId="custom-label-wrap" help="Only for a wide label such as a bottle wrap: which strips print and in what order, the band along the bottom, and the recycling marks.">
-              <WrapParts
-                value={d.label_wrap}
-                onChange={(v) => set('label_wrap', v)}
-                catalogue={catalogue}
-                pictures={d.wrap_pictures}
-                onAddPicture={() => setPicker('mark')}
-                nutritionPer={d.label_nutrition_per}
-                onNutritionPer={(per) => set('label_nutrition_per', per)}
-                productName={d.name}
-                netWeight={d.label_net_weight}
-                idPrefix="cl-wrap"
-                strips={previewWrap}
-                size={previewWrap ? dims : null}
-                openPart={openStrip}
-                onOpenPart={setOpenStrip}
-              />
-            </Section>
-
-            {pictureSlot('photo', 'Picture', 'A PNG with a clear background prints over the label; kept exactly as uploaded.')}
-            {pictureSlot('title', 'Hand-lettered name (optional)', 'A PNG of the name drawn by hand. Without one, the name is typed in the brand font.')}
           </div>
 
           {!stacked && (

@@ -269,11 +269,59 @@ describe('CustomLabelModal', () => {
     expect(helps.some((t) => t.startsWith('A price and a barcode'))).toBe(true);
     expect(helps.some((t) => t.startsWith('The heading, the storage line'))).toBe(true);
     expect(helps.some((t) => t.startsWith('The band at the foot of every sticker'))).toBe(true);
-    expect(helps.some((t) => t.startsWith('Only for a wide label'))).toBe(true);
+    // A kind's own fold shows only for that kind (2026-11-25): an ordinary sticker has no wrap-around settings.
+    expect(helps.some((t) => t.startsWith('Only for a wide label'))).toBe(false);
     expect(screen.getByText('Bottom strip and complaints QR')).toBeInTheDocument();
     expect(screen.getByLabelText('Bottom strip')).toBeInTheDocument();
     expect(screen.getByLabelText('Storage line (the coloured line above the bottom strip)')).toBeInTheDocument();
     expect(screen.queryByText(/Footer and complaints QR/)).toBeNull();
+  });
+
+  // Owner, 2026-11-25: "When i select wrap around but preview doesn't show it… at the top i see circle and
+  // rectangle. But bottom i see other sections". The kind is picked in one place and the size follows.
+  it('picks the kind of label at the top, which moves the size so the preview draws it', async () => {
+    wrap(<CustomLabelModal label={null} onClose={() => {}} onSaved={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Juice' } });
+    await waitFor(() => expect(previewCustomDraft).toHaveBeenCalledWith(expect.objectContaining({ layout: 'a4-4' })), { timeout: 3000 });
+    expect(screen.getByTestId('custom-label-kind-ordinary')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByTestId('custom-label-wrap')).toBeNull();
+    expect(screen.queryByTestId('custom-label-pouch')).toBeNull();
+    expect(screen.queryByTestId('custom-label-part')).toBeNull();
+
+    // Wrap-around: a wide size, its strips right under the picker, and the preview asked for at that size.
+    fireEvent.click(screen.getByTestId('custom-label-kind-wrap'));
+    expect(screen.getByTestId('custom-label-kind-wrap')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('custom-label-wrap')).toBeInTheDocument();
+    await waitFor(() => expect(previewCustomDraft).toHaveBeenCalledWith(expect.objectContaining({ w: 180, h: 40 })), { timeout: 3000 });
+
+    // Pouch: its picks appear and the size becomes a pouch's.
+    fireEvent.click(screen.getByTestId('custom-label-kind-pouch'));
+    expect(screen.getByTestId('custom-label-pouch')).toBeInTheDocument();
+    expect(screen.queryByTestId('custom-label-wrap')).toBeNull();
+    await waitFor(() => expect(previewCustomDraft).toHaveBeenCalledWith(expect.objectContaining({ w: 140, h: 62, label_pouch: expect.objectContaining({ look: expect.any(String) }) })), { timeout: 3000 });
+
+    // A tub's lid is round; its side is a rectangle again.
+    fireEvent.click(screen.getByTestId('custom-label-kind-lid'));
+    expect(screen.getByLabelText('This label is for')).toHaveValue('lid');
+    await waitFor(() => expect(previewCustomDraft).toHaveBeenCalledWith(expect.objectContaining({ label_part: 'lid', label_pouch: null, layout: 'a4-round-custom', w: 80 })), { timeout: 3000 });
+    fireEvent.click(screen.getByTestId('custom-label-kind-side'));
+    await waitFor(() => expect(previewCustomDraft).toHaveBeenCalledWith(expect.objectContaining({ label_part: 'side', w: 100, h: 50 })), { timeout: 3000 });
+
+    // Back to a plain sticker: nothing of the other kinds is left on it.
+    fireEvent.click(screen.getByTestId('custom-label-kind-ordinary'));
+    expect(screen.queryByTestId('custom-label-part')).toBeNull();
+    await waitFor(() => expect(previewCustomDraft).toHaveBeenLastCalledWith(expect.objectContaining({ label_part: null, label_pouch: null })), { timeout: 3000 });
+  });
+
+  it('opens a saved pouch label and a saved wide label on their own kind', async () => {
+    const first = wrap(<CustomLabelModal label={custom(8, 'Momo', { label_pouch: { look: 'gold', method: 'steam', method_text: '', method_text_dv: '', tagline: '', tagline_dv: '', size_word: '', pack_place: 'panel' }, label_size: { shape: 'rect', preset: 'custom', on: 'sheet', w: 140, h: 62 } } as never)} onClose={() => {}} onSaved={() => {}} />);
+    expect(screen.getByTestId('custom-label-kind-pouch')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('custom-label-pouch')).toBeInTheDocument();
+    first.unmount();
+
+    wrap(<CustomLabelModal label={custom(9, 'Rihaakuru', { label_size: { shape: 'rect', preset: 'custom', on: 'sheet', w: 215, h: 40 } } as never)} onClose={() => {}} onSaved={() => {}} />);
+    await waitFor(() => expect(screen.getByTestId('custom-label-kind-wrap')).toHaveAttribute('aria-pressed', 'true'));
+    expect(screen.getByTestId('custom-label-wrap')).toBeInTheDocument();
   });
 
   // Round 7 (2026-10-13): a new label starts from a template, which fills the
