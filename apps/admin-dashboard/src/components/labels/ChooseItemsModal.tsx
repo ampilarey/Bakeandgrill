@@ -9,7 +9,7 @@ import { useToast } from '../ui';
  * of the usability work, owner, 2026-10-13: the audit's "Menu items (0)"
  * with no hint that items must be switched on first). Every menu item with
  * a tick; a tick is saved at once, so Done just closes and the list behind
- * reloads. The same switch as Labels → Settings → Products on labels.
+ * reloads. The one list for it since the label audit of 2026-11-25 (Settings had a second).
  */
 export function ChooseItemsModal({ onClose, onChanged }: { onClose: () => void; onChanged?: () => void }) {
   const { toast } = useToast();

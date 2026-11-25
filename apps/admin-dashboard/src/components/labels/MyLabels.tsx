@@ -136,7 +136,7 @@ export function MyLabelsTab({ canManage, printedBefore, openPrinted = false }: {
       <Fold title="Scan a pack to print its sticker again" hint="Scan the QR on a pack, or type its code." testId="my-labels-scan">
         <ReprintScan />
       </Fold>
-      <Fold title="Sheets printed before" hint="Every sheet printed, to print again, download, rename or pin. The print log is beneath." open={openPrinted} testId="my-labels-printed">
+      <Fold title="Sheets printed before" hint="Every sheet printed, to print again, download, rename or pin. Each single print is on Batches." open={openPrinted} testId="my-labels-printed">
         {printedBefore}
       </Fold>
     </div>

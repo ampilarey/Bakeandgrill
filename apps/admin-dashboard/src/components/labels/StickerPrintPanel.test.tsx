@@ -446,7 +446,7 @@ describe('StickerPrintPanel', () => {
     expect(banner).toHaveTextContent('Printing again the sticker of pack K7PQ2M4D: Bajiya · 2 stickers · 4 on A4 · batch A1 · 6 per pack · made 2026-10-10 · use by 2027-01-08 · for NH Kuda Rah.');
     expect(banner).toHaveTextContent('by Aminath');
     expect(screen.queryByTestId('sticker-reprint-expired')).not.toBeInTheDocument();
-    // The scan row gives way to the banner; the form holds the pack's details.
+    // The form holds the pack's details; the scan box lives on My labels only (label audit, 2026-11-25).
     expect(screen.queryByTestId('reprint-scan')).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText('Print Bajiya')).toBeChecked());
     expect(screen.getByLabelText('How many Bajiya stickers')).toHaveValue(2);
@@ -464,7 +464,6 @@ describe('StickerPrintPanel', () => {
     fetchLabelPrint.mockRejectedValue(new Error('No pack has the code ZZZZ9999. A code is eight letters and digits, none of 0, O, 1 or I.'));
     const { unmount } = render(<MemoryRouter initialEntries={['/labels/stickers?code=ZZZZ9999']}><StickerPrintPanel /></MemoryRouter>);
     expect(await screen.findByRole('alert')).toHaveTextContent('No pack has the code ZZZZ9999');
-    expect(screen.getByTestId('reprint-scan')).toBeInTheDocument();
     unmount();
 
     fetchLabelPrint.mockResolvedValue({ data: {
@@ -636,27 +635,11 @@ describe('StickerPrintPanel on a phone', () => {
     expect(chips[0]).toHaveTextContent('Short life · 2 days');
   });
 
-  it('puts a pinned label first in Print again, printed or not', async () => {
-    fetchLabelJobs.mockResolvedValue({ data: [
-      { id: 11, kind: 'stickers', name: 'Friday run', pinned: true, summary: null, print_count: 0, last_printed_at: null, created_at: '2026-10-11T08:00:00Z', created_by: 'Owner' },
-      { id: 9, kind: 'stickers', name: 'Bajiya ×21 · 40 × 60 mm', pinned: false, summary: null, print_count: 3, last_printed_at: '2026-10-11T08:00:00Z', created_at: '2026-10-11T08:00:00Z', created_by: 'Owner' },
-    ], last_page: 1 });
+  it('does not list the sheets printed before a second time', async () => {
     render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
-    const recent = await screen.findByTestId('sticker-recent');
-    const names = within(recent).getAllByRole('button').map((b) => b.textContent ?? '').filter((t) => !t.startsWith('Print'));
-    expect(names[0]).toContain('Friday run');
-    expect(within(recent).getByLabelText('Pinned')).toBeInTheDocument();
-  });
-
-  it('prints the last sheet again in one tap, and only sheets that were printed', async () => {
-    printLabelJob.mockResolvedValue({ ...links, summary: {} });
-    render(<MemoryRouter><StickerPrintPanel /></MemoryRouter>);
-    const recent = await screen.findByTestId('sticker-recent');
-    expect(recent).toHaveTextContent('Bajiya ×21 · 40 × 60 mm');
-    expect(recent).not.toHaveTextContent('Never printed');
-    fireEvent.click(screen.getByRole('button', { name: 'Print Bajiya ×21 · 40 × 60 mm again' }));
-    await waitFor(() => expect(printLabelJob).toHaveBeenCalledWith(9));
-    expect(openLabelSheet).toHaveBeenCalledWith(links.url, links.pdf_url);
+    await screen.findByTestId('sticker-print-panel');
+    expect(screen.queryByTestId('sticker-recent')).toBeNull();
+    expect(screen.queryByText('Print again')).toBeNull();
   });
 
   it('folds the seldom-used boxes away and offers a batch code from today', async () => {

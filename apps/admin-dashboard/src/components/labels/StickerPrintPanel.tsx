@@ -3,10 +3,10 @@ import { POUCH_FALLBACK, pouchFits } from './PouchPicker';
 import { today as localToday } from '../../utils/dateHelpers';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, History, CalendarDays, ChevronDown, ChevronUp, Star, Send, Image as ImageIcon, ListPlus, RotateCcw } from 'lucide-react';
+import { Printer, FileDown, AlertTriangle, Search, Bookmark, Eye, Plus, CalendarDays, ChevronDown, ChevronUp, Send, Image as ImageIcon, ListPlus, RotateCcw } from 'lucide-react';
 import {
-  downloadLabelSheet, fetchCateringStickers, fetchCustomLabels, fetchDeliveryStickers, fetchLabelFooters, fetchLabelJob, fetchLabelJobs, fetchLabelLayouts, fetchLabelPrint, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printLabelJob, printsViaPdf, readPrinterSetup, renameLabelJob, sendToLabelPrinter, stickerLinks,
-  MOCK_SURFACE_NAMES, type CustomLabel, type MockSurface, type LabelFooter, type LabelJob, type LabelLimits, type LabelPreset, type LabelPrintLookup, type LabelProduct, type LabelRoll, type LabelType, type PromoKind, type SheetLinks, type StickerLang, type StickerRun, type StickerSummary,
+  downloadLabelSheet, fetchCateringStickers, fetchCustomLabels, fetchDeliveryStickers, fetchLabelFooters, fetchLabelJob, fetchLabelLayouts, fetchLabelPrint, fetchLabelProducts, fetchLabelTypes, openLabelSheet, printsViaPdf, readPrinterSetup, renameLabelJob, sendToLabelPrinter, stickerLinks,
+  MOCK_SURFACE_NAMES, type CustomLabel, type MockSurface, type LabelFooter, type LabelLimits, type LabelPreset, type LabelPrintLookup, type LabelProduct, type LabelRoll, type LabelType, type PromoKind, type SheetLinks, type StickerLang, type StickerRun, type StickerSummary,
 } from '../../api';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import { useIsBelowDesktop } from '../../hooks/useIsMobile';
@@ -22,7 +22,6 @@ import { CustomLabelModal } from './CustomLabels';
 import { FooterPicker } from './FooterPicker';
 import { FoldHelp } from './FoldHelp';
 import { ChooseItemsModal } from './ChooseItemsModal';
-import { ReprintScan } from './ReprintScan';
 import { pairedPrinter, printOverBluetooth } from './bluetoothPrinter';
 import { DEFAULT_CHOICE, choiceFromRequest, pageOf, pickRoll, rememberSize, rememberedSize, requestFor, rollName, rollStock, rollStockWords, sizeName, sizeOf, sizeProblem, stockOf, designFor, withPreset, type SizeChoice } from './labelSize';
 
@@ -213,10 +212,6 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
   const [reprint, setReprint] = useState<LabelPrintLookup | null>(null);
   const [editing, setEditing] = useState<{ id: number; name: string } | null>(null);
   const [savedSize, setSavedSize] = useState<{ layout: string; w: number | null; h: number | null } | null>(null);
-  // Print again: the last few saved sticker labels, one tap each (a cook
-  // prints the same sheet most days). Not on a production line's pop-up.
-  const [recent, setRecent] = useState<LabelJob[]>([]);
-  const [recentBusy, setRecentBusy] = useState<number | null>(null);
   // Print as, batch and quantity fold away until wanted: the form was a long scroll on a phone.
   const [moreOpen, setMoreOpen] = useState(() => Boolean(defaults?.batch || defaults?.qty));
   // Choose which items get labels, from the empty list (round 5, 2026-10-13).
@@ -237,23 +232,8 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     if (fixedKey === null) {
       fetchLabelProducts().then((r) => setProducts(r.data)).catch(() => setProducts([]));
       fetchCustomLabels().then((r) => setCustoms(r.data)).catch(() => setCustoms([]));
-      // Pinned labels lead (the server puts them first), then the last printed.
-      fetchLabelJobs({ page: 1, kind: 'stickers' }).then((r) => setRecent(r.data.filter((j) => j.pinned || j.print_count > 0).slice(0, 4))).catch(() => setRecent([]));
     }
   }, [fixedKey]);
-
-  const printAgain = async (j: LabelJob) => {
-    setRecentBusy(j.id);
-    try {
-      const r = await printLabelJob(j.id);
-      openLabelSheet(r.url, r.pdf_url);
-      setRecent((s) => s.map((x) => (x.id === j.id ? { ...x, print_count: x.print_count + 1 } : x)));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not print it.');
-    } finally {
-      setRecentBusy(null);
-    }
-  };
 
   // An older remembered stock (a layout key) maps onto the picker once the presets are in.
   useEffect(() => {
@@ -589,25 +569,6 @@ export function StickerPrintPanel({ fixedItems, productionItemId = null, default
     <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_auto] lg:gap-x-6 lg:gap-y-5" data-testid="sticker-print-panel">
     {stacked && previewPane}
     <div className="space-y-5 min-w-0 lg:col-start-1 lg:row-start-1">
-      {!fixedItems && !editing && recent.length > 0 && (
-        <section data-testid="sticker-recent">
-          <h3 className="text-sm font-bold text-[var(--color-text)] inline-flex items-center gap-1.5 mb-2"><History size={15} className="text-[var(--color-primary)]" /> Print again</h3>
-          <TabScrollRow style={{ gap: 8 }}>
-            {recent.map((j) => (
-              <span key={j.id} className="inline-flex items-stretch rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden max-w-full">
-                <button type="button" onClick={() => navigate(`/labels/stickers?job=${j.id}`)} className="px-3 min-h-[38px] inline-flex items-center gap-1.5 text-left text-xs font-semibold text-[var(--color-text)] max-w-[260px] hover:bg-[var(--color-bg)]" title={`Open ${j.name} to change it`}>
-                  {j.pinned && <Star size={12} className="shrink-0 text-[var(--color-warning)] fill-current" aria-label="Pinned" />}
-                  <span className="truncate">{j.name}</span>
-                </button>
-                <button type="button" onClick={() => void printAgain(j)} disabled={recentBusy === j.id} className="px-3 min-h-[38px] inline-flex items-center gap-1 border-l border-[var(--color-border)] text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-bg)] disabled:opacity-50" aria-label={`Print ${j.name} again`}><Printer size={14} aria-hidden /> Print</button>
-              </span>
-            ))}
-          </TabScrollRow>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">Pinned labels, then the last sheets printed, with today's dates. Tap the name to change one first.</p>
-        </section>
-      )}
-      {/* Scan to reprint (round 11): the QR on a pack, or its code, opens the label that printed it. */}
-      {!fixedItems && !editing && !reprint && <ReprintScan />}
       {/* Label stock (round 13): the rolls at or under their warning level, so nobody starts a sheet that will not finish. */}
       {!fixedItems && rolls.some((r) => rollStock(r).lowNow) && (
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs p-2.5 rounded-lg border" style={{ borderColor: 'color-mix(in srgb, var(--color-warning) 45%, transparent)', color: 'var(--color-warning)' }} data-testid="sticker-low-rolls">

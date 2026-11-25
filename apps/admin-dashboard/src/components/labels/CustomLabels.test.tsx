@@ -448,12 +448,14 @@ describe('CustomLabelsTab', () => {
     expect(screen.getByText(/Amma · No type · Chilled · keeps 14 days/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Print Garlic Sauce' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Remove Garlic Sauce' })).toBeNull();
-    expect(screen.queryByTestId('custom-label-new')).toBeNull();
     unmount();
 
     wrap(<CustomLabelsTab canManage />);
-    expect(await screen.findByTestId('custom-label-new')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Edit Garlic Sauce' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Edit Garlic Sauce' })).toBeInTheDocument();
+    // A new label is made on the New label tab alone (label audit, 2026-11-25): no second set of buttons here.
+    expect(screen.queryByTestId('custom-label-new')).toBeNull();
+    expect(screen.queryByTestId('custom-label-pouch-set')).toBeNull();
+    expect(screen.queryByTestId('custom-label-tub-set')).toBeNull();
   });
 
   // Owner, 2026-11-14: one Print per row opens the pop-up with the dates; a sheet is no longer saved by hand.

@@ -19,7 +19,7 @@ Prepare and then Print, and the hub had seven tabs. Now:
 
 | Tab | What it is | Address |
 |---|---|---|
-| **My labels** | Every label, one row each, with Print and Edit: the custom labels, then the menu items that print labels. Scan to reprint and Sheets printed before (the old Saved labels, with the print log) fold beneath. | `/labels/mine` |
+| **My labels** | Every label, one row each, with Print and Edit: the custom labels, then the menu items that print labels. Scan to reprint and Sheets printed before (the old Saved labels) fold beneath; each single print is on Batches. | `/labels/mine` |
 | **New label** | The four-step wizard (was Make a label). | `/labels/make` |
 | **Batches** | Every lot printed and every box label, with its code (below). | `/labels/batches` |
 | **Box labels** | Unchanged. | `/labels/box` |
@@ -196,7 +196,7 @@ Round 5 of the usability work (owner, 2026-10-13; the audit's "Menu items (0)" w
 hint that items must be switched on first). When nothing is on labels, Print labels says
 so in place of the list and offers the way on right there: **Choose which items get
 labels** (`ChooseItemsModal.tsx`: every menu item with a tick that is saved at once, the
-same switch as Settings → Products on labels; Done reloads the list) and **Make a label**;
+the one list for it; Done reloads the list) and **Make a label**;
 when only custom labels are on labels, a line under the filters says no menu items are and
 offers the same chooser. Someone without Manage label settings is told who can choose.
 Saved labels' empty list offers Make a label too. The **first-visit tour**
@@ -461,7 +461,7 @@ gives it all back. Three ways in, all landing on **Print labels** with `?code=CO
 - **Print labels → Print a pack's sticker again.** A row above the products, with
   **Scan its QR** (the camera, through the same `ScanSheet` the stock shelf uses) and a
   box to type the code from the print log or the pack page; either opens the label.
-- **Saved labels → Print log → Print again** on any sticker row whose product still
+- **Batches → Print again** on any sticker row whose product still
   exists.
 
 The form opens with the pack's details filled in and a line above it: "Printing again

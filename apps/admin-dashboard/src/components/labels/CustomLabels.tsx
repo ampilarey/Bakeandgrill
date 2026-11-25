@@ -13,8 +13,6 @@ import { ArrangeBar } from './ArrangeBar';
 import { clearDesign, hasOverrides, isMovable, nudgeSpot } from './labelLayout';
 import { BadgePicker } from './BadgePicker';
 import { WRAP_FALLBACK, WrapParts } from './WrapParts';
-import { PouchSetModal } from './PouchSetModal';
-import { TubSetModal } from './TubSetModal';
 import { POUCH_FALLBACK, PouchPicker, newPouch, pouchFits, pouchSummary } from './PouchPicker';
 import { StripOverlay } from './StripEditor';
 import { SpotOverlay } from './SpotOverlay';
@@ -686,9 +684,8 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
 export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
   const { toast } = useToast();
   const [rows, setRows] = useState<CustomLabel[] | null>(null);
-  const [edit, setEdit] = useState<CustomLabel | null | 'new'>(null);
-  const [pouchSet, setPouchSet] = useState(false);
-  const [tubSet, setTubSet] = useState(false);
+  // A new label is made on the New label tab, the one place for it (label audit, 2026-11-25); here a label is printed, viewed, changed, copied or removed.
+  const [edit, setEdit] = useState<CustomLabel | null>(null);
   const [print, setPrint] = useState<CustomLabel | null>(null);
   const [view, setView] = useState<CustomLabel | null>(null);
   const [query, setQuery] = useState('');
@@ -716,13 +713,6 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
                 <h3 className="font-bold text-[var(--color-text)]">Custom labels</h3>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">Labels for things that are not on the menu, with any brand and logo, wording and picture. Print opens the dates and the paper; Edit opens the label.</p>
               </div>
-              {canManage && (
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="secondary" icon={<Plus size={16} />} onClick={() => setPouchSet(true)} data-testid="custom-label-pouch-set">Pouch labels in every size</Button>
-                  <Button size="sm" variant="secondary" icon={<Plus size={16} />} onClick={() => setTubSet(true)} data-testid="custom-label-tub-set">Lid and side labels</Button>
-                  <Button size="sm" icon={<Plus size={16} />} onClick={() => setEdit('new')} data-testid="custom-label-new">New custom label</Button>
-                </div>
-              )}
             </div>
             {(rows?.length ?? 0) >= 4 && (
               <label className="relative block max-w-sm">
@@ -766,7 +756,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
             </li>
           ))}
           {rows !== null && rows.length === 0 && (
-            <li className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)]">{canManage ? 'No custom labels yet. Press New custom label to make one: a product name, a brand with its logo, and the details to print.' : 'No custom labels yet. Someone with Manage label settings can add them.'}</li>
+            <li className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)]">{canManage ? 'No custom labels yet. Open New label and pick Something else to make one: a product name, a brand with its logo, and the details to print.' : 'No custom labels yet. Someone with Manage label settings can add them.'}</li>
           )}
           {rows !== null && rows.length > 0 && shown.length === 0 && (
             <li className="px-4 py-6 text-center text-sm text-[var(--color-text-muted)]">No label matches “{query.trim()}”.</li>
@@ -775,9 +765,7 @@ export function CustomLabelsTab({ canManage }: { canManage: boolean }) {
       </Card>
       {view && <ViewLabelModal target={printTargetOf(view)} onClose={() => setView(null)} onPrint={() => { setPrint(view); setView(null); }} />}
       {print && <PrintLabelModal target={printTargetOf(print)} canManage={canManage} onClose={() => { setPrint(null); void load(); }} />}
-      {pouchSet && <PouchSetModal onClose={() => { setPouchSet(false); void load(); }} />}
-      {tubSet && <TubSetModal onClose={() => { setTubSet(false); void load(); }} />}
-      {edit !== null && <CustomLabelModal label={edit === 'new' ? null : edit} onClose={() => setEdit(null)} onSaved={() => void load()} />}
+      {edit !== null && <CustomLabelModal label={edit} onClose={() => setEdit(null)} onSaved={() => void load()} />}
     </div>
   );
 }
