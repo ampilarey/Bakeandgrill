@@ -38,12 +38,16 @@ final class LabelTypes
         $pick = fn (string $itemCol, ?string $typeVal, string $fallback = ''): string => $own($itemCol) !== '' ? $own($itemCol) : (trim((string) $typeVal) !== '' ? trim((string) $typeVal) : $fallback);
         // A type's storage line is for its own storage; an item kept differently takes the line for its storage.
         $lineFromType = $type && $type->storage === $storage;
+        // The storage's stock heading ("FROZEN HEDHIKA") is the menu's wording. A custom label is for anything, so with
+        // no type picked and no heading typed it prints none (owner, 2026-11-25: a Rihaakuru bottle said FRESH HEDHIKA,
+        // "I didn't type fresh hedika in any place").
+        $stock = fn (bool $dv): string => $item instanceof CustomLabel && !$type ? '' : LabelSettings::headingLine($storage, $dv);
 
         return [
             'type_id' => $type?->id,
             'type_name' => $type?->name,
-            'heading' => $pick('label_heading', $type?->heading, LabelSettings::headingLine($storage, false)),
-            'heading_dv' => $pick('label_heading_dv', $type?->heading_dv, LabelSettings::headingLine($storage, true)),
+            'heading' => $pick('label_heading', $type?->heading, $stock(false)),
+            'heading_dv' => $pick('label_heading_dv', $type?->heading_dv, $stock(true)),
             'storage' => $storage,
             'storage_en' => $pick('label_storage_line', $lineFromType ? $type->storage_line : null, LabelSettings::storageLine($storage, false)),
             'storage_dv' => $pick('label_storage_line_dv', $lineFromType ? $type->storage_line_dv : null, LabelSettings::storageLine($storage, true)),

@@ -572,6 +572,7 @@ export const GUIDES: Guide[] = [
     notes: [
       'A wrap-around label is any wide, short size. Picking a size that is not wide turns it back into a sticker.',
       'Switching away from Pouch and back keeps the pouch picks you made.',
+      'A label with no Label type prints no heading until you type one in Wording on the sticker. Pick a Label type, such as Frozen Hedhika, to print that type\'s heading.',
     ],
     words: 'kind type wrap around bottle pouch bag tub lid side sticker preview not showing',
   },

@@ -118,6 +118,31 @@ class CustomLabelsTest extends TestCase
      * print". The owner's own words live in a footer preset's tagline now
      * ("No easy option to select and edit branding footer").
      */
+    /** Owner, 2026-11-25: a Rihaakuru bottle label said FRESH HEDHIKA: "I didn't type fresh hedika in any place". */
+    public function test_a_custom_label_with_no_type_prints_no_stock_heading(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $plain = ['name' => 'Rihaakuru', 'name_dv' => 'ރިހާކުރު', 'brand_id' => LabelBrand::query()->where('name', 'Amma')->value('id'), 'label_storage' => 'ambient', 'label_ingredients' => 'Tuna, salt'];
+        $id = $this->postJson('/api/labels/custom', $plain)->assertCreated()->assertJsonPath('data.defaults.heading', '')->json('data.id');
+        $sheet = fn (int $label, array $extra) => (string) $this->get($this->postJson('/api/labels/stickers/url', ['items' => [['id' => $label, 'kind' => 'custom', 'copies' => 1]], 'preview' => true] + $extra)->assertOk()->json('view_url'))->assertOk()->getContent();
+
+        // Every design, in each language: the product's name, and no heading nobody typed.
+        foreach ([['layout' => 'a4-4'], ['layout' => 'single-custom', 'w' => 180, 'h' => 40], ['layout' => 'single-custom', 'w' => 100, 'h' => 50], ['layout' => 'single-custom', 'w' => 40, 'h' => 60], ['layout' => 'single-custom', 'w' => 70, 'h' => 72], ['layout' => 'single-round-custom', 'w' => 80], ['layout' => 'single-round-custom', 'w' => 40]] as $size) {
+            foreach (['en', 'dv', 'both'] as $lang) {
+                $html = $sheet($id, $size + ['lang' => $lang]);
+                $this->assertStringNotContainsString('HEDHIKA', $html, json_encode($size) . " {$lang}");
+                $this->assertStringNotContainsString('ހެދިކާ', $html, json_encode($size) . " {$lang}");
+                $this->assertStringContainsString($lang === 'dv' ? 'ރިހާކުރު' : 'Rihaakuru', $html);
+            }
+        }
+
+        // A heading that was typed prints, and so does a picked type's.
+        $typed = $this->postJson('/api/labels/custom', $plain + ['label_heading' => 'BY BAKE & GRILL'])->assertCreated()->json('data.id');
+        $this->assertStringContainsString('BY BAKE &amp; GRILL', $sheet($typed, ['layout' => 'single-custom', 'w' => 180, 'h' => 40]));
+        $ofType = $this->postJson('/api/labels/custom', ['label_type_id' => LabelType::query()->where('name', 'Chilled Hedhika')->value('id')] + $plain)->assertCreated()->json('data.id');
+        $this->assertStringContainsString('HEDHIKA', $sheet($ofType, ['layout' => 'a4-4']));
+    }
+
     public function test_a_custom_label_prints_its_footers_own_words_and_both_names_on_every_size(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);

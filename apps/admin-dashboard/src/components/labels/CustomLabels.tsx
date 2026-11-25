@@ -259,8 +259,9 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   // What prints in an empty box: the chosen type's wording, else the usual wording.
   const type = types.find((t) => t.id === d.label_type_id) ?? null;
   const ph = {
-    heading: type?.heading || saved?.defaults.heading || 'FROZEN HEDHIKA',
-    heading_dv: type?.heading_dv || saved?.defaults.heading_dv || '',
+    // With no type picked nothing prints as the heading until one is typed (owner, 2026-11-25).
+    heading: type ? (type.heading || saved?.defaults.heading || 'FROZEN HEDHIKA') : 'None: type one to print it',
+    heading_dv: type ? (type.heading_dv || saved?.defaults.heading_dv || '') : '',
     storage_line: type ? (type.storage_line || type.defaults.storage_line) : (saved?.defaults.storage_line || 'The usual line for its storage'),
     storage_line_dv: type ? (type.storage_line_dv || type.defaults.storage_line_dv) : (saved?.defaults.storage_line_dv || ''),
     how_to_use: type?.how_to_use || 'Thaw 10 min. Deep fry 4–5 min until golden.',

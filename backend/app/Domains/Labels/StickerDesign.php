@@ -95,6 +95,7 @@ final class StickerDesign
             $p[] = ['t' => 'text', 'x' => $headX, 'base' => 20.5, 'w' => $headW, 'align' => 'l', 'font' => 'j8', 'pt' => self::fitHeader($top, $headW - 1), 'color' => self::DARK, 'text' => $top];
             $p[] = ['t' => 'text', 'x' => $headX, 'base' => 28, 'w' => $headW, 'align' => 'l', 'font' => 'j8', 'pt' => self::fitHeader($bottom, $headW - 1), 'color' => self::DARK, 'text' => $bottom];
         }
+        // The short rule stays when there is no heading (a custom label with no type): it is what a tap lands on to add one.
         $p[] = ['t' => 'rect', 'x' => $X(34, 14), 'y' => 29.5, 'w' => 14, 'h' => 1, 'fill' => self::PRIMARY];
         $p[] = LabelSpots::close();
         if ($batchQr) {
