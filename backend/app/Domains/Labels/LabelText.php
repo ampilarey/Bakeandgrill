@@ -41,10 +41,10 @@ final class LabelText
     ];
 
     /**
-     * The Thaana faces a label can print in (owner, 2026-10-12: "dhivehi font
-     * is not nice"). Noto Sans Thaana (OFL, public/fonts/NOTO-SANS-THAANA-LICENSE.txt)
-     * is the clean default and has a true bold; Faruma is the classic face the
-     * first stickers used, thickened by hand for its headings; "site" is the
+     * The Thaana faces a label can print in. Faruma, the classic face, is the
+     * default (owner, 2026-11-25, picked from the three side by side), thickened
+     * by hand for its headings; Noto Sans Thaana (OFL,
+     * public/fonts/NOTO-SANS-THAANA-LICENSE.txt) has a true bold; "site" is the
      * font uploaded in Content Hub (TTF or OTF on disk for the PDF; a WOFF2
      * upload prints the web sheet in it and the PDF in Faruma).
      *
@@ -122,7 +122,7 @@ final class LabelText
                 'composed' => false,
             ];
         }
-        $key = isset(self::DV_FACES[$key]) ? $key : 'noto';
+        $key = isset(self::DV_FACES[$key]) ? $key : 'faruma';
         if (isset(self::$faces[$key])) {
             return self::$faces[$key];
         }

@@ -14,10 +14,10 @@ use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * Owner, 2026-10-12: "dhivehi font is not nice". Stickers set Dhivehi in
- * Noto Sans Thaana, headings in its true bold, unless Labels → Settings
- * picks Faruma (the classic face, thickened by hand) or the website's
- * uploaded font.
+ * Owner, 2026-11-25: "Need to use nice dhivehi font", Faruma picked from the
+ * three side by side. Stickers set Dhivehi in Faruma (headings thickened by
+ * hand) unless Labels → Settings picks Noto Sans Thaana (true bold; the
+ * default from 2026-10-12 until then) or the website's uploaded font.
  */
 class LabelDhivehiFontTest extends TestCase
 {
@@ -37,8 +37,24 @@ class LabelDhivehiFontTest extends TestCase
         ]);
     }
 
-    public function test_the_shipped_noto_files_exist_and_are_the_default_face(): void
+    public function test_faruma_is_the_face_until_another_is_picked(): void
     {
+        $this->assertSame('faruma', LabelSettings::dhivehiFont());
+        $this->assertSame('faruma', LabelText::dvFace()['key']);
+        $this->assertFileExists(public_path('fonts/a_faruma.ttf'));
+        $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'lang' => 'dv', 'layout' => 'a4-4'])->assertOk();
+        $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
+        $this->assertStringContainsString("url('/fonts/a_faruma.woff2')", $html);
+        $this->assertStringNotContainsString('noto-sans-thaana', $html);
+        $this->assertStringStartsWith('%PDF', (string) $this->get($res->json('pdf_url'))->assertOk()->getContent());
+        // Picking Noto is kept, and picking Faruma again clears the override.
+        $this->putJson('/api/labels/settings', ['label_dhivehi_font' => 'noto'])->assertOk()->assertJsonPath('data.label_dhivehi_font', 'noto');
+        $this->assertSame('noto', LabelSettings::dhivehiFont());
+    }
+
+    public function test_the_shipped_noto_files_exist_and_noto_prints_composed_when_picked(): void
+    {
+        SiteSetting::set('label_dhivehi_font', 'noto');
         foreach (['fonts/pdf/NotoSansThaana-Regular.ttf', 'fonts/pdf/NotoSansThaana-Bold.ttf', 'fonts/pdf/NotoSansThaana-Regular-composed.ttf', 'fonts/pdf/NotoSansThaana-Bold-composed.ttf', 'fonts/noto-sans-thaana-400.woff2', 'fonts/noto-sans-thaana-700.woff2', 'fonts/NOTO-SANS-THAANA-LICENSE.txt'] as $file) {
             $this->assertFileExists(public_path($file));
         }
@@ -62,6 +78,7 @@ class LabelDhivehiFontTest extends TestCase
 
     public function test_the_sheet_embeds_noto_with_its_bold_and_sets_dhivehi_headings_in_it(): void
     {
+        SiteSetting::set('label_dhivehi_font', 'noto');
         $res = $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $this->bajiya->id, 'copies' => 1]], 'lang' => 'dv', 'layout' => 'a4-4'])->assertOk();
         $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
         $this->assertStringContainsString("url('/fonts/noto-sans-thaana-400.woff2') format('woff2'); font-weight: normal", $html);
@@ -79,7 +96,7 @@ class LabelDhivehiFontTest extends TestCase
         $this->assertStringStartsWith('%PDF', $pdf);
     }
 
-    public function test_faruma_can_be_picked_back_and_is_thickened_by_hand(): void
+    public function test_faruma_is_thickened_by_hand_and_needs_no_composed_copy(): void
     {
         $this->putJson('/api/labels/settings', ['label_dhivehi_font' => 'faruma'])->assertOk()->assertJsonPath('data.label_dhivehi_font', 'faruma');
         $this->assertSame('faruma', LabelSettings::dhivehiFont());
@@ -105,11 +122,11 @@ class LabelDhivehiFontTest extends TestCase
         $this->assertNull($face['bold_pdf']);
     }
 
-    public function test_an_unknown_font_is_refused_and_a_bad_stored_value_falls_back_to_noto(): void
+    public function test_an_unknown_font_is_refused_and_a_bad_stored_value_falls_back_to_faruma(): void
     {
         $this->putJson('/api/labels/settings', ['label_dhivehi_font' => 'comic'])->assertStatus(422);
         SiteSetting::set('label_dhivehi_font', 'comic');
-        $this->assertSame('noto', LabelSettings::dhivehiFont());
-        $this->assertSame('noto', LabelText::dvFace()['key']);
+        $this->assertSame('faruma', LabelSettings::dhivehiFont());
+        $this->assertSame('faruma', LabelText::dvFace()['key']);
     }
 }

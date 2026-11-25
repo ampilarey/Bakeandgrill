@@ -55,7 +55,7 @@ final class LabelSettings
         'label_date_style' => 'dmy',
         // Owner, 2026-10-12: "dhivehi font is not nice". A LabelText::DV_FACES
         // key, or "site" for the font uploaded in Content Hub.
-        'label_dhivehi_font' => 'noto',
+        'label_dhivehi_font' => 'faruma',
         // 2026-10-12: the batch QR in the header (the pack's page, BatchLink)
         // and the allergen pictograms (AllergenIcons); "1" on, "0" off.
         'label_batch_qr' => '1',
@@ -138,7 +138,7 @@ final class LabelSettings
     {
         $font = self::get('label_dhivehi_font');
 
-        return in_array($font, self::DHIVEHI_FONTS, true) ? $font : 'noto';
+        return in_array($font, self::DHIVEHI_FONTS, true) ? $font : 'faruma';
     }
 
     public static function storage(string $storage): string

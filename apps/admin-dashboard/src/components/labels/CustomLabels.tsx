@@ -207,7 +207,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
       }
     }).catch(() => setPresets([]));
     fetchLabelFooters().then((r) => setFooters(r.data)).catch(() => setFooters([]));
-    fetchLabelSettings().then((r) => setDvFont(r.data.label_dhivehi_font || 'noto')).catch(() => setDvFont(null));
+    fetchLabelSettings().then((r) => setDvFont(r.data.label_dhivehi_font || 'faruma')).catch(() => setDvFont(null));
   }, []);
 
   // The language the preview and Print… use: the label's own, else both when

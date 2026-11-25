@@ -954,11 +954,12 @@ type's QR choice).
 
 Dates print as `04 / 10 / 2026` or `4 Oct 2026` (Labels → Settings → Dates and fonts).
 
-**Dhivehi font** (Labels → Settings → Dates and fonts; owner, 2026-10-12: "dhivehi font
-is not nice"). Stickers set Dhivehi in **Noto Sans Thaana** (clean, with a true bold for
-the headings; OFL, `backend/public/fonts/NOTO-SANS-THAANA-LICENSE.txt`), or in
-**Faruma** (the classic face the first stickers used, thickened by hand for headings),
-or in **the website's uploaded font** (Content Hub `dhivehi_font`; the PDF uses it only
+**Dhivehi font** (Labels → Setup → Settings → Dates and fonts). Stickers set Dhivehi in
+**Faruma** (the classic face, thickened by hand for headings; the default since
+2026-11-25, when the owner picked it from the three faces side by side: "Need to use nice
+dhivehi font"), or in **Noto Sans Thaana** (upright, with a true bold for the headings;
+OFL, `backend/public/fonts/NOTO-SANS-THAANA-LICENSE.txt`; the default from 2026-10-12
+until then), or in **the website's uploaded font** (Content Hub `dhivehi_font`; the PDF uses it only
 when it was uploaded as TTF or OTF, otherwise the PDF falls back to Faruma). The web
 preview and the PDF use the same face (`LabelText::dvFace()`); until 2026-10-12 the
 preview's font rule was dropped by Blade escaping, so browsers drew a system font there.

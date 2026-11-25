@@ -248,9 +248,11 @@ custom label previewed before it is saved (`POST /labels/custom/preview`, cache 
 `d<token>` in the sheet link, never printed), pinned saved labels (`label_jobs.pinned`,
 first in Saved labels and Print again), and Stickers on the kitchen screen for a batch
 just sent (needs `labels.print`). Phones print the PDF, not the web sheet (iOS adds margins).
-Dhivehi on stickers is Noto Sans Thaana with a true bold for headings (owner, 2026-10-12:
-"dhivehi font is not nice"), or Faruma or the website's uploaded font by Labels → Settings
-(`label_dhivehi_font`, `LabelText::dvFace()`); the web sheet and the PDF share the face,
+Dhivehi on stickers is Faruma, its headings thickened by hand (owner, 2026-11-25: "Need to
+use nice dhivehi font", picked from the three faces side by side; Noto Sans Thaana was the
+default from 2026-10-12 until then), or Noto Sans Thaana with a true bold or the website's
+uploaded font by Labels → Settings (`label_dhivehi_font`, `LabelText::dvFace()`; never
+change the default back without the owner's say); the web sheet and the PDF share the face,
 and a second family in a Blade `{{ }}` must not be quoted there (Blade escapes the quotes
 and the browser drops the rule). Dhivehi at hand-thickening 0.5 and up sets in the true
 bold (`LabelText::DV_BOLD_FROM`). A custom label's row has Save, which prepares a full

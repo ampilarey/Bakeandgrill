@@ -271,11 +271,11 @@ function SettingsTab({ canManage }: { canManage: boolean }) {
             </select>
           </div>
           <div>
-            {/* Owner, 2026-10-12: "dhivehi font is not nice". */}
+            {/* Owner, 2026-11-25: Faruma, picked from the three side by side ("Need to use nice dhivehi font"). */}
             <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-1" htmlFor="label_dhivehi_font">Dhivehi font on stickers</label>
-            <select id="label_dhivehi_font" value={settings.label_dhivehi_font ?? 'noto'} disabled={!canManage} onChange={(e) => setSettings((s) => ({ ...s, label_dhivehi_font: e.target.value }))} className={input}>
-              <option value="noto">Noto Sans Thaana · clean, with a real bold</option>
+            <select id="label_dhivehi_font" value={settings.label_dhivehi_font ?? 'faruma'} disabled={!canManage} onChange={(e) => setSettings((s) => ({ ...s, label_dhivehi_font: e.target.value }))} className={input}>
               <option value="faruma">Faruma · the classic face</option>
+              <option value="noto">Noto Sans Thaana · upright, with a real bold</option>
               <option value="site">The font uploaded for the website</option>
             </select>
             <p className="text-xs text-[var(--color-text-muted)] mt-1">The website font prints on the PDF only when it was uploaded as TTF or OTF; otherwise the PDF falls back to Faruma.</p>
