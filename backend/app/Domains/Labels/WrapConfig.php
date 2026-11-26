@@ -120,6 +120,8 @@ final class WrapConfig
             'pictures' => $pictures,
             // The words on the expiry box ("BEST BEFORE"); blank keeps the label type's.
             'exp_label' => $text('exp_label', 16),
+            // The words on the made-on box ("PACKED ON"; owner, 2026-11-26); blank keeps the label type's.
+            'mfg_label' => $text('mfg_label', 16),
             'corner' => is_numeric($in['corner'] ?? null) ? round(max(0.0, min(self::CORNER_MAX, (float) $in['corner'])), 1) : self::CORNER_DEFAULT,
             'faces' => in_array((int) ($in['faces'] ?? 0), self::FACES, true) ? (int) ($in['faces'] ?? 0) : 0,
             'text_heading' => $text('text_heading', 40),
@@ -148,6 +150,7 @@ final class WrapConfig
             "$key.marks" => 'sometimes|array|max:' . count(LabelMarks::KEYS),
             "$key.marks.*" => ['string', Rule::in(LabelMarks::KEYS)],
             "$key.exp_label" => 'sometimes|nullable|string|max:16',
+            "$key.mfg_label" => 'sometimes|nullable|string|max:16',
             "$key.corner" => 'sometimes|nullable|numeric|min:0|max:' . self::CORNER_MAX,
             "$key.faces" => ['sometimes', 'nullable', Rule::in(self::FACES)],
             "$key.pictures" => 'sometimes|array|max:' . self::MAX_PICTURES,

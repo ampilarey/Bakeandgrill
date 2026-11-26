@@ -98,6 +98,7 @@ export function applyToCustom(d: CustomDraft, t: LabelTemplate): CustomDraft {
   if (t.photo && n.label_photo_media_id == null) { n.label_photo_media_id = t.photo.id; n.label_photo_url = t.photo.url; }
   // The product a built-in template is for names a label that has no name yet.
   if (t.product && !n.name.trim()) n.name = t.product;
+  if (t.product_dv && !n.name_dv.trim()) n.name_dv = t.product_dv;
   return n;
 }
 

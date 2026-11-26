@@ -118,6 +118,9 @@ export function WrapParts({ value, onChange, catalogue, pictures, onAddPicture, 
               <p className="text-xs text-[var(--color-text-muted)] mt-1">Kept clear each side of a fold, because a bottle's corners are rounded. 3 mm suits most; more for a rounder corner.</p>
             </>
           )}
+          <label className={`${labelClass} mt-3`} htmlFor={`${idPrefix}-mfg`}>Words on the made-on date box</label>
+          <input id={`${idPrefix}-mfg`} maxLength={16} value={value.mfg_label ?? ''} onChange={(e) => set('mfg_label', e.target.value)} className={fieldClass} placeholder="MFG DATE" list={`${idPrefix}-mfg-words`} />
+          <datalist id={`${idPrefix}-mfg-words`}><option value="Packed on" /><option value="Pkd date" /><option value="Made on" /></datalist>
           <label className={`${labelClass} mt-3`} htmlFor={`${idPrefix}-exp`}>Words on the expiry date box</label>
           <input id={`${idPrefix}-exp`} maxLength={16} value={value.exp_label ?? ''} onChange={(e) => set('exp_label', e.target.value)} className={fieldClass} placeholder="EXP DATE" list={`${idPrefix}-exp-words`} />
           <datalist id={`${idPrefix}-exp-words`}><option value="Best before" /><option value="Use by" /><option value="Expiry date" /></datalist>

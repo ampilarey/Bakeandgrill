@@ -422,7 +422,13 @@ final class WrapDesign
         $picW = 0.0;
         $photo = $d['photo'] ?: null;
         // A bottle's face is narrower than a free part: the picture stays from 46 mm there.
-        if ($photo && $pw >= ($this->faces > 0 ? 46 : 56) && $nh >= 10) {
+        // On a tall face (a jar's side, about as tall as it is wide) the name has the face's width to itself and the
+        // picture stands under it (owner's Rihaakuru jar, 2026-11-26: side by side, the name was set small).
+        if ($photo && $this->faces > 0 && $nh >= 30) {
+            [$sw, $sh] = StickerDesign::fit($d['photo_ratio'], $pw - 2 * $in, $nh * 0.44);
+            $this->img($x + ($pw - $sw) / 2, $ny + $nh - $sh, $sw, $sh, $photo);
+            $nh -= $sh + 1.0;
+        } elseif ($photo && $pw >= ($this->faces > 0 ? 46 : 56) && $nh >= 10) {
             [$picW, $picH] = StickerDesign::fit($d['photo_ratio'], $this->faces > 0 ? min($pw * 0.5, $nh * 1.6) : min($pw * 0.36, $nh * 1.3), $nh);
             $this->img($this->ax($x + $pw - $in - $picW, $picW, $pw, $x), $ny + ($nh - $picH) / 2, $picW, $picH, $photo);
             $picW += 1.2;
@@ -692,9 +698,14 @@ final class WrapDesign
         $boxesH = $side ? $bh : 2 * $bh + 0.8;
         // "BEST BEFORE" when this label says so, else the label type's words.
         $expWords = trim((string) ($d['wrap']['exp_label'] ?? '')) !== '' ? mb_strtoupper(trim((string) $d['wrap']['exp_label'])) : (string) $d['exp_label'];
+        // "PACKED ON" the same way (owner, 2026-11-26: a jar that is packed, not made, on the day); in Dhivehi a
+        // label that says packed says so too.
+        $mfgTyped = trim((string) ($d['wrap']['mfg_label'] ?? ''));
+        $mfgWords = $mfgTyped !== '' ? mb_strtoupper($mfgTyped) : (string) $d['mfg_label'];
+        $packed = preg_match('/pack|pkd|pkg/i', $mfgTyped) === 1;
         $rows = $this->dv
-            ? [['ހެދި ތާރީޚު', 'ހެދި', StickerDesign::DARK, $d['mfg']], ['ހަމަވާ ތާރީޚު', 'ހަމަވާ', StickerDesign::PRIMARY, $d['exp']]]
-            : [[$d['mfg_label'], $d['mfg_label'], StickerDesign::DARK, $d['mfg']], [$expWords, $expWords, StickerDesign::PRIMARY, $d['exp']]];
+            ? [[$packed ? 'ޕެކްކުރި ތާރީޚު' : 'ހެދި ތާރީޚު', $packed ? 'ޕެކްކުރި' : 'ހެދި', StickerDesign::DARK, $d['mfg']], ['ހަމަވާ ތާރީޚު', 'ހަމަވާ', StickerDesign::PRIMARY, $d['exp']]]
+            : [[$mfgWords, $mfgWords, StickerDesign::DARK, $d['mfg']], [$expWords, $expWords, StickerDesign::PRIMARY, $d['exp']]];
         $g = $side ? 1.4 : 0.8;
         $boxW = $side ? ($pw - $g) / 2 : $pw;
         foreach ($rows as $i => [$long, $short, $colour, $date]) {

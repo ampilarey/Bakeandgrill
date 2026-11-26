@@ -52,6 +52,40 @@ class BottleFacesLabelTest extends TestCase
         }
     }
 
+    /**
+     * Owner, 2026-11-26: "Can u make a template for the Rihaakuru also like u did for teluli rihaakuru. I need name
+     * in English and dhivehi also. Instead of mfd. put packing date… For the default photo can u put a tuna fish?
+     * This size of the bottle" (a square jar about 6.5 cm a side).
+     */
+    public function test_the_rihaakuru_jar_template_is_in_both_languages_with_packed_on_and_a_tuna(): void
+    {
+        $t = collect($this->getJson('/api/labels/templates')->assertOk()->json('builtin'))->keyBy('id')['rihaakuru-jar'];
+        $this->assertSame('Rihaakuru', $t['product']);
+        $this->assertSame('ރިހާކުރު', $t['product_dv']);
+        $this->assertSame('Amma', $t['brand_name']);
+        $this->assertNotEmpty($t['photo']['id'], 'the drawn tuna');
+        $this->assertFileExists(public_path('brand/photos/rihaakuru/tuna.png'));
+        $this->assertSame('both', $t['fields']['label_lang']);
+        $this->assertSame(4, $t['fields']['label_wrap']['faces']);
+        $this->assertSame('Packed on', $t['fields']['label_wrap']['mfg_label']);
+        $this->assertSame([240, 60], [(int) $t['size']['w'], (int) $t['size']['h']]);
+
+        $id = $this->postJson('/api/labels/custom', ['name' => $t['product'], 'name_dv' => $t['product_dv'], 'label_photo_media_id' => $t['photo']['id']] + $t['fields'])->assertCreated()->json('data.id');
+        $sheet = fn (string $lang, string $layout) => $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 1]], 'layout' => $layout, 'w' => 240, 'h' => 60, 'lang' => $lang, 'fill' => true])->assertOk();
+        $res = $sheet('both', 'single-custom');
+        $this->assertSame('wrap', $res->json('summary.design'));
+        $html = (string) $this->get($res->json('view_url'))->assertOk()->getContent();
+        $this->dump('jar-rihaakuru', $html);
+        $this->assertStringContainsString('Rihaakuru', $html);
+        $this->assertStringContainsString('PACKED ON', $html);
+        $this->assertStringNotContainsString('MFG DATE', $html);
+        $this->assertStringContainsString('BEST BEFORE', $html);
+        $this->assertStringStartsWith('%PDF', (string) $this->get($res->json('pdf_url'))->assertOk()->getContent());
+        // In Dhivehi alone the box says packed too, and the label fits an A4 sheet on its side.
+        $this->assertStringNotContainsString('PACKED ON', (string) $this->get($sheet('dv', 'single-custom')->json('view_url'))->getContent());
+        $this->assertGreaterThanOrEqual(2, $sheet('both', 'a4-custom')->json('summary.per_page'));
+    }
+
     public function test_the_rihaakuru_template_brings_the_brand_the_photo_the_name_and_a_label_in_four_faces(): void
     {
         $builtin = collect($this->getJson('/api/labels/templates')->assertOk()->json('builtin'))->keyBy('id');

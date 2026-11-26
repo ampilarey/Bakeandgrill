@@ -575,6 +575,8 @@ export const GUIDES: Guide[] = [
       'Switching away from Pouch and back keeps the pouch picks you made.',
       'On a wrap-around label, "Words on the band" is only the coloured band along the bottom. Left empty, the band carries the net weight, or is left off when there is none. It never repeats the product name.',
       'The preview in this form leaves both dates blank. You pick the dates when you tap Print.',
+      'For the square Rihaakuru jar, pick "Rihaakuru jar (4 sides)" under Start from: it brings the name in English and Dhivehi, the tuna picture, the size and "Packed on" on the date box.',
+      'On a wrap-around label, "Words on the made-on date box" changes MFG DATE to your own words, such as Packed on.',
       'Storage starts on "None: no storage line". Pick Frozen, Chilled or Room temperature to print that line, or pick a Label type that brings one.',
       'A label with no Label type prints no heading until you type one in Wording on the sticker. Pick a Label type, such as Frozen Hedhika, to print that type\'s heading.',
     ],

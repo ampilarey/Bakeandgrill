@@ -93,6 +93,8 @@ export type LabelWrap = {
   corner?: number;
   /** The words on the expiry box ("Best before"); blank keeps the label type's. */
   exp_label?: string;
+  /** The words on the made-on box ("Packed on"); blank keeps the label type's. */
+  mfg_label?: string;
   text_heading: string;
   text_heading_dv: string;
   text: string;
@@ -291,6 +293,8 @@ export type LabelTemplate = {
   photo?: { id: number; url: string | null } | null;
   /** The product a built-in template is for: it names a new label that has no name yet. */
   product?: string | null;
+  /** Its Dhivehi name, for a label printed in both languages. */
+  product_dv?: string | null;
   wrap_pictures: WrapPicture[]; size: LabelTemplateSize | null;
   /** The names behind the ids, for the list line; `storage` is what its fields or its type say. */
   type_name: string | null; brand_name: string | null; footer_name: string | null; storage: LabelStorage | null;

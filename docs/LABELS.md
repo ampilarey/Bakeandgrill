@@ -1437,3 +1437,9 @@ content it is not drawn. The net content prints once: on the band, or beside the
 preview in the custom label form leaves both dates blank; dates are picked in the Print pop-up. Storage starts on
 "None: no storage line": a label with no Label type prints a storage line only once a storage is picked or a line is
 typed. Labels saved before this kept their frozen line (their storage was written down as frozen).
+
+**The Rihaakuru jar** (owner, 2026-11-26). Start from → Rihaakuru jar (4 sides): a 240 × 60 mm label in four faces of
+60 mm for the square jar (about 6.5 cm a side), the name in English and Dhivehi, a drawn tuna as the picture, "Packed
+on" in place of the made-on date and "Best before" for the expiry. The ingredients (tuna, water, salt) and the 180
+days are a start to check. Measure round the jar before a full print run: if the label is long or short, change the
+width under Shape and size. Any wrap-around label can reword its made-on box under Words on the made-on date box.

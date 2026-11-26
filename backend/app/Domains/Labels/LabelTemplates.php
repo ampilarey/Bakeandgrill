@@ -170,6 +170,21 @@ final class LabelTemplates
             ],
             'size' => ['shape' => 'rect', 'preset' => 'r215x40', 'on' => 'sheet'],
         ],
+        // Plain Rihaakuru in the square jar with the gold lid (owner, 2026-11-26, from two photos of the jar against a
+        // ruler: about 6.5 cm a side, the flat part of the body about 7 cm tall): one label right round, 240 × 60 mm in
+        // four faces of 60 mm, the name in English and Dhivehi, "Packed on" in place of the made-on date, and a drawn
+        // tuna until the owner puts a photo of their own. The ingredients and the 180 days are a start: the owner checks them.
+        [
+            'id' => 'rihaakuru-jar', 'name' => 'Rihaakuru jar (4 sides)', 'blurb' => "Amma's Rihaakuru in the square jar: one label right round, a side each for the name and picture, the ingredients, the dates, and Bake & Grill's details with the complaints QR. English and Dhivehi.",
+            'product' => 'Rihaakuru', 'product_dv' => 'ރިހާކުރު', 'brand' => 'Amma', 'photo' => 'brand/photos/rihaakuru/tuna.png',
+            'fields' => [
+                'label_storage' => 'ambient', 'label_heading' => 'BY BAKE & GRILL', 'label_storage_line' => 'Store in a cool, dry place',
+                'label_ingredients' => 'Tuna, water, salt.', 'label_allergens' => 'Fish',
+                'label_shelf_life_days' => 180, 'label_pack_unit' => 'G', 'label_lang' => 'both',
+                'label_wrap' => ['parts' => ['brand', 'legal', 'marks', 'dates', 'maker'], 'band' => false, 'faces' => 4, 'corner' => 5, 'mfg_label' => 'Packed on', 'exp_label' => 'Best before', 'marks' => ['recycle', 'dispose']],
+            ],
+            'size' => ['shape' => 'rect', 'preset' => 'r240x60', 'on' => 'sheet'],
+        ],
         [
             'id' => 'pouch-any', 'name' => 'Pouch label (any product)', 'blurb' => 'The pouch label for anything sold in a pouch or bag: pick the pouch colour and how it is cooked on the label.',
             'fields' => ['label_storage' => 'frozen', 'label_shelf_life_days' => 30, 'label_pack_unit' => 'PCS', 'label_show_price' => true, 'label_lang' => 'en', 'label_pouch' => ['look' => 'clear', 'method' => 'none']],
@@ -333,7 +348,7 @@ final class LabelTemplates
         }
 
         return self::row($builtin['id'], true, $builtin['name'], $builtin['blurb'], null, $fields, self::normaliseSize($builtin['size']), $names)
-            + ['created_by' => null, 'created_at' => null, 'photo' => $photo ? ['id' => (int) $photo->id, 'url' => $photo->url] : null, 'product' => $builtin['product'] ?? null];
+            + ['created_by' => null, 'created_at' => null, 'photo' => $photo ? ['id' => (int) $photo->id, 'url' => $photo->url] : null, 'product' => $builtin['product'] ?? null, 'product_dv' => $builtin['product_dv'] ?? null];
     }
 
     /** A built-in template's own photo as a library picture, kept once; null when it has none. */
