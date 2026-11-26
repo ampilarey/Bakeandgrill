@@ -73,7 +73,7 @@ export function ShortLifeChip({ days }: { days: number | null | undefined }) {
 
 const longDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
-/** The use-by the print will carry, on the wizard's last step. */
+/** The use-by the print will carry, in the Print pop-up and on Print labels. */
 export function UseByLine({ exp, shelf, fill }: { exp: string | null | undefined; shelf: number | null | undefined; fill: boolean }) {
   return (
     <p className="text-sm text-[var(--color-text)]" data-testid="make-use-by">

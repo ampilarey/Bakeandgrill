@@ -20,7 +20,7 @@ Prepare and then Print, and the hub had seven tabs. Now:
 | Tab | What it is | Address |
 |---|---|---|
 | **My labels** | Every label, one row each, with Print and Edit: the custom labels, then the menu items that print labels. Scan to reprint and Sheets printed before (the old Saved labels) fold beneath; each single print is on Batches. | `/labels/mine` |
-| **New label** | The four-step wizard (was Make a label). | `/labels/make` |
+| **New label** | The three-step wizard (was Make a label); it ends on the Print pop-up. | `/labels/make` |
 | **Batches** | Every lot printed and every box label, with its code (below). | `/labels/batches` |
 | **Box labels** | Unchanged. | `/labels/box` |
 | **Setup** | Wording and logos, and Settings, as two parts of one tab. | `/labels/setup` |
@@ -115,7 +115,7 @@ It is one place, `SheetPreview.tsx`, so a new preview gets it too. `SheetPreview
 ## Make a label: the way in
 
 Owner, 2026-10-13 ("Still its v confusing and not user friendly"): Labels now opens on
-**Make a label**, four steps that reach a printed sheet without knowing the rest of the
+**Make a label**, three steps (the fourth, How many, became the Print pop-up on 2026-11-26) that reach a printed sheet without knowing the rest of the
 hub (`MakeLabelWizard.tsx`, the hub's first tab, `labels/make`):
 
 1. **What is it for.** A menu item (any item; one not yet on labels is switched on the
@@ -201,7 +201,7 @@ when only custom labels are on labels, a line under the filters says no menu ite
 offers the same chooser. Someone without Manage label settings is told who can choose.
 Saved labels' empty list offers Make a label too. The **first-visit tour**
 (`LabelsTour.tsx`, mounted by `LabelsHub`) is four cards the first time the hub opens in a
-browser (Make a label in four steps; tap the label to change it; any size, any shape;
+browser (Make a label in three steps; tap the label to change it; any size, any shape;
 where things live), kept away by Done or the X (`localStorage['labels.tour']`), and back
 from **How it works** beside the wizard's steps (`openLabelsTour()`). A new tab or a
 renamed one goes into the fourth card.
@@ -708,7 +708,7 @@ Four batches and a round of follow-ups. What changed for the person printing:
   shows **Shelf life from today** (dates worked out again from today) or **Keep use-by
   {date}** (the typed date kept; a date that has passed is refused with a plain message).
   Tap the chip to switch. A label with no typed use-by is "Shelf life from today".
-- **The wizard can take a use-by for one print**, and its last step shows the use-by that
+- **The wizard's Print… opens the Print pop-up, which takes a use-by for one print** (the wizard had date boxes of its own until 2026-11-26), and it shows the use-by that
   will print, with the **Short life** mark at 3 days or fewer.
 
 ### Before Prepare

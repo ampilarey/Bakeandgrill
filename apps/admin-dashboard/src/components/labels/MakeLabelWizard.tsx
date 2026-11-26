@@ -1,4 +1,3 @@
-import { DATE_BOX, ExpiryChips, expiryForNewMfg } from './ExpiryChips';
 import { today as localToday } from '../../utils/dateHelpers';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,10 +13,11 @@ import { Modal, TabScrollRow } from '../SharedUI';
 const WIZ_MOCK_NAMES: Record<MockSurface, string> = { jar: 'Jar', bottle: 'Bottle', box: 'Box', lid: 'Lid' };
 const wizChip = (on: boolean) => ['h-8 px-3 rounded-full border text-sm font-semibold whitespace-nowrap', on ? 'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]'].join(' ');
 import { SheetPreview } from './SheetPreview';
-import { DroppedNote, LinkLifeNote, UseByLine, WordingLockNotice, wordingRefused } from './PrintChecks';
+import { DroppedNote } from './PrintChecks';
+import { PrintLabelModal } from './PrintLabelModal';
 import { SpotOverlay } from './SpotOverlay';
 import { openLabelsTour } from './LabelsTour';
-import { QuickEditSheet, quickSpec, type QuickContext, type QuickInput, type QuickSpec, type QuickValue } from './QuickEdit';
+import { QuickEditSheet, quickSpec, type QuickContext, type QuickSpec, type QuickValue } from './QuickEdit';
 import { customDraft, customPayload, itemDraft, itemPayload, nutritionWords, pickKeys, type CustomDraft, type ItemDraft } from './labelDrafts';
 import { SaveAsTemplate } from './StartFrom';
 import { POUCH_FALLBACK, newPouch, pouchFits } from './PouchPicker';
@@ -27,13 +27,12 @@ import { templateFromCustom, templateFromItem } from './labelTemplates';
 import { ArrangeBar } from './ArrangeBar';
 import { clearDesign, hasOverrides, isMovable, layoutPayload, nudgeSpot } from './labelLayout';
 import { LabelSizePicker } from './LabelSizePicker';
-import { QtyStepper } from './QtyStepper';
 import { CustomLabelModal, langOf } from './CustomLabels';
 import { ItemLabelTab } from './ItemLabelTab';
-import { DEFAULT_CHOICE, DESIGN_NAMES, designFor, pickRoll, rememberSize, rememberedSize, requestFor, rollChoice, rollName, rollStock, rollStockWords, sizeName, sizeOf, sizeProblem, stockOf, stocksFor, withPreset, type SizeChoice } from './labelSize';
+import { DEFAULT_CHOICE, DESIGN_NAMES, designFor, pickRoll, rememberedSize, requestFor, rollChoice, rollName, rollStock, rollStockWords, sizeName, sizeOf, sizeProblem, stockOf, withPreset, type SizeChoice } from './labelSize';
 
 /*
- * Make a label, in four steps (owner, 2026-10-13: "Still its v confusing and
+ * Make a label, in three steps (owner, 2026-10-13: "Still its v confusing and
  * not user friendly"). The hub's other tabs stay for people who know them;
  * this is the way in for everyone else:
  *
@@ -42,14 +41,14 @@ import { DEFAULT_CHOICE, DESIGN_NAMES, designFor, pickRoll, rememberSize, rememb
  *      picked, so "Menu items (0)" is never the first thing anyone sees.
  *   2. Which label: picture cards with everyday names ("Jar or tub", "Bottle
  *      wrap", "Round lid"), each drawn as it prints, with "My own size" last.
- *   3. Looks right: one large live preview, with the few things that change
- *      a print (language, the dates, the quantity) and a door to the full
- *      details. A tap on a part of the preview (the name, the dates, the
- *      logo…) opens the boxes for that part alone and saves them (round 3,
- *      2026-10-13); the long form is behind All details.
- *   4. How many and print: copies, what it prints on, Print or PDF, through
- *      the same sticker request Print labels makes, so the print is logged
- *      and lands under Saved labels like any other.
+ *   3. Looks right: one large live preview in the language picked, with a
+ *      door to the full details. A tap on a part of the preview (the name,
+ *      the dates, the logo…) opens the boxes for that part alone and saves
+ *      them (round 3, 2026-10-13); the long form is behind All details.
+ *      Print… then opens the one Print pop-up (`PrintLabelModal`) at the
+ *      size picked: how many, the dates, the batch, the paper. The wizard
+ *      had a fourth step and date boxes of its own that did the same job
+ *      (owner, 2026-11-26: simplify it), so a print is set in one place.
  */
 
 /** A call that may not exist or may fail (a mocked or refused list): its fallback instead. */
@@ -59,7 +58,7 @@ async function safe<T>(call: () => Promise<T>, fallback: T): Promise<T> {
 
 type Kind = 'item' | 'custom';
 type Picked = { kind: Kind; id: number; name: string; name_dv: string | null; lang: StickerLang };
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3;
 
 /** The picture cards: a preset each, in everyday words. */
 export const LABEL_CARDS: { preset: string; name: string; blurb: string; pouch?: boolean }[] = [
@@ -146,10 +145,10 @@ export function LabelSchematic({ preset, w, h, shape, size = 88, pouch = false }
 }
 
 function StepHeader({ step, onJump }: { step: Step; onJump: (s: Step) => void }) {
-  const names: Record<Step, string> = { 1: 'What is it for', 2: 'Which label', 3: 'Looks right', 4: 'How many' };
+  const names: Record<Step, string> = { 1: 'What is it for', 2: 'Which label', 3: 'Looks right, print' };
   return (
     <ol className="flex flex-wrap gap-2" aria-label="Steps" data-testid="make-steps">
-      {([1, 2, 3, 4] as Step[]).map((s) => (
+      {([1, 2, 3] as Step[]).map((s) => (
         <li key={s}>
           <button type="button" onClick={() => s < step && onJump(s)} disabled={s > step} aria-current={s === step ? 'step' : undefined}
             className={['h-8 px-2.5 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 border', s === step ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-on-primary)]' : s < step ? 'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-muted)]'].join(' ')}>
@@ -190,20 +189,9 @@ export function MakeLabelWizard({ canManage = false }: {
   const [ownSize, setOwnSize] = useState(false);
   const [rounded, setRounded] = useState(false);
   const [lang, setLang] = useState<StickerLang>('en');
-  const [fill, setFill] = useState(true);
-  const [mfg, setMfg] = useState(today());
-  // A use-by for this print only (label audit, 2026-10-16); empty follows the shelf life.
-  const [exp, setExp] = useState('');
-  // The saved label's own name; empty names it from what it prints.
-  const [saveAs, setSaveAs] = useState('');
-  // The size a sized item's sticker is for: its price and recipe follow it.
-  const [sizeId, setSizeId] = useState<number | null>(null);
-  const [qty, setQty] = useState('');
-  // Typed from a tap on the preview (round 3): the batch number and who the packs are for.
-  const [batch, setBatch] = useState('');
-  const [packedFor, setPackedFor] = useState('');
-  const [packedFor2, setPackedFor2] = useState('');
-  const [copies, setCopies] = useState(1);
+  // The print itself (how many, the dates, the paper) is the one Print pop-up's, opened from the last step.
+  const [printOpen, setPrintOpen] = useState(false);
+  const [printed, setPrinted] = useState<SheetLinks | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   // The mock-up (round 14): the label on a jar, bottle, box or lid, beside the flat one.
   const [mocks, setMocks] = useState<Partial<Record<MockSurface, string>>>({});
@@ -220,9 +208,6 @@ export function MakeLabelWizard({ canManage = false }: {
   const [lists, setLists] = useState<{ types: LabelType[]; brands: LabelBrand[]; footers: LabelFooter[] } | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [printing, setPrinting] = useState<'print' | 'pdf' | null>(null);
-  const [result, setResult] = useState<SheetLinks | null>(null);
-  const [error, setError] = useState<string | null>(null);
   // Bumped when the details were edited behind the preview, so it redraws with nothing else changed.
   const [redraw, setRedraw] = useState(0);
   // Label audit, Batch B: the latest preview's summary, for what the print would meet (lock, parts left out, the use-by).
@@ -287,7 +272,7 @@ export function MakeLabelWizard({ canManage = false }: {
       if (!on) return;
     }
     setPicked({ kind: 'item', id: p.id, name: p.name, name_dv: p.name_dv, lang: p.name_dv ? 'both' : 'en' });
-    setSizeId(null);
+    setPrinted(null);
     setLang(p.name_dv ? 'both' : 'en');
     const made = sizeMadeFor(p);
     if (made) { setChoice({ ...made, on: 'sheet' }); setOwnSize(made.preset === 'custom'); }
@@ -295,6 +280,7 @@ export function MakeLabelWizard({ canManage = false }: {
   };
   const pickCustom = (c: CustomLabel, at?: SizeChoice) => {
     setPicked({ kind: 'custom', id: c.id, name: c.name, name_dv: c.name_dv, lang: langOf(c) });
+    setPrinted(null);
     setLang(langOf(c));
     const made = sizeMadeFor(c, at);
     if (made) { setChoice({ ...made, on: 'sheet' }); setOwnSize(made.preset === 'custom'); }
@@ -338,22 +324,18 @@ export function MakeLabelWizard({ canManage = false }: {
   const design = designFor(choice.shape, stickerW, stickerH);
   const round = choice.shape === 'circle';
 
-  const request = (copiesWanted: number, forPreview: boolean) => ({
-    items: [{ id: picked?.id ?? 0, copies: copiesWanted, kind: picked?.kind ?? 'item', ...(picked?.kind === 'item' && sizeId ? { size: sizeId } : {}) }],
+  // The look at step 3: one sticker, dated today. The print's own dates and count are set in the Print pop-up.
+  const request = () => ({
+    items: [{ id: picked?.id ?? 0, copies: 1, kind: picked?.kind ?? 'item' }],
     lang, layout: sized.layout, w: sized.w, h: sized.h,
     rounded: choice.shape === 'rect' && rounded,
-    fill, mfg: fill ? mfg : null, exp: fill && exp ? exp : null,
-    qty: qty !== '' ? Number(qty) : null,
-    batch: batch.trim() || null,
-    for: packedFor.trim() || null,
-    for2: packedFor2.trim() || null,
-    // Label stock (round 13): a roll you own is counted off.
+    fill: true, mfg: today(), exp: null,
     roll: rollPicked?.id ?? null,
-    preview: forPreview || undefined,
+    preview: true,
   });
 
   // Step 3: redraw the preview a little after the last change.
-  const previewKey = JSON.stringify([step >= 3 ? request(1, true) : null, presets.length, redraw]);
+  const previewKey = JSON.stringify([step >= 3 ? request() : null, presets.length, redraw]);
   useEffect(() => {
     if (step < 3 || !picked || presets.length === 0) { setPreview(null); setChecked(null); setPreviewBusy(false); return; }
     // A size refused, or a redraw that failed, takes the old picture down: it showed the last size as if it were this one.
@@ -362,7 +344,7 @@ export function MakeLabelWizard({ canManage = false }: {
     setPreviewBusy(true);
     const timer = setTimeout(async () => {
       try {
-        const r = await stickerLinks(request(1, true));
+        const r = await stickerLinks(request());
         if (seq !== previewSeq.current) return;
         setPreview(r.one_url ?? r.url);
         setMocks(r.mock_urls ?? {});
@@ -384,38 +366,17 @@ export function MakeLabelWizard({ canManage = false }: {
     return () => clearTimeout(timer);
   }, [previewKey, sizeIssue, step, picked]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Step 4: as many as fit a sheet to start with, one on a label printer.
-  useEffect(() => {
-    if (step === 4 && stock) setCopies(stock.on === 'printer' ? 1 : Math.max(1, stock.perPage));
-  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const print = async (how: 'print' | 'pdf') => {
-    if (!picked) return;
-    setPrinting(how); setError(null);
-    try {
-      const r = await stickerLinks({ ...request(copies, false), ...(saveAs.trim() ? { save_as: saveAs.trim() } : {}) });
-      rememberSize(choice, rollPicked?.id ?? null);
-      setResult(r);
-      if (how === 'print') openLabelSheet(r.url, r.pdf_url);
-      else downloadLabelSheet(r.pdf_url);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not prepare the labels.');
-    } finally {
-      setPrinting(null);
-    }
-  };
-
   const startAgain = () => {
-    setStep(1); setKind(null); setPicked(null); setResult(null); setError(null); setPreview(null); setOwnSize(false); setQuery(''); setSizeId(null); setExp(''); setSaveAs('');
-    setSpots([]); setQuick(null); setQuickDraft(null); setBatch(''); setPackedFor(''); setPackedFor2('');
+    setStep(1); setKind(null); setPicked(null); setPrinted(null); setPrintOpen(false); setPreview(null); setOwnSize(false); setQuery('');
+    setSpots([]); setQuick(null); setQuickDraft(null);
   };
 
-  const jump = (s: Step) => { setResult(null); setStep(s); };
+  const jump = (s: Step) => { setPrinted(null); setStep(s); };
 
   // Tap to edit (round 3, 2026-10-13): the sheet for the part tapped edits a
   // fresh draft of the product; Done saves only that sheet's boxes and the
   // preview redraws. The print's own values (the dates, the quantity, the
-  // batch, who it is for) sit at the top of their sheets and save nothing.
+  // batch, who it is for) are the Print pop-up's.
   const pickedCustom = picked?.kind === 'custom' ? customs?.find((c) => c.id === picked.id) ?? null : null;
   const pickedItem = picked?.kind === 'item' ? products?.find((p) => p.id === picked.id) ?? null : null;
   const openQuick = (key: LabelSpotKey) => {
@@ -435,34 +396,17 @@ export function MakeLabelWizard({ canManage = false }: {
     nutritionWords: pickedItem?.nutrition ? nutritionWords(pickedItem.nutrition) : undefined,
     hasPhoto: Boolean(pickedCustom?.label_photo_url ?? pickedItem?.label_photo_url),
   };
+  const PRINT_NOTES: Partial<Record<LabelSpotKey, string>> = {
+    dates: 'The dates of a print are picked when you press Print. Here: how the label works them out.',
+    batch: 'The batch number is typed when you press Print.',
+    packed: 'Who the packs are for is typed when you press Print, under More.',
+  };
   const wizardSpec = (key: LabelSpotKey): QuickSpec => {
     const spec = quickSpec(key, quickContext);
-    const own: QuickInput[] = key === 'dates'
-      ? [{ key: '_fill', label: 'Fill in the dates', kind: 'switch', hint: 'Off: blank boxes to write in by hand.' }, ...(fill ? [{ key: '_mfg', label: 'Made on', kind: 'date' as const }] : [])]
-      : key === 'qty'
-        ? [{ key: '_qty', label: 'Quantity on this print', kind: 'number', min: 1, inputMode: 'numeric', placeholder: 'Blank: the pack size below, else written by hand' }]
-        : key === 'batch'
-          ? [{ key: '_batch', label: 'Batch number', kind: 'text', maxLength: 30, placeholder: 'Blank: written by hand' }]
-          : key === 'packed'
-            ? [{ key: '_for', label: 'Packed for', kind: 'text', maxLength: 60, placeholder: 'NH Kuda Rah' }, { key: '_for2', label: 'Second line', kind: 'text', maxLength: 60, placeholder: 'The delivery, the date' }]
-            : [];
-    if (own.length === 0) return spec;
-    const notes: Partial<Record<LabelSpotKey, string>> = { dates: 'The expiry follows from the shelf life.', batch: 'Printed on every label of this print.', packed: 'Who the packs are for, printed under the name of every label of this print.' };
-    return { ...spec, note: notes[key] ?? spec.note, inputs: [...own, ...spec.inputs], link: key === 'batch' || key === 'packed' ? undefined : spec.link };
+    return PRINT_NOTES[key] ? { ...spec, note: PRINT_NOTES[key] } : spec;
   };
-  const quickValues: Record<string, unknown> = { ...(quickDraft ?? {}), _fill: fill, _mfg: mfg, _qty: qty, _batch: batch, _for: packedFor, _for2: packedFor2 };
-  const quickChange = (k: string, v: QuickValue) => {
-    const s = v == null ? '' : String(v);
-    switch (k) {
-      case '_fill': setFill(Boolean(v)); return;
-      case '_mfg': setMfg(s); return;
-      case '_qty': setQty(s); return;
-      case '_batch': setBatch(s); return;
-      case '_for': setPackedFor(s); return;
-      case '_for2': setPackedFor2(s); return;
-      default: setQuickDraft((d) => ({ ...(d ?? {}), [k]: v }));
-    }
-  };
+  const quickValues: Record<string, unknown> = quickDraft ?? {};
+  const quickChange = (k: string, v: QuickValue) => setQuickDraft((d) => ({ ...(d ?? {}), [k]: v }));
   const saveQuick = async (body: Record<string, unknown>) => {
     if (!picked) return;
     setQuickSaving(true);
@@ -485,7 +429,7 @@ export function MakeLabelWizard({ canManage = false }: {
   };
   const quickDone = () => {
     if (!quick) return;
-    const keys = wizardSpec(quick).inputs.map((i) => i.key).filter((k) => !k.startsWith('_'));
+    const keys = wizardSpec(quick).inputs.map((i) => i.key);
     if (keys.length === 0 || !quickDraft) { setQuick(null); return; }
     const payload = picked?.kind === 'custom' ? customPayload(quickDraft as unknown as CustomDraft) : itemPayload(quickDraft as unknown as ItemDraft);
     void saveQuick(pickKeys(payload as Record<string, unknown>, keys));
@@ -681,36 +625,7 @@ export function MakeLabelWizard({ canManage = false }: {
                   ))}
                 </TabScrollRow>
               </div>
-              <label className="flex items-center gap-2 text-sm text-[var(--color-text)] min-h-[44px]">
-                <input type="checkbox" checked={fill} onChange={(e) => setFill(e.target.checked)} data-testid="make-fill-dates" />
-                <span>Fill in the dates<span className="block text-xs text-[var(--color-text-muted)]">Off: blank boxes to write in by hand.</span></span>
-              </label>
-              {fill && (
-                <div>
-                  <label className={labelClass} htmlFor="make-mfg">Made on</label>
-                  <input id="make-mfg" type="date" value={mfg} onChange={(e) => { setExp((x) => expiryForNewMfg(mfg, e.target.value, x)); setMfg(e.target.value); }} className={`${fieldClass} ${DATE_BOX}`} />
-                  <label className={`${labelClass} mt-3`} htmlFor="make-exp">Use by</label>
-                  <input id="make-exp" type="date" value={exp} min={mfg} onChange={(e) => setExp(e.target.value)} className={`${fieldClass} ${DATE_BOX}`} data-testid="make-exp" />
-              <ExpiryChips mfg={mfg} value={exp} onChange={setExp} idPrefix="make-exp" />
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                    {exp ? 'For this print only. The product\'s shelf life stays as it is.' : 'Shelf life: worked out from the label\'s own.'}
-                  </p>
-                </div>
-              )}
-              {(pickedItem?.sizes?.length ?? 0) > 0 && (
-                <div>
-                  <label className={labelClass} htmlFor="make-size">Which size is this sticker for?</label>
-                  <select id="make-size" value={sizeId ?? ''} onChange={(e) => setSizeId(Number(e.target.value) || null)} className={fieldClass} data-testid="make-size">
-                    <option value="">Not one size: prints the "From" price</option>
-                    {pickedItem!.sizes!.map((z) => <option key={z.id} value={z.id}>{z.name} · MVR {z.price.toFixed(2)}</option>)}
-                  </select>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">Its price and its recipe's ingredients go on the sticker.</p>
-                </div>
-              )}
-              <div>
-                <label className={labelClass} htmlFor="make-qty">Quantity per pack</label>
-                <input id="make-qty" type="number" inputMode="numeric" min={1} value={qty} onChange={(e) => setQty(e.target.value)} placeholder={ownQty ? `${ownQty}, the label's own` : 'Blank: write by hand'} className={fieldClass} />
-              </div>
+              <p className="text-xs text-[var(--color-text-muted)]" data-testid="make-dates-note">The preview is dated today. How many, the dates, the batch and the paper are picked when you press Print.</p>
               <Button variant="secondary" icon={<Pencil size={16} />} onClick={() => setDetails(true)} data-testid="make-details">All details</Button>
               {/* Round 7: keep this label's settings, and the size picked, as a template to start the next one from. */}
               {canManage && (pickedCustom || pickedItem) && (
@@ -718,68 +633,33 @@ export function MakeLabelWizard({ canManage = false }: {
               )}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 justify-between">
-            <Button variant="secondary" icon={<ArrowLeft size={16} />} onClick={() => jump(2)}>Back</Button>
-            <Button onClick={() => setStep(4)} data-testid="make-next-3">Next: how many</Button>
-          </div>
-        </div>
-      )}
-
-      {step === 4 && picked && (
-        <div className="space-y-4" data-testid="make-step-4">
-          <h2 className="text-lg font-bold text-[var(--color-text)]">How many, and print</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <span className={labelClass}>Print on</span>
-              <TabScrollRow role="group" aria-label="Print on" style={{ gap: 8 }}>
-                {stocksFor(choice, presets).map((s) => (
-                  <button key={s.on} type="button" onClick={() => { setChoice((c) => ({ ...c, on: s.on })); setCopies(s.on === 'printer' ? 1 : Math.max(1, s.perPage)); }} aria-pressed={stock?.on === s.on} className={chip(stock?.on === s.on)}>
-                    {s.label}{s.on !== 'printer' && s.perPage > 0 ? <span className="font-normal opacity-80">· {s.perPage}</span> : null}
-                  </button>
-                ))}
-              </TabScrollRow>
-            </div>
-            <div>
-              <span className={labelClass}>Labels</span>
-              <QtyStepper value={copies} onChange={setCopies} min={1} max={500} label="Labels" />
-              {stock && stock.on !== 'printer' && stock.perPage > 0 && <p className="text-xs text-[var(--color-text-muted)] mt-1">{Math.ceil(copies / stock.perPage)} {Math.ceil(copies / stock.perPage) === 1 ? 'sheet' : 'sheets'} of {stock.perPage}.</p>}
-            </div>
-          </div>
-          {!result && (
-            <div>
-              <label className={labelClass} htmlFor="make-save-as">Name for this sheet (optional)</label>
-              <input id="make-save-as" value={saveAs} maxLength={80} onChange={(e) => setSaveAs(e.target.value)} placeholder={`${picked.name} ×${copies}`} className={fieldClass} data-testid="make-save-as" />
-              <p className="text-xs text-[var(--color-text-muted)] mt-1">Empty: named from the product, the count and the size.</p>
-            </div>
-          )}
-          <p className="text-xs text-[var(--color-text-muted)]">{picked.name} · {sizeLine}.</p>
-          {checked && <UseByLine exp={checked.products[0]?.exp} shelf={checked.products[0]?.shelf_life_days} fill={fill} />}
-          <DroppedNote dropped={checked?.dropped} />
-          {!result && <WordingLockNotice wording={checked?.wording} canManage={canManage} onSigned={() => setRedraw((n) => n + 1)} />}
-          {error && <p role="alert" className="text-sm text-[var(--color-danger-strong)]">{error}</p>}
-          {result ? (
+          {printed && (
             <div className="rounded-xl border border-[var(--color-tone-rust-border)] bg-[var(--color-tone-rust-bg)] p-3 space-y-2" data-testid="make-done">
-              <p className="text-sm font-semibold text-[var(--color-text)]"><Check size={14} className="inline mr-1" />{result.job ? `Kept as "${result.job.name}" under My labels, in Sheets printed before.` : 'Ready.'} {copies} {copies === 1 ? 'label' : 'labels'} prepared.</p>
+              <p className="text-sm font-semibold text-[var(--color-text)]"><Check size={14} className="inline mr-1" aria-hidden />{printed.job ? `Printed. Kept as "${printed.job.name}" under My labels, in Sheets printed before.` : 'Printed.'} {picked.name} is on My labels to print again.</p>
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" icon={<Printer size={14} />} onClick={() => openLabelSheet(result.url, result.pdf_url)}>Print again</Button>
-                <Button size="sm" variant="secondary" icon={<FileDown size={14} />} onClick={() => downloadLabelSheet(result.pdf_url)}>Download PDF</Button>
+                <Button size="sm" variant="secondary" icon={<Printer size={14} />} onClick={() => openLabelSheet(printed.url, printed.pdf_url)}>Open it again</Button>
+                <Button size="sm" variant="secondary" icon={<FileDown size={14} />} onClick={() => downloadLabelSheet(printed.pdf_url)}>Download PDF</Button>
                 <Button size="sm" variant="ghost" onClick={startAgain} data-testid="make-again">Make another label</Button>
               </div>
             </div>
-          ) : (
-            <div className="flex flex-wrap gap-2 justify-between">
-              <Button variant="secondary" icon={<ArrowLeft size={16} />} onClick={() => jump(3)}>Back</Button>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" icon={<FileDown size={16} />} loading={printing === 'pdf'} disabled={printing !== null || wordingRefused(checked)} onClick={() => void print('pdf')} data-testid="make-pdf">PDF</Button>
-                <Button icon={<Printer size={16} />} loading={printing === 'print'} disabled={printing !== null || wordingRefused(checked)} onClick={() => void print('print')} data-testid="make-print">Print</Button>
-              </div>
-            </div>
           )}
-          {!result && <LinkLifeNote />}
-          <p className="text-xs text-[var(--color-text-muted)]">On a phone, print the PDF. Every print is kept under My labels to print again.</p>
+          <div className="flex flex-wrap gap-2 justify-between">
+            <Button variant="secondary" icon={<ArrowLeft size={16} />} onClick={() => jump(2)}>Back</Button>
+            <Button icon={<Printer size={16} />} onClick={() => setPrintOpen(true)} disabled={Boolean(sizeIssue)} data-testid="make-print">Print…</Button>
+          </div>
         </div>
       )}
 
+      {printOpen && picked && (
+        <PrintLabelModal
+          target={{ kind: picked.kind, id: picked.id, name: picked.name, lang, part: pickedCustom?.label_part ?? null, sizes: pickedItem?.sizes ?? undefined, ownQty, size: pickedCustom?.label_size ?? null }}
+          canManage={canManage}
+          at={{ ...choice }}
+          atRoll={rollPicked?.id ?? null}
+          onClose={() => setPrintOpen(false)}
+          onPrinted={setPrinted}
+        />
+      )}
       {quick && (
         <QuickEditSheet
           spec={wizardSpec(quick)}

@@ -488,7 +488,9 @@ final class WrapDesign
         $font = $useDv ? 'dv' : 'dsi';
         $lineK = $this->lead($font, 1.0);
         $withDv = $this->both && $d['name_dv'] !== '';
-        $enH = $withDv ? $nh * 0.6 : $nh;
+        // On a bottle's face the two names share the room about evenly (owner, 2026-11-26: the Dhivehi name was small beside the English);
+        // Faruma's letters are small for their point size, so it is set larger than the English to look its equal.
+        $enH = $withDv ? $nh * ($this->faces > 0 ? 0.54 : 0.6) : $nh;
         [$pt, $lines] = $this->fitLines($t, $font, $bw, $enH, $this->faces > 0 ? 40.0 : min(16.0 * $this->k, 20.0), $useDv ? 6.0 : 5.5, 2);
         // On a bottle's face a name of two words stands on two lines when that sets it clearly larger.
         if ($this->faces > 0 && count($lines) === 1 && str_contains(trim($t), ' ')) {
@@ -507,7 +509,17 @@ final class WrapDesign
         }
         if ($withDv) {
             $dvH = $nh - $enH;
-            $dpt = LabelText::fitPt($d['name_dv'], 'dv', $bw, min($this->faces > 0 ? 18.0 : 10.0 * $this->k, $dvH / $this->lead('dv', 1.0)), 4.5);
+            if ($this->faces > 0) {
+                // One line, so it is fitted to its ink (about 0.8 em above the line and 0.35 below with the marks), not to
+                // the font's own line height, which for Faruma is half empty and kept the name small.
+                [$up, $down] = [0.8, 0.35];
+                $dpt = LabelText::fitPt($d['name_dv'], 'dv', $bw, min(max(18.0, $pt * 1.2), $dvH / (($up + $down) * LabelText::PT)), 4.5);
+                $ink = ($up + $down) * $dpt * LabelText::PT;
+                $this->text($x, $y + $enH + max(0.0, ($dvH - $ink) / 2) + $up * $dpt * LabelText::PT, $bw, $align, 'dv', $dpt, StickerDesign::PRIMARY, $d['name_dv'], 0.6);
+
+                return;
+            }
+            $dpt = LabelText::fitPt($d['name_dv'], 'dv', $bw, min(10.0 * $this->k, $dvH / $this->lead('dv', 1.0)), 4.5);
             $this->text($x, $y + $enH + max(0.0, ($dvH - $this->lead('dv', $dpt)) / 2) + LabelText::ascent('dv') * $dpt * LabelText::PT, $bw, $align, 'dv', $dpt, StickerDesign::PRIMARY, $d['name_dv'], 0.6);
         }
     }

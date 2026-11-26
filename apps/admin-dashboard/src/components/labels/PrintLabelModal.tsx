@@ -53,8 +53,8 @@ const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary
 const chip = (on: boolean) => ['h-8 px-3 rounded-full border text-sm font-semibold whitespace-nowrap', on ? 'bg-[var(--color-tone-rust-bg)] border-[var(--color-tone-rust-border)] text-[var(--color-tone-rust-text)]' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)]'].join(' ');
 
 /** The size a label opens at: the one it last printed at, else the one made for it, else the last size printed. */
-export function startingSize(target: PrintTarget, presets: LabelPreset[], rolls: LabelRoll[], at?: SizeChoice): { choice: SizeChoice; roll: string | null } {
-  if (at) return { choice: at, roll: null };
+export function startingSize(target: PrintTarget, presets: LabelPreset[], rolls: LabelRoll[], at?: SizeChoice, atRoll: string | null = null): { choice: SizeChoice; roll: string | null } {
+  if (at) return { choice: at, roll: atRoll };
   if (target.size) {
     const { rounded: _r, ...own } = target.size;
     void _r;
@@ -70,12 +70,14 @@ export function startingSize(target: PrintTarget, presets: LabelPreset[], rolls:
   return { choice, roll };
 }
 
-export function PrintLabelModal({ target, canManage = false, at, onClose, onPrinted }: {
+export function PrintLabelModal({ target, canManage = false, at, atRoll = null, onClose, onPrinted }: {
   target: PrintTarget;
   /** Manage label settings: may sign off wording the lock refuses. */
   canManage?: boolean;
   /** A size to open at, when the caller knows it (the editor's own). */
   at?: SizeChoice;
+  /** The roll that size was picked as, when the caller knows it (New label's roll card). */
+  atRoll?: string | null;
   onClose: () => void;
   onPrinted?: (links: SheetLinks) => void;
 }) {
@@ -104,6 +106,8 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
   const [batch, setBatch] = useState('');
   const [packedFor, setPackedFor] = useState('');
   const [packedFor2, setPackedFor2] = useState('');
+  // The printed sheet's own name under Sheets printed before; empty names it from what it prints.
+  const [saveAs, setSaveAs] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -120,7 +124,7 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
     fetchLabelLayouts().then((r) => {
       if (!alive) return;
       const owned = r.rolls ?? [];
-      const start = startingSize(target, r.presets, owned, at);
+      const start = startingSize(target, r.presets, owned, at, atRoll);
       setPresets(r.presets); setLimits(r.limits); setRolls(owned);
       setChoice(start.choice); setRollId(start.roll);
       if (!at && target.size?.rounded) setRounded(true);
@@ -207,7 +211,7 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
   const print = async (how: 'print' | 'pdf') => {
     setPrinting(how); setError(null);
     try {
-      const r = await stickerLinks(request(copies, false));
+      const r = await stickerLinks({ ...request(copies, false), ...(saveAs.trim() ? { save_as: saveAs.trim() } : {}) });
       rememberSize(choice, picked.roll?.id ?? null);
       rememberSizeFor(`${target.kind === 'custom' ? 'c' : 'i'}${target.id}`, choice, picked.roll?.id ?? null);
       // A label printed before it had a size of its own keeps this one, so it opens here on every device.
@@ -372,6 +376,11 @@ export function PrintLabelModal({ target, canManage = false, at, onClose, onPrin
                 <label className={labelClass} htmlFor="print-for">Packed for</label>
                 <input id="print-for" value={packedFor} maxLength={60} onChange={(e) => setPackedFor(e.target.value)} placeholder="NH Kuda Rah" className={fieldClass} />
                 <input aria-label="Packed for, second line" value={packedFor2} maxLength={60} onChange={(e) => setPackedFor2(e.target.value)} placeholder="The delivery, the date" className={`${fieldClass} mt-2`} />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="print-save-as">Name for this sheet (optional)</label>
+                <input id="print-save-as" value={saveAs} maxLength={80} onChange={(e) => setSaveAs(e.target.value)} placeholder={`${target.name} ×${copies}`} className={fieldClass} data-testid="print-save-as" />
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">Its name under Sheets printed before. Empty: named from the product, the count and the size.</p>
               </div>
               <p className="text-xs text-[var(--color-text-muted)]">
                 A promotion flash, pack numbers, cut marks, a mock-up or several products on one sheet:{' '}

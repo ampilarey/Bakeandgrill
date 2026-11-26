@@ -509,7 +509,7 @@ export const GUIDES: Guide[] = [
       'Tap Edit on a row to change the label itself: its wording, picture, size and layout.',
       'To rename a label, tap Edit and change Product name, then Save.',
       'A label opens at the size it was saved at. To change its size, tap Edit, pick the size under Shape and size, then Save.',
-      'Tap New label for a new one, in four steps.',
+      'Tap New label for a new one, in three steps.',
       'Batches lists every lot printed, with the code on its QR. Box labels is for delivery boxes. Setup holds the wording, logos, bottom strips, templates, your rolls, the printer and which menu items get labels.',
     ],
     notes: [
@@ -529,7 +529,7 @@ export const GUIDES: Guide[] = [
       'Step 1: say what the label is for. Pick a menu item, or something not on the menu.',
       'Step 2: pick the label from the picture cards.',
       'Step 3: check the preview. Tap any part of it to change that part.',
-      'Step 4: type how many and print.',
+      'Tap Print… to set how many, the dates, the batch and the paper, then Print.',
     ],
     notes: [
       'The label is then in My labels, to print again with Print on its row.',
@@ -650,7 +650,7 @@ export const GUIDES: Guide[] = [
       'Step 1: tap Something else, then New custom label.',
       'In Start from pick Theluli Rihaakuru bottle (4 sides). The name, the Amma brand, the photo, the ingredients and the size (215 × 40 mm) fill in.',
       'Check the wording. Type the net weight, and the price if you want it printed. For a barcode, type your number or tap Make one. Then tap Add label.',
-      'The label opens at the bottle\'s size, on Looks right. Tap Next: how many.',
+      'The label opens at the bottle\'s size, on Looks right. Tap Print….',
       'It starts at one full A4 sheet: five labels, turned sideways. Change the number for more sheets, then tap Print or PDF.',
     ],
     notes: [
@@ -678,7 +678,7 @@ export const GUIDES: Guide[] = [
     notes: [
       'The months are for this print only. The label\'s own shelf life is not changed.',
       'Change Made on afterwards and a months pick moves with it. A date you typed yourself stays as typed.',
-      'The same chips are on the New label steps and on the full Print labels form.',
+      'The same chips are on the full Print labels form.',
     ],
     words: 'expiry expire date use by best before month shelf life',
   },

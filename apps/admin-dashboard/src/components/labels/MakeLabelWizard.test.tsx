@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LabelPreset } from '../../api';
 
 /*
- * Make a label in four steps (owner, 2026-10-13): a menu item not yet on
+ * Make a label in three steps (owner, 2026-10-13; four until 2026-11-26, when the last
+ * step and the date boxes gave way to the one Print pop-up): a menu item not yet on
  * labels is switched on when picked; a picture card picks the size; the
  * preview draws from the same sticker request Print labels makes; Print
  * prepares the sheet with the copies asked for and opens it.
@@ -103,11 +104,17 @@ describe('MakeLabelWizard', () => {
     await waitFor(() => expect(screen.getByTitle('The label')).toHaveAttribute('src', expect.stringContaining('one=1')));
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
     await waitFor(() => expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ lang: 'en', preview: true })));
-    fireEvent.click(screen.getByTestId('make-next-3'));
-
-    // Step 4: a sheet's worth to start with, then Print prepares and opens it.
-    expect(screen.getByRole('spinbutton', { name: 'Labels' })).toHaveValue(18);
+    // No fourth step and no date boxes of its own: the print is set in the Print pop-up.
+    expect(screen.queryByTestId('make-next-3')).toBeNull();
+    expect(screen.queryByTestId('make-exp')).toBeNull();
+    expect(screen.getByTestId('make-dates-note')).toHaveTextContent('picked when you press Print');
     fireEvent.click(screen.getByTestId('make-print'));
+
+    // The Print pop-up, at the size picked: a sheet's worth to start with, then Print opens it.
+    const pop = await screen.findByTestId('print-label');
+    await waitFor(() => expect(within(pop).getByRole('spinbutton', { name: 'How many labels' })).toHaveValue(18));
+    await waitFor(() => expect(screen.getByTestId('print-go')).not.toBeDisabled(), { timeout: 3000 });
+    fireEvent.click(screen.getByTestId('print-go'));
     await waitFor(() => expect(api.openLabelSheet).toHaveBeenCalledWith('/labels/stickers?print=1&signature=x', '/labels/stickers.pdf?signature=x'));
     expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ items: [{ id: 7, copies: 18, kind: 'item' }], layout: 'a4-custom', lang: 'en' }));
     expect(api.stickerLinks.mock.calls[api.stickerLinks.mock.calls.length - 1]?.[0]).not.toHaveProperty('preview', true);
@@ -128,9 +135,10 @@ describe('MakeLabelWizard', () => {
     fireEvent.click(screen.getByTestId('make-next-2'));
     await waitFor(() => expect(api.stickerLinks).toHaveBeenCalled());
 
-    fireEvent.change(screen.getByTestId('make-size'), { target: { value: '92' } });
-    fireEvent.change(screen.getByTestId('make-exp'), { target: { value: '2099-01-05' } });
-    expect(screen.getByText(/For this print only/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('make-print'));
+    await screen.findByTestId('print-label');
+    fireEvent.change(await screen.findByLabelText('Which size is this sticker for?'), { target: { value: '92' } });
+    fireEvent.change(screen.getByTestId('print-exp'), { target: { value: '2099-01-05' } });
     await waitFor(() => expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({
       items: [{ id: 9, copies: 1, kind: 'item', size: 92 }], exp: '2099-01-05', preview: true,
     })), { timeout: 3000 });
@@ -148,12 +156,16 @@ describe('MakeLabelWizard', () => {
     fireEvent.change(screen.getByLabelText('Across (mm)'), { target: { value: '45' } });
     expect(screen.getByTestId('make-size-line')).toHaveTextContent('Round 45 mm · round sticker');
     fireEvent.click(screen.getByTestId('make-next-2'));
-    fireEvent.click(screen.getByTestId('make-next-3'));
-    fireEvent.click(screen.getByRole('button', { name: 'Label printer' }));
-    expect(screen.getByRole('spinbutton', { name: 'Labels' })).toHaveValue(1);
-    fireEvent.click(screen.getByTestId('make-pdf'));
+    fireEvent.click(await screen.findByTestId('make-print'));
+    const pop = await screen.findByTestId('print-label');
+    fireEvent.click(await screen.findByTestId('print-paper'));
+    fireEvent.click(within(pop).getByRole('button', { name: /Label printer/ }));
+    await waitFor(() => expect(within(pop).getByRole('spinbutton', { name: 'How many labels' })).toHaveValue(1));
+    await waitFor(() => expect(screen.getByTestId('print-pdf')).not.toBeDisabled(), { timeout: 3000 });
+    fireEvent.click(screen.getByTestId('print-pdf'));
     await waitFor(() => expect(api.downloadLabelSheet).toHaveBeenCalledWith('/labels/stickers.pdf?signature=x'));
     expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ layout: 'single-round-custom', w: 45, h: null, items: [{ id: 8, copies: 1, kind: 'item' }] }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Done' }));
     fireEvent.click(screen.getByTestId('make-again'));
     expect(screen.getByTestId('make-step-1')).toBeInTheDocument();
   });
@@ -185,22 +197,15 @@ describe('MakeLabelWizard', () => {
     await waitFor(() => expect(api.stickerLinks.mock.calls.length).toBeGreaterThan(drawn), { timeout: 3000 });
     expect(screen.getByRole('heading', { name: 'Does it look right?' })).toBeInTheDocument();
 
-    // The dates: this print's made-on date first, then the product's shelf life, which is what gets saved.
+    // The dates: the product's shelf life, which is what gets saved. The print's own dates are the Print pop-up's.
     fireEvent.click(screen.getByRole('button', { name: 'Change the dates' }));
     const dates = await screen.findByRole('dialog');
-    expect(within(dates).getByLabelText('Fill in the dates')).toBeChecked();
-    fireEvent.change(within(dates).getByLabelText('Made on'), { target: { value: '2026-10-01' } });
-    await waitFor(() => expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ mfg: '2026-10-01', preview: true })), { timeout: 3000 });
+    expect(within(dates).queryByLabelText('Made on')).toBeNull();
+    expect(dates).toHaveTextContent('picked when you press Print');
     fireEvent.change(within(dates).getByLabelText('Shelf life (days)'), { target: { value: '21' } });
     fireEvent.click(within(dates).getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(api.updateCustomLabel).toHaveBeenLastCalledWith(5, { label_shelf_life_days: 21 }));
-
-    // The batch is typed for this print alone: nothing is saved, the preview carries it.
-    fireEvent.click(await screen.findByRole('button', { name: 'Change the batch number' }));
-    const batch = await screen.findByRole('dialog');
-    fireEvent.change(within(batch).getByLabelText('Batch number'), { target: { value: 'B-42' } });
-    fireEvent.click(within(batch).getByRole('button', { name: 'Done' }));
-    await waitFor(() => expect(api.stickerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ batch: 'B-42', preview: true })), { timeout: 3000 });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(api.updateCustomLabel).toHaveBeenCalledTimes(2);
     // All details from a sheet opens the long form.
     fireEvent.click(screen.getByRole('button', { name: 'Change the name' }));
@@ -335,14 +340,15 @@ describe('MakeLabelWizard', () => {
     expect(screen.getByRole('button', { name: /Pouch or bag front/ })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /Big pack sticker/ })).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(screen.getByTestId('make-next-2'));
-    fireEvent.click(await screen.findByTestId('make-next-3'));
-    // As many as fit one A4 sheet to start with.
-    await screen.findByTestId('make-step-4');
-    expect(screen.getByText(/1 sheet of 6/)).toBeInTheDocument();
+    fireEvent.click(await screen.findByTestId('make-print'));
+    // The Print pop-up opens at the pouch's size, with as many as fit one A4 sheet.
+    await screen.findByTestId('print-label');
+    expect(await screen.findByText(/1 sheet of 6/)).toBeInTheDocument();
+    expect(screen.getByTestId('print-paper')).toHaveTextContent('140 × 62 mm');
   });
 
-  // Label audit, Batch B (2026-10-16): the last step shows the use-by that prints and stops a print the lock refuses.
-  it('shows the use-by with the short-life mark, what did not fit, and the wording lock on the last step', async () => {
+  // Label audit, Batch B (2026-10-16): the Print pop-up shows the use-by that prints and stops a print the lock refuses.
+  it('shows the use-by with the short-life mark, what did not fit, and the wording lock before a print', async () => {
     const message = 'The wording is locked: Bajiya has legal lines not signed off as they stand. Sign them off on the label first, or turn the lock off under Labels → Settings.';
     api.stickerLinks.mockImplementation(async () => ({
       url: '/s', one_url: '/labels/stickers?one=1', view_url: '/v', pdf_url: '/p', expires_in_minutes: 30,
@@ -357,13 +363,13 @@ describe('MakeLabelWizard', () => {
     fireEvent.click(within(cards).getByRole('button', { name: /Jar or tub/ }));
     fireEvent.click(screen.getByTestId('make-next-2'));
     expect(await screen.findByTestId('sticker-dropped')).toHaveTextContent('Did not fit on this size: QR code.');
-    fireEvent.click(screen.getByTestId('make-next-3'));
+    fireEvent.click(screen.getByTestId('make-print'));
 
-    expect(screen.getByTestId('make-use-by')).toHaveTextContent(/Use by .*2026 on every label/);
+    await screen.findByTestId('print-label');
+    expect(await screen.findByTestId('make-use-by')).toHaveTextContent(/Use by .*2026 on every label/);
     expect(screen.getByTestId('short-life')).toHaveTextContent('Short life · 2 days');
     expect(screen.getByTestId('wording-lock-notice')).toHaveTextContent(message);
-    expect(screen.getByTestId('make-print')).toBeDisabled();
-    expect(screen.getByTestId('make-pdf')).toBeDisabled();
-    expect(screen.getByTestId('link-life-note')).toBeInTheDocument();
+    expect(screen.getByTestId('print-go')).toBeDisabled();
+    expect(screen.getByTestId('print-pdf')).toBeDisabled();
   });
 });

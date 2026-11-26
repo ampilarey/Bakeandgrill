@@ -377,7 +377,7 @@ const LP = ['labels.print', 'labels.manage'] as const;
  */
 export const LABELS_TABS: HubTab[] = [
   { id: 'mine', label: 'My labels', permissions: LP, desc: 'Every label you have: tap Print for how many and the dates, Edit to change it', render: () => <MyLabelsWithPermission /> },
-  // Owner, 2026-10-13 ("Still its v confusing and not user friendly"): four steps to a new label.
+  // Owner, 2026-10-13 ("Still its v confusing and not user friendly"): three steps to a new label (four until 2026-11-26).
   { id: 'make', label: 'New label', permissions: LP, desc: 'Four steps: what it is for, which label, a look at it, how many to print', render: () => <MakeTabWithPermission /> },
   // Owner, 2026-11-14 ("add a page to view all"): every lot printed and every box label, with the code on its QR.
   { id: 'batches', label: 'Batches', permissions: LP, desc: 'Every lot of stickers and every box label printed, with its code, dates and batch number', render: () => <BatchesTab /> },

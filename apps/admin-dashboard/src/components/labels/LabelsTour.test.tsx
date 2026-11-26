@@ -11,7 +11,7 @@ describe('LabelsTour', () => {
 
   it('shows four cards on the first visit, then stays away until asked for', () => {
     const { unmount } = render(<LabelsTour />);
-    expect(screen.getByRole('dialog')).toHaveTextContent('A new label in four steps');
+    expect(screen.getByRole('dialog')).toHaveTextContent('A new label in three steps');
     expect(screen.getByTestId('labels-tour')).toHaveAttribute('data-step', '1');
     expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
     fireEvent.click(screen.getByTestId('labels-tour-next'));
@@ -31,7 +31,7 @@ describe('LabelsTour', () => {
     render(<LabelsTour />);
     expect(screen.queryByRole('dialog')).toBeNull();
     act(() => { openLabelsTour(); });
-    expect(screen.getByRole('dialog')).toHaveTextContent('A new label in four steps');
+    expect(screen.getByRole('dialog')).toHaveTextContent('A new label in three steps');
     // Closing with the X counts as seen too.
     fireEvent.click(screen.getByTestId('shared-modal-close'));
     expect(screen.queryByRole('dialog')).toBeNull();

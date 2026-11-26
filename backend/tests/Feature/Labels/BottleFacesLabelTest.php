@@ -71,7 +71,7 @@ class BottleFacesLabelTest extends TestCase
         // The main side is second, so the label's joint is not at its edge (owner, 2026-11-26); a saved label whose
         // brand part leads has its last part brought round, and any other order is left alone.
         $this->assertSame(['maker', 'brand', 'legal', 'marks', 'dates'], $t['fields']['label_wrap']['parts']);
-                $this->assertSame(['dates', 'brand', 'legal'], WrapConfig::mainSecond(['brand', 'legal', 'dates']));
+        $this->assertSame(['dates', 'brand', 'legal'], WrapConfig::mainSecond(['brand', 'legal', 'dates']));
         $this->assertSame(['legal', 'brand'], WrapConfig::mainSecond(['legal', 'brand']));
         $this->assertSame(['brand'], WrapConfig::mainSecond(['brand']));
         // The QR strip is never beside the barcode strip, the label's two ends counted as neighbours (owner, same day:
@@ -91,6 +91,11 @@ class BottleFacesLabelTest extends TestCase
         $this->dump('jar-rihaakuru', $html);
         $this->assertStringContainsString('Rihaakuru', $html);
         $this->assertStringContainsString('PACKED ON', $html);
+        // The Dhivehi name is set as large as the English one (owner, 2026-11-26: it was small beside it).
+        $this->assertSame(1, preg_match('/font-size:([\d.]+)pt;[^>]*>Rihaakuru</', $html, $en));
+        $this->assertSame(1, preg_match('/font-size:([\d.]+)pt;[^>]*>ރިހާކުރު/u', $html, $dv));
+        $this->assertGreaterThanOrEqual((float) $en[1], (float) $dv[1]);
+        $this->assertGreaterThanOrEqual(20.0, (float) $dv[1]);
         $this->assertStringContainsString('2 000000 12345', $html);
         $this->assertStringContainsString('>AMMA<', $html);
         $this->assertStringNotContainsString('MFG DATE', $html);
