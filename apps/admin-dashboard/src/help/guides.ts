@@ -564,6 +564,7 @@ export const GUIDES: Guide[] = [
     title: 'Make a label a sticker, a pouch label, a bottle wrap or a tub label',
     steps: [
       'Open Labels. On My labels tap Edit on the label, or make a new one on New label.',
+      'Type the Product name in the first box. It is the name printed on the label.',
       'Under "What kind of label" tap Sticker, Pouch or bag, Wrap-around, Tub lid or Tub side.',
       'The label moves to a size that prints that kind, and the preview draws it.',
       'The settings for that kind open just below: the strips for a wrap-around label, the colour and cooking method for a pouch.',
@@ -572,6 +573,7 @@ export const GUIDES: Guide[] = [
     notes: [
       'A wrap-around label is any wide, short size. Picking a size that is not wide turns it back into a sticker.',
       'Switching away from Pouch and back keeps the pouch picks you made.',
+      'On a wrap-around label, "Words on the band" is only the coloured band along the bottom. Left empty, the band prints the product name.',
       'A label with no Label type prints no heading until you type one in Wording on the sticker. Pick a Label type, such as Frozen Hedhika, to print that type\'s heading.',
     ],
     words: 'kind type wrap around bottle pouch bag tub lid side sticker preview not showing',

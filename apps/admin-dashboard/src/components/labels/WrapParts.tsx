@@ -140,11 +140,12 @@ export function WrapParts({ value, onChange, catalogue, pictures, onAddPicture, 
         {value.band && (
           <div className="grid gap-2 sm:grid-cols-2">
             <div>
-              <label className={labelClass} htmlFor={`${idPrefix}-band`}>Band words</label>
-              <input id={`${idPrefix}-band`} maxLength={60} value={value.band_text} onChange={(e) => set('band_text', e.target.value)} className={fieldClass} placeholder={productName || 'The product name'} />
+              <label className={labelClass} htmlFor={`${idPrefix}-band`}>Words on the band (optional)</label>
+              <input id={`${idPrefix}-band`} maxLength={60} value={value.band_text} onChange={(e) => set('band_text', e.target.value)} className={fieldClass} placeholder={productName || 'Empty: the product name'} />
+              <p className="text-xs text-[var(--color-text-muted)] mt-1" data-testid={`${idPrefix}-band-hint`}>Only the band. The name on the label is the Product name box at the top{productName ? '' : ', which is still empty'}.</p>
             </div>
             <div>
-              <label className={labelClass} htmlFor={`${idPrefix}-band-dv`}>Band words in Dhivehi</label>
+              <label className={labelClass} htmlFor={`${idPrefix}-band-dv`}>Words on the band in Dhivehi</label>
               <input id={`${idPrefix}-band-dv`} dir="rtl" maxLength={60} value={value.band_text_dv} onChange={(e) => set('band_text_dv', e.target.value)} className={fieldClass} placeholder="ދިވެހި ނަން" /><div className="mt-1"><DhivehiDraft from={value.band_text} current={value.band_text_dv} kind="label" onDraft={(v) => set('band_text_dv', v.slice(0, 60))} /></div>
             </div>
           </div>

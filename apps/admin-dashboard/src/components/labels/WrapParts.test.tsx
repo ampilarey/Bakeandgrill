@@ -40,8 +40,10 @@ describe('WrapParts', () => {
   it('keeps the band, its words, the marks, the pictures and the free text', () => {
     const { onChange, onAddPicture, onNutritionPer } = mount({ ...EMPTY_WRAP, pictures: [41] }, [{ id: 41, url: '/storage/halal.png' }]);
     expect(screen.getByText(/and the net content \(0\.2 L\)/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Band words')).toHaveAttribute('placeholder', 'Cranberry Juice');
-    fireEvent.change(screen.getByLabelText('Band words'), { target: { value: 'Cranberry' } });
+    expect(screen.getByLabelText('Words on the band (optional)')).toHaveAttribute('placeholder', 'Cranberry Juice');
+    // Owner, 2026-11-26: the band's box was taken for the name's. It says which it is.
+    expect(screen.getByText(/Only the band\. The name on the label is the Product name box at the top/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Words on the band (optional)'), { target: { value: 'Cranberry' } });
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ band_text: 'Cranberry' }));
     fireEvent.click(screen.getByTestId('wrap-band'));
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ band: false }));
@@ -68,6 +70,6 @@ describe('WrapParts', () => {
   it('says no more pictures once the four are picked', () => {
     mount({ ...EMPTY_WRAP, pictures: [1, 2, 3, 4] });
     expect(screen.getByTestId('wrap-add-picture')).toBeDisabled();
-    expect(screen.queryByLabelText('Band words in Dhivehi')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Words on the band in Dhivehi')).toBeInTheDocument();
   });
 });

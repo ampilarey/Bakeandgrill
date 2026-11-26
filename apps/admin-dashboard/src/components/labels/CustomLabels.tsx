@@ -510,12 +510,15 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
               {!saved && <div className="flex-1 min-w-[220px]"><StartFromRow onPick={applyTemplate} idPrefix="cl-start" /></div>}
               <SaveAsTemplate fields={templateFromCustom(d)} at={choice} source={d.name.trim() || saved?.name || ''} variant="secondary" className={saved ? 'ml-auto' : ''} />
             </div>
+            {/* The name comes first (owner, 2026-11-26: "Product name is not coming"; the kind's own boxes stood above it, and the band's box read as the name's). */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field id="cl-name" label="Product name"><input id="cl-name" value={d.name} maxLength={80} onChange={(e) => set('name', e.target.value)} className={fieldClass} placeholder="Garlic sauce" /></Field>
+              <Field id="cl-name-dv" label="Product name (Dhivehi)"><input id="cl-name-dv" dir="rtl" value={d.name_dv} maxLength={80} onChange={(e) => set('name_dv', e.target.value)} className={fieldClass} /><div className="mt-1"><DhivehiDraft from={d.name} current={d.name_dv} kind="name" onDraft={(v) => set('name_dv', v.slice(0, 80))} /></div></Field>
+            </div>
             {kindPicker}
             {stacked && sizeSection}
             {kindSettings}
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field id="cl-name" label="Product name"><input id="cl-name" value={d.name} maxLength={80} onChange={(e) => set('name', e.target.value)} className={fieldClass} placeholder="Garlic sauce" /></Field>
-              <Field id="cl-name-dv" label="Product name (Dhivehi)"><input id="cl-name-dv" dir="rtl" value={d.name_dv} maxLength={80} onChange={(e) => set('name_dv', e.target.value)} className={fieldClass} /><div className="mt-1"><DhivehiDraft from={d.name} current={d.name_dv} kind="name" onDraft={(v) => set('name_dv', v.slice(0, 80))} /></div></Field>
               <Field id="cl-brand" label="Brand and logo" hint={d.brand_id ? undefined : `Empty follows the label type: ${typeBrand}.`}>
                 <div className="flex gap-2">
                   <select id="cl-brand" value={d.brand_id ?? ''} onChange={(e) => set('brand_id', e.target.value ? Number(e.target.value) : null)} className={fieldClass}>

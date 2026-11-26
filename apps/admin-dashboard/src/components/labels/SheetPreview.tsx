@@ -25,9 +25,11 @@ type Props = {
   round?: boolean;
   /** Drawn over the page, the frame's size: touch zones for the wrap-around label's strips (round 2, 2026-10-13). */
   overlay?: ReactNode;
+  /** Off for a thumbnail that is itself a button: a button inside it could not be tapped. */
+  bigger?: boolean;
 };
 
-export function SheetPreview({ url, ratio, busy = false, title = 'Preview', empty = 'Pick a product to see it.', className = '', round = false, overlay }: Props) {
+export function SheetPreview({ url, ratio, busy = false, title = 'Preview', empty = 'Pick a product to see it.', className = '', round = false, overlay, bigger = true }: Props) {
   // The page on screen stays until the next one has drawn (owner, 2026-11-11: "every time all the
   // preview get refreshed"): the new page loads underneath, unseen, and takes its place in one step,
   // so a change shows as the part that changed and the label never blanks.
@@ -72,7 +74,7 @@ export function SheetPreview({ url, ratio, busy = false, title = 'Preview', empt
         )}
       </div>
       {/* Under the label, not over it: on the label it hid the corner of the print (the pack tag). */}
-      {src && (
+      {src && bigger && (
         <div className="flex justify-end mt-1">
           <button
             type="button"

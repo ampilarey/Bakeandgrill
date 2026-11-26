@@ -40,7 +40,7 @@ export function PhonePreviewBar({ url, ratio, busy = false, round = false, title
         <button type="button" onClick={() => setOpen((o) => !o)} className="shrink-0 rounded-lg" aria-label={open ? 'Hide the big preview' : 'Show the big preview'} aria-expanded={open} style={{ width: open ? 0 : thumbW, overflow: 'hidden', transition: 'width 0.15s' }}>
           {/* The drawn page is an iframe, which would swallow the tap once loaded (round 9, 2026-10-13): the thumbnail takes no pointer events, so the button gets every tap. */}
           <div style={{ width: thumbW, pointerEvents: 'none' }}>
-            <SheetPreview url={url} ratio={ratio} busy={busy} round={round} title={title} empty="" />
+            <SheetPreview url={url} ratio={ratio} busy={busy} round={round} title={title} empty="" bigger={false} />
           </div>
         </button>
         <div className="flex-1 min-w-0 space-y-1.5">

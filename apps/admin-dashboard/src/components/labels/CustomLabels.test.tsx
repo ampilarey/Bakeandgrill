@@ -291,6 +291,11 @@ describe('CustomLabelModal', () => {
     // Wrap-around: a wide size, its strips right under the picker, and the preview asked for at that size.
     fireEvent.click(screen.getByTestId('custom-label-kind-wrap'));
     expect(screen.getByTestId('custom-label-kind-wrap')).toHaveAttribute('aria-pressed', 'true');
+    // Owner, 2026-11-26 ("Product name is not coming"): the name's box comes before the kind and its boxes.
+    const before = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(before(screen.getByLabelText('Product name'), screen.getByTestId('custom-label-kind'))).toBe(true);
+    expect(before(screen.getByLabelText('Product name'), screen.getByLabelText('Words on the band (optional)'))).toBe(true);
+    expect(screen.getByTestId('cl-wrap-band-hint')).toHaveTextContent('Only the band.');
     expect(screen.getByTestId('custom-label-wrap')).toBeInTheDocument();
     await waitFor(() => expect(previewCustomDraft).toHaveBeenCalledWith(expect.objectContaining({ w: 180, h: 40 })), { timeout: 3000 });
 
