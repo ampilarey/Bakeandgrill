@@ -576,7 +576,7 @@ export const GUIDES: Guide[] = [
       'On a wrap-around label, "Words on the band" is only the coloured band along the bottom. Left empty, the band carries the net weight, or is left off when there is none. It never repeats the product name.',
       'The preview in this form leaves both dates blank. You pick the dates when you tap Print.',
       'On a wrap-around label the main part, with the brand and the name, is the second strip, so the place where the label\'s two ends meet is not at its edge. Drag the strips to change the order.',
-      'For a shop\'s till, type the barcode under "For the shop till", or tap Make one. It prints beside the dates.',
+      'For a shop\'s till, type the barcode under "For the shop till", or tap Make one. It prints beside the dates, with no QR code near it: the QR codes are kept on another part of the label so a till scans the barcode alone.',
       'For the square Rihaakuru jar, pick "Rihaakuru jar (4 sides)" under Start from: it brings the name in English and Dhivehi, the tuna picture, the size and "Packed on" on the date box.',
       'On a wrap-around label, "Words on the made-on date box" changes MFG DATE to your own words, such as Packed on.',
       'Storage starts on "None: no storage line". Pick Frozen, Chilled or Room temperature to print that line, or pick a Label type that brings one.',

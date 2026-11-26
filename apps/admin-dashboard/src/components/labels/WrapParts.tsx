@@ -43,7 +43,8 @@ export const WRAP_FALLBACK: WrapCatalogue = {
     { key: 'metal', label: 'Metal (tin, aluminium)', caption: 'METAL' },
   ],
   // The main part second, never first: a label's two ends meet at its left edge (owner, 2026-11-26).
-  default_parts: ['marks', 'brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr'],
+  // And the QR strip away from the barcode strip: a till's scanner must not find a QR beside the bars.
+  default_parts: ['qr', 'brand', 'legal', 'nutrition', 'dates', 'barcode', 'marks'],
   default_marks: ['recycle', 'dispose'],
   max_pictures: 4,
 };

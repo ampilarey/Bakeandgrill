@@ -1448,3 +1448,7 @@ width under Shape and size. Any wrap-around label can reword its made-on box und
 the second strip, so the joint where the label's ends meet is not at its edge; labels and templates saved before were
 moved once. Drag the strips to change the order. On a bottle with flat sides the brand's name is the large line of the
 front face. A barcode typed under For the shop till prints beside the dates.
+
+**No QR code beside the barcode** (owner, 2026-11-26). A till's scanner should find the barcode alone. On the bottle
+labels the pack's QR stands with the complaints QR on Bake & Grill's side, and the barcode has the dates side to
+itself. On other wrap-around labels the QR strip is kept away from the barcode strip; saved labels were moved once.

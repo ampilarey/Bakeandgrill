@@ -39,10 +39,10 @@ export const STRIP_COUNTS = [2, 3, 4, 5, 6] as const;
 
 /** The parts for a strip count: the ones kept, trimmed or filled from the usual order. */
 export function partsForCount(parts: WrapPartKey[], count: number, catalogue: WrapCatalogue): WrapPartKey[] {
-  // Which parts matter most: the usual order with its leading part (the marks, put first only to keep the main part off
-  // the label's joint; owner, 2026-11-26) counted last.
-  const usual = catalogue.default_parts[0] === 'brand' ? catalogue.default_parts : [...catalogue.default_parts.slice(1), ...catalogue.default_parts.slice(0, 1)];
-  const pool = [...usual, ...catalogue.parts.map((p) => p.key)].filter((k, i, all) => all.indexOf(k) === i);
+  // Which parts matter most. Not the usual order of the strips, which puts the main part second to keep it off the
+  // label's joint and the QR away from the barcode (owner, 2026-11-26).
+  const IMPORTANCE: WrapPartKey[] = ['brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr', 'marks'];
+  const pool = [...IMPORTANCE, ...catalogue.default_parts, ...catalogue.parts.map((p) => p.key)].filter((k, i, all) => all.indexOf(k) === i);
   const rank = (k: WrapPartKey) => { const i = pool.indexOf(k); return i < 0 ? pool.length : i; };
   if (count <= parts.length) {
     // Fewer strips: the least important ones go, and the rest keep their places.

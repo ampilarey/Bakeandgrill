@@ -77,7 +77,7 @@ final class LabelTemplates
             'fields' => [
                 'label_storage' => 'chilled', 'label_heading' => 'FRESH JUICE', 'label_how_to_use' => 'Shake well. Serve chilled.', 'label_note' => 'No added sugar. Natural separation is normal.',
                 'label_shelf_life_days' => 3, 'label_pack_unit' => 'ML', 'label_net_weight' => '500 ml', 'label_nutrition_per' => 'ml', 'label_lang' => 'en',
-                'label_wrap' => ['parts' => ['marks', 'brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr'], 'band' => true, 'marks' => ['recycle', 'dispose', 'pet']],
+                'label_wrap' => ['parts' => ['qr', 'brand', 'legal', 'nutrition', 'dates', 'barcode', 'marks'], 'band' => true, 'marks' => ['recycle', 'dispose', 'pet']],
             ],
             'size' => ['shape' => 'rect', 'preset' => 'r180x40', 'on' => 'sheet'],
         ],

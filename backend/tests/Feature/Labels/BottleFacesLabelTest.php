@@ -71,10 +71,15 @@ class BottleFacesLabelTest extends TestCase
         // The main side is second, so the label's joint is not at its edge (owner, 2026-11-26); a saved label whose
         // brand part leads has its last part brought round, and any other order is left alone.
         $this->assertSame(['maker', 'brand', 'legal', 'marks', 'dates'], $t['fields']['label_wrap']['parts']);
-        $this->assertSame('brand', WrapConfig::DEFAULT_PARTS[1]);
-        $this->assertSame(['dates', 'brand', 'legal'], WrapConfig::mainSecond(['brand', 'legal', 'dates']));
+                $this->assertSame(['dates', 'brand', 'legal'], WrapConfig::mainSecond(['brand', 'legal', 'dates']));
         $this->assertSame(['legal', 'brand'], WrapConfig::mainSecond(['legal', 'brand']));
         $this->assertSame(['brand'], WrapConfig::mainSecond(['brand']));
+        // The QR strip is never beside the barcode strip, the label's two ends counted as neighbours (owner, same day:
+        // "Dont keep barcode and any qr code nearby"); the brand and the barcode keep their places.
+        $this->assertSame(['qr', 'brand', 'legal', 'nutrition', 'dates', 'barcode', 'marks'], WrapConfig::DEFAULT_PARTS);
+        $this->assertSame(['qr', 'brand', 'legal', 'dates', 'barcode', 'marks'], WrapConfig::codesApart(['marks', 'brand', 'legal', 'dates', 'barcode', 'qr']));
+        $this->assertSame(['legal', 'brand', 'qr', 'dates', 'barcode'], WrapConfig::codesApart(['qr', 'brand', 'legal', 'dates', 'barcode']));
+        $this->assertSame(['brand', 'barcode', 'qr'], WrapConfig::codesApart(['brand', 'barcode', 'qr']), 'no other place: left as it is');
         $this->assertSame([240, 60], [(int) $t['size']['w'], (int) $t['size']['h']]);
 
         // A barcode typed for the shop's till prints on the dates side (owner: "will this template have shop barcode?").
@@ -122,13 +127,13 @@ class BottleFacesLabelTest extends TestCase
         $this->assertSame('wrap', $res->json('summary.design'));
         // Owner, 2026-11-14: the bottle carries the pack's own code beside its barcode, as the momo pouch does.
         $code = (string) \App\Models\LabelPrint::query()->latest('id')->value('code');
-        $this->assertStringContainsString(\App\Domains\Labels\BatchLink::qr($code), $html, 'the pack code is on the dates side');
+        $this->assertStringContainsString(\App\Domains\Labels\BatchLink::qr($code), $html, 'the pack code prints');
         $this->assertStringContainsString('>PACK INFO<', $html);
         $this->assertNotContains('Pack QR code', $res->json('summary.dropped'));
         $this->assertStringNotContainsString('EXP DATE', $html, 'the label says Best before');
         $this->assertStringNotContainsString('Made by', $html, 'the business has a side of its own, so no small line as well');
         $this->assertStringNotContainsString('QTY:', $html, 'no blank count on a bottle');
-        foreach (['>Theluli<', '>Rihaakuru<', 'BY BAKE &amp; GRILL', '>AMMA<', 'Rihaakuru, onion', 'STORE IN A COOL, DRY PLACE', 'MFG DATE', '>BEST BEFORE<', '>MVR 85.00<', 'NET 200 g', '>FEEDBACK &amp;<', '>COMPLAINTS<', '+960 912 0011', '2 000000 12345'] as $needle) {
+        foreach (['>Theluli<', '>Rihaakuru<', 'BY BAKE &amp; GRILL', '>AMMA<', 'Rihaakuru, onion', 'STORE IN A COOL, DRY PLACE', 'MFG DATE', '>BEST BEFORE<', '>MVR 85.00<', 'NET 200 g', '>FEEDBACK<', '+960 912 0011', '2 000000 12345'] as $needle) {
             $this->assertStringContainsStringIgnoringCase($needle, $html, $needle);
         }
 
@@ -158,6 +163,11 @@ class BottleFacesLabelTest extends TestCase
         $this->assertGreaterThanOrEqual($face, $price['x'], 'the price sits on the front face, the second one');
         $this->assertLessThanOrEqual(2 * $face, $price['x'] + $price['w'], 'the price sits on the front face, the second one');
         $this->assertSame(1, substr_count($html, '>MVR 85.00<'));
+        // The barcode has the dates side to itself: the pack's code stands on the business's side, with the complaints
+        // code (owner, 2026-11-26: "Dont keep barcode and any qr code nearby").
+        $pack = collect($res->json('summary.spots'))->firstWhere('key', 'batch_qr');
+        $this->assertNotNull($pack);
+        $this->assertLessThanOrEqual($face, $pack['x'] + $pack['w'], 'the pack code is on the first side, the business\'s');
         $this->assertStringContainsString('>RECYCLE<', $html);
         // The marks sit under the ingredients on the same face, and the business keeps its whole side.
         $this->assertEqualsWithDelta($strips['legal']['x'], $strips['marks']['x'], 0.01);

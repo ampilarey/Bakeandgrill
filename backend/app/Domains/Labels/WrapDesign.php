@@ -757,7 +757,9 @@ final class WrapDesign
         // bottle label had no PACK INFO code, the momo pouch had), and the barcode beside it.
         $left = $y + $ph - $cursor;
         $bars = !empty($d['barcode']) && !in_array('barcode', $this->parts, true);
-        $packQr = !empty($d['batch_qr']) && !in_array('qr', $this->parts, true) && $left >= 8.0;
+        // A till's scanner must not find a QR code beside the barcode (owner, 2026-11-26: "Dont keep barcode and any qr
+        // code nearby"): with a barcode here, the pack's code goes to the business's side, with the complaints code.
+        $packQr = !empty($d['batch_qr']) && !in_array('qr', $this->parts, true) && $left >= 8.0 && !$this->packCodeOnMaker();
         $qw = 0.0;
         if ($packQr) {
             $capPt = self::clamp(2.6 * $k, 2.4, 3.2);
@@ -777,6 +779,19 @@ final class WrapDesign
         if ($bars && $left >= 8.0) {
             $this->ean($this->dv ? $x + $qw : $x, $cursor + 0.2, $pw - $qw, $left - 0.2);
         }
+    }
+
+    /**
+     * The pack's code stands on the business's side, not the dates side, when the dates side carries the barcode:
+     * a till's scanner then finds no QR code beside the bars.
+     */
+    private function packCodeOnMaker(): bool
+    {
+        $d = $this->d;
+
+        return !empty($d['batch_qr']) && !empty($d['barcode'])
+            && !in_array('qr', $this->parts, true) && !in_array('barcode', $this->parts, true)
+            && in_array('maker', $this->parts, true) && in_array('dates', $this->parts, true);
     }
 
     /** The EAN barcode on its own: the bars as wide as the part allows, the digits beneath. */
@@ -874,9 +889,36 @@ final class WrapDesign
         $top = $y + $in;
         $ih = $ph - 2 * $in;
 
-        // The complaints QR at the far side, with its words beneath.
+        // The complaints QR at the far side, with its words beneath; the pack's code under it when the dates side
+        // carries the barcode (the two codes a phone reads stand together, away from the one a till reads).
         $qw = 0.0;
-        if (!empty($d['show_qr']) && !empty($d['qr'])) {
+        if ($this->packCodeOnMaker()) {
+            $codes = array_values(array_filter([
+                !empty($d['show_qr']) && !empty($d['qr']) ? [$d['qr'], 'FEEDBACK', null] : null,
+                [$d['batch_qr'], 'PACK INFO', 'batch_qr'],
+            ]));
+            $n = count($codes);
+            $capPt = self::clamp(2.8 * $k, 2.4, 3.6);
+            $capH = $this->lead('j7', $capPt);
+            $side = min(($ih - $n * ($capH + 0.6) - ($n - 1) * 1.0) / $n, $iw * 0.42 * min($f, 1.12), 22.0);
+            if ($side >= 7.0) {
+                $qx = $this->dv ? $ix : $ix + $iw - $side;
+                $qy = $top + max(0.0, ($ih - $n * ($side + $capH + 0.6) - ($n - 1) * 1.0) / 2);
+                foreach ($codes as [$src, $words, $spot]) {
+                    if ($spot !== null) {
+                        $this->p[] = LabelSpots::open($spot);
+                    }
+                    $this->p[] = ['t' => 'rect', 'x' => round($qx - 0.4, 3), 'y' => round($qy - 0.4, 3), 'w' => round($side + 0.8, 3), 'h' => round($side + 0.8, 3), 'fill' => '#FFFFFF', 'r' => 0.6];
+                    $this->img($qx, $qy, $side, $side, $src);
+                    $this->text($qx - 1.0, $qy + $side + 0.6 + LabelText::ascent('j7') * $capPt * LabelText::PT, $side + 2.0, 'c', 'j7', LabelText::fitPt($words, 'j7', $side + 2.0, $capPt, 2.2), $spot === null ? StickerDesign::PRIMARY : StickerDesign::MUTED, $words);
+                    if ($spot !== null) {
+                        $this->p[] = LabelSpots::close();
+                    }
+                    $qy += $side + $capH + 0.6 + 1.0;
+                }
+                $qw = $side + 2.2 * $this->k;
+            }
+        } elseif (!empty($d['show_qr']) && !empty($d['qr'])) {
             $capPt = self::clamp(3.0 * $k, 2.6, 4.6);
             $capH = 2 * $this->lead('j7', $capPt);
             $side = min($ih - $capH - 0.6, $iw * 0.42 * min($f, 1.12), 26.0);

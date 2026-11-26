@@ -40,7 +40,47 @@ final class WrapConfig
      * The main part (the brand and the name) comes second, never first (owner, 2026-11-26: "move the main page which
      * is on the left side to 2nd … so main part will not have joint"): a label's two ends meet at its left edge.
      */
-    public const DEFAULT_PARTS = ['marks', 'brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr'];
+    public const DEFAULT_PARTS = ['qr', 'brand', 'legal', 'nutrition', 'dates', 'barcode', 'marks'];
+
+    /**
+     * A list of parts with the QR strip moved away from the barcode strip (owner, 2026-11-26: "Dont keep barcode and
+     * any qr code nearby": a till's scanner must not find a QR beside the bars). When the two are neighbours, the
+     * ends of the label counted as neighbours too, the QR changes places with the first part that sets them apart;
+     * the brand part and the barcode keep their places. A list with no such place is left as it is.
+     *
+     * @param list<string> $parts
+     * @return list<string>
+     */
+    public static function codesApart(array $parts): array
+    {
+        $parts = array_values($parts);
+        $near = function (array $p): bool {
+            $q = array_search('qr', $p, true);
+            $b = array_search('barcode', $p, true);
+            if ($q === false || $b === false) {
+                return false;
+            }
+            $gap = abs($q - $b);
+
+            return $gap === 1 || (count($p) > 2 && $gap === count($p) - 1);
+        };
+        if (!$near($parts)) {
+            return $parts;
+        }
+        $q = (int) array_search('qr', $parts, true);
+        foreach ($parts as $i => $part) {
+            if ($part === 'qr' || $part === 'barcode' || $part === 'brand') {
+                continue;
+            }
+            $try = $parts;
+            [$try[$i], $try[$q]] = [$try[$q], $try[$i]];
+            if (!$near($try)) {
+                return $try;
+            }
+        }
+
+        return $parts;
+    }
 
     /**
      * A list of parts with the main one moved off the label's joint: when the brand part leads, the last part comes
