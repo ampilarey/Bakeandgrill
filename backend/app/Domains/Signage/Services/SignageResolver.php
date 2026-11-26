@@ -7,6 +7,7 @@ namespace App\Domains\Signage\Services;
 use App\Domains\PrayerTimes\Actions\GetIslandCollection;
 use App\Domains\PrayerTimes\Actions\GetPrayerTimesForIslandAndDate;
 use App\Domains\PrayerTimes\DTOs\IslandData;
+use App\Domains\Reporting\Services\ItemSales;
 use App\Models\Item;
 use App\Models\SignageCampaign;
 use App\Models\SignageScreen;
@@ -36,9 +37,21 @@ final class SignageResolver
         $version = SignageCache::version();
         $cacheKey = 'signage:resolved:' . ($screenKey ?: 'default') . ':' . ($storeId ?? 'all') . ':' . $version;
 
-        return SignageCache::remember($cacheKey, 30, function () use ($screenKey, $now, $storeId, $version) {
+        $payload = SignageCache::remember($cacheKey, 30, function () use ($screenKey, $now, $storeId, $version) {
             return $this->resolveFresh($screenKey, $now, $storeId, $version);
         });
+
+        // The clock is never the cached one (TV audit, 2026-11-26): the board sets its own clock from
+        // `server_time`, and an answer up to 30 seconds old put every screen that far behind.
+        if (is_array($payload)) {
+            $payload['server_time'] = $now->toIso8601String();
+            if (is_array($payload['variables'] ?? null)) {
+                $payload['variables']['current_time'] = $now->format('g:i A');
+                $payload['variables']['today'] = $now->format('l, j M Y');
+            }
+        }
+
+        return $payload;
     }
 
     /**
@@ -119,6 +132,11 @@ final class SignageResolver
 
         $slides = self::dropOutsideSchedule($slides, $now);
         $rotation = WeightedRotation::buildOrder($slides);
+        // What a running board compares to know its slides changed. It has to follow what is playing, not only
+        // what was saved (TV audit, 2026-11-26): a prayer break, a scheduled closure, a campaign and a slide's
+        // own dates all start by the clock with nothing saved, and a board that saw the same version kept its
+        // old slides, so none of them reached a TV that was already on.
+        $playing = sha1($version . '|' . $source . '|' . $mode . '|' . json_encode(array_values($slides)));
         $prayer = $this->prayerPayload($now);
 
         return [
@@ -129,7 +147,7 @@ final class SignageResolver
                 'group_id' => $screen->group_id,
             ] : null,
             'playlist_id' => $playlistId,
-            'playlist_version' => $version,
+            'playlist_version' => $playing,
             'source' => $source,
             'mode' => $mode,
             'orientation' => $orientation,
@@ -431,23 +449,27 @@ final class SignageResolver
         }
 
         try {
+            // Sold in the last 30 days by the reports' own rule (a paid order at any stage, removed lines and
+            // gift cards aside), counted in pieces, not order lines (TV audit, 2026-11-26: the slide counted a
+            // saved ticket nobody paid, and filled up with dishes that had never sold).
             $items = Item::query()
                 ->where('is_active', true)
                 // An item kept out of the best sellers (owner, 2026-10-13) never makes the slide.
                 ->where('hide_from_bestsellers', false)
-                ->withCount(['orderItems as sales_30d' => function ($q) {
-                    $q->whereHas('order', function ($order) {
-                        $order->where('status', '!=', 'cancelled')
-                            ->where('created_at', '>=', now()->subDays(30));
-                    });
-                }])
-                ->orderByDesc('sales_30d')
-                ->limit($limit)
-                ->get([
+                // Nor one that is not on sale yet.
+                ->where(fn ($q) => $q->whereNull('launch_at')->orWhere('launch_at', '<=', now()))
+                ->select([
                     'id', 'name', 'name_dv', 'base_price', 'image_url', 'thumb_url',
                     'image_webp_url', 'thumb_webp_url',
                     'category_id', 'short_description',
-                ]);
+                ])
+                ->selectSub(ItemSales::soldSubquery(), 'sales_30d')
+                ->orderByDesc('sales_30d')
+                ->orderBy('id')
+                ->limit($limit)
+                ->get()
+                ->filter(fn (Item $i) => (float) ($i->sales_30d ?? 0) > 0)
+                ->values();
         } catch (\Throwable) {
             return [];
         }
@@ -463,7 +485,7 @@ final class SignageResolver
             'thumb_webp_url' => $i->getAttribute('thumb_webp_url'),
             'category_id' => $i->category_id,
             'short_description' => $i->short_description,
-            'sales_30d' => (int) ($i->sales_30d ?? 0),
+            'sales_30d' => (int) round((float) ($i->sales_30d ?? 0)),
         ])->all();
     }
 }

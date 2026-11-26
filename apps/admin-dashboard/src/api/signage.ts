@@ -359,6 +359,11 @@ export async function approveSignageDevice(id: number, body: { screen_id?: numbe
   });
 }
 
+/** Forget a TV: a replaced one, or one waiting to be paired that nobody knows. */
+export async function removeSignageDevice(id: number) {
+  return req<{ ok: boolean }>(`/admin/signage/devices/${id}`, { method: 'DELETE' });
+}
+
 export async function commandSignageDevice(id: number, command: string, payload: Record<string, unknown> = {}) {
   return req<{ data: SignageDevice }>(`/admin/signage/devices/${id}/command`, {
     method: 'POST',

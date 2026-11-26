@@ -839,3 +839,25 @@ describe('SignagePage', () => {
     }
   });
 });
+
+describe('the board keeps the shop\'s time (TV audit, 2026-11-26)', () => {
+  it('reads how far the shop\'s zone is from the TV\'s off server_time', async () => {
+    const { zoneShiftFromServerTime } = await import('./SignagePage');
+    // A TV on the shop's own zone: nothing to move.
+    expect(zoneShiftFromServerTime('2026-11-26T12:00:00+05:00', 300)).toBe(0);
+    // A TV box left on UTC is five hours behind the shop; one on China time three hours ahead.
+    expect(zoneShiftFromServerTime('2026-11-26T12:00:00+05:00', 0)).toBe(5 * 3_600_000);
+    expect(zoneShiftFromServerTime('2026-11-26T12:00:00+05:00', 480)).toBe(-3 * 3_600_000);
+    expect(zoneShiftFromServerTime('2026-11-26T07:00:00Z', 300)).toBe(-5 * 3_600_000);
+    expect(zoneShiftFromServerTime(undefined, 0)).toBe(0);
+    expect(zoneShiftFromServerTime('not a time', 0)).toBe(0);
+  });
+
+  it('prints a prayer time as the server wrote it, whatever zone the TV is on', async () => {
+    const { formatPrayerClock } = await import('@shared/signage/SignageBanner');
+    // 18:07 or 6:07 pm by the board's locale; never another hour.
+    expect(formatPrayerClock('2026-11-26T18:07:00+05:00')).toMatch(/^(18|6):07/);
+    expect(formatPrayerClock('2026-11-26T04:52:00+05:00')).toMatch(/^0?4:52/);
+    expect(formatPrayerClock('nonsense')).toBe('');
+  });
+});

@@ -29,6 +29,9 @@ final class SignageDeviceController extends Controller
         'fullscreen',
     ];
 
+    /** The most screens that may wait to be paired at once. */
+    public const MAX_WAITING = 20;
+
     public function __construct(private readonly AuditLogService $audit) {}
 
     public function heartbeat(Request $request): JsonResponse
@@ -68,6 +71,13 @@ final class SignageDeviceController extends Controller
         }
 
         $device = SignageDevice::query()->firstOrNew(['device_id' => $data['device_id']]);
+        // This address is open to anyone, so the list of screens waiting to be paired is capped (TV audit,
+        // 2026-11-26): past the cap a screen nobody has seen before is turned away, never one already known.
+        if (!$device->exists && SignageDevice::query()->where('approved', false)->count() >= self::MAX_WAITING) {
+            return response()->json([
+                'message' => 'Too many screens are waiting to be paired. Remove the ones you do not know in Admin → TV Signage → TV status.',
+            ], 429);
+        }
         if (!$device->exists) {
             $device->pairing_code = $this->makePairingCode();
             $device->approved = false;
@@ -185,6 +195,24 @@ final class SignageDeviceController extends Controller
         );
 
         return response()->json(['data' => $this->serialize($device->fresh('screen'))]);
+    }
+
+    /**
+     * Forget a TV: one that was replaced, or one waiting to be paired that nobody knows (TV audit, 2026-11-26:
+     * there was no way to take a screen off the list, so an old TV stayed "offline" for ever). A TV still
+     * running comes back as a new one waiting to be paired.
+     */
+    public function destroy(Request $request, SignageDevice $device): JsonResponse
+    {
+        $old = ['device_id' => $device->device_id, 'approved' => (bool) $device->approved, 'screen_id' => $device->screen_id];
+        $shot = SignageDeviceHealth::screenshotPath($device);
+        $id = $device->id;
+        $device->delete();
+        Storage::disk('public')->delete($shot);
+
+        $this->audit->log('signage.device.remove', 'signage_device', $id, $old, [], [], $request);
+
+        return response()->json(['ok' => true]);
     }
 
     public function command(Request $request, SignageDevice $device): JsonResponse

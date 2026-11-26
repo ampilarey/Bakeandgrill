@@ -1246,7 +1246,10 @@ export const GUIDES: Guide[] = [
     ],
     notes: [
       'Emergency replaces everything on every screen at once: Closed, Prayer break, Maintenance and others. Set it back to None for the normal rotation.',
-      'TV status shows which screens are online.',
+      'TV status shows which screens are online, with a picture of each. Remove takes an old or unknown TV off the list.',
+      'A prayer break, a scheduled closure or a campaign reaches a running TV by itself within a few minutes of its start.',
+      'A TV switched off while the shop is closed sends no alert. One still off after opening does.',
+      'The screens show the shop\'s time even when a TV box is set to another time zone.',
     ],
     words: 'tv screen menu board playlist display emergency',
   },

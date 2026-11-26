@@ -155,6 +155,24 @@ function offsetFromServerTime(serverTime?: string): number | null {
   return serverMs - Date.now();
 }
 
+/**
+ * How far the shop's time zone is from this TV's, in milliseconds, read from the offset the server writes on
+ * `server_time` ("…+05:00"). A TV box left on another zone then still shows the shop's time, sleeps by the
+ * shop's hours and changes day part on the shop's clock (TV audit, 2026-11-26). 0 when they agree.
+ */
+export function zoneShiftFromServerTime(serverTime?: string, deviceOffsetMinutes: number = -new Date().getTimezoneOffset()): number {
+  if (!serverTime) return 0;
+  const m = /(Z|[+-]\d{2}:?\d{2})$/.exec(serverTime.trim());
+  if (!m) return 0;
+  let shop = 0;
+  if (m[1] !== 'Z') {
+    const sign = m[1].startsWith('-') ? -1 : 1;
+    const digits = m[1].replace(/[+:-]/g, '');
+    shop = sign * (Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2, 4)));
+  }
+  return (shop - deviceOffsetMinutes) * 60_000;
+}
+
 async function fetchConfig(screen: string, deviceId: string): Promise<SignageConfig> {
   const path = screen && screen !== 'default' ? `/signage/${encodeURIComponent(screen)}` : '/signage';
   const qs = new URLSearchParams({ device_id: deviceId });
@@ -238,15 +256,19 @@ export function SignagePage() {
   // Shared board clock — gated from server_time + monotonic client elapsed.
   const nowMs = useMemo(() => Date.now() + clockOffset, [tick, clockOffset]);
 
+  const [zoneShiftMs, setZoneShiftMs] = useState(0);
   const applyServerClock = (cfg: SignageConfig) => {
     const offset = offsetFromServerTime(cfg.server_time);
     if (offset !== null) setClockOffset(offset);
+    setZoneShiftMs(zoneShiftFromServerTime(cfg.server_time));
   };
+  // The shop's wall clock, for everything read as hours and days; countdowns and expiries keep `nowMs`.
+  const wallNow = useMemo(() => new Date(nowMs + zoneShiftMs), [nowMs, zoneShiftMs]);
 
   // Day part in force and whether the screen is asleep — by the board's own
   // clock, so a switch lands on the minute rather than on the next refresh.
-  const daypart = useMemo(() => activeDaypart(config?.layout?.dayparts, new Date(nowMs)), [config?.layout?.dayparts, nowMs]);
-  const asleep = useMemo(() => isAsleep(config?.layout?.sleep, new Date(nowMs)), [config?.layout?.sleep, nowMs]);
+  const daypart = useMemo(() => activeDaypart(config?.layout?.dayparts, wallNow), [config?.layout?.dayparts, wallNow]);
+  const asleep = useMemo(() => isAsleep(config?.layout?.sleep, wallNow), [config?.layout?.sleep, wallNow]);
   const asleepRef = useRef(false);
   asleepRef.current = asleep;
   const pausedRef = useRef(false);
@@ -256,12 +278,12 @@ export function SignagePage() {
   // Live clock variables
   const liveVars = useMemo(() => {
     const base = { ...(config?.variables ?? {}) };
-    const now = new Date(nowMs);
+    const now = wallNow;
     base.current_time = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     base.today = now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
     base.daypart = daypart?.label ?? '';
     return base;
-  }, [config?.variables, nowMs, daypart?.label]);
+  }, [config?.variables, wallNow, daypart?.label]);
 
   const hasAutoMenu = useMemo(
     () => (config?.slides ?? []).some((s) => s.template_origin === AUTO_MENU_ORIGIN),
@@ -633,7 +655,7 @@ export function SignagePage() {
     config
     && !black
     && !asleep
-    && shouldShowBanner(liveBanner, config.mode, new Date(nowMs)),
+    && shouldShowBanner(liveBanner, config.mode, wallNow),
   );
   const isLoading = !config && !offline && !bootError;
   const showIdleBrand = Boolean(config && !currentSlide && !black);
@@ -728,6 +750,7 @@ export function SignagePage() {
           schedule={config.prayer_schedule ?? []}
           mode={config.mode}
           nowMs={nowMs}
+          zoneShiftMs={zoneShiftMs}
           burnInOffset={burnIn}
           timeLabel={liveVars.current_time || undefined}
           variables={liveVars}
@@ -768,7 +791,7 @@ export function SignagePage() {
           <div className="signage-pairing-card">
             <div className="signage-pairing-label">Pair this TV</div>
             <div className="signage-pairing-code" data-testid="signage-pairing-code">{pairingCode}</div>
-            <div className="signage-pairing-hint">Enter this code in Admin → TV Signage → Devices</div>
+            <div className="signage-pairing-hint">Enter this code in Admin → TV Signage → TV status</div>
           </div>
         </div>
       )}

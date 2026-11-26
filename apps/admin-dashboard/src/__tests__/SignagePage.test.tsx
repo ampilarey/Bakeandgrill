@@ -209,6 +209,22 @@ describe('SignagePage', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  // TV audit, 2026-11-26: there was no way to take a TV off the list.
+  it('removes a TV after asking, pending or paired', async () => {
+    const remove = vi.spyOn(api, 'removeSignageDevice').mockResolvedValue({ ok: true });
+    const ask = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
+    try {
+      renderWithRouter(<SignagePage />);
+      fireEvent.click(screen.getByRole('button', { name: 'TV status' }));
+      fireEvent.click(await screen.findByTestId('signage-pending-remove-1'));
+      expect(remove).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByTestId('signage-pending-remove-1'));
+      await waitFor(() => expect(remove).toHaveBeenCalledWith(1));
+    } finally {
+      ask.mockRestore();
+    }
+  });
+
   it('pending pairing row keeps responsive grid hooks at 390px', async () => {
     setViewportWidth(390);
     renderWithRouter(<SignagePage />);

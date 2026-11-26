@@ -39,6 +39,8 @@ export type SignageBannerProps = {
   schedule: SignagePrayerEntry[];
   /** Live clock tick — when omitted, component ticks itself every 30s. */
   nowMs?: number;
+  /** Milliseconds between the shop's time zone and this device's; 0 when they agree. Countdowns do not use it. */
+  zoneShiftMs?: number;
   mode?: string;
   burnInOffset?: { x: number; y: number };
   /** Override date/time labels (tests / designer). */
@@ -164,6 +166,16 @@ export type AllPrayerPart = {
 export function formatPrayerClock(atIso: string): string {
   const ms = Date.parse(atIso);
   if (!Number.isFinite(ms)) return '';
+  // The time as the server wrote it, in the shop's own zone, whatever zone the TV is set to (TV audit,
+  // 2026-11-26: a TV box left on another time zone showed every prayer at the wrong hour).
+  const wall = /T(\d{2}):(\d{2})/.exec(atIso);
+  if (wall) {
+    return new Date(Date.UTC(2000, 0, 1, Number(wall[1]), Number(wall[2]))).toLocaleTimeString(SIGNAGE_BANNER_LOCALE, {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: 'UTC',
+    });
+  }
   return new Date(ms).toLocaleTimeString(SIGNAGE_BANNER_LOCALE, {
     hour: 'numeric',
     minute: '2-digit',
@@ -413,6 +425,7 @@ export function SignageBanner({
   banner,
   schedule,
   nowMs: nowMsProp,
+  zoneShiftMs = 0,
   mode = 'normal',
   burnInOffset,
   dateLabel,
@@ -432,7 +445,8 @@ export function SignageBanner({
 
   const normalized = useMemo(() => normalizeBannerSettings(banner), [banner]);
   const nowMs = nowMsProp ?? tick;
-  const now = useMemo(() => new Date(nowMs), [nowMs]);
+  // The shop's wall clock: `nowMs` moved by the gap between the shop's zone and the TV's.
+  const now = useMemo(() => new Date(nowMs + zoneShiftMs), [nowMs, zoneShiftMs]);
   const enabledList = useMemo(() => activeBanners(normalized, now), [normalized, now]);
   const enabledKey = enabledList.map((b) => b.id).join('|');
 

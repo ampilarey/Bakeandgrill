@@ -47,4 +47,5 @@ Route::middleware(['auth:sanctum', 'staff.token', 'permission:signage.manage'])
         Route::get('/devices', [SignageDeviceController::class, 'index']);
         Route::post('/devices/{device}/approve', [SignageDeviceController::class, 'approve']);
         Route::post('/devices/{device}/command', [SignageDeviceController::class, 'command']);
+        Route::delete('/devices/{device}', [SignageDeviceController::class, 'destroy']);
     });

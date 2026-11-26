@@ -1857,6 +1857,28 @@ links to the tab (`part="names"`). Every "no key yet" message, on screen, from t
 System → Integrations → API keys. A new outside service's key goes on that tab; never a key box on a domain page.
 `BillReaderCard.test.tsx`, `ApiKeysPage.test.tsx`.
 
+## TV signage: what reaches a running screen
+
+TV audit, 2026-11-26 (owner: "Can u audit tv signage"). A board (`apps/online-order-web/src/pages/SignagePage.tsx`,
+`/order/tv`) asks `GET /api/signage/{screen}` every `refresh_seconds` and swaps its slides, on a slide boundary, only
+when `playlist_version` differs from the one it holds; with the same version it takes the live fields alone
+(`mergeLiveFields`: mode, ticker, look), never the slides. So **`playlist_version` follows what is playing**, not what
+was last saved: `SignageResolver::resolveFresh()` hashes the saved version with the source, the mode and the slides.
+A prayer break, a scheduled closure, a campaign's hours and a slide's own dates all start by the clock with nothing
+saved, and none of them reached a TV that was already on. A new thing that changes the slides by the clock needs
+nothing more; never hand a board the bare `SignageCache::version()`. The answer is cached 30 seconds, but **the clock
+in it is not**: `resolve()` writes `server_time`, `current_time` and `today` after the cache, since the board sets its
+clock from `server_time`. **The board keeps the shop's time whatever zone the TV is set to**:
+`zoneShiftFromServerTime()` reads the offset on `server_time` and `wallNow` (the shop's wall clock) is what the sleep
+hours, the day parts, the clock and the ticker's schedules read (`SignageBanner` `zoneShiftMs`; `formatPrayerClock()`
+prints the hour the server wrote); countdowns and use-by times keep the true `nowMs`. A new thing read as an hour or
+a weekday on the board takes `wallNow`, never `new Date(nowMs)`. The Bestsellers slide is what was paid for, in
+pieces (`ItemSales::soldSubquery()`, the reports' own rule), never a dish that has not sold, is kept out of best
+sellers or is not on sale yet. The heartbeat is open to anyone, so at most `SignageDeviceController::MAX_WAITING` (20)
+screens wait to be paired, one never seen for a week is forgotten by `signage:check-devices`, and TV status has
+Remove for any TV (`DELETE /admin/signage/devices/{device}`, audited). A TV that goes quiet while the shop is closed
+(`OpeningHoursService::isOpenNow()`) is not reported until the shop is open and it is still off. `SignageAuditTest`.
+
 ## Help: short guides inside the admin
 
 Owner, 2026-11-10 ("there are lots of different features that I don't know how to use"). Team →

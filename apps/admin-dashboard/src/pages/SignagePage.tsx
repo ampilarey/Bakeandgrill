@@ -5,6 +5,7 @@ import { Copy, ExternalLink, Pencil, Save, Trash2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   approveSignageDevice,
+  removeSignageDevice,
   buildSignageTemplate,
   commandSignageDevice,
   createSignageCampaign,
@@ -494,6 +495,20 @@ export function SignagePage() {
   const screens = overview?.screens ?? [];
   const campaigns = overview?.campaigns ?? [];
   const templates = overview?.templates ?? [];
+  // Forget a TV: a replaced one, or one waiting to be paired that nobody knows (TV audit, 2026-11-26).
+  const removeDevice = async (d: SignageDevice, name: string) => {
+    if (!window.confirm(`Remove ${name} from the list? If that TV is still on, it will ask to be paired again.`)) return;
+    setDeviceBusy(d.id);
+    try {
+      await removeSignageDevice(d.id);
+      toast.success('TV removed.');
+      await loadDevices();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not remove it');
+    } finally {
+      setDeviceBusy(null);
+    }
+  };
   const pendingDevices = devices.filter((d) => !d.approved);
   const approvedDevices = devices.filter((d) => d.approved);
 
@@ -1973,6 +1988,9 @@ export function SignagePage() {
                         >
                           {deviceBusy === d.id ? 'Approving…' : 'Approve'}
                         </Btn>
+                        <Btn variant="danger-outline" disabled={deviceBusy === d.id} onClick={() => void removeDevice(d, `the TV showing ${d.pairing_code || 'no code'}`)} data-testid={`signage-pending-remove-${d.id}`}>
+                          <Trash2 size={14} /> Remove
+                        </Btn>
                       </div>
                     ))}
                   </div>
@@ -2040,7 +2058,7 @@ export function SignagePage() {
                                 )}
                               </div>
                               <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-                                Playlist {String(meta.playlist_version || '—')} · Slide {String(meta.current_slide || '—')} · Build {String(meta.build_version || '—')}
+                                Slide {String(meta.current_slide || '—')} · Build {String(meta.build_version || '—')}
                               </div>
                               <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                                 {String(meta.resolution || '—')} · Last sync {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : 'never'} · Cache {String(meta.cache_status || '—')}
@@ -2069,6 +2087,9 @@ export function SignagePage() {
                                   {cmd.replace(/_/g, ' ')}
                                 </Btn>
                               ))}
+                              <Btn variant="danger-outline" disabled={deviceBusy === d.id} onClick={() => void removeDevice(d, d.screen?.name || 'this TV')} data-testid={`signage-device-remove-${d.id}`}>
+                                <Trash2 size={14} /> Remove
+                              </Btn>
                             </div>
                           </div>
                           {d.queued_command?.type && (

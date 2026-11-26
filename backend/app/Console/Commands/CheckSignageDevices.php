@@ -9,6 +9,7 @@ use App\Domains\Notifications\Services\SmsService;
 use App\Domains\Notifications\Support\AlertSwitch;
 use App\Domains\Signage\Services\SignageDeviceHealth;
 use App\Models\SignageDevice;
+use App\Services\OpeningHoursService;
 use App\Support\OwnerPhones;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -23,6 +24,8 @@ class CheckSignageDevices extends Command
 {
     protected $signature = 'signage:check-devices';
 
+    public const FORGET_WAITING_DAYS = 7;
+
     protected $description = 'Alert once when a paired TV is offline for 5 minutes or stuck on one slide for 10';
 
     public function handle(SmsService $sms): int
@@ -31,6 +34,20 @@ class CheckSignageDevices extends Command
         // // One switch per channel on its row in Admin → Notifications (2026-10-10).
         $smsOn = AlertSwitch::isOn('owner_signage_devices');
         $alerts = [];
+        // A TV switched off at closing time is not a fault (TV audit, 2026-11-26): a screen that goes quiet while
+        // the shop is closed is not reported until the shop is open again and the screen is still off.
+        try {
+            $shopOpen = app(OpeningHoursService::class)->isOpenNow();
+        } catch (\Throwable) {
+            $shopOpen = true;
+        }
+
+        // A screen that asked to be paired and was not seen again for a week is forgotten, so the waiting list
+        // holds only screens that are there to pair.
+        SignageDevice::query()
+            ->where('approved', false)
+            ->where(fn ($q) => $q->whereNull('last_seen_at')->orWhere('last_seen_at', '<', $now->copy()->subDays(self::FORGET_WAITING_DAYS)))
+            ->delete();
 
         foreach (SignageDevice::query()->where('approved', true)->with('screen:id,name,slug')->get() as $device) {
             $meta = $device->meta ?? [];
@@ -38,7 +55,7 @@ class CheckSignageDevices extends Command
             $changed = false;
 
             $offline = SignageDeviceHealth::offlineMinutes($device, $now);
-            if ($offline !== null && empty($meta['alerted_offline_at'])) {
+            if ($offline !== null && empty($meta['alerted_offline_at']) && $shopOpen) {
                 $alerts[] = "TV \"{$name}\" has been offline for {$offline} min";
                 $meta['alerted_offline_at'] = $now->toIso8601String();
                 $changed = true;
@@ -80,7 +97,7 @@ class CheckSignageDevices extends Command
             foreach (OwnerPhones::for('owner_signage_devices') as $phone) {
                 $sms->send(new SmsMessage(
                     to: $phone,
-                    message: 'Bake & Grill TV: ' . implode('; ', array_slice($alerts, 0, 3)) . '. Check Admin → TV Signage → Devices.',
+                    message: 'Bake & Grill TV: ' . implode('; ', array_slice($alerts, 0, 3)) . '. Check Admin → TV Signage → TV status.',
                     type: 'owner_signage_devices',
                     idempotencyKey: 'signage-device-alert:' . md5(implode('|', $alerts)) . ':' . $now->format('Y-m-d-H') . ':' . $phone,
                 ));
