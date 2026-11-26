@@ -42,6 +42,9 @@ final class LabelTypes
         // no type picked and no heading typed it prints none (owner, 2026-11-25: a Rihaakuru bottle said FRESH HEDHIKA,
         // "I didn't type fresh hedika in any place").
         $stock = fn (bool $dv): string => $item instanceof CustomLabel && !$type ? '' : LabelSettings::headingLine($storage, $dv);
+        // The same for the storage line (owner, 2026-11-26: "Why keep frozen by default?"): a custom label with no type
+        // and no storage picked says nothing about how to keep it until a storage is picked or a line is typed.
+        $keeping = fn (bool $dv): string => $item instanceof CustomLabel && !$type && !$item->label_storage ? '' : LabelSettings::storageLine($storage, $dv);
 
         return [
             'type_id' => $type?->id,
@@ -49,8 +52,8 @@ final class LabelTypes
             'heading' => $pick('label_heading', $type?->heading, $stock(false)),
             'heading_dv' => $pick('label_heading_dv', $type?->heading_dv, $stock(true)),
             'storage' => $storage,
-            'storage_en' => $pick('label_storage_line', $lineFromType ? $type->storage_line : null, LabelSettings::storageLine($storage, false)),
-            'storage_dv' => $pick('label_storage_line_dv', $lineFromType ? $type->storage_line_dv : null, LabelSettings::storageLine($storage, true)),
+            'storage_en' => $pick('label_storage_line', $lineFromType ? $type->storage_line : null, $keeping(false)),
+            'storage_dv' => $pick('label_storage_line_dv', $lineFromType ? $type->storage_line_dv : null, $keeping(true)),
             'use_within' => trim((string) $type?->use_within),
             'use_within_dv' => trim((string) $type?->use_within_dv),
             'mfg_label' => trim((string) $type?->mfg_label) ?: 'MFG DATE',

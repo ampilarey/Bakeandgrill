@@ -1430,3 +1430,10 @@ computer. What changed:
 - **Saved labels and Custom labels**: the row buttons carry words (PDF, Change, Copy, Pin, Remove).
 
 Helpers for new work: `LabelText::fitted()`, `clip()` and `cut()`. `LabelAuditFitTest`.
+
+**A new custom label says nothing twice and nothing nobody picked** (owner, 2026-11-26). On a wrap-around label the
+band prints its own words; left empty it carries the net content only, never the product name again, and with no net
+content it is not drawn. The net content prints once: on the band, or beside the quantity when there is no band. The
+preview in the custom label form leaves both dates blank; dates are picked in the Print pop-up. Storage starts on
+"None: no storage line": a label with no Label type prints a storage line only once a storage is picked or a line is
+typed. Labels saved before this kept their frozen line (their storage was written down as frozen).

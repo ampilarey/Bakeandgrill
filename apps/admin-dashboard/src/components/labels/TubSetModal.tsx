@@ -297,7 +297,7 @@ export function TubSetModal({ onClose, onMade }: { onClose: () => void; onMade?:
               <div>
                 <label className={labelClass} htmlFor="ts-storage">Storage</label>
                 <select id="ts-storage" value={storage} onChange={(e) => setStorage(e.target.value)} className={fieldClass}>
-                  <option value="">Frozen (usual)</option>
+                  <option value="">None: no storage line</option>
                   <option value="frozen">Frozen</option>
                   <option value="chilled">Chilled</option>
                   <option value="ambient">Room temperature</option>

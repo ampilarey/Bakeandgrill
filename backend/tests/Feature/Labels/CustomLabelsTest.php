@@ -119,6 +119,43 @@ class CustomLabelsTest extends TestCase
      * ("No easy option to select and edit branding footer").
      */
     /** Owner, 2026-11-25: a Rihaakuru bottle label said FRESH HEDHIKA: "I didn't type fresh hedika in any place". */
+    /**
+     * Owner, 2026-11-26, of a new wrap-around label's preview: "Why product name 2 times? And date keep blank
+     * under selected. Why keep frozen by default?"
+     */
+    public function test_a_new_custom_label_says_nothing_twice_and_nothing_nobody_picked(): void
+    {
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        // The first words of the frozen line: the designs break and space the rest of it.
+        $frozen = mb_substr(\App\Domains\Labels\LabelSettings::storageLine('frozen', false), 0, 11);
+        $this->assertNotSame('', $frozen);
+        $wide = ['layout' => 'single-custom', 'w' => 180, 'h' => 40];
+        $draft = fn (array $label) => (string) $this->get($this->postJson('/api/labels/custom/preview', $label + $wide)->assertOk()->json('one_url'))->assertOk()->getContent();
+
+        // No storage picked, no type: no storage line, on any design. The dates wait for the Print pop-up.
+        $html = $draft(['name' => 'Rihaakuru']);
+        $this->assertStringNotContainsString(e($frozen), $html);
+        $this->assertStringNotContainsString(now()->format('d / m / Y'), $html, 'the made-on date is blank until it is picked at print time');
+        // The name once: the band does not say it again while the brand part prints it, and with nothing to say it is not drawn.
+        $this->assertStringContainsString('Rihaakuru', $html);
+        $this->assertStringNotContainsString('RIHAAKURU', $html);
+        $this->assertNull($this->postJson('/api/labels/custom/preview', ['name' => 'Rihaakuru'] + $wide)->json('wrap.band'));
+        foreach ([['layout' => 'a4-4'], ['layout' => 'single-custom', 'w' => 100, 'h' => 50], ['layout' => 'single-custom', 'w' => 40, 'h' => 60], ['layout' => 'a4-round-custom', 'w' => 80]] as $size) {
+            $other = (string) $this->get($this->postJson('/api/labels/custom/preview', ['name' => 'Rihaakuru'] + $size)->assertOk()->json('one_url'))->assertOk()->getContent();
+            $this->assertStringNotContainsString(e($frozen), $other, json_encode($size));
+        }
+
+        // A storage that was picked prints its line; words typed for the band print on it; the net content alone keeps the band.
+        $this->assertStringContainsString(e($frozen), $draft(['name' => 'Rihaakuru', 'label_storage' => 'frozen']));
+        $this->assertStringContainsString('SPICY', $draft(['name' => 'Rihaakuru', 'label_wrap' => ['band' => true, 'band_text' => 'Spicy']]));
+        $this->assertNotNull($this->postJson('/api/labels/custom/preview', ['name' => 'Rihaakuru', 'label_net_weight' => '250 g'] + $wide)->json('wrap.band'));
+        // The net content once: on the band when one is drawn, else beside the quantity.
+        $this->assertSame(1, substr_count($draft(['name' => 'Rihaakuru', 'label_net_weight' => '250 g']), '250 g'));
+        $this->assertSame(1, substr_count($draft(['name' => 'Rihaakuru', 'label_net_weight' => '250 g', 'label_wrap' => ['band' => false]]), '250 g'));
+        // With no brand part, the band is where the name stands.
+        $this->assertStringContainsString('RIHAAKURU', $draft(['name' => 'Rihaakuru', 'label_wrap' => ['band' => true, 'parts' => ['legal', 'dates', 'marks']]]));
+    }
+
     public function test_a_custom_label_with_no_type_prints_no_stock_heading(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);

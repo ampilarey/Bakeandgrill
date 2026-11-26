@@ -118,7 +118,7 @@ final class WrapDesign
         $pad = self::clamp(1.5 * $k, 1.1, 2.4);
         $gap = self::clamp(1.8 * $k, 1.2, 2.8);
         $iw = $this->w - 2 * $pad;
-        $band = !empty($wrap['band']);
+        $band = $this->bandDrawn();
         $bh = $band ? self::clamp($this->h * 0.19, 5.4, 9.0) : 0.0;
         $top = $pad;
         $ph = $this->h - 2 * $pad - ($band ? $bh + 0.7 * $gap : 0.0);
@@ -719,8 +719,10 @@ final class WrapDesign
             $cursor += $line * 1.7 + 0.3;
         }
         // A count nobody typed is left off a bottle's face (no "QTY: ____"); the net weight says how much.
-        $showQty = !($this->faces > 0 && $d['qty'] === '' && $d['net_weight'] !== '');
-        $bits = array_filter([!$ownPrice && !$onFront && $d['price'] !== '' ? $d['price'] : null, $showQty ? $qty : null, $d['net_weight'] !== '' ? ($showQty ? '' : 'NET ') . $d['net_weight'] : null]);
+        // The net content stands on the band when one is drawn, so the dates part does not say it again (2026-11-26).
+        $netHere = $d['net_weight'] !== '' && !$this->bandDrawn();
+        $showQty = !($this->faces > 0 && $d['qty'] === '' && $netHere);
+        $bits = array_filter([!$ownPrice && !$onFront && $d['price'] !== '' ? $d['price'] : null, $showQty ? $qty : null, $netHere ? ($showQty ? '' : 'NET ') . $d['net_weight'] : null]);
         $font = $this->dv ? 'dv' : 'j5';
         foreach ($tight ? [implode(' · ', array_filter([$batch, implode(' · ', $bits)]))] : [$batch, implode(' · ', $bits)] as $t) {
             if ($cursor + $line > $y + $ph) {
@@ -1092,15 +1094,40 @@ final class WrapDesign
         }
     }
 
+    /** The band is drawn only when it has something to say. */
+    private function bandDrawn(): bool
+    {
+        return !empty($this->d['wrap']['band']) && $this->bandSays() !== ['', '', ''];
+    }
+
+    /**
+     * What the band says: its own words, else the product's name, and the net content. The name stands on the band
+     * only when no brand part prints it (owner, 2026-11-26: "Why product name 2 times?"); a band with nothing to say
+     * is not drawn, and its room goes to the parts.
+     *
+     * @return array{0: string, 1: string, 2: string} English, Dhivehi, net content
+     */
+    private function bandSays(): array
+    {
+        $d = $this->d;
+        $w = $d['wrap'];
+        $named = in_array('brand', (array) ($w['parts'] ?? []), true);
+        $en = trim((string) ($w['band_text'] ?? ''));
+        $dv = trim((string) ($w['band_text_dv'] ?? ''));
+        if ($en === '' && $dv === '' && !$named) {
+            [$en, $dv] = [trim((string) $d['name']), trim((string) $d['name_dv'])];
+        }
+
+        return [$en, $dv, trim((string) $d['net_weight'])];
+    }
+
     /** The flavour band along the bottom: the flavour or name in English and Dhivehi, the net content at the end. */
     private function band(float $x, float $y, float $bw, float $bh): void
     {
         $d = $this->d;
         $w = $d['wrap'];
         $this->box($x, $y, $bw, $bh, StickerDesign::PRIMARY, min(1.6, $bh * 0.2));
-        $en = trim((string) $w['band_text']) !== '' ? (string) $w['band_text'] : (string) $d['name'];
-        $dv = trim((string) $w['band_text_dv']) !== '' ? (string) $w['band_text_dv'] : (string) $d['name_dv'];
-        $net = trim((string) $d['net_weight']);
+        [$en, $dv, $net] = $this->bandSays();
         $in = 1.6;
         $netPt = min(7.0 * $this->k, $bh * 0.66);
         $netW = $net !== '' ? LabelText::widthMm($net, $netPt, 'j7') + 2.0 : 0.0;

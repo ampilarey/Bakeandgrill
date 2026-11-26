@@ -78,7 +78,7 @@ type Props = {
 const fieldClass = 'h-10 min-h-[44px] px-3 rounded-lg border border-[var(--color-border)] bg-white text-sm text-[var(--color-text)] w-full';
 const labelClass = 'block text-xs font-semibold text-[var(--color-text-secondary)] mb-1';
 
-export function WrapParts({ value, onChange, catalogue, pictures, onAddPicture, nutritionPer, onNutritionPer, productName, netWeight, idPrefix = 'wrap', strips = null, size = null, openPart, onOpenPart }: Props) {
+export function WrapParts({ value, onChange, catalogue, pictures, onAddPicture, nutritionPer, onNutritionPer, netWeight, idPrefix = 'wrap', strips = null, size = null, openPart, onOpenPart }: Props) {
   const cat = catalogue ?? WRAP_FALLBACK;
   const set = <K extends keyof LabelWrap>(key: K, v: LabelWrap[K]) => onChange({ ...value, [key]: v });
   const maxPictures = cat.max_pictures ?? 4;
@@ -134,15 +134,15 @@ export function WrapParts({ value, onChange, catalogue, pictures, onAddPicture, 
           <input type="checkbox" checked={value.band} onChange={(e) => set('band', e.target.checked)} className="mt-0.5 w-5 h-5 shrink-0 accent-[var(--color-primary)]" data-testid="wrap-band" />
           <span>
             <span className="block text-sm font-semibold text-[var(--color-text)]">Flavour band along the bottom</span>
-            <span className="block text-xs text-[var(--color-text-muted)]">A rust band across the label with the flavour or name{netWeight ? ` and the net content (${netWeight})` : ' and the net content, when one is typed'} at the end.</span>
+            <span className="block text-xs text-[var(--color-text-muted)]">A rust band across the label with the words typed below{netWeight ? ` and the net content (${netWeight})` : ' and the net content, when one is typed'} at the end. With neither, no band prints.</span>
           </span>
         </label>
         {value.band && (
           <div className="grid gap-2 sm:grid-cols-2">
             <div>
               <label className={labelClass} htmlFor={`${idPrefix}-band`}>Words on the band (optional)</label>
-              <input id={`${idPrefix}-band`} maxLength={60} value={value.band_text} onChange={(e) => set('band_text', e.target.value)} className={fieldClass} placeholder={productName || 'Empty: the product name'} />
-              <p className="text-xs text-[var(--color-text-muted)] mt-1" data-testid={`${idPrefix}-band-hint`}>Only the band. The name on the label is the Product name box at the top{productName ? '' : ', which is still empty'}.</p>
+              <input id={`${idPrefix}-band`} maxLength={60} value={value.band_text} onChange={(e) => set('band_text', e.target.value)} className={fieldClass} placeholder="A flavour, such as Spicy" />
+              <p className="text-xs text-[var(--color-text-muted)] mt-1" data-testid={`${idPrefix}-band-hint`}>Only the band. Left empty, the band does not repeat the product name: it carries the net content, or is left off when there is none.</p>
             </div>
             <div>
               <label className={labelClass} htmlFor={`${idPrefix}-band-dv`}>Words on the band in Dhivehi</label>

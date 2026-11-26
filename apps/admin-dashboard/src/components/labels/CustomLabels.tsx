@@ -551,7 +551,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
                 <Field id="cl-ing-dv" label="Ingredients (Dhivehi)"><textarea id="cl-ing-dv" dir="rtl" rows={2} maxLength={500} value={d.label_ingredients_dv} onChange={(e) => set('label_ingredients_dv', e.target.value)} className={areaClass} /><div className="mt-1"><DhivehiDraft from={d.label_ingredients} current={d.label_ingredients_dv} kind="label" onDraft={(v) => set('label_ingredients_dv', v.slice(0, 500))} /></div></Field>
                 <Field id="cl-storage" label="Storage">
                   <select id="cl-storage" value={d.label_storage} onChange={(e) => set('label_storage', e.target.value as LabelStorage | '')} className={fieldClass}>
-                    <option value="">{type ? `As the type (${STORAGE_NAMES[type.storage]})` : 'Frozen (usual)'}</option>
+                    <option value="">{type ? `As the type (${STORAGE_NAMES[type.storage]})` : 'None: no storage line'}</option>
                     {(Object.keys(STORAGE_NAMES) as LabelStorage[]).map((k) => <option key={k} value={k}>{STORAGE_NAMES[k]}</option>)}
                   </select>
                 </Field>

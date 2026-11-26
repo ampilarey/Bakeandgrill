@@ -40,9 +40,8 @@ describe('WrapParts', () => {
   it('keeps the band, its words, the marks, the pictures and the free text', () => {
     const { onChange, onAddPicture, onNutritionPer } = mount({ ...EMPTY_WRAP, pictures: [41] }, [{ id: 41, url: '/storage/halal.png' }]);
     expect(screen.getByText(/and the net content \(0\.2 L\)/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Words on the band (optional)')).toHaveAttribute('placeholder', 'Cranberry Juice');
-    // Owner, 2026-11-26: the band's box was taken for the name's. It says which it is.
-    expect(screen.getByText(/Only the band\. The name on the label is the Product name box at the top/)).toBeInTheDocument();
+    // Owner, 2026-11-26: the band's box was taken for the name's, and an empty one printed the name a second time.
+    expect(screen.getByText(/Only the band\. Left empty, the band does not repeat the product name/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Words on the band (optional)'), { target: { value: 'Cranberry' } });
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ band_text: 'Cranberry' }));
     fireEvent.click(screen.getByTestId('wrap-band'));

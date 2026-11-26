@@ -1195,12 +1195,13 @@ class LabelsController extends Controller
             $data['name'] = 'Product name';
         }
         $token = StickerSheet::keepDraft($data);
+        // The dates stay blank here (owner, 2026-11-26): they are picked when the label is printed, in the Print pop-up.
         try {
-            $req = StickerSheet::normalise(['items' => 'd'.$token.':1', 'layout' => $size['layout'] ?? 'single-105x148', 'w' => $size['w'] ?? null, 'h' => $size['h'] ?? null, 'lang' => $size['lang'] ?? 'en', 'fill' => true]);
+            $req = StickerSheet::normalise(['items' => 'd'.$token.':1', 'layout' => $size['layout'] ?? 'single-105x148', 'w' => $size['w'] ?? null, 'h' => $size['h'] ?? null, 'lang' => $size['lang'] ?? 'en', 'fill' => false]);
         } catch (InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
-        $query = ['items' => 'd'.$token.':1', 'lang' => $req['lang'], 'layout' => $req['layout'], 'w' => $req['w'], 'h' => $req['h'], 'fill' => 1, 'preview' => 1];
+        $query = ['items' => 'd'.$token.':1', 'lang' => $req['lang'], 'layout' => $req['layout'], 'w' => $req['w'], 'h' => $req['h'], 'fill' => 0, 'preview' => 1];
         // Where the strips (a wrap-around label) and the parts land (rounds 2 and 3, 2026-10-13), for the editor's touch zones.
         $summary = $this->stickers->summary($req);
 

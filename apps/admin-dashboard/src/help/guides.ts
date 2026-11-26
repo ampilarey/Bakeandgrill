@@ -573,7 +573,9 @@ export const GUIDES: Guide[] = [
     notes: [
       'A wrap-around label is any wide, short size. Picking a size that is not wide turns it back into a sticker.',
       'Switching away from Pouch and back keeps the pouch picks you made.',
-      'On a wrap-around label, "Words on the band" is only the coloured band along the bottom. Left empty, the band prints the product name.',
+      'On a wrap-around label, "Words on the band" is only the coloured band along the bottom. Left empty, the band carries the net weight, or is left off when there is none. It never repeats the product name.',
+      'The preview in this form leaves both dates blank. You pick the dates when you tap Print.',
+      'Storage starts on "None: no storage line". Pick Frozen, Chilled or Room temperature to print that line, or pick a Label type that brings one.',
       'A label with no Label type prints no heading until you type one in Wording on the sticker. Pick a Label type, such as Frozen Hedhika, to print that type\'s heading.',
     ],
     words: 'kind type wrap around bottle pouch bag tub lid side sticker preview not showing',
