@@ -24,6 +24,9 @@ describe('partsForCount', () => {
     expect(partsForCount(seven, 3, WRAP_FALLBACK)).toEqual(['brand', 'legal', 'nutrition']);
     expect(partsForCount(['dates', 'brand'], 4, WRAP_FALLBACK)).toEqual(['dates', 'brand', 'legal', 'nutrition']);
     expect(partsForCount(seven, 9, WRAP_FALLBACK)).toEqual([...seven, 'text', 'packed']);
+    // Fewer strips drops the least important and keeps the rest in place; a list built from nothing puts the main part second.
+    expect(partsForCount(WRAP_FALLBACK.default_parts, 3, WRAP_FALLBACK)).toEqual(['brand', 'legal', 'nutrition']);
+    expect(partsForCount([], 3, WRAP_FALLBACK)).toEqual(['nutrition', 'brand', 'legal']);
   });
 });
 

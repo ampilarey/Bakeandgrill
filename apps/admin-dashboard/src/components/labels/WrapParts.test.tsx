@@ -20,7 +20,9 @@ function mount(value: LabelWrap = EMPTY_WRAP, pictures: { id: number; url: strin
 
 describe('WrapParts', () => {
   it('shows the parts as strips, with the count picker, the sheet and Reset', () => {
-    const { onChange } = mount();
+    // A new label's main part is second, never first: a label's two ends meet at its left edge (owner, 2026-11-26).
+    expect(EMPTY_WRAP.parts.slice(0, 2)).toEqual(['marks', 'brand']);
+    const { onChange } = mount({ ...EMPTY_WRAP, parts: ['brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr', 'marks'] });
     const board = screen.getByRole('group', { name: 'Strips' });
     expect(within(board).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
       'Strip 1: Brand and name', 'Strip 2: Ingredients and legal text', 'Strip 3: Nutrition per 100 g or ml', 'Strip 4: Dates and batch', 'Strip 5: Barcode', 'Strip 6: QR code', 'Strip 7: Recycling marks and pictures', 'Add a strip',

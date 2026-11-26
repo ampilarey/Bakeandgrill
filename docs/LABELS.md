@@ -1443,3 +1443,8 @@ typed. Labels saved before this kept their frozen line (their storage was writte
 on" in place of the made-on date and "Best before" for the expiry. The ingredients (tuna, water, salt) and the 180
 days are a start to check. Measure round the jar before a full print run: if the label is long or short, change the
 width under Shape and size. Any wrap-around label can reword its made-on box under Words on the made-on date box.
+
+**The main part is second** (owner, 2026-11-26). On every wrap-around label the part with the brand and the name is
+the second strip, so the joint where the label's ends meet is not at its edge; labels and templates saved before were
+moved once. Drag the strips to change the order. On a bottle with flat sides the brand's name is the large line of the
+front face. A barcode typed under For the shop till prints beside the dates.

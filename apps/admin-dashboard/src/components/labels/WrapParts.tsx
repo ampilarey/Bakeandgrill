@@ -42,7 +42,8 @@ export const WRAP_FALLBACK: WrapCatalogue = {
     { key: 'paper', label: 'Recycled paper', caption: 'PAPER' },
     { key: 'metal', label: 'Metal (tin, aluminium)', caption: 'METAL' },
   ],
-  default_parts: ['brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr', 'marks'],
+  // The main part second, never first: a label's two ends meet at its left edge (owner, 2026-11-26).
+  default_parts: ['marks', 'brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr'],
   default_marks: ['recycle', 'dispose'],
   max_pictures: 4,
 };

@@ -36,7 +36,29 @@ final class WrapConfig
         'maker' => ['Bake & Grill details and complaints QR', 'The business logo, name, phone, website and address, with the complaints QR beside them'],
     ];
 
-    public const DEFAULT_PARTS = ['brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr', 'marks'];
+    /**
+     * The main part (the brand and the name) comes second, never first (owner, 2026-11-26: "move the main page which
+     * is on the left side to 2nd … so main part will not have joint"): a label's two ends meet at its left edge.
+     */
+    public const DEFAULT_PARTS = ['marks', 'brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr'];
+
+    /**
+     * A list of parts with the main one moved off the label's joint: when the brand part leads, the last part comes
+     * round to the front. A list of one, or one the brand does not lead, is left as it is.
+     *
+     * @param list<string> $parts
+     * @return list<string>
+     */
+    public static function mainSecond(array $parts): array
+    {
+        $parts = array_values($parts);
+        if (count($parts) < 2 || $parts[0] !== 'brand') {
+            return $parts;
+        }
+        $last = array_pop($parts);
+
+        return [$last, ...$parts];
+    }
 
     public const DEFAULT_MARKS = ['recycle', 'dispose'];
 

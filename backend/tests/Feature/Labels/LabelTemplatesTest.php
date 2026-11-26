@@ -99,7 +99,7 @@ class LabelTemplatesTest extends TestCase
             $this->assertContains($b['storage'], ['frozen', 'chilled', 'ambient'], $b['name']);
         }
         $this->assertSame('Drink in a bottle', collect($list->json('builtin'))->firstWhere('id', 'drink-bottle')['name']);
-        $this->assertSame(['brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr', 'marks'], collect($list->json('builtin'))->firstWhere('id', 'drink-bottle')['fields']['label_wrap']['parts']);
+        $this->assertSame(['marks', 'brand', 'legal', 'nutrition', 'dates', 'barcode', 'qr'], collect($list->json('builtin'))->firstWhere('id', 'drink-bottle')['fields']['label_wrap']['parts']);
 
         // Renamed, given a new size, then removed.
         $this->putJson("/api/labels/templates/{$id}", ['name' => 'Jar sauce', 'size' => ['shape' => 'circle', 'preset' => 'c60', 'on' => 'sheet']])->assertOk()

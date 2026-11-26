@@ -382,7 +382,7 @@ final class WrapDesign
         $logo = $brand['logo'] ?: $d['mark'];
         $narrow = $pw < 44.0;
         // On a bottle's front face the header keeps low, so the name and the picture get the height (owner, 2026-11-11).
-        $hb = $narrow ? self::clamp($ph * 0.5, 9.0, 18.0) : ($this->faces > 0 ? self::clamp($ph * 0.29, 7.5, 11.0) : self::clamp($ph * 0.4, 8.0, 15.0));
+        $hb = $narrow ? self::clamp($ph * 0.5, 9.0, 18.0) : ($this->faces > 0 ? self::clamp($ph * 0.29, 7.5, 16.0) : self::clamp($ph * 0.4, 8.0, 15.0));
         $lw = 0.0;
         $lh = 0.0;
         if ($logo) {
@@ -409,10 +409,20 @@ final class WrapDesign
             if (LabelText::widthMm($line, 2.8, 'j7') > $tw) {
                 $line = mb_strtoupper($brand['name']);
             }
-            $pt = LabelText::fitPt($line, 'j7', $tw, min(4.8 * $k, $lhb * 0.36), 2.8);
-            $this->text($tx, $ly + $lhb * 0.34, $tw, $align, 'j7', $pt, StickerDesign::PRIMARY, $line);
-            $pt = LabelText::fitPt($d['header_line'], 'j8', $tw, min(7.4 * $k, $lhb * 0.6), 3.6);
-            $this->text($tx, $ly + $lhb * 0.84, $tw, $align, 'j8', $pt, StickerDesign::DARK, $d['header_line']);
+            if ($this->faces > 0) {
+                // On a bottle's front face the brand's name is the large line and the heading the small one under it
+                // (owner, 2026-11-26: "make the brand name bigger and clear").
+                $name = mb_strtoupper($brand['name']);
+                $pt = LabelText::fitPt($name, 'j8', $tw, $lhb * 0.56 / LabelText::PT, 4.0);
+                $this->text($tx, $ly + $lhb * 0.56, $tw, $align, 'j8', $pt, StickerDesign::PRIMARY, $name, 0.0, [], 0.04);
+                $pt = LabelText::fitPt($d['header_line'], 'j7', $tw, $lhb * 0.26 / LabelText::PT, 3.2);
+                $this->text($tx, $ly + $lhb * 0.92, $tw, $align, 'j7', $pt, StickerDesign::DARK, $d['header_line']);
+            } else {
+                $pt = LabelText::fitPt($line, 'j7', $tw, min(4.8 * $k, $lhb * 0.36), 2.8);
+                $this->text($tx, $ly + $lhb * 0.34, $tw, $align, 'j7', $pt, StickerDesign::PRIMARY, $line);
+                $pt = LabelText::fitPt($d['header_line'], 'j8', $tw, min(7.4 * $k, $lhb * 0.6), 3.6);
+                $this->text($tx, $ly + $lhb * 0.84, $tw, $align, 'j8', $pt, StickerDesign::DARK, $d['header_line']);
+            }
         }
         $this->p[] = ['t' => 'rect', 'x' => $x + $in, 'y' => $y + $in + $hb + 0.3, 'w' => $pw - 2 * $in, 'h' => 0.3, 'fill' => StickerDesign::PRIMARY];
 
@@ -425,7 +435,7 @@ final class WrapDesign
         // On a tall face (a jar's side, about as tall as it is wide) the name has the face's width to itself and the
         // picture stands under it (owner's Rihaakuru jar, 2026-11-26: side by side, the name was set small).
         if ($photo && $this->faces > 0 && $nh >= 30) {
-            [$sw, $sh] = StickerDesign::fit($d['photo_ratio'], $pw - 2 * $in, $nh * 0.44);
+            [$sw, $sh] = StickerDesign::fit($d['photo_ratio'], $pw - 2 * $in, $nh * 0.38);
             $this->img($x + ($pw - $sw) / 2, $ny + $nh - $sh, $sw, $sh, $photo);
             $nh -= $sh + 1.0;
         } elseif ($photo && $pw >= ($this->faces > 0 ? 46 : 56) && $nh >= 10) {
@@ -479,7 +489,7 @@ final class WrapDesign
         $lineK = $this->lead($font, 1.0);
         $withDv = $this->both && $d['name_dv'] !== '';
         $enH = $withDv ? $nh * 0.6 : $nh;
-        [$pt, $lines] = $this->fitLines($t, $font, $bw, $enH, $this->faces > 0 ? 26.0 : min(16.0 * $this->k, 20.0), $useDv ? 6.0 : 5.5, 2);
+        [$pt, $lines] = $this->fitLines($t, $font, $bw, $enH, $this->faces > 0 ? 40.0 : min(16.0 * $this->k, 20.0), $useDv ? 6.0 : 5.5, 2);
         // On a bottle's face a name of two words stands on two lines when that sets it clearly larger.
         if ($this->faces > 0 && count($lines) === 1 && str_contains(trim($t), ' ')) {
             for ($try = min(26.0, $enH / (2 * $lineK)); $try > $pt * 1.15; $try -= 0.5) {
@@ -497,7 +507,7 @@ final class WrapDesign
         }
         if ($withDv) {
             $dvH = $nh - $enH;
-            $dpt = LabelText::fitPt($d['name_dv'], 'dv', $bw, min(10.0 * $this->k, $dvH / $this->lead('dv', 1.0)), 4.5);
+            $dpt = LabelText::fitPt($d['name_dv'], 'dv', $bw, min($this->faces > 0 ? 18.0 : 10.0 * $this->k, $dvH / $this->lead('dv', 1.0)), 4.5);
             $this->text($x, $y + $enH + max(0.0, ($dvH - $this->lead('dv', $dpt)) / 2) + LabelText::ascent('dv') * $dpt * LabelText::PT, $bw, $align, 'dv', $dpt, StickerDesign::PRIMARY, $d['name_dv'], 0.6);
         }
     }

@@ -117,7 +117,7 @@ class WrapLabelTest extends TestCase
         // A draft previewed before it is saved says the same, so the editor's strips move as it is typed.
         $draft = $this->postJson('/api/labels/custom/preview', ['name' => 'Lime Soda', 'label_barcode' => '96385074', 'layout' => 'single-custom', 'w' => 120, 'h' => 40])->assertOk()->json();
         $this->assertSame('wrap', $draft['design']);
-        $this->assertSame(['brand', 'legal', 'dates', 'barcode', 'qr', 'marks'], array_column($draft['wrap']['strips'], 'part'), 'no nutrition line: that part is left out');
+        $this->assertSame(['marks', 'brand', 'legal', 'dates', 'barcode', 'qr'], array_column($draft['wrap']['strips'], 'part'), 'no nutrition line: that part is left out');
         $this->assertSame(['nutrition' => 'empty'], $draft['wrap']['left_out']);
         // On 100 × 30 mm there is no room for every strip even squeezed: the last ones are reported as left out for want of room.
         $narrow = $this->postJson('/api/labels/custom/preview', ['name' => 'Lime Soda', 'label_barcode' => '96385074', 'layout' => 'single-custom', 'w' => 100, 'h' => 30])->assertOk()->json();

@@ -68,9 +68,17 @@ class BottleFacesLabelTest extends TestCase
         $this->assertSame('both', $t['fields']['label_lang']);
         $this->assertSame(4, $t['fields']['label_wrap']['faces']);
         $this->assertSame('Packed on', $t['fields']['label_wrap']['mfg_label']);
+        // The main side is second, so the label's joint is not at its edge (owner, 2026-11-26); a saved label whose
+        // brand part leads has its last part brought round, and any other order is left alone.
+        $this->assertSame(['maker', 'brand', 'legal', 'marks', 'dates'], $t['fields']['label_wrap']['parts']);
+        $this->assertSame('brand', WrapConfig::DEFAULT_PARTS[1]);
+        $this->assertSame(['dates', 'brand', 'legal'], WrapConfig::mainSecond(['brand', 'legal', 'dates']));
+        $this->assertSame(['legal', 'brand'], WrapConfig::mainSecond(['legal', 'brand']));
+        $this->assertSame(['brand'], WrapConfig::mainSecond(['brand']));
         $this->assertSame([240, 60], [(int) $t['size']['w'], (int) $t['size']['h']]);
 
-        $id = $this->postJson('/api/labels/custom', ['name' => $t['product'], 'name_dv' => $t['product_dv'], 'label_photo_media_id' => $t['photo']['id']] + $t['fields'])->assertCreated()->json('data.id');
+        // A barcode typed for the shop's till prints on the dates side (owner: "will this template have shop barcode?").
+        $id = $this->postJson('/api/labels/custom', ['name' => $t['product'], 'name_dv' => $t['product_dv'], 'label_photo_media_id' => $t['photo']['id'], 'label_barcode' => '200000012345'] + $t['fields'])->assertCreated()->json('data.id');
         $sheet = fn (string $lang, string $layout) => $this->postJson('/api/labels/stickers/url', ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 1]], 'layout' => $layout, 'w' => 240, 'h' => 60, 'lang' => $lang, 'fill' => true])->assertOk();
         $res = $sheet('both', 'single-custom');
         $this->assertSame('wrap', $res->json('summary.design'));
@@ -78,6 +86,8 @@ class BottleFacesLabelTest extends TestCase
         $this->dump('jar-rihaakuru', $html);
         $this->assertStringContainsString('Rihaakuru', $html);
         $this->assertStringContainsString('PACKED ON', $html);
+        $this->assertStringContainsString('2 000000 12345', $html);
+        $this->assertStringContainsString('>AMMA<', $html);
         $this->assertStringNotContainsString('MFG DATE', $html);
         $this->assertStringContainsString('BEST BEFORE', $html);
         $this->assertStringStartsWith('%PDF', (string) $this->get($res->json('pdf_url'))->assertOk()->getContent());
@@ -118,15 +128,15 @@ class BottleFacesLabelTest extends TestCase
         $this->assertStringNotContainsString('EXP DATE', $html, 'the label says Best before');
         $this->assertStringNotContainsString('Made by', $html, 'the business has a side of its own, so no small line as well');
         $this->assertStringNotContainsString('QTY:', $html, 'no blank count on a bottle');
-        foreach (['>Theluli<', '>Rihaakuru<', 'BY BAKE &amp; GRILL', 'A M M A', 'Rihaakuru, onion', 'STORE IN A COOL, DRY PLACE', 'MFG DATE', '>BEST BEFORE<', '>MVR 85.00<', 'NET 200 g', '>FEEDBACK &amp;<', '>COMPLAINTS<', '+960 912 0011', '2 000000 12345'] as $needle) {
+        foreach (['>Theluli<', '>Rihaakuru<', 'BY BAKE &amp; GRILL', '>AMMA<', 'Rihaakuru, onion', 'STORE IN A COOL, DRY PLACE', 'MFG DATE', '>BEST BEFORE<', '>MVR 85.00<', 'NET 200 g', '>FEEDBACK &amp;<', '>COMPLAINTS<', '+960 912 0011', '2 000000 12345'] as $needle) {
             $this->assertStringContainsStringIgnoringCase($needle, $html, $needle);
         }
 
-        // A part to a face: brand, ingredients and dates each inside their own quarter, the QR and marks sharing the last.
+        // A part to a face, the main one second (owner, 2026-11-26): the business, the brand, the ingredients with the marks, the dates.
         $strips = collect($res->json('summary.wrap.strips'))->keyBy('part');
-        $this->assertSame(['brand', 'legal', 'marks', 'dates', 'maker'], $strips->keys()->all());
+        $this->assertSame(['maker', 'brand', 'legal', 'marks', 'dates'], $strips->keys()->all());
         $face = 215 / 4;
-        foreach (['brand' => 0, 'legal' => 1, 'marks' => 1, 'dates' => 2, 'maker' => 3] as $part => $n) {
+        foreach (['maker' => 0, 'brand' => 1, 'legal' => 2, 'marks' => 2, 'dates' => 3] as $part => $n) {
             $s = $strips[$part];
             // Three millimetres clear of each corner: a bottle's corners are rounded.
             $this->assertGreaterThanOrEqual($n * $face + 3.0 - 0.01, $s['x'], "{$part} starts clear of the corner before face " . ($n + 1));
@@ -145,7 +155,8 @@ class BottleFacesLabelTest extends TestCase
         // The price is on the front face, with the name; the recycling marks share the last face.
         $price = collect($res->json('summary.spots'))->firstWhere('key', 'price');
         $this->assertNotNull($price);
-        $this->assertLessThanOrEqual($face, $price['x'] + $price['w'], 'the price sits on the front face');
+        $this->assertGreaterThanOrEqual($face, $price['x'], 'the price sits on the front face, the second one');
+        $this->assertLessThanOrEqual(2 * $face, $price['x'] + $price['w'], 'the price sits on the front face, the second one');
         $this->assertSame(1, substr_count($html, '>MVR 85.00<'));
         $this->assertStringContainsString('>RECYCLE<', $html);
         // The marks sit under the ingredients on the same face, and the business keeps its whole side.
@@ -156,8 +167,8 @@ class BottleFacesLabelTest extends TestCase
         // A rounder corner: more room, typed on the label.
         $this->putJson("/api/labels/custom/{$id}", ['name' => $t['product'], 'label_wrap' => ['corner' => 6] + $t['fields']['label_wrap']])->assertOk()->assertJsonPath('data.label_wrap.corner', 6);
         $wide = collect($this->postJson('/api/labels/stickers/url', ['items' => [['id' => $id, 'kind' => 'custom', 'copies' => 1]], 'layout' => 'single-custom', 'w' => 215, 'h' => 40, 'fill' => true, 'preview' => true])->assertOk()->json('summary.wrap.strips'))->keyBy('part');
-        $this->assertEqualsWithDelta(6.0, $wide['brand']['x'], 0.01);
-        $this->assertEqualsWithDelta($face + 6.0, $wide['legal']['x'], 0.01);
+        $this->assertEqualsWithDelta(6.0, $wide['maker']['x'], 0.01);
+        $this->assertEqualsWithDelta($face + 6.0, $wide['brand']['x'], 0.01);
         $this->assertSame([], $res->json('summary.dropped'));
         $this->assertGreaterThanOrEqual(2, substr_count($html, '<img'), 'the logo and the bowl on the front face');
         // The round Amma's logo ships as the brand's own.
