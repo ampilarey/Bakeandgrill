@@ -111,8 +111,8 @@ describe('MakeLabelWizard', () => {
     fireEvent.click(screen.getByTestId('make-print'));
 
     // The Print pop-up, at the size picked: a sheet's worth to start with, then Print opens it.
-    const pop = await screen.findByTestId('print-label');
-    await waitFor(() => expect(within(pop).getByRole('spinbutton', { name: 'How many labels' })).toHaveValue(18));
+    const pop = await screen.findByTestId('print-label', undefined, { timeout: 3000 });
+    await waitFor(() => expect(within(pop).getByRole('spinbutton', { name: 'How many labels' })).toHaveValue(18), { timeout: 3000 });
     await waitFor(() => expect(screen.getByTestId('print-go')).not.toBeDisabled(), { timeout: 3000 });
     fireEvent.click(screen.getByTestId('print-go'));
     await waitFor(() => expect(api.openLabelSheet).toHaveBeenCalledWith('/labels/stickers?print=1&signature=x', '/labels/stickers.pdf?signature=x'));
@@ -157,10 +157,10 @@ describe('MakeLabelWizard', () => {
     expect(screen.getByTestId('make-size-line')).toHaveTextContent('Round 45 mm · round sticker');
     fireEvent.click(screen.getByTestId('make-next-2'));
     fireEvent.click(await screen.findByTestId('make-print'));
-    const pop = await screen.findByTestId('print-label');
+    const pop = await screen.findByTestId('print-label', undefined, { timeout: 3000 });
     fireEvent.click(await screen.findByTestId('print-paper'));
     fireEvent.click(within(pop).getByRole('button', { name: /Label printer/ }));
-    await waitFor(() => expect(within(pop).getByRole('spinbutton', { name: 'How many labels' })).toHaveValue(1));
+    await waitFor(() => expect(within(pop).getByRole('spinbutton', { name: 'How many labels' })).toHaveValue(1), { timeout: 3000 });
     await waitFor(() => expect(screen.getByTestId('print-pdf')).not.toBeDisabled(), { timeout: 3000 });
     fireEvent.click(screen.getByTestId('print-pdf'));
     await waitFor(() => expect(api.downloadLabelSheet).toHaveBeenCalledWith('/labels/stickers.pdf?signature=x'));

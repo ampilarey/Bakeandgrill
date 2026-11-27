@@ -853,10 +853,13 @@ final class StickerSheet
         $showQr = $item instanceof CustomLabel && $item->label_show_qr !== null ? (bool) $item->label_show_qr : $footer['show_qr'];
         // 2026-10-12: the print's code as a QR in the header (the pack's
         // page), and allergen pictograms above the note; each behind a
-        // switch on Labels → Settings. A draft custom label has no code.
+        // switch on Labels → Settings. A draft custom label has no code of its own.
         $key = $item instanceof CustomLabel ? ($item->exists ? 'c' . $item->id : null) : 'i' . $item->id;
         // The row's own code when it has one (another batch of the same product), else the product's.
-        $printCode = $key !== null ? ($req['codes'][$req['row'] ?? $key] ?? $req['codes'][$key] ?? null) : null;
+        // A draft in the editor is drawn with the preview's code, so its picture has the pack's QR where a print has it.
+        $printCode = $key !== null
+            ? ($req['codes'][$req['row'] ?? $key] ?? $req['codes'][$key] ?? null)
+            : (in_array(BatchLink::PREVIEW, $req['codes'] ?? [], true) ? BatchLink::PREVIEW : null);
         $spicy = $item instanceof Item && in_array((string) $item->spice_level, AllergenIcons::SPICY_LEVELS, true);
 
         $batchQr = $printCode !== null && LabelSettings::on('label_batch_qr') ? BatchLink::qr($printCode) : null;

@@ -607,17 +607,31 @@ final class WrapDesign
         if ($note !== '') {
             $block($note, $this->dv ? 'dv' : 'j7', $this->dv ? $dvPt : $pt, StickerDesign::PRIMARY, 0.5, [], false);
         }
+        // In both languages every line has its Dhivehi under it, not the ingredients alone (owner, 2026-11-27: the
+        // jar's "Contains fish" and storage line stood in English only).
+        $under = function (string $key) use ($block, $d, $dvPt): void {
+            $dvLine = trim((string) ($d[$key] ?? ''));
+            if ($this->both && $dvLine !== '') {
+                $block($dvLine, 'dv', $dvPt, StickerDesign::TEXT, 0.4, [], false);
+            }
+        };
+        if ($note !== '') {
+            $under('note_dv');
+        }
         $storage = $this->dv ? (string) $d['storage_dv'] : (string) $d['storage_en'];
         if ($storage !== '') {
             $block($storage, $this->dv ? 'dv' : 'j7', $this->dv ? $dvPt : $pt, StickerDesign::DARK, 0.5, [], false);
+            $under('storage_dv');
         }
         $how = $this->dv ? (string) $d['how_to_use_dv'] : (string) $d['how_to_use'];
         if ($how !== '') {
             $block(($this->dv ? '' : 'How to use: ') . $how, $this->dv ? 'dv' : 'j4', $this->dv ? $dvPt : $pt, StickerDesign::TEXT, 0.4, [], false);
+            $under('how_to_use_dv');
         }
         $within = $this->dv ? (string) ($d['use_within_dv'] ?? '') : (string) ($d['use_within'] ?? '');
         if ($within !== '') {
             $block($within, $this->dv ? 'dv' : 'j7', $this->dv ? $dvPt : $pt, StickerDesign::PRIMARY, 0.5, [], false);
+            $under('use_within_dv');
         }
         // Who made it, under a hairline, when there is room for it.
         $maker = in_array('maker', $this->parts, true) ? '' : $this->producerLine();

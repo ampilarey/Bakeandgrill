@@ -96,6 +96,14 @@ class BottleFacesLabelTest extends TestCase
         $this->assertSame(1, preg_match('/font-size:([\d.]+)pt;[^>]*>ރިހާކުރު/u', $html, $dv));
         $this->assertGreaterThanOrEqual((float) $en[1], (float) $dv[1]);
         $this->assertGreaterThanOrEqual(20.0, (float) $dv[1]);
+        // In both languages the storage line has its Dhivehi under it, as the ingredients do (owner, 2026-11-27).
+        $this->assertStringContainsString('Store in a cool, dry place', $html);
+        $this->assertStringContainsString('ފިނި، ހިކި ތަނެއްގައި ބަހައްޓަވާ', $html);
+        // The editor's picture carries the pack's code as the print does: both codes on the business's side.
+        $draft = $this->postJson('/api/labels/custom/preview', ['name' => $t['product'], 'label_barcode' => '200000012345', 'layout' => 'single-custom', 'w' => 240, 'h' => 60, 'lang' => 'both'] + $t['fields'])->assertOk();
+        $drawn = (string) $this->get($draft->json('one_url'))->assertOk()->getContent();
+        $this->assertStringContainsString('PACK INFO', $drawn);
+        $this->assertStringContainsString('FEEDBACK', $drawn);
         $this->assertStringContainsString('2 000000 12345', $html);
         $this->assertStringContainsString('>AMMA<', $html);
         $this->assertStringNotContainsString('MFG DATE', $html);

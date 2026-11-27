@@ -192,7 +192,7 @@ export function StripEditor({ parts, onChange, catalogue, strips, w = 180, h = 4
                   style={{ flex: `${widthOf(key)} 1 0` }}
                   className={['min-w-0 rounded-md border text-left px-1 py-1 flex flex-col items-center justify-center gap-0.5 overflow-hidden', open === key ? 'border-[var(--color-primary)] bg-[var(--color-tone-rust-bg)]' : out ? 'border-dashed border-[var(--color-border)] bg-[var(--color-bg)] opacity-60' : 'border-[var(--color-border)] bg-[var(--color-surface)]', dragging === i ? 'opacity-40' : ''].join(' ')}>
                   <span className="text-[var(--color-primary)]">{PART_ICONS[key]}</span>
-                  <span className="text-[10px] font-semibold text-[var(--color-text)] leading-tight text-center truncate w-full">{compact ? i + 1 : (SHORT_NAMES[key] ?? words.label)}</span>
+                  <span lang="en" className="text-[10px] font-semibold text-[var(--color-text)] leading-tight text-center w-full line-clamp-2 break-words hyphens-auto">{compact ? i + 1 : (SHORT_NAMES[key] ?? words.label)}</span>
                 </button>
               );
             })}

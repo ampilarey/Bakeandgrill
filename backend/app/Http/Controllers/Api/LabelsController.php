@@ -1204,6 +1204,12 @@ class LabelsController extends Controller
         $query = ['items' => 'd'.$token.':1', 'lang' => $req['lang'], 'layout' => $req['layout'], 'w' => $req['w'], 'h' => $req['h'], 'fill' => 0, 'preview' => 1];
         // Where the strips (a wrap-around label) and the parts land (rounds 2 and 3, 2026-10-13), for the editor's touch zones.
         $summary = $this->stickers->summary($req);
+        // The pack's code is drawn as on a print, with a code that opens nothing (owner, 2026-11-27: the editor showed
+        // one QR where the print has two), so the editor's picture and the printed label do not differ.
+        $draftKey = $summary['products'][0]['key'] ?? null;
+        if ($draftKey !== null) {
+            $query['b'] = StickerSheet::codesParam([$draftKey => BatchLink::PREVIEW]);
+        }
 
         return response()->json([
             'one_url' => LabelSheetController::link('labels.stickers', $query + ['one' => 1]),

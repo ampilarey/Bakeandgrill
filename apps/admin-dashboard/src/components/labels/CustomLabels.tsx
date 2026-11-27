@@ -466,7 +466,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   // The drag designer (round 8): on a design that places its parts, the zones move and resize them; the layout is kept with the label.
   const movable = previewDesign !== null && isMovable(previewDesign) && previewSpots.length > 0 ? previewDesign : null;
   const moving = arrange && movable !== null;
-  const previewCaption = `${moving ? 'Drag a part to move it, its corner to resize it. ' : touchable ? 'Tap a part of the label to change it. ' : ''}${sizeName(choice.shape, dims.w, dims.h)} · the first sticker of the sheet Print labels prints at this size. Redraws as you type, saved or not.${dvFont ? ` Dhivehi in ${DV_FONT_NAMES[dvFont] ?? dvFont} (Labels → Settings).` : ''}`;
+  const previewCaption = `${moving ? 'Drag a part to move it, its corner to resize it. ' : touchable ? 'Tap a part of the label to change it. ' : ''}${sizeName(choice.shape, dims.w, dims.h)}, as it prints. Redraws as you type.${dvFont ? ` Dhivehi in ${DV_FONT_NAMES[dvFont] ?? dvFont}.` : ''}`;
   const nudge = (key: LabelSpotKey, change: { dx?: number; dy?: number; s?: number }) => {
     if (!movable) return;
     setD((s) => ({ ...s, label_layout: nudgeSpot(s.label_layout, movable, key, change) }));
