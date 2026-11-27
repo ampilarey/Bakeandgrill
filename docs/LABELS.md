@@ -1452,3 +1452,15 @@ front face. A barcode typed under For the shop till prints beside the dates.
 **No QR code beside the barcode** (owner, 2026-11-26). A till's scanner should find the barcode alone. On the bottle
 labels the pack's QR stands with the complaints QR on Bake & Grill's side, and the barcode has the dates side to
 itself. On other wrap-around labels the QR strip is kept away from the barcode strip; saved labels were moved once.
+
+## Colours (themes)
+
+Owner, 2026-11-27. Every label, a menu item's or a custom one, has a **Colours** row in its editor: Rust (the
+usual), Forest, Ocean, Lagoon, Gold, Chilli, Berry, Plum, Cocoa, Charcoal, and Black and white for a one-colour
+label printer. A tap redraws the preview; Save keeps it; Save as template keeps it with the template.
+
+A theme changes the headings, panels, date boxes, bands and border. Words stay black, the paper white, and the
+barcode and QR codes black on white. A pouch label keeps its own pouch colour.
+
+In code: `LabelTheme::THEMES`, applied once in `StickerSheet::pieces()` by exchanging the `StickerDesign` colour
+constants, so no design has theme code of its own. `ThemePicker.tsx` on the screens.

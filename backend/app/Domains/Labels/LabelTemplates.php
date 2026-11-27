@@ -33,7 +33,7 @@ final class LabelTemplates
         'label_ingredients', 'label_ingredients_dv', 'label_how_to_use', 'label_how_to_use_dv', 'label_note', 'label_note_dv',
         'footer_id', 'label_show_qr', 'label_lang',
         'label_shelf_life_days', 'label_pack_qty', 'label_pack_unit', 'label_net_weight', 'label_allergens',
-        'label_nutrition', 'label_nutrition_per', 'label_wrap', 'label_pouch', 'label_show_price', 'label_show_nutrition', 'label_layout', 'label_badges',
+        'label_nutrition', 'label_nutrition_per', 'label_wrap', 'label_pouch', 'label_show_price', 'label_show_nutrition', 'label_layout', 'label_badges', 'label_theme',
     ];
 
     public const NAME_MAX = 60;
@@ -233,7 +233,7 @@ final class LabelTemplates
             $out[$prefix . $key] = is_array($rule) ? array_merge(['sometimes'], $rule) : 'sometimes|' . $rule;
         }
 
-        return $out + WrapConfig::rules($prefix . 'label_wrap') + PouchConfig::rules($prefix . 'label_pouch') + LabelLayout::rules($prefix . 'label_layout') + LabelBadges::rules($prefix . 'label_badges');
+        return $out + WrapConfig::rules($prefix . 'label_wrap') + PouchConfig::rules($prefix . 'label_pouch') + LabelLayout::rules($prefix . 'label_layout') + LabelBadges::rules($prefix . 'label_badges') + LabelTheme::rules($prefix . 'label_theme');
     }
 
     /**

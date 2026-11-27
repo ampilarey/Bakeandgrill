@@ -105,6 +105,7 @@ class Item extends Model
         'label_serving_g',
         'label_layout',
         'label_badges',
+        'label_theme',
         'label_title_media_id',
         'label_photo_media_id',
     ];
@@ -156,6 +157,7 @@ class Item extends Model
         'label_serving_g',
         'label_layout',
         'label_badges',
+        'label_theme',
         'label_title_media_id',
         'label_photo_media_id',
     ];

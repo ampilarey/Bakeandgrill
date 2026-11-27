@@ -456,7 +456,10 @@ final class StickerSheet
         };
 
         // The parts moved or resized by hand on this design (the drag designer, round 8, 2026-10-13).
-        return self::crispInk(LabelLayout::apply($pieces, $data['layout'][self::designOf($sheet, $data)] ?? []));
+        $pieces = self::crispInk(LabelLayout::apply($pieces, $data['layout'][self::designOf($sheet, $data)] ?? []));
+
+        // The label's own colours (2026-11-27), once everything is drawn; a pouch label keeps its pouch look.
+        return self::designOf($sheet, $data) === 'pouch' ? $pieces : LabelTheme::apply($pieces, $data['theme'] ?? null);
     }
 
     /**
@@ -905,6 +908,7 @@ final class StickerSheet
             'layout' => LabelLayout::of($item),
             // Badges (round 9): rust pills under the name.
             'badges' => LabelBadges::for($item),
+            'theme' => LabelTheme::of($item),
             'marks' => LabelMarks::for($wrap['marks']),
             'pictures' => $pictures,
             'producer' => ['name' => (string) ($contact['name'] ?? ''), 'address' => (string) ($contact['address'] ?? ''), 'phone' => (string) ($contact['phone'] ?? ''), 'website' => (string) ($contact['website'] ?? '')],

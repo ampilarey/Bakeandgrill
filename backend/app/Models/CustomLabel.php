@@ -23,7 +23,7 @@ class CustomLabel extends Model
         'label_note', 'label_note_dv', 'footer_id', 'label_show_qr', 'label_lang',
         'label_shelf_life_days', 'label_pack_qty', 'label_pack_unit',
         'label_price', 'label_barcode', 'label_net_weight', 'label_allergens', 'label_nutrition',
-        'label_wrap', 'label_pouch', 'label_part', 'label_nutrition_per', 'label_layout', 'label_badges', 'label_size',
+        'label_wrap', 'label_pouch', 'label_part', 'label_nutrition_per', 'label_layout', 'label_badges', 'label_theme', 'label_size',
         'label_photo_media_id', 'label_title_media_id', 'created_by',
     ];
 

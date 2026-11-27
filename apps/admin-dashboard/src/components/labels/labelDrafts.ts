@@ -26,6 +26,8 @@ export type CustomDraft = {
   label_layout: LabelArrangement;
   /** Badges (round 9): up to four keys. */
   label_badges: string[];
+  /** The label's colours: a theme key, 'rust' the usual one. */
+  label_theme: string;
   label_photo_media_id: number | null; label_photo_url: string | null; label_title_media_id: number | null; label_title_url: string | null;
 };
 
@@ -41,6 +43,7 @@ export const customDraft = (c: CustomLabel | null): CustomDraft => ({
   label_nutrition_per: c?.label_nutrition_per === 'ml' ? 'ml' : 'g', label_wrap: c?.label_wrap ?? EMPTY_WRAP, wrap_pictures: c?.wrap_pictures ?? [], label_pouch: c?.label_pouch ?? null, label_part: c?.label_part ?? null,
   label_layout: c?.label_layout ?? {},
   label_badges: c?.label_badges ?? [],
+  label_theme: c?.label_theme || 'rust',
   label_photo_media_id: c?.label_photo_media_id ?? null, label_photo_url: c?.label_photo_url ?? null, label_title_media_id: c?.label_title_media_id ?? null, label_title_url: c?.label_title_url ?? null,
 });
 
@@ -55,7 +58,7 @@ export const customPayload = (d: CustomDraft): CustomLabelPayload => ({
   label_shelf_life_days: d.label_shelf_life_days ? Number(d.label_shelf_life_days) : null, label_pack_qty: d.label_pack_qty ? Number(d.label_pack_qty) : null, label_pack_unit: text(d.label_pack_unit),
   label_price: d.label_price !== '' ? Number(d.label_price) : null, label_barcode: text(d.label_barcode), label_net_weight: text(d.label_net_weight), label_allergens: text(d.label_allergens),
   label_nutrition: text(d.label_nutrition),
-  label_nutrition_per: d.label_nutrition_per, label_wrap: d.label_wrap, label_pouch: d.label_pouch, label_part: d.label_part, label_layout: d.label_layout, label_badges: d.label_badges,
+  label_nutrition_per: d.label_nutrition_per, label_wrap: d.label_wrap, label_pouch: d.label_pouch, label_part: d.label_part, label_layout: d.label_layout, label_badges: d.label_badges, label_theme: d.label_theme || 'rust',
   label_photo_media_id: d.label_photo_media_id, label_title_media_id: d.label_title_media_id,
 });
 
@@ -98,6 +101,8 @@ export type ItemDraft = {
   label_layout: LabelArrangement;
   /** Badges (round 9): up to four keys. */
   label_badges: string[];
+  /** The label's colours: a theme key, 'rust' the usual one. */
+  label_theme: string;
 };
 
 export const itemDraft = (p: LabelProduct): ItemDraft => ({
@@ -134,6 +139,7 @@ export const itemDraft = (p: LabelProduct): ItemDraft => ({
   wrap_pictures: p.wrap_pictures ?? [],
   label_layout: p.label_layout ?? {},
   label_badges: p.label_badges ?? [],
+  label_theme: p.label_theme || 'rust',
 });
 
 export type ItemLabelPayload = Parameters<typeof updateItemLabel>[1];
@@ -169,6 +175,7 @@ export const itemPayload = (d: ItemDraft): ItemLabelPayload => ({
   label_pouch: d.label_pouch,
   label_layout: d.label_layout,
   label_badges: d.label_badges,
+  label_theme: d.label_theme || 'rust',
 });
 
 /** The part of a payload a tap-to-edit sheet changed: only those keys go to the server. */

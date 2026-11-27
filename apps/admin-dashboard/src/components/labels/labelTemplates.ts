@@ -23,7 +23,7 @@ export const TEMPLATE_KEYS = [
   'label_ingredients', 'label_ingredients_dv', 'label_how_to_use', 'label_how_to_use_dv', 'label_note', 'label_note_dv',
   'footer_id', 'label_show_qr', 'label_lang',
   'label_shelf_life_days', 'label_pack_qty', 'label_pack_unit', 'label_net_weight', 'label_allergens',
-  'label_nutrition', 'label_nutrition_per', 'label_wrap', 'label_pouch', 'label_show_price', 'label_show_nutrition', 'label_layout', 'label_badges',
+  'label_nutrition', 'label_nutrition_per', 'label_wrap', 'label_pouch', 'label_show_price', 'label_show_nutrition', 'label_layout', 'label_badges', 'label_theme',
 ] as const;
 type Key = (typeof TEMPLATE_KEYS)[number];
 
@@ -94,6 +94,7 @@ export function applyToCustom(d: CustomDraft, t: LabelTemplate): CustomDraft {
   if (has('label_pouch')) n.label_pouch = f.label_pouch ?? null;
   if (has('label_layout')) n.label_layout = f.label_layout ?? {};
   if (has('label_badges')) n.label_badges = f.label_badges ? [...f.label_badges] : [];
+  if (has('label_theme')) n.label_theme = f.label_theme || 'rust';
   // A built-in template's own photo fills an empty picture; one already picked stays.
   if (t.photo && n.label_photo_media_id == null) { n.label_photo_media_id = t.photo.id; n.label_photo_url = t.photo.url; }
   // The product a built-in template is for names a label that has no name yet.
@@ -129,6 +130,7 @@ export function applyToItem(d: ItemDraft, t: LabelTemplate): ItemDraft {
   if (has('label_pouch')) n.label_pouch = f.label_pouch ?? null;
   if (has('label_layout')) n.label_layout = f.label_layout ?? {};
   if (has('label_badges')) n.label_badges = f.label_badges ? [...f.label_badges] : [];
+  if (has('label_theme')) n.label_theme = f.label_theme || 'rust';
   // A built-in template's own photo fills an empty picture; one already picked stays.
   if (t.photo && n.label_photo_media_id == null) { n.label_photo_media_id = t.photo.id; n.label_photo_url = t.photo.url; }
   return n;

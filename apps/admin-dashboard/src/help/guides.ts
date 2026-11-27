@@ -559,6 +559,26 @@ export const GUIDES: Guide[] = [
     words: 'round circle circular label sticker lid tub jar jhol momo template',
   },
   {
+    id: 'label-colours',
+    page: '/labels',
+    title: 'Change a label\'s colours',
+    steps: [
+      'Open Labels. On My labels tap Edit on the label.',
+      'Under Colours tap a theme: Rust, Forest, Ocean, Lagoon, Gold, Chilli, Berry, Plum, Cocoa, Charcoal or Black and white.',
+      'The preview redraws in those colours. Tap another to compare.',
+      'Tap Save. The label prints in that theme from now on.',
+    ],
+    notes: [
+      'A theme changes the headings, the panels, the date boxes and the border. The words, the picture and the layout stay as they are.',
+      'Words stay black, and the barcode and QR codes stay black on white, so they still scan.',
+      'Black and white is for a label printer with one colour.',
+      'A menu item has the same Colours row on its Label tab.',
+      'A pouch label takes its colours from the pouch colour, so it has no Colours row.',
+      'Save as template keeps the theme, so a template can come in any colour.',
+    ],
+    words: 'label theme colour color colours green blue gold red black white design look',
+  },
+  {
     id: 'labels-kind',
     page: '/labels',
     title: 'Make a label a sticker, a pouch label, a bottle wrap or a tub label',

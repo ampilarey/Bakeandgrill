@@ -57,6 +57,8 @@ export type LabelProduct = {
   label_layout: LabelArrangement;
   /** Badges (round 9): keys from the layouts' `badges` catalogue, up to four, printed as rust pills under the name. */
   label_badges: string[];
+  /** The label's colours (2026-11-27): a theme key; 'rust' is the usual one. */
+  label_theme?: string | null;
   menu_price: number;
   /** From the item's Details tab, as words ("tree nuts"): printed bold and as "Contains …". */
   allergens: string[];
@@ -265,7 +267,9 @@ export type KitchenLabelSetup = { size: { layout: string; w: number | null; h: n
 /** A shelf life to suggest per storage (round 15): days, and why. */
 export type ShelfLifeSuggestions = Record<LabelStorage, { days: number; why: string }>;
 
-export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; pouch?: PouchCatalogue; pouch_set?: PouchSetCatalogue; tub_set?: TubSetCatalogue; rolls?: LabelRoll[]; badges?: LabelBadge[]; kitchen?: KitchenLabelSetup; shelf_life?: ShelfLifeSuggestions };
+/** A label theme's chip (2026-11-27): its name and the three colours that show what it looks like. */
+export type LabelThemeChoice = { key: string; name: string; accent: string; tint: string; dark: string };
+export type LabelLayoutsResponse = { data: LabelLayout[]; presets: LabelPreset[]; limits: LabelLimits; wrap: WrapCatalogue; pouch?: PouchCatalogue; pouch_set?: PouchSetCatalogue; tub_set?: TubSetCatalogue; rolls?: LabelRoll[]; badges?: LabelBadge[]; themes?: LabelThemeChoice[]; kitchen?: KitchenLabelSetup; shelf_life?: ShelfLifeSuggestions };
 
 /**
  * A label template (round 7, 2026-10-13: "Start from a saved label or a
@@ -282,7 +286,7 @@ export type LabelTemplateFields = Partial<{
   label_note: string | null; label_note_dv: string | null; footer_id: number | null; label_show_qr: boolean | null; label_lang: StickerLang | null;
   label_shelf_life_days: number | null; label_pack_qty: number | null; label_pack_unit: string | null; label_net_weight: string | null;
   label_allergens: string | null; label_nutrition: string | null; label_nutrition_per: NutritionPer | null; label_wrap: LabelWrap | null; label_pouch: LabelPouch | null;
-  label_show_price: boolean | null; label_show_nutrition: boolean | null; label_layout: LabelArrangement | null; label_badges: string[] | null;
+  label_show_price: boolean | null; label_show_nutrition: boolean | null; label_layout: LabelArrangement | null; label_badges: string[] | null; label_theme: string | null;
 }>;
 export type LabelTemplateSize = { shape: 'rect' | 'circle'; preset: string; on: LabelStock; w: number; h: number };
 export type LabelTemplate = {
@@ -346,6 +350,8 @@ export type CustomLabel = {
   label_layout: LabelArrangement;
   /** Badges (round 9): up to four keys from the catalogue. */
   label_badges: string[];
+  /** The label's colours (2026-11-27): a theme key; 'rust' is the usual one. */
+  label_theme?: string | null;
   label_photo_media_id: number | null; label_photo_url: string | null;
   label_title_media_id: number | null; label_title_url: string | null;
   defaults: { heading: string; heading_dv: string; storage_line: string; storage_line_dv: string; how_to_use: string; how_to_use_dv: string; note: string; note_dv: string; shelf_life_days: number | null; brand: string; unit: string };
@@ -362,7 +368,7 @@ export type CustomLabelPayload = Partial<Pick<CustomLabel,
   | 'label_how_to_use' | 'label_how_to_use_dv' | 'label_note' | 'label_note_dv'
   | 'footer_id' | 'label_show_qr' | 'label_lang'
   | 'label_shelf_life_days' | 'label_pack_qty' | 'label_pack_unit' | 'label_photo_media_id' | 'label_title_media_id'
-  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition' | 'label_nutrition_per' | 'label_wrap'>> & { label_size?: LabelSizeKept | null; label_pouch?: LabelPouch | null; label_part?: 'lid' | 'side' | null; label_layout?: LabelArrangement | null; label_badges?: string[] | null };
+  | 'label_price' | 'label_barcode' | 'label_net_weight' | 'label_allergens' | 'label_nutrition' | 'label_nutrition_per' | 'label_wrap'>> & { label_size?: LabelSizeKept | null; label_pouch?: LabelPouch | null; label_part?: 'lid' | 'side' | null; label_layout?: LabelArrangement | null; label_badges?: string[] | null; label_theme?: string | null };
 
 /** The sticker's languages: English, Dhivehi, or both on one sticker (2026-10-12). */
 export type StickerLang = 'en' | 'dv' | 'both';
@@ -665,7 +671,7 @@ export function fetchLabelItem(id: number) {
   return req<{ data: LabelProduct }>(`/labels/items/${id}`);
 }
 
-export function updateItemLabel(id: number, body: Partial<Omit<LabelProduct, 'id' | 'name' | 'name_dv' | 'ingredients' | 'has_recipe' | 'allergens' | 'cutout_url' | 'label_title_url' | 'label_photo_url' | 'label_layout'>> & { label_layout?: LabelArrangement | null; label_badges?: string[] | null }) {
+export function updateItemLabel(id: number, body: Partial<Omit<LabelProduct, 'id' | 'name' | 'name_dv' | 'ingredients' | 'has_recipe' | 'allergens' | 'cutout_url' | 'label_title_url' | 'label_photo_url' | 'label_layout'>> & { label_layout?: LabelArrangement | null; label_badges?: string[] | null; label_theme?: string | null }) {
   return req<{ data: LabelProduct }>(`/items/${id}/label`, { method: 'PUT', body: JSON.stringify(body) });
 }
 

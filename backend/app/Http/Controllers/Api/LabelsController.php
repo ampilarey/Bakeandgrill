@@ -17,6 +17,7 @@ use App\Domains\Labels\LabelRolls;
 use App\Domains\Labels\LabelSettings;
 use App\Domains\Labels\LabelSignoffs;
 use App\Domains\Labels\LabelTemplates;
+use App\Domains\Labels\LabelTheme;
 use App\Domains\Labels\LabelTypes;
 use App\Domains\Labels\Nutrition;
 use App\Domains\Labels\PouchConfig;
@@ -108,6 +109,7 @@ class LabelsController extends Controller
             'rolls' => LabelRolls::presentAll(),
             // The badges a product can carry (round 9), for the pickers.
             'badges' => LabelBadges::catalogue(),
+            'themes' => LabelTheme::catalogue(),
             // What the kitchen screen prints a batch's stickers on and in (round 12).
             'kitchen' => LabelRolls::kitchen(),
             // A shelf-life suggestion by storage (round 15).
@@ -1126,7 +1128,7 @@ class LabelsController extends Controller
      */
     private static function wrapRules(): array
     {
-        return ['label_nutrition_per' => ['sometimes', Rule::in(['g', 'ml'])]] + WrapConfig::rules() + PouchConfig::rules() + LabelLayout::rules() + LabelBadges::rules();
+        return ['label_nutrition_per' => ['sometimes', Rule::in(['g', 'ml'])]] + WrapConfig::rules() + PouchConfig::rules() + LabelLayout::rules() + LabelBadges::rules() + LabelTheme::rules();
     }
 
     /** A mark picture that is not an image is refused; a kept config is tidied (WrapConfig::clean), null clears it. */
@@ -1140,6 +1142,10 @@ class LabelsController extends Controller
         // Badges (round 9): known keys once each, at most four; none is null.
         if (request()->has('label_badges')) {
             $data['label_badges'] = LabelBadges::clean(request()->input('label_badges')) ?: null;
+        }
+        // The label's colours (2026-11-27): a known theme, and the usual rust is kept as none.
+        if (array_key_exists('label_theme', $data)) {
+            $data['label_theme'] = LabelTheme::clean($data['label_theme']);
         }
         // A pouch label's look and cooking method (2026-11-11): tidied; null is an ordinary sticker again.
         // (A template's fields carry theirs in $data; a label's empty {} is dropped by the validator, so the request says.)
@@ -1574,6 +1580,7 @@ class LabelsController extends Controller
             'wrap_pictures' => $this->wrapPictures($wrap),
             'label_layout' => LabelLayout::of($c),
             'label_badges' => LabelBadges::of($c),
+            'label_theme' => LabelTheme::of($c),
             'label_photo_media_id' => $c->label_photo_media_id,
             'label_photo_url' => $media->get($c->label_photo_media_id)?->url,
             'label_title_media_id' => $c->label_title_media_id,
@@ -1936,6 +1943,7 @@ class LabelsController extends Controller
             // The parts moved or resized by hand, per design (round 8).
             'label_layout' => LabelLayout::of($item),
             'label_badges' => LabelBadges::of($item),
+            'label_theme' => LabelTheme::of($item),
             'menu_price' => $item->displayPriceInfo()['price'],
             // What prints when the item's own wording is empty: its type's wording, else the defaults for its storage.
             'defaults' => [

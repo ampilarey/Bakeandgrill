@@ -1,7 +1,7 @@
 import { DhivehiDraft } from '../ai/AiButton';
 import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, X, RefreshCw } from 'lucide-react';
-import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type ShelfLifeSuggestions, type IngredientsSource, type LabelArrangement, type LabelBadge, type LabelDesign, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type StickerLang, type PouchCatalogue, type WrapCatalogue } from '../../api';
+import { fetchLabelItem, fetchLabelLayouts, fetchLabelTypes, stickerLinks, updateItemLabel, type ShelfLifeSuggestions, type IngredientsSource, type LabelArrangement, type LabelBadge, type LabelThemeChoice, type LabelDesign, type LabelLimits, type LabelPreset, type LabelProduct, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelType, type StickerLang, type PouchCatalogue, type WrapCatalogue } from '../../api';
 import { LabelSizePicker } from './LabelSizePicker';
 import { DEFAULT_CHOICE, rememberedSize, requestFor, sizeName, sizeOf, type SizeChoice } from './labelSize';
 import { SheetPreview } from './SheetPreview';
@@ -17,6 +17,7 @@ import { SaveAsTemplate, StartFromRow } from './StartFrom';
 import { applyToItem, templateFromItem } from './labelTemplates';
 import { ArrangeBar } from './ArrangeBar';
 import { BadgePicker } from './BadgePicker';
+import { ThemePicker } from './ThemePicker';
 import { clearDesign, hasOverrides, isMovable, layoutPayload, nudgeSpot } from './labelLayout';
 import { MediaPicker } from '../MediaPicker';
 import { Button } from '../ui';
@@ -75,12 +76,13 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
   const [pouchCatalogue, setPouchCatalogue] = useState<PouchCatalogue | null>(null);
   // The badges an item can carry (round 9), from the layouts.
   const [badges, setBadges] = useState<LabelBadge[]>([]);
+  const [themes, setThemes] = useState<LabelThemeChoice[]>([]);
   useEffect(() => { fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === product?.label_type_id))).catch(() => setTypes([])); }, [product?.label_type_id]);
   // Round 15: a shelf life to suggest for the item's storage.
   const [shelfLife, setShelfLife] = useState<ShelfLifeSuggestions | null>(null);
   useEffect(() => {
     fetchLabelLayouts().then((r) => {
-      setCatalogue(r.wrap ?? null); setPouchCatalogue(r.pouch ?? null); setBadges(r.badges ?? []); setShelfLife(r.shelf_life ?? null);
+      setCatalogue(r.wrap ?? null); setPouchCatalogue(r.pouch ?? null); setBadges(r.badges ?? []); setThemes(r.themes ?? []); setShelfLife(r.shelf_life ?? null);
       setPresets(r.presets ?? []); setLimits(r.limits ?? null); setRolls(r.rolls ?? []);
     }).catch(() => setCatalogue(null)).finally(() => setLayoutsLoaded(true));
   }, []);
@@ -264,6 +266,12 @@ export function ItemLabelTab({ itemId }: { itemId: number }) {
             <div><label className={labelClass} htmlFor="lbl-use-dv">How to use (Dhivehi)</label><textarea id="lbl-use-dv" dir="rtl" rows={2} maxLength={200} value={draft.label_how_to_use_dv} onChange={(e) => set('label_how_to_use_dv', e.target.value)} className="w-full min-h-[44px] px-3 py-2 rounded-lg border border-[var(--color-border)] text-sm resize-y" placeholder={product.defaults.how_to_use_dv} /><div className="mt-1"><DhivehiDraft from={draft.label_how_to_use} current={draft.label_how_to_use_dv} kind="label" onDraft={(v) => set('label_how_to_use_dv', v.slice(0, 200))} /></div></div>
             <div><label className={labelClass} htmlFor="lbl-unit">Unit after the quantity</label><input id="lbl-unit" maxLength={10} value={draft.label_pack_unit} onChange={(e) => set('label_pack_unit', e.target.value)} className={fieldClass} placeholder={product.defaults.unit} /><p className="text-xs text-[var(--color-text-muted)] mt-1">PCS, SLICES, PACK, G…</p></div>
           </div>
+        </fieldset>
+
+        {/* The label's colours, one tap (owner, 2026-11-27). */}
+        <fieldset className="rounded-xl border border-[var(--color-border)] p-3 space-y-3" data-testid="item-label-theme">
+          <legend className="px-1 text-sm font-bold text-[var(--color-text)]">Colours</legend>
+          <ThemePicker value={draft.label_theme} onChange={(v) => set('label_theme', v)} themes={themes} pouch={draft.label_pouch !== null} />
         </fieldset>
 
         {/* Badges (round 9, 2026-10-13): Halal, Spicy, New… as rust pills under the name. */}

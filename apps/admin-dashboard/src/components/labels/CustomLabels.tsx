@@ -4,7 +4,7 @@ import { ChevronDown, Circle, Copy, Eye, ImagePlus, Package, Pencil, Plus, Print
 import {
   createCustomLabel, deleteCustomLabel, duplicateCustomLabel, fetchCustomLabels, fetchLabelBrands, fetchLabelFooters, fetchLabelLayouts, fetchLabelSettings, fetchLabelTypes,
   previewCustomDraft, updateCustomLabel, uploadCustomLabelPicture, uploadLabelPicture,
-  type CustomLabel, type LabelBadge, type LabelBrand, type LabelDesign, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type ShelfLifeSuggestions, type LabelType, type StickerLang, type LabelPouch, type PouchCatalogue, type WrapCatalogue, type WrapPartKey, type WrapStrips,
+  type CustomLabel, type LabelBadge, type LabelThemeChoice, type LabelBrand, type LabelDesign, type LabelFooter, type LabelLimits, type LabelPreset, type LabelRoll, type LabelSpot, type LabelSpotKey, type LabelStorage, type LabelTemplate, type ShelfLifeSuggestions, type LabelType, type StickerLang, type LabelPouch, type PouchCatalogue, type WrapCatalogue, type WrapPartKey, type WrapStrips,
 } from '../../api';
 import { FooterPicker } from './FooterPicker';
 import { SaveAsTemplate, StartFromRow } from './StartFrom';
@@ -12,6 +12,7 @@ import { applyToCustom, templateFromCustom, templateSize } from './labelTemplate
 import { ArrangeBar } from './ArrangeBar';
 import { clearDesign, hasOverrides, isMovable, nudgeSpot } from './labelLayout';
 import { BadgePicker } from './BadgePicker';
+import { ThemePicker } from './ThemePicker';
 import { WRAP_FALLBACK, WrapParts } from './WrapParts';
 import { POUCH_FALLBACK, PouchPicker, newPouch, pouchFits, pouchSummary } from './PouchPicker';
 import { StripOverlay } from './StripEditor';
@@ -162,6 +163,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
   const [rolls, setRolls] = useState<LabelRoll[]>([]);
   // The badges a label can carry (round 9), from the layouts.
   const [badges, setBadges] = useState<LabelBadge[]>([]);
+  const [themes, setThemes] = useState<LabelThemeChoice[]>([]);
   // Round 15: a shelf life to suggest for the label's storage.
   const [shelfLife, setShelfLife] = useState<ShelfLifeSuggestions | null>(null);
   // The wording lock (round 17): read the legal lines again after each save.
@@ -195,7 +197,7 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
     fetchLabelTypes().then((r) => setTypes(r.data.filter((t) => t.is_active || t.id === label?.label_type_id))).catch(() => setTypes([]));
   }, [label?.label_type_id]);
   useEffect(() => {
-    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); setCatalogue(r.wrap ?? null); setPouchCatalogue(r.pouch ?? null); setRolls(r.rolls ?? []); setBadges(r.badges ?? []); setShelfLife(r.shelf_life ?? null);
+    fetchLabelLayouts().then((r) => { setPresets(r.presets); setLimits(r.limits ?? null); setCatalogue(r.wrap ?? null); setPouchCatalogue(r.pouch ?? null); setRolls(r.rolls ?? []); setBadges(r.badges ?? []); setThemes(r.themes ?? []); setShelfLife(r.shelf_life ?? null);
       // A label saved before sizes were kept: a pouch label or a flat-sided bottle opens at the size made for it.
       if (label && !label.label_size) {
         setChoice((c) => {
@@ -518,6 +520,8 @@ export function CustomLabelModal({ label, onClose, onSaved, startFrom = null }: 
             {kindPicker}
             {stacked && sizeSection}
             {kindSettings}
+            {/* The label's colours, one tap (owner, 2026-11-27): the preview redraws in them. */}
+            <ThemePicker value={d.label_theme} onChange={(v) => set('label_theme', v)} themes={themes} pouch={d.label_pouch !== null} />
             <div className="grid gap-3 sm:grid-cols-2">
               <Field id="cl-brand" label="Brand and logo" hint={d.brand_id ? undefined : `Empty follows the label type: ${typeBrand}.`}>
                 <div className="flex gap-2">
