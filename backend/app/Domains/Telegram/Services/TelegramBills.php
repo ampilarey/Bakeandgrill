@@ -97,6 +97,12 @@ class TelegramBills
             return;
         }
 
+        // Tesseract reads in a browser, and the bot has none: the bill is kept and waits for the Admin's list.
+        if ($reader->inBrowser()) {
+            $this->commands->send($link, '🧾 Got the bill and kept it. Bills are set to be read by Tesseract, which runs in the Admin: open Purchasing → Orders → Bills to check and it is read there. The result comes here once it is.');
+
+            return;
+        }
         $this->commands->send($link, '🧾 Got the bill. Reading it now: the result comes here in a moment.');
         // Reading takes several seconds and Telegram waits for the webhook's answer:
         // read once the answer has gone. Cut short, the scheduler reads it within minutes.

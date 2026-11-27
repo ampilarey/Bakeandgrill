@@ -41,13 +41,15 @@ class Assistant
      * @param string $prompt what to work on
      * @param array<string, mixed> $schema the JSON the answer must be (every field required)
      * @param array{bytes: string, mime: string}|null $file a picture or PDF to read
+     * @param string|null $provider the service to ask, when not the assistant's own (reading a document)
      * @return array<string, mixed> matching $schema
      *
      * @throws AssistantUnavailable
      */
-    public function ask(string $instructions, string $prompt, array $schema, ?array $file = null, int $timeout = 60, int $maxTokens = 4000): array
+    public function ask(string $instructions, string $prompt, array $schema, ?array $file = null, int $timeout = 60, int $maxTokens = 4000, ?string $provider = null): array
     {
-        $provider = $this->settings->provider();
+        // A job that reads a document names the service picked for reading; everything else uses the assistant's.
+        $provider ??= $this->settings->provider();
         $key = $this->settings->key($provider);
         if ($key === '') {
             throw new AssistantUnavailable('The assistant is not set up yet: add a key under System → Integrations → API keys.');

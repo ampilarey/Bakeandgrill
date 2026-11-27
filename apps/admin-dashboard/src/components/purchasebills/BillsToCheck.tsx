@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Camera, Eye, RefreshCw, Trash2 } from 'lucide-react';
 import {
-  downloadPurchaseBill, fetchPurchaseBills, readPurchaseBill, removePurchaseBill, sendPurchaseBill,
+  downloadPurchaseBill, fetchPurchaseBills, readPurchaseBill, removePurchaseBill, sendPurchaseBill, sendPurchaseBillText,
   type PurchaseBill,
 } from '../../api/purchasing';
 import { Btn, ConfirmDialog, Spinner, useConfirmDialog } from '../SharedUI';
@@ -34,6 +34,22 @@ export async function viewBill(bill: Pick<PurchaseBill, 'id'>): Promise<void> {
   }
 }
 
+/**
+ * A bill's lines of text, read in this browser (owner, 2026-11-27: Tesseract as the free reader). A PDF's own
+ * text is taken when it has some, as it is exact; a scan or a photo goes to Tesseract. Both readers are the
+ * ones Finance → Invoices → From a PO uses, loaded only when a bill is read.
+ */
+export async function billLinesInBrowser(file: File): Promise<string[]> {
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  if (isPdf) {
+    const { pdfLines } = await import('../poinvoice/pdfText');
+    const typed = await pdfLines(file).catch(() => [] as string[]);
+    if (typed.join('').replace(/\s/g, '').length >= 40) return typed;
+  }
+  const { ocrLines } = await import('../poinvoice/ocrText');
+  return ocrLines(file);
+}
+
 /** One line under a bill's name: what was read, in a glance. */
 export function billSummary(bill: PurchaseBill): string {
   if (bill.status === 'queued' || bill.status === 'reading') return 'Reading…';
@@ -57,6 +73,9 @@ export function BillsToCheck({ onCheck, reloadKey, startOpen }: {
   startOpen?: boolean;
 }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
+  // Tesseract: this screen reads each waiting bill itself and sends the text.
+  const [inBrowser, setInBrowser] = useState(false);
+  const tried = useRef<Set<number>>(new Set());
   const [bills, setBills] = useState<PurchaseBill[]>([]);
   const [sending, setSending] = useState<{ done: number; of: number } | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
@@ -69,6 +88,7 @@ export function BillsToCheck({ onCheck, reloadKey, startOpen }: {
     try {
       const res = await fetchPurchaseBills();
       setEnabled(res.enabled);
+      setInBrowser(Boolean(res.in_browser));
       setBills(res.bills);
     } catch {
       // The orders list has its own error line; this card just stays as it was.
@@ -83,7 +103,7 @@ export function BillsToCheck({ onCheck, reloadKey, startOpen }: {
 
   // A bill the server is reading on its own (sent from another device, or the
   // scheduler picked it up): look again until it is back.
-  const waiting = sending === null && bills.some((b) => b.status === 'queued' || b.status === 'reading');
+  const waiting = !inBrowser && sending === null && bills.some((b) => b.status === 'queued' || b.status === 'reading');
   useEffect(() => {
     if (!waiting) return;
     const t = window.setInterval(() => { void load(); }, 5000);
@@ -103,7 +123,8 @@ export function BillsToCheck({ onCheck, reloadKey, startOpen }: {
       try {
         const { bill } = await sendPurchaseBill(file);
         put({ ...bill, status: 'reading' });
-        const read = await readPurchaseBill(bill.id);
+        tried.current.add(bill.id);
+        const read = inBrowser ? await sendPurchaseBillText(bill.id, await billLinesInBrowser(file)) : await readPurchaseBill(bill.id);
         put(read.bill);
       } catch (e) {
         setProblems((p) => [...p, `${file.name}: ${(e as Error).message}`]);
@@ -114,15 +135,29 @@ export function BillsToCheck({ onCheck, reloadKey, startOpen }: {
     void load();
   };
 
+  /** A bill already kept (sent from the staff bot, or one to try again), read here: its file is fetched first. */
+  const readHere = async (bill: PurchaseBill) => {
+    const blob = await downloadPurchaseBill(bill.id);
+    const file = new File([blob], bill.file_name, { type: blob.type || (bill.is_image ? 'image/jpeg' : 'application/pdf') });
+    return sendPurchaseBillText(bill.id, await billLinesInBrowser(file));
+  };
+
   const tryAgain = async (bill: PurchaseBill) => {
     setBusyId(bill.id);
+    tried.current.add(bill.id);
     put({ ...bill, status: 'reading', error: null });
     try {
-      put((await readPurchaseBill(bill.id)).bill);
+      put((inBrowser ? await readHere(bill) : await readPurchaseBill(bill.id)).bill);
     } catch (e) {
       put({ ...bill, status: 'failed', error: (e as Error).message });
     } finally { setBusyId(null); }
   };
+
+  // With Tesseract, a bill waiting on the list (sent to the staff bot) is read by whoever opens it, once.
+  const next = inBrowser && sending === null && busyId === null ? bills.find((b) => b.status === 'queued' && !tried.current.has(b.id)) : undefined;
+  useEffect(() => {
+    if (next) void tryAgain(next);
+  }, [next?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const remove = (bill: PurchaseBill) => ask({
     title: 'Remove this bill?',
@@ -145,7 +180,9 @@ export function BillsToCheck({ onCheck, reloadKey, startOpen }: {
           <strong>Bills to check{bills.length > 0 ? ` (${bills.length})` : ''}</strong>
           <span>
             {enabled
-              ? 'Send photos or PDFs of supplier bills. Each is read into a purchase order for you to check and save.'
+              ? inBrowser
+                ? <span data-testid="bills-in-browser">Send photos or PDFs of supplier bills. Each is read here, in this browser, by Tesseract (free). It matches a product only when its name is on the bill, so check every line. To change the reader: <Link to="/integrations/keys" className="pb-link">API keys</Link>.</span>
+                : 'Send photos or PDFs of supplier bills. Each is read into a purchase order for you to check and save.'
               : <>Reading bills is not set up yet. It needs a key: <Link to="/integrations/keys" className="pb-link">System → Integrations → API keys</Link>.</>}
           </span>
         </div>

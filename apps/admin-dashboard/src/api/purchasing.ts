@@ -295,7 +295,7 @@ export type PurchaseBill = {
   data: BillData | null;
 };
 
-export async function fetchPurchaseBills(): Promise<{ enabled: boolean; bills: PurchaseBill[] }> {
+export async function fetchPurchaseBills(): Promise<{ enabled: boolean; in_browser?: boolean; bills: PurchaseBill[] }> {
   return req('/purchases/bills');
 }
 
@@ -316,6 +316,11 @@ export async function sendPurchaseBill(file: File): Promise<{ bill: PurchaseBill
 /** Read it now. Takes a few seconds; also "Try again" on one that failed. */
 export async function readPurchaseBill(id: number): Promise<{ bill: PurchaseBill }> {
   return req(`/purchases/bills/${id}/read`, { method: 'POST', timeoutMs: BILL_READ_TIMEOUT_MS });
+}
+
+/** A bill's text as Tesseract read it in this browser: the server turns the lines into the reading by plain rules. */
+export async function sendPurchaseBillText(id: number, lines: string[]): Promise<{ bill: PurchaseBill }> {
+  return req(`/purchases/bills/${id}/text`, { method: 'POST', body: JSON.stringify({ lines: lines.slice(0, 600).map((l) => l.slice(0, 400)) }) });
 }
 
 export async function removePurchaseBill(id: number): Promise<{ ok: boolean }> {
@@ -342,7 +347,11 @@ export type BillReaderProvider = {
 };
 
 export type BillReaderSettings = {
+  /** The service that does the assistant's work. */
   provider: string;
+  /** What reads documents (bills, scanned orders): 'claude', 'google' or 'tesseract' (free, in the browser). */
+  ocr_provider?: string;
+  ocr_choices?: string[];
   providers: BillReaderProvider[];
   /** The names a bill may be made out to, comma separated: the business and its parent company. */
   our_names: string;
@@ -354,7 +363,7 @@ export async function getBillReader(): Promise<BillReaderSettings> {
 
 /** A key that is sent replaces the stored one; "" removes it; left out, it is kept. */
 export async function saveBillReader(data: {
-  provider?: string; keys?: Record<string, string>; models?: Record<string, string>; our_names?: string;
+  provider?: string; ocr_provider?: string; keys?: Record<string, string>; models?: Record<string, string>; our_names?: string;
 }): Promise<BillReaderSettings> {
   return req('/purchasing/bill-reader', { method: 'PUT', body: JSON.stringify(data) });
 }

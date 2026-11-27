@@ -45,13 +45,18 @@ const fetchPurchaseBills = vi.fn();
 const sendPurchaseBill = vi.fn();
 const readPurchaseBill = vi.fn();
 const removePurchaseBill = vi.fn();
+const sendPurchaseBillText = vi.fn();
+const ocrLines = vi.fn();
 vi.mock('../api/purchasing', () => ({
   fetchPurchaseBills: (...a: unknown[]) => fetchPurchaseBills(...a),
   sendPurchaseBill: (...a: unknown[]) => sendPurchaseBill(...a),
   readPurchaseBill: (...a: unknown[]) => readPurchaseBill(...a),
   removePurchaseBill: (...a: unknown[]) => removePurchaseBill(...a),
+  sendPurchaseBillText: (...a: unknown[]) => sendPurchaseBillText(...a),
   downloadPurchaseBill: vi.fn(),
 }));
+// Tesseract's own files are not loaded in a test: the reader is stood in for.
+vi.mock('../components/poinvoice/ocrText', () => ({ ocrLines: (...a: unknown[]) => ocrLines(...a) }));
 
 const line = (over: Record<string, unknown>) => ({
   name: 'WHEAT FLOUR', item_id: flour.id, item: flour, new_name: '', new_unit: '', quantity: 5, unit: '',
@@ -116,6 +121,22 @@ describe('Read bills', () => {
     expect(await screen.findByTestId('bill-check-40')).toBeInTheDocument();
     expect(readPurchaseBill).toHaveBeenCalledWith(40);
     expect(await screen.findByTestId('bills-problem')).toHaveTextContent('b.jpg: This bill is already on the list.');
+  });
+
+  // Owner, 2026-11-27: Tesseract as the free reader. The browser reads the picture and sends the text.
+  it('with Tesseract picked, reads each bill in the browser and sends its lines', async () => {
+    fetchPurchaseBills.mockResolvedValueOnce({ enabled: true, in_browser: true, bills: [] })
+      .mockResolvedValue({ enabled: true, in_browser: true, bills: [{ ...ready, id: 41 }] });
+    sendPurchaseBill.mockResolvedValue({ bill: { ...ready, id: 41, status: 'queued', data: null } });
+    ocrLines.mockResolvedValue(['HAPPY MARKET', 'Flour 5 22.00 110.00']);
+    sendPurchaseBillText.mockResolvedValue({ bill: { ...ready, id: 41 } });
+    page();
+
+    expect(await screen.findByTestId('bills-in-browser')).toHaveTextContent('Tesseract (free)');
+    fireEvent.change(await screen.findByTestId('bills-file'), { target: { files: [new File(['a'], 'a.jpg', { type: 'image/jpeg' })] } });
+    await waitFor(() => expect(sendPurchaseBillText).toHaveBeenCalledWith(41, ['HAPPY MARKET', 'Flour 5 22.00 110.00']));
+    expect(readPurchaseBill).not.toHaveBeenCalled();
+    expect(await screen.findByTestId('bill-check-41')).toBeInTheDocument();
   });
 
   it('says so when no key is set, and takes nothing', async () => {

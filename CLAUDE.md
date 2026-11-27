@@ -1363,6 +1363,25 @@ product, and the brand goes on the purchase line (the form's Brand box, `items.*
 keeps brands apart. A line is in the item's own unit unless the bill sells it by a pack; a new item is counted in the
 smallest unit (`new_unit`) with the pack on top. `BillNamesTest`.
 
+## What reads documents is its own pick
+
+Owner, 2026-11-27 ("I want to add Claude, Gemini, Tesseract switch option where OCR tool is used only. Because Claude and
+Gemini API has other uses"). System → Integrations → API keys → **Reads documents** (`ReadsDocuments` in
+`BillReaderCard.tsx`, `ocr_provider` on `PUT /purchasing/bill-reader`): Claude, Google Gemini or Tesseract, kept as the
+setting `ocr_provider` and read through `BillReaderSettings::ocrProvider()` (unset, it is the assistant's service, as
+before). It decides who reads supplier bills (`BillVision::read()`), scanned customer POs and a photographed menu plan
+(`AiTasks::reader()`, the `provider` argument of `Assistant::ask()`; `AiFeatures::READS_DOCUMENTS`); the other pick,
+"Use for the assistant" (`provider()`), is every other job. **Tesseract is free and runs in the browser**, so with it
+picked the server reads nothing: `BillReader::read()` and `readWaiting()` leave a bill queued, the Bills to check screen
+reads each waiting bill itself (`billLinesInBrowser()`: a PDF's own text, else `ocrLines()`, the PO reader's files) and
+posts the lines to `POST /purchases/bills/{id}/text`, where `BillText` turns them into the reading by plain rules (a
+supplier on file named on the bill, a row whose quantity × price is its amount, an item matched only by its name or a
+wording `BillNames` has, sums and cash rows left out, nothing guessed) and `BillReader::readText()` tidies and tells it
+as any reading. A bill sent to the staff bot is kept and read when someone opens the list; `po_scans` reports off so the
+PO pop-up uses its browser reader; a photo of a menu plan is refused in words. A new reader is a row in
+`BillReaderSettings::OCR`; a new job that reads a document asks `ocrProvider()`, never `provider()`. `OcrProviderTest`,
+`BillReaderCard.test.tsx`, `ReadBills.test.tsx`.
+
 ## QR and card payments are checked by hand
 
 Owner, 2026-10-28: a QR customer types the bill amount themselves and the cashier keys the card

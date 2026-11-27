@@ -54,7 +54,7 @@ class AssistantFeaturesTest extends TestCase
                 return $this->on;
             }
 
-            public function ask(string $instructions, string $prompt, array $schema, ?array $file = null, int $timeout = 60, int $maxTokens = 4000): array
+            public function ask(string $instructions, string $prompt, array $schema, ?array $file = null, int $timeout = 60, int $maxTokens = 4000, ?string $provider = null): array
             {
                 AssistantFeaturesTest::$asked[] = ['instructions' => $instructions, 'prompt' => $prompt, 'file' => $file];
                 $next = array_shift($this->answers);

@@ -52,7 +52,7 @@ class AiPhotoSuggestionsTest extends TestCase
                 return true;
             }
 
-            public function ask(string $instructions, string $prompt, array $schema, ?array $file = null, int $timeout = 60, int $maxTokens = 4000): array
+            public function ask(string $instructions, string $prompt, array $schema, ?array $file = null, int $timeout = 60, int $maxTokens = 4000, ?string $provider = null): array
             {
                 AiPhotoSuggestionsTest::$asks++;
                 \PHPUnit\Framework\Assert::assertNotNull($file, 'a photo job sends the picture');

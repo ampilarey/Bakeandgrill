@@ -40,7 +40,7 @@ describe('System → Integrations → API keys', () => {
     render(<MemoryRouter><ApiKeysPage /></MemoryRouter>);
     expect(await screen.findByTestId('bill-reader-claude')).toHaveTextContent('In use');
     expect(screen.getByTestId('bill-reader-google')).toHaveTextContent('No key yet.');
-    expect(screen.getByTestId('api-keys-uses')).toHaveTextContent('One key serves everything');
+    expect(screen.getByTestId('api-keys-uses')).toHaveTextContent('what reads documents');
     expect(screen.getByRole('link', { name: 'Assistant' })).toHaveAttribute('href', '/integrations/assistant');
     expect(await screen.findByTestId('ai-images')).toHaveTextContent('Add a Google key above');
   });

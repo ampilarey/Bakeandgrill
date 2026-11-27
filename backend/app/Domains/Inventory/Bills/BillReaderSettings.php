@@ -35,6 +35,16 @@ class BillReaderSettings
         ],
     ];
 
+    /**
+     * What reads documents: supplier bills, scanned purchase orders, a photographed menu plan (owner, 2026-11-27:
+     * "add Claude, Gemini, Tesseract switch option where OCR tool is used only. Because Claude and Gemini API has
+     * other uses"). Its own pick, apart from the service that does the assistant's other work. Tesseract is free
+     * and runs in the browser of whoever is reading, so it needs no key and nothing is read on the server.
+     */
+    public const TESSERACT = 'tesseract';
+
+    public const OCR = ['claude', 'google', self::TESSERACT];
+
     private const SCOPE = 'secret';
 
     /**
@@ -58,6 +68,25 @@ class BillReaderSettings
         }
 
         return 'claude';
+    }
+
+    /** What reads documents; until one is picked, the service that does everything else. */
+    public function ocrProvider(): string
+    {
+        $picked = (string) SiteSetting::get('ocr_provider', '');
+
+        return in_array($picked, self::OCR, true) ? $picked : $this->provider();
+    }
+
+    public function setOcrProvider(string $provider): void
+    {
+        SiteSetting::set('ocr_provider', in_array($provider, self::OCR, true) ? $provider : '');
+    }
+
+    /** Documents are read in the browser (Tesseract): the server has nothing to read them with. */
+    public function ocrInBrowser(): bool
+    {
+        return $this->ocrProvider() === self::TESSERACT;
     }
 
     public function setProvider(string $provider): void
@@ -149,6 +178,12 @@ class BillReaderSettings
             ];
         }
 
-        return ['provider' => $this->provider(), 'providers' => $rows, 'our_names' => implode(', ', $this->ourNames())];
+        return [
+            'provider' => $this->provider(),
+            'ocr_provider' => $this->ocrProvider(),
+            'ocr_choices' => self::OCR,
+            'providers' => $rows,
+            'our_names' => implode(', ', $this->ourNames()),
+        ];
     }
 }

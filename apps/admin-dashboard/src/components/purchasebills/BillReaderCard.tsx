@@ -4,6 +4,7 @@ import { Check, KeyRound } from 'lucide-react';
 import { getBillReader, saveBillReader, testBillReader, type BillReaderProvider, type BillReaderSettings } from '../../api/purchasing';
 import { Btn } from '../SharedUI';
 import { inputFont } from '../../utils/cssVars';
+import { refreshAi } from '../ai/useAi';
 
 /**
  * The services the site asks (Claude, Google) and their keys (owner, 2026-11-15: "add api
@@ -50,8 +51,8 @@ function ProviderBlock({ p, inUse, busy, onSave, onUse }: {
       <div className="br-block__head">
         <strong>{p.label}</strong>
         {inUse
-          ? <span className="br-chip"><Check size={13} aria-hidden />In use</span>
-          : <Btn small variant="secondary" disabled={busy || !p.has_key} onClick={onUse} data-testid={`bill-reader-use-${p.key}`}>Use this one</Btn>}
+          ? <span className="br-chip"><Check size={13} aria-hidden />In use for the assistant</span>
+          : <Btn small variant="secondary" disabled={busy || !p.has_key} onClick={onUse} data-testid={`bill-reader-use-${p.key}`}>Use for the assistant</Btn>}
       </div>
       <p className="br-line" data-testid={`bill-reader-state-${p.key}`}>{keyLine(p)}</p>
 
@@ -97,6 +98,42 @@ function ProviderBlock({ p, inUse, busy, onSave, onUse }: {
 }
 
 export const API_KEYS_PATH = '/integrations/keys';
+
+/** What reads documents, in the screen's words. */
+const OCR_WORDS: Record<string, { name: string; about: string }> = {
+  claude: { name: 'Claude', about: 'Reads the bill and matches each line to your inventory. Paid per bill through its key.' },
+  google: { name: 'Google Gemini', about: 'Reads the bill and matches each line to your inventory. Paid per bill through its key.' },
+  tesseract: { name: 'Tesseract (free)', about: 'Free, and nothing leaves your browser. It only turns the picture into text: a product is matched when its name is on the bill, and the rest you pick by hand. Weak on handwriting and crumpled paper.' },
+};
+
+/**
+ * What reads documents, picked apart from the service that does the assistant's work (owner, 2026-11-27: "add
+ * Claude, Gemini, Tesseract switch option where OCR tool is used only. Because Claude and Gemini API has other uses").
+ */
+function ReadsDocuments({ settings, busy, onPick }: { settings: BillReaderSettings; busy: boolean; onPick: (key: string) => void }) {
+  const picked = settings.ocr_provider ?? settings.provider;
+  const choices = settings.ocr_choices ?? ['claude', 'google', 'tesseract'];
+  const hasKey = (key: string) => key === 'tesseract' || Boolean(settings.providers.find((p) => p.key === key)?.has_key);
+  return (
+    <div className="br-block br-block--on" data-testid="ocr-provider">
+      <div className="br-block__head"><strong>Reads documents</strong></div>
+      <p className="br-help">Supplier bills (Bills to check and the staff bot) and scanned customer orders. This choice is separate from the service that does the assistant&apos;s other work below.</p>
+      <div className="br-row" role="group" aria-label="What reads documents">
+        {choices.map((key) => (
+          <Btn key={key} small variant={picked === key ? 'primary' : 'secondary'} aria-pressed={picked === key}
+            disabled={busy || (!hasKey(key) && picked !== key)} onClick={() => { if (picked !== key) onPick(key); }} data-testid={`ocr-use-${key}`}>
+            {picked === key && <Check size={13} aria-hidden />}{OCR_WORDS[key]?.name ?? key}
+          </Btn>
+        ))}
+      </div>
+      <p className="br-line" data-testid="ocr-about">{OCR_WORDS[picked]?.about}</p>
+      {picked === 'tesseract' && (
+        <p className="br-help">A bill sent to the staff bot is kept and read when someone opens Purchasing → Orders → Bills to check. A photo of a menu plan cannot be read this way: type or paste it.</p>
+      )}
+      {choices.some((k) => !hasKey(k)) && <p className="br-help">A service with no key yet cannot be picked: add its key below first.</p>}
+    </div>
+  );
+}
 
 export function BillReaderCard({ part }: { part: 'keys' | 'names' }) {
   const [settings, setSettings] = useState<BillReaderSettings | null>(null);
@@ -154,13 +191,14 @@ export function BillReaderCard({ part }: { part: 'keys' | 'names' }) {
     <section className="br-card" data-testid="api-keys-card">
       <h3 className="br-title">Services and keys</h3>
       <p className="br-lead">
-        Reading supplier bills and the assistant&apos;s drafts and suggestions ask an outside service. Give each service you want its key, then pick the one to use.
+        Give each service you want its key. Then make two picks: what reads documents, and which service does the assistant&apos;s drafts and suggestions.
         A key is kept encrypted and is never shown again. Making pictures always uses Google.
       </p>
       {error && <p className="po-note po-note--warn">{error}</p>}
       {active && !active.has_key && (
         <p className="po-note po-note--warn" data-testid="bill-reader-off">Nothing works yet: {active.label} has no key.</p>
       )}
+      <ReadsDocuments settings={settings} busy={busy} onPick={(key) => void save({ ocr_provider: key }).then(() => refreshAi()).catch(() => { /* shown above */ })} />
       <div className="br-grid">
         {settings.providers.map((p) => (
           <ProviderBlock

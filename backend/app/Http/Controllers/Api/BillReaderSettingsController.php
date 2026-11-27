@@ -30,6 +30,8 @@ class BillReaderSettingsController extends Controller
         $providers = array_keys(BillReaderSettings::PROVIDERS);
         $data = $request->validate([
             'provider' => ['sometimes', Rule::in($providers)],
+            // What reads documents (bills, scanned orders): its own pick, Tesseract among them.
+            'ocr_provider' => ['sometimes', Rule::in(BillReaderSettings::OCR)],
             // Who bills are made out to, separated by commas. Empty puts the usual names back.
             'our_names' => ['sometimes', 'nullable', 'string', 'max:300'],
             // A key that is sent replaces the stored one; "" removes it. Not sent, it is kept.
@@ -57,6 +59,10 @@ class BillReaderSettingsController extends Controller
         if (isset($data['provider'])) {
             $settings->setProvider($data['provider']);
             $changed[] = 'reader: ' . $data['provider'];
+        }
+        if (isset($data['ocr_provider'])) {
+            $settings->setOcrProvider($data['ocr_provider']);
+            $changed[] = 'reads documents: ' . $data['ocr_provider'];
         }
 
         // What changed, never the key.

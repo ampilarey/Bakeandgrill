@@ -83,7 +83,8 @@ class BillVision
 
     public function enabled(): bool
     {
-        return $this->settings->key($this->settings->provider()) !== '';
+        // Tesseract needs no key: the browser of whoever sends the bill reads it.
+        return $this->settings->ocrInBrowser() || $this->settings->key($this->settings->ocrProvider()) !== '';
     }
 
     /**
@@ -97,7 +98,10 @@ class BillVision
      */
     public function read(string $bytes, string $mime, string $context, ?string $provider = null, int $timeout = 150): array
     {
-        $provider ??= $this->settings->provider();
+        $provider ??= $this->settings->ocrProvider();
+        if ($provider === BillReaderSettings::TESSERACT) {
+            throw new BillUnreadable('Bills are set to be read by Tesseract, which runs in the browser. Open Admin → Purchasing → Orders → Bills to check and tap Read.');
+        }
         $key = $this->settings->key($provider);
         if ($key === '') {
             throw new BillUnreadable('Bill reading is not set up yet: add a key under System → Integrations → API keys.');

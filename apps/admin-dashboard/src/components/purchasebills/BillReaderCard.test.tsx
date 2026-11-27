@@ -25,10 +25,29 @@ const google = (over: Record<string, unknown> = {}) => provider({
   key: 'google', label: 'Google Gemini', where: 'aistudio.google.com → Get API key', model: 'gemini-flash-latest', default_model: 'gemini-flash-latest', ...over,
 });
 
+vi.mock('../ai/useAi', () => ({ refreshAi: () => undefined }));
+
 describe('API keys: the services and their keys', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getBillReader.mockResolvedValue({ provider: 'claude', providers: [provider({}), google()] });
+  });
+
+  // Owner, 2026-11-27: "add Claude, Gemini, Tesseract switch option where OCR tool is used only".
+  it('picks what reads documents apart from the assistant, with free Tesseract needing no key', async () => {
+    getBillReader.mockResolvedValue({ provider: 'claude', ocr_provider: 'claude', ocr_choices: ['claude', 'google', 'tesseract'], providers: [provider({ has_key: true, key_hint: '…9f3c', key_from: 'admin' }), google()] });
+    saveBillReader.mockResolvedValue({ provider: 'claude', ocr_provider: 'tesseract', ocr_choices: ['claude', 'google', 'tesseract'], providers: [provider({ has_key: true, key_hint: '…9f3c', key_from: 'admin' }), google()] });
+    render(<MemoryRouter><BillReaderCard part="keys" /></MemoryRouter>);
+    expect(await screen.findByTestId('ocr-use-claude')).toHaveAttribute('aria-pressed', 'true');
+    // Google has no key, so it cannot be picked; Tesseract needs none.
+    expect(screen.getByTestId('ocr-use-google')).toBeDisabled();
+    expect(screen.getByTestId('ocr-use-tesseract')).not.toBeDisabled();
+    fireEvent.click(screen.getByTestId('ocr-use-tesseract'));
+    await waitFor(() => expect(saveBillReader).toHaveBeenCalledWith({ ocr_provider: 'tesseract' }));
+    await waitFor(() => expect(screen.getByTestId('ocr-use-tesseract')).toHaveAttribute('aria-pressed', 'true'));
+    expect(screen.getByTestId('ocr-about')).toHaveTextContent('nothing leaves your browser');
+    // The assistant's own pick did not move.
+    expect(screen.getByTestId('bill-reader-claude')).toHaveTextContent('In use for the assistant');
   });
 
   it('says reading is off while the picked service has no key', async () => {

@@ -19,7 +19,8 @@ class ReadWaitingBills extends Command
 
     public function handle(BillReader $reader): int
     {
-        if (!$reader->enabled()) {
+        // Read in the browser (Tesseract): nothing for the server to do.
+        if (!$reader->enabled() || $reader->inBrowser()) {
             return self::SUCCESS;
         }
         $done = $reader->readWaiting();

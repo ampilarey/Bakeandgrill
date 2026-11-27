@@ -174,7 +174,7 @@ class TelegramOwnerToolsTest extends TestCase
                 return true;
             }
 
-            public function ask(string $instructions, string $prompt, array $schema, ?array $file = null, int $timeout = 60, int $maxTokens = 4000): array
+            public function ask(string $instructions, string $prompt, array $schema, ?array $file = null, int $timeout = 60, int $maxTokens = 4000, ?string $provider = null): array
             {
                 return isset($schema['properties']['about']) ? ['about' => true, 'from' => now()->toDateString(), 'to' => now()->toDateString()] : ['answer' => 'Today you sold 3 momo.'];
             }

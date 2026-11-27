@@ -24,6 +24,21 @@ class AiTasks
     public function __construct(private readonly Assistant $assistant) {}
 
     /**
+     * The service that reads a document (owner, 2026-11-27: its own pick, apart from the assistant's other work).
+     *
+     * @throws AssistantUnavailable when documents are read by Tesseract, which runs in the browser
+     */
+    private function reader(string $what): string
+    {
+        $settings = app(\App\Domains\Inventory\Bills\BillReaderSettings::class);
+        if ($settings->ocrInBrowser()) {
+            throw new AssistantUnavailable("Documents are set to be read by Tesseract, which runs in the browser and cannot read {$what} here. Pick Claude or Google under System → Integrations → API keys → Reads documents, or type it in.");
+        }
+
+        return $settings->ocrProvider();
+    }
+
+    /**
      * A reply to a customer, for staff to edit and send.
      *
      * @param array<string, mixed> $about what the customer wrote and what is known about it
@@ -191,7 +206,7 @@ class AiTasks
             - subtotal, tax and total as printed, 0 when not printed.
             - is_po is false when the file is not an order for goods, or cannot be read at all.
             TXT;
-        $out = $this->assistant->ask(self::WHO . "\n\n" . $rules, 'Read this purchase order.', $schema, ['bytes' => $bytes, 'mime' => $mime], timeout: 120, maxTokens: 8000);
+        $out = $this->assistant->ask(self::WHO . "\n\n" . $rules, 'Read this purchase order.', $schema, ['bytes' => $bytes, 'mime' => $mime], timeout: 120, maxTokens: 8000, provider: $this->reader('a scanned order'));
         if (empty($out['is_po'])) {
             throw new AssistantUnavailable('The assistant could not read this file as a purchase order.');
         }
@@ -547,6 +562,7 @@ class AiTasks
             ['bytes' => $bytes, 'mime' => $mime],
             timeout: 120,
             maxTokens: 8000,
+            provider: $this->reader('a photo or scan of a plan'),
         );
         $text = trim((string) ($out['text'] ?? ''));
         if ($text === '') {

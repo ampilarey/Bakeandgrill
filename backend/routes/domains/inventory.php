@@ -101,6 +101,7 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
         Route::get('/purchases/bills', [App\Http\Controllers\Api\PurchaseBillController::class, 'index']);
         Route::post('/purchases/bills', [App\Http\Controllers\Api\PurchaseBillController::class, 'store']);
         Route::post('/purchases/bills/{id}/read', [App\Http\Controllers\Api\PurchaseBillController::class, 'read'])->whereNumber('id');
+        Route::post('/purchases/bills/{id}/text', [App\Http\Controllers\Api\PurchaseBillController::class, 'text'])->whereNumber('id');
         Route::get('/purchases/bills/{id}/file', [App\Http\Controllers\Api\PurchaseBillController::class, 'file'])->whereNumber('id');
         Route::delete('/purchases/bills/{id}', [App\Http\Controllers\Api\PurchaseBillController::class, 'destroy'])->whereNumber('id');
     });

@@ -32,6 +32,8 @@ class PurchaseBillController extends Controller
 
         return response()->json([
             'enabled' => $this->reader()->enabled(),
+            // Tesseract: this screen reads each waiting bill itself and sends its text to `text`.
+            'in_browser' => $this->reader()->inBrowser(),
             'bills' => $bills->map(fn (PurchaseBill $b) => $this->reader()->present($b))->values(),
         ]);
     }
@@ -71,6 +73,22 @@ class PurchaseBillController extends Controller
         @set_time_limit(180);
 
         return response()->json(['bill' => $this->reader()->present($this->reader()->read($bill))]);
+    }
+
+    /**
+     * A bill's text as Tesseract read it in the browser (owner, 2026-11-27: a free reader beside Claude and Google).
+     * The lines are turned into the same reading by plain rules; the person checks it as any other.
+     */
+    public function text(Request $request, int $id): JsonResponse
+    {
+        $data = $request->validate([
+            'lines' => 'present|array|max:600',
+            'lines.*' => 'nullable|string|max:400',
+        ]);
+        $bill = PurchaseBill::query()->whereIn('status', PurchaseBill::WAITING)->findOrFail($id);
+        $lines = array_values(array_map(fn ($l) => (string) $l, $data['lines']));
+
+        return response()->json(['bill' => $this->reader()->present($this->reader()->readText($bill, $lines))]);
     }
 
     public function file(int $id): StreamedResponse

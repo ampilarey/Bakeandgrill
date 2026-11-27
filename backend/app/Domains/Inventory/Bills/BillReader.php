@@ -41,12 +41,57 @@ class BillReader
         return $this->vision->enabled();
     }
 
+    /** Bills are read by Tesseract in the browser of whoever opens the list: the server reads none. */
+    public function inBrowser(): bool
+    {
+        return app(BillReaderSettings::class)->ocrInBrowser();
+    }
+
+    /**
+     * A bill whose text the browser read (Tesseract, owner 2026-11-27): the same claim, tidy and telling as read(),
+     * with BillText's plain rules in the reader's place.
+     *
+     * @param list<string> $lines
+     */
+    public function readText(PurchaseBill $bill, array $lines): PurchaseBill
+    {
+        $claimed = PurchaseBill::query()->whereKey($bill->id)
+            ->whereIn('status', [PurchaseBill::QUEUED, PurchaseBill::FAILED])
+            ->update(['status' => PurchaseBill::READING, 'reading_at' => now(), 'error' => null]);
+        if ($claimed === 0) {
+            return $bill->refresh();
+        }
+        try {
+            $data = $this->tidy(app(BillText::class)->read($lines));
+            if (!$data['is_bill'] || $data['lines'] === []) {
+                throw new BillUnreadable($data['note'] !== '' ? $data['note'] : 'Nothing on this could be read as a bill. Try a clearer photo, or type it.');
+            }
+            $bill->forceFill(['status' => PurchaseBill::READY, 'data' => $data, 'error' => null])->save();
+        } catch (BillUnreadable $e) {
+            $bill->forceFill(['status' => PurchaseBill::FAILED, 'error' => mb_substr($e->getMessage(), 0, 500)])->save();
+        } catch (Throwable $e) {
+            Log::error('Bill text reading broke', ['bill' => $bill->id, 'error' => $e->getMessage()]);
+            report($e);
+            $bill->forceFill(['status' => PurchaseBill::FAILED, 'error' => 'This bill could not be read. Try it again, or type it.'])->save();
+        }
+        $bill->refresh();
+        if ($bill->telegram_link_id !== null) {
+            app(\App\Domains\Telegram\Services\TelegramBills::class)->tell($bill);
+        }
+
+        return $bill;
+    }
+
     /**
      * Read one bill, unless someone else is already reading it. Returns the row as it
      * stands afterwards: ready, failed, or still reading elsewhere.
      */
     public function read(PurchaseBill $bill): PurchaseBill
     {
+        // Read in the browser: it stays waiting until someone opens the list and its text is sent to readText().
+        if ($this->inBrowser()) {
+            return $bill->refresh();
+        }
         // One reader per bill: the screen that uploaded it and the scheduler both ask.
         $claimed = PurchaseBill::query()->whereKey($bill->id)
             ->whereIn('status', [PurchaseBill::QUEUED, PurchaseBill::FAILED])
@@ -333,6 +378,9 @@ class BillReader
     /** Bills nobody is reading: queued ones, and ones whose reader was killed. For the scheduler. */
     public function readWaiting(int $limit = 5): int
     {
+        if ($this->inBrowser()) {
+            return 0;
+        }
         PurchaseBill::query()->where('status', PurchaseBill::READING)
             ->where('reading_at', '<', now()->subMinutes(self::STALE_MINUTES))
             // Dated back, so it is past the minute's grace below and is read in this run.

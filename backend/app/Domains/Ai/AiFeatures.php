@@ -17,6 +17,9 @@ use App\Models\SiteSetting;
 class AiFeatures
 {
     /** @var array<string, array{label: string, about: string, where: string}> */
+    /** The features that read a document: they ask the service picked under Reads documents. */
+    public const READS_DOCUMENTS = ['po_scans'];
+
     public const FEATURES = [
         'po_scans' => ['label' => 'Read scanned purchase orders', 'about' => 'A scanned or photographed customer PO is read into the invoice form.', 'where' => 'Finance → Invoices → From a PO'],
         'reply_drafts' => ['label' => 'Draft replies to customers', 'about' => 'A Draft reply button on reviews, complaints, dish questions and social comments. Nothing is sent until you send it.', 'where' => 'Reviews, Complaints, Dish questions, Social Hub → Comments'],
@@ -50,16 +53,38 @@ class AiFeatures
     /** The one question a feature asks before it calls the assistant. */
     public function on(string $feature): bool
     {
-        return $this->master() && $this->switchedOn($feature) && $this->assistant->ready();
+        return $this->master() && $this->switchedOn($feature) && $this->keyFor($feature);
+    }
+
+    /**
+     * Whether the service this feature asks has a key. A feature that reads a document asks the service picked for
+     * reading (owner, 2026-11-27); with Tesseract picked the browser reads it, so the server's job is off.
+     */
+    private function keyFor(string $feature): bool
+    {
+        if (! in_array($feature, self::READS_DOCUMENTS, true)) {
+            return $this->assistant->ready();
+        }
+        $settings = app(\App\Domains\Inventory\Bills\BillReaderSettings::class);
+
+        if ($settings->ocrInBrowser()) {
+            return false;
+        }
+
+        // The same service as the assistant's: one answer for both.
+        return $settings->ocrProvider() === $settings->provider() ? $this->assistant->ready() : $settings->key($settings->ocrProvider()) !== '';
     }
 
     /** @throws AssistantUnavailable with the reason, for a screen */
     public function mustBeOn(string $feature): void
     {
-        if (!$this->assistant->ready()) {
+        if (in_array($feature, self::READS_DOCUMENTS, true) && app(\App\Domains\Inventory\Bills\BillReaderSettings::class)->ocrInBrowser()) {
+            throw new AssistantUnavailable('Documents are read by Tesseract in the browser (System → Integrations → API keys → Reads documents).');
+        }
+        if (! $this->keyFor($feature)) {
             throw new AssistantUnavailable('The assistant is not set up yet: add a key under System → Integrations → API keys.');
         }
-        if (!$this->master() || !$this->switchedOn($feature)) {
+        if (! $this->master() || ! $this->switchedOn($feature)) {
             throw new AssistantUnavailable('This assistant feature is switched off (System → Integrations → Assistant).');
         }
     }
@@ -117,6 +142,6 @@ class AiFeatures
     {
         $v = SiteSetting::get($key, '1');
 
-        return !in_array($v, ['0', 0, false, 'false', 'off'], true);
+        return ! in_array($v, ['0', 0, false, 'false', 'off'], true);
     }
 }

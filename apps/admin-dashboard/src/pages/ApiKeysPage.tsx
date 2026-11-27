@@ -33,7 +33,7 @@ export default function ApiKeysPage() {
       <Card>
         <h3 style={{ margin: '0 0 6px', fontSize: 16 }}>API keys</h3>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }} data-testid="api-keys-uses">
-          One key serves everything: reading supplier bills (Purchasing → Orders → Bills to check, and bills sent to the staff bot) and the assistant.
+          A service&apos;s key is typed once, here. Then two picks: what reads documents (supplier bills and scanned orders; Claude, Google or the free Tesseract) and which service does the assistant&apos;s work.
           Which of the assistant&apos;s jobs run is on <Link to="/integrations/assistant" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Assistant</Link>.
         </p>
       </Card>
