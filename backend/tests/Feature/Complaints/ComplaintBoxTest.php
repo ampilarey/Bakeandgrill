@@ -44,6 +44,18 @@ class ComplaintBoxTest extends TestCase
             ->assertSee('/api/complaint-box');
 
         $this->get('/complain?order=BG-77&from=receipt')->assertOk()->assertSee('value="BG-77"', false);
+        // Owner, 2026-11-27 ("Can u enhance this page"): what happens next, the shop's number for what cannot wait,
+        // the order it is about said at the top, drawn icons, and the bots' box clipped, never pushed off the side.
+        SiteSetting::set('business_phone', '+960 912 0011');
+        $page = $this->get('/complain?order=BG-77&from=receipt')->assertOk()
+            ->assertSee('What happens next')
+            ->assertSee('Goes straight to the owner')
+            ->assertSee('data-testid="cb-about"', false)
+            ->assertSee('Today')
+            ->assertSee('<svg', false)
+            ->assertDontSee('-9999px', false);
+        $this->assertStringNotContainsString('data-testid="cb-about"', (string) $this->get('/complain')->getContent());
+
         $this->get('/')->assertOk()->assertSee('href="/complain?from=footer"', false);
         $this->get('/complain/poster')->assertOk()->assertSee('data:image/svg+xml', false);
     }

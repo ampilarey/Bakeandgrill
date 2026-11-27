@@ -877,6 +877,18 @@ place of the framework class in `AppServiceProvider` (so
 limiters are unchanged (`RateLimitPerRouteTest` fails if the binding goes). The order app retries a refused read once after
 `Retry-After` and says the menu is busy rather than blaming the connection.
 
+## The complaint page
+
+Owner, 2026-11-27 ("Can u enhance this page", `/complain`, `complain.blade.php`). A dark brand hero with three
+promises (goes straight to the owner, anonymous if you like, we can message you back), then the form in three numbered
+steps: what it is about (a grid of chips, each with a drawn icon from `$catIcons`; at the most allowed the rest grey out
+and a line says "2 of 3 picked"), what happened (the order number and the day fold under one optional row, open when the
+link brought an order, with Today and Yesterday chips), and how to get back. Beside it from 900px, under it on a phone:
+What happens next and Need us right now? with the shop's number as a `tel:` link (Business Details' `business_phone`).
+The thank-you card has the reference in a box with Copy. The form's fields, the `data-` hooks and `POST
+/api/complaint-box` are as they were. The box bots fill is clipped in place (`.cb-trap`), never at `left: -9999px`. A new
+complaint category gets an icon in `$catIcons`. `ComplaintBoxTest`.
+
 ## Website wording in Dhivehi
 
 iruali import plan, feature 3b, part 3 (2026-10-18). On a Dhivehi page (`/dv/...`, switch on)

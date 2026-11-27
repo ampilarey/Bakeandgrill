@@ -33,6 +33,8 @@ class ComplaintBoxPageController extends Controller
             'orderRef' => mb_substr($orderRef, 0, 40),
             'source' => $source,
             'endpoint' => url('/api/complaint-box'),
+            // For "Need us right now?": the shop's own number, as Business Details has it.
+            'phone' => trim((string) content('business_phone', '')),
         ]);
     }
 
